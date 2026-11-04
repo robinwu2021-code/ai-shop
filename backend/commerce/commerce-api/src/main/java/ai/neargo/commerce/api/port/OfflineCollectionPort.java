@@ -16,6 +16,10 @@ public interface OfflineCollectionPort {
     record RefundPayout(String tenantNo,String orderNo,String refundNo,String operatorNo,Money actualAmount,
             Instant paidOutAt,String payeeReference,String bankReference,String evidenceReference,Instant confirmedAt) {}
     default void payout(RefundPayout payout) { throw new UnsupportedOperationException(); }
+    default OfflineCollectionTerms configure(String tenant, String operatorNo,
+            ai.neargo.commerce.api.offline.OfflinePurchaseFacade.ProfileCommand command) {
+        throw new UnsupportedOperationException();
+    }
     default Optional<OfflineCollectionTerms> terms(String tenant,String profile,String currency) { return Optional.empty(); }
     default ManualResult confirm(ManualPayment command) { throw new UnsupportedOperationException(); }
     default void reconcile(Reconciliation command) { throw new UnsupportedOperationException(); }

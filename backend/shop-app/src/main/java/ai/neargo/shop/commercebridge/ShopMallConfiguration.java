@@ -143,8 +143,10 @@ class ShopMallConfiguration {
             name = {"payment.enabled", "offline.enabled"},
             havingValue = "true")
     OfflineCollectionPort mallOfflineCollection(
-            PlatformCollectionService collection, ObjectProvider<PlatformRefundService> refunds) {
-        return new ShopMallOfflineCollectionAdapter(collection, refunds.getIfAvailable());
+            PlatformCollectionService collection,
+            ObjectProvider<PlatformRefundService> refunds,
+            @Value("${commerce.mall.payment.platform-merchant-no}") String recipient) {
+        return new ShopMallOfflineCollectionAdapter(collection, refunds.getIfAvailable(), recipient);
     }
 
     @Bean

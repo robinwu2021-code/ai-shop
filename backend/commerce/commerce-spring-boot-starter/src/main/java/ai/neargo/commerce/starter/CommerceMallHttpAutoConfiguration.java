@@ -14,7 +14,8 @@ import org.springframework.context.annotation.*;
             CommerceSourceManagementAutoConfiguration.class,
             CommerceMallQueryAutoConfiguration.class,
             CommerceFulfillmentAutoConfiguration.class,
-            CommerceRefundAutoConfiguration.class
+            CommerceRefundAutoConfiguration.class,
+            CommerceOfflineAutoConfiguration.class
         })
 @ConditionalOnClass(
         name = {"org.springframework.web.servlet.DispatcherServlet", "jakarta.servlet.Servlet"})
@@ -69,6 +70,17 @@ public class CommerceMallHttpAutoConfiguration {
             MallHttpEnvelopePort envelope) {
         return new CommerceOpsMallHttpController(
                 queries, refunds.getIfAvailable(), fulfillment.getIfAvailable(), context, envelope);
+    }
+
+    /** Only when the offline workflow itself was assembled (its own opt-in and trusted ports). */
+    @Bean
+    @ConditionalOnBean(ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class)
+    CommerceOfflineHttpController commerceOfflineHttpController(
+            ai.neargo.commerce.api.offline.OfflinePurchaseFacade offline,
+            ai.neargo.commerce.api.mall.MallFacade mall,
+            MallHttpContextPort context,
+            MallHttpEnvelopePort envelope) {
+        return new CommerceOfflineHttpController(offline, mall, context, envelope);
     }
 
     @Bean

@@ -1,6 +1,6 @@
-# 商城 HTTP 与宿主接入（Task4）
+# 商城 HTTP 与宿主接入（Task4 + Task8）
 
-本文件与 `commerce-mall-openapi.json` 描述新增 39 个操作。既有 29 个商家注册/门店初始化/基础目录操作及响应不变。HTTP 翻译位于可移植 starter；宿主提供可信会话、权限、信封、平台支付账本和库存适配。没有运营网页或 Flutter 实现。
+本文件与 `commerce-mall-openapi.json`（`task8-v1`）描述新增 62 个操作：Task4 的 39 个，加 Task8 线下购买的 23 个（见文末「线下银行转账购买」）。既有 29 个商家注册/门店初始化/基础目录操作及响应不变。HTTP 翻译位于可移植 starter；宿主提供可信会话、权限、信封、平台支付账本和库存适配。没有运营网页或 Flutter 实现。
 
 ## 开关与真实可用性
 
@@ -86,3 +86,58 @@ shop:
 commerce 独立迁移到 V9；Task4 新增 V8 审核报价、V9 零金额来源撤销。宿主到 V556（V555 平台发送/关闭/现金交接字段与索引，V556 九项权限），库存到 V14（原操作映射、释放栅栏、部分发货证据）。生成 schema-test.sql 与 inventory-h2 baseline 同步。旧迁移未改写。
 
 Task8 可复用 public MallFacade/StorefrontFacade/MallQueryFacade、PaymentFacade.refresh、MallRecoveryFacade、RefundFacade 的请求/独立审核/可信恢复，以及原始 PaymentIntentCommand/PaymentQuery、ActorContext 可选 rawIdentity。host 的 PlatformCollectionService/PlatformRefundService/PlatformMoneyHandoffService 继续拥有唯一账本；ShopMallPayerBindings 是未来权威 app-bound 证明扩展点。库存 CoordinatedInventoryService 继续拥有真实库存。Task8 新增线下证据/代客订单/渠道设置及金额策略，不使用零金额 GRANT 假装实收，不直接由 host 写商业表；迁移从 commerce V10、宿主 V557、库存 V15 起按实际需要追加。
+
+## 线下银行转账购买（Task8）
+
+**开关**（在 Task4 配置之上追加；任一缺失则不装配，缺端口直接启动失败）：
+
+```yaml
+commerce:
+  mall:
+    payment:
+      enabled: true
+      platform-merchant-no: <平台收款主体，与收款档案一致>
+      routes: OFFLINE:BANK_TRANSFER   # 可与其它路由逗号并列
+    offline:
+      enabled: true
+      profile-no: <收款档案号>
+    refund:
+      enabled: true                    # 线下退款出款确认需要
+    recovery:
+      enabled: true                    # 核款/作废中断后的恢复
+```
+
+付款窗口来自收款档案（`paymentWindowMs`，开发示例 24 小时），下单时冻结为 `paymentDueAt`，不续期。金额不符的实收只记为 `MALL_UNMATCHED` 待处置，首期不自动补差、拆款或发权益；由运营经「作废」登记处置说明，或经线下退款出款退回。
+
+**B 端**（`/biz/stores/{storeNo}/mall/offline`，均需采购职责）：
+
+| 步骤 | 接口 | 说明 |
+| --- | --- | --- |
+| 报价 | `POST /quotes` | 条款只取部署配置的收款档案；随后用既有 `POST /biz/stores/{storeNo}/mall/orders` 下单 |
+| 发出指引 | `POST /orders/{orderNo}/instructions`（`{}`） | 幂等；返回冻结的收款信息、应付金额、`paymentDueAt` |
+| 查看指引 | `GET /orders/{orderNo}/instructions` | 未发出返回 `OFFLINE_INSTRUCTIONS_NOT_ISSUED` |
+| 预留凭证 | `POST /orders/{orderNo}/evidence`（`{}`） | 返回 `assetKey`，用途固定为 BUYER_RECEIPT |
+| 上传凭证 | `POST /orders/{orderNo}/evidence/content?assetKey=` | 请求体为图片字节，`image/jpeg` 或 `image/png`，≤10MB；每个 key 只能上传一次 |
+| 读凭证 | `GET /orders/{orderNo}/evidence/url?assetKey=` | 仅本人凭证，5 分钟签名地址 |
+| 付款申报 | `POST /orders/{orderNo}/claims` | 申报**不是**到账，不产生付款或权益 |
+| 申报列表 | `GET /orders/{orderNo}/claims` | 仅本人申报；状态 SUBMITTED / REVIEWING / CONFIRMED / MISMATCHED / DECLINED |
+
+申报被拒（DECLINED）后用新的 `claimNo` 重新申报。付款结果一律回读订单详情的 `paymentStatus` / `fulfillmentStatus`。
+
+**运营端**（`/ops/biz-mall/offline`，门店用 `storeNo` 查询参数）：
+
+| 接口 | 权限码 | 说明 |
+| --- | --- | --- |
+| `GET/PUT /profile` | `commerce:collection:profile:read` / `:write` | 收款档案；每次修改生成新版本，已发出的指引按原版本 |
+| `GET /claims` | `commerce:mall:offline:review` | 待审核申报队列，按 (orderNo, claimNo) 翻页 |
+| `POST /quotes`、`POST /orders`、`POST /orders/{no}/instructions` | `commerce:mall:assisted:purchase` | 代客：买方为 STORE，发起人为真实运营 |
+| `GET /orders/{no}/instructions`、`GET /orders/{no}/claims` | `commerce:mall:order:read` | |
+| `POST /orders/{no}/evidence`（`{"purpose":…}`）、`…/evidence/content`、`…/evidence/url` | `commerce:mall:offline:evidence` | 用途 PLATFORM_RECEIPT / RECONCILIATION / REFUND_PROOF |
+| `POST /orders/{no}/claims/{claimNo}/decline` | `commerce:mall:offline:review` | 拒绝申报不等于无款，不释放占用 |
+| `POST /orders/{no}/confirmations` | `commerce:mall:offline:confirm` | 录入实际到账；金额不符 → UNMATCHED，不发权益 |
+| `POST /orders/{no}/voids` | `commerce:mall:offline:void` | 对账作废；之后来款仍入账并走退款 |
+| `POST /orders/{no}/refunds/{refundNo}/payouts` | `commerce:mall:offline:refund:confirm` | 录入实际出款；金额须等于退款意图，银行流水唯一 |
+
+动作返回 `ACCEPTED / APPLIED / UNMATCHED / REJECTED`。ACCEPTED 表示已受理、资金端未确认，由恢复任务继续；REJECTED 带原因码返回。权限码由迁移 V558 预置给 SUPER_ADMIN。
+
+常见原因码：`OFFLINE_UNAVAILABLE`、`OFFLINE_INSTRUCTIONS_NOT_ISSUED`、`OFFLINE_INTENT_REQUIRED`、`EVIDENCE_FORBIDDEN`、`EVIDENCE_UNAVAILABLE`、`EVIDENCE_ALREADY_STORED`、`CLAIM_ALREADY_REVIEWED`、`OFFLINE_RECEIVER_MISMATCH`、`OFFLINE_BANK_REFERENCE_CONFLICT`、`OFFLINE_HISTORICAL_MODE_REQUIRED`、`OFFLINE_ALREADY_PAID`、`OFFLINE_UNMATCHED_DISPOSITION_REQUIRED`、`OFFLINE_PAYOUT_AMOUNT_MISMATCH`、`OFFLINE_PROFILE_MERCHANT_MISMATCH`、`STORE_UNAVAILABLE`。

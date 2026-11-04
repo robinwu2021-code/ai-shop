@@ -182,6 +182,64 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             return work.apply(orders.order(q.tenantNo(),q.orderNo()).orElseThrow(()->fail("NOT_FOUND")));
         });
     }
+    private static final java.util.Set<AsyncStatus> ISSUED=java.util.Set.of(AsyncStatus.PENDING,AsyncStatus.SUCCEEDED);
+    private InstructionsView view(MallSnapshot.Order o) {
+        var terms=o.quote().purchase().offline();
+        boolean issued=operations.operations(o.quote().store().tenantNo(),o.orderNo()).stream()
+                .anyMatch(op->"PAYMENT".equals(op.kind()) && op.paymentResult()!=null && ISSUED.contains(op.paymentResult().status()));
+        if(!issued)throw fail("OFFLINE_INSTRUCTIONS_NOT_ISSUED");
+        boolean cash=o.view().payable().minor()>0;
+        return new InstructionsView(o.orderNo(),o.view().payable(),java.time.Instant.ofEpochMilli(o.paymentDueAt()),
+                terms.profileNo(),terms.profileVersion(),cash?terms.instructions():Map.of());
+    }
+    private String purchaseCapability(ActorContext actor) {
+        return actor!=null && actor.subjectKind()==SubjectKind.OPERATOR?"commerce:mall:assisted:purchase":"commerce:mall:purchase";
+    }
+    public InstructionsView issue(ActorContext actor,OrderQuery order) {
+        locked(actor,order,purchaseCapability(actor),o->o);
+        uow.requireOutsideTransaction();
+        payments.prepareOffline(new FulfillmentQuery(order.store().tenantNo(),order.orderNo()));
+        return instructions(actor,order);
+    }
+    public InstructionsView instructions(ActorContext actor,OrderQuery order) {
+        return locked(actor,order,actor!=null && actor.subjectKind()==SubjectKind.OPERATOR?"commerce:mall:order:read":"commerce:mall:read",this::view);
+    }
+    public List<ClaimView> claims(ActorContext actor,OrderQuery order) {
+        return locked(actor,order,actor!=null && actor.subjectKind()==SubjectKind.OPERATOR?"commerce:mall:order:read":"commerce:mall:read",o->
+            offline.claims(order.store().tenantNo(),o.orderNo()).stream()
+                .filter(c->actor.subjectKind()==SubjectKind.OPERATOR || actor.principalNo().equals(c.submitterNo()))
+                .map(OfflineRepository.Claim::view).toList());
+    }
+    private void tenantOperator(ActorContext actor,String capability) {
+        operator(actor);
+        if(actor.principalNo()==null || actor.accountSessionFingerprint()==null || actor.accountSessionFingerprint().isBlank())throw fail("FORBIDDEN");
+        var allowed=auth.authorize(actor,new StoreRef(actor.tenantNo(),"_TENANT"),capability);
+        if(allowed==null || !allowed.allowed())throw fail("FORBIDDEN");
+    }
+    public List<PendingClaim> pendingClaims(ActorContext actor,String afterOrder,String afterClaim,int limit) {
+        tenantOperator(actor,"commerce:mall:offline:review");
+        if(limit<1 || limit>100)throw fail("INVALID_REQUEST");
+        return uow.required(()->offline.submittedClaims(actor.tenantNo(),afterOrder,afterClaim,limit).stream()
+                .map(c->new PendingClaim(c.command().order().store(),c.command().order().orderNo(),c.view())).toList());
+    }
+    public OfflineCollectionTerms configureProfile(ActorContext actor,ProfileCommand c) {
+        uow.requireOutsideTransaction();
+        tenantOperator(actor,"commerce:collection:profile:write");
+        if(c==null || profileNo==null || !profileNo.equals(c.profileNo()))throw fail("INVALID_REQUEST");
+        text(c.reason(),1024);
+        try { return collection.configure(actor.tenantNo(),actor.principalNo(),c); }
+        catch(IllegalArgumentException refused) {
+            String reason=refused.getMessage();
+            throw fail(reason==null || reason.isBlank() || reason.length()>64?"OFFLINE_PROFILE_INVALID":reason);
+        }
+    }
+    public Optional<OfflineCollectionTerms> profile(ActorContext actor,String currency) {
+        uow.requireOutsideTransaction();
+        tenantOperator(actor,"commerce:collection:profile:read");
+        if(profileNo==null || currency==null || !currency.matches("[A-Z]{3}"))throw fail("INVALID_REQUEST");
+        return collection.terms(actor.tenantNo(),profileNo,currency);
+    }
+
     public RefundView confirmRefundPayout(ActorContext actor,RefundPayoutCommand c) {
         operator(actor);
         if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0
@@ -289,6 +347,18 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
                 case "UNMATCHED" -> c.reviewed("MISMATCHED",a.operatorNo(),c.reason());
                 default -> c.reviewed("SUBMITTED",null,null);
             }));
+    }
+
+    public Sweep recoverPending(String tenant,String after,int limit) {
+        uow.requireOutsideTransaction();
+        if(tenant==null || tenant.isBlank() || limit<1 || limit>100)throw fail("INVALID_REQUEST");
+        var orders=uow.required(()->offline.pendingOrders(tenant,after,limit));
+        int failed=0;
+        for(String order:orders) {
+            try { recover(new FulfillmentQuery(tenant,order)); }
+            catch(RuntimeException retry) { failed++; }
+        }
+        return new Sweep(orders.size(),failed,orders.size()<limit?null:orders.getLast());
     }
 
     public void recover(FulfillmentQuery query) {

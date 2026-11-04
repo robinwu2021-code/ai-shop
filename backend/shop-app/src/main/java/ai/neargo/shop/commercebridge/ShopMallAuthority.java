@@ -187,6 +187,8 @@ final class ShopMallAuthority
                 Realm.MERCHANT,
                 session -> {
                     if ("INTERNAL".equals(channel) && "ZERO".equals(method)) return null;
+                    // Bank transfer carries no payer binding; the frozen pay-domain terms are the route.
+                    if ("OFFLINE".equals(channel) && "BANK_TRANSFER".equals(method)) return null;
                     var current = actor(session.user(), session.sessionFingerprint());
                     var proof =
                             bindings.current(current, channel, method)

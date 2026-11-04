@@ -123,14 +123,87 @@ class MallOpenApiResponseTest {
         assertTrue(order.getContentAsString().contains("\"shippingAddress\":null"));
         assertTrue(order.getContentAsString().contains("\"minor\":\"9007199254740993\""));
         var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
-        var fixtures =
-                Map.of(
-                        "MallOrderDetailView",
-                        mapper.readTree(order.getContentAsString()).get("data"),
-                        "DraftSaveResult",
-                        mapper.readTree(save.getContentAsString()).get("data"));
+        var offline = offlineResponses(context, envelope, store, at);
+        var fixtures = new LinkedHashMap<String, Object>();
+        fixtures.put("MallOrderDetailView", mapper.readTree(order.getContentAsString()).get("data"));
+        fixtures.put("DraftSaveResult", mapper.readTree(save.getContentAsString()).get("data"));
+        for (var e : offline.entrySet())
+            fixtures.put(e.getKey(), mapper.readTree(e.getValue()).get("data"));
+        assertEquals("null", mapper.readTree(offline.get("OfflineActionView")).get("data").get("paymentNo").toString());
         Path target = Path.of("target/mall-openapi-responses.json");
         Files.createDirectories(target.getParent());
         Files.writeString(target, mapper.writeValueAsString(fixtures));
+    }
+
+    /** Actual offline controller responses for the same schema gate. */
+    static Map<String, String> offlineResponses(
+            MallHttpContextPort context, MallHttpEnvelopePort envelope, StoreRef store, Instant at)
+            throws Exception {
+        var money = new Money("TWD", 69900);
+        var terms =
+                new ai.neargo.commerce.api.offline.OfflineCollectionTerms(
+                        "profile", 2, "platform", "TWD", "account-key", "w1", 86400000,
+                        Map.of("bankCode", "TESTBANK"));
+        var claim =
+                new ai.neargo.commerce.api.offline.OfflinePurchaseFacade.ClaimView(
+                        "claim", "SUBMITTED", money, at, at);
+        var facade =
+                (ai.neargo.commerce.api.offline.OfflinePurchaseFacade)
+                        java.lang.reflect.Proxy.newProxyInstance(
+                                MallOpenApiResponseTest.class.getClassLoader(),
+                                new Class[] {ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class},
+                                (p, m, a) ->
+                                        switch (m.getName()) {
+                                            case "instructions" ->
+                                                    new ai.neargo.commerce.api.offline.OfflinePurchaseFacade
+                                                            .InstructionsView("order", money, at, "profile", 2,
+                                                            Map.of("bankCode", "TESTBANK"));
+                                            case "claims" -> List.of(claim);
+                                            case "pendingClaims" ->
+                                                    List.of(new ai.neargo.commerce.api.offline.OfflinePurchaseFacade
+                                                            .PendingClaim(store, "order", claim));
+                                            case "voidOrder" ->
+                                                    new ai.neargo.commerce.api.offline.OfflinePurchaseFacade
+                                                            .ActionView("void", "ACCEPTED", null);
+                                            case "profile" -> Optional.of(terms);
+                                            default -> throw new AssertionError(m);
+                                        });
+        var mvc =
+                MockMvcBuilders.standaloneSetup(
+                                new CommerceOfflineHttpController(
+                                        facade,
+                                        (MallFacade)
+                                                java.lang.reflect.Proxy.newProxyInstance(
+                                                        MallOpenApiResponseTest.class.getClassLoader(),
+                                                        new Class[] {MallFacade.class},
+                                                        (p, m, a) -> null),
+                                        context,
+                                        envelope))
+                        .build();
+        var out = new LinkedHashMap<String, String>();
+        out.put("OfflineInstructionsView",
+                mvc.perform(get("/biz/stores/S/mall/offline/orders/order/instructions")).andReturn().getResponse().getContentAsString());
+        out.put("OfflineClaimView", wrapFirst(
+                mvc.perform(get("/biz/stores/S/mall/offline/orders/order/claims")).andReturn().getResponse().getContentAsString()));
+        out.put("OfflinePendingClaim", wrapFirst(
+                mvc.perform(get("/ops/biz-mall/offline/claims")).andReturn().getResponse().getContentAsString()));
+        out.put("OfflineActionView",
+                mvc.perform(post("/ops/biz-mall/offline/orders/order/voids").param("storeNo", "S")
+                                .contentType("application/json")
+                                .content("{\"actionNo\":\"void\",\"reconciliationReference\":\"r\",\"reason\":\"x\","
+                                        + "\"evidenceKey\":\"E/S/mallpay/202611/k.jpg\",\"unmatchedDispositions\":{}}"))
+                        .andReturn().getResponse().getContentAsString());
+        out.put("OfflineCollectionTerms",
+                mvc.perform(get("/ops/biz-mall/offline/profile").param("currency", "TWD")).andReturn().getResponse().getContentAsString());
+        for (var body : out.values()) assertTrue(body.contains("\"code\":0"), body);
+        return out;
+    }
+
+    /** Array endpoints: validate the element schema against the first real item. */
+    static String wrapFirst(String envelope) throws Exception {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var tree = (tools.jackson.databind.node.ObjectNode) mapper.readTree(envelope);
+        tree.set("data", tree.get("data").get(0));
+        return mapper.writeValueAsString(tree);
     }
 }

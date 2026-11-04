@@ -43,4 +43,26 @@ class MallRecoveryRoutePolicyTest {
                 CommerceRoutePolicy.Lane.DENY,
                 policy.match("DELETE", "/biz/stores/S/mall/orders/order.1").lane());
     }
+
+    @Test
+    void offlineMerchantRoutesAreExactAndNeedProcurementDuty() {
+        var policy = new CommerceRoutePolicy();
+        for (String path : java.util.List.of("instructions", "claims", "evidence/url")) {
+            var route = policy.match("GET", "/biz/stores/S/mall/offline/orders/o.1/" + path);
+            assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP, route.lane());
+            assertEquals(CommerceRoutePolicy.PROCUREMENT_DUTY, route.capability());
+        }
+        assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP, policy.match("POST", "/biz/stores/S/mall/offline/quotes").lane());
+        for (String path : java.util.List.of("instructions", "evidence", "evidence/content", "claims"))
+            assertEquals(CommerceRoutePolicy.Lane.BOOTSTRAP,
+                    policy.match("POST", "/biz/stores/S/mall/offline/orders/o.1/" + path).lane());
+        for (String path : java.util.List.of(
+                "/biz/stores/S/mall/offline/orders/o.1/confirmations",
+                "/biz/stores/S/mall/offline/orders/o.1/voids",
+                "/biz/stores/S/mall/offline/orders/o.1/claims/c/decline",
+                "/biz/stores/S/mall/offline/profile"))
+            assertEquals(CommerceRoutePolicy.Lane.DENY, policy.match("POST", path).lane());
+        assertEquals(CommerceRoutePolicy.Lane.DENY,
+                policy.match("DELETE", "/biz/stores/S/mall/offline/orders/o.1/claims").lane());
+    }
 }

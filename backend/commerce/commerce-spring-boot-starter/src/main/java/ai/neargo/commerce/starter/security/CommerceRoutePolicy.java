@@ -152,6 +152,11 @@ public final class CommerceRoutePolicy {
                         || tail.matches("mall/orders/" + mallId + "(?:/payments)?"));
                 boolean write = method.equals("POST") && (Set.of("mall/quotes", "mall/upgrade-quotes", "mall/orders").contains(tail)
                         || tail.matches("mall/orders/" + mallId + "/(?:cancel|payments|payments/refresh|refund-previews|refunds)"));
+                // Offline (bank transfer) purchase: same procurement duty, exact routes only.
+                read = read || method.equals("GET")
+                        && tail.matches("mall/offline/orders/" + mallId + "/(?:instructions|claims|evidence/url)");
+                write = write || method.equals("POST") && (tail.equals("mall/offline/quotes")
+                        || tail.matches("mall/offline/orders/" + mallId + "/(?:instructions|evidence|evidence/content|claims)"));
                 if (read || write) return new Route(Lane.BOOTSTRAP, store, null, PROCUREMENT_DUTY, true);
                 if (method.equals("GET") && Set.of("mall/categories", "mall/products").contains(tail))
                     return new Route(Lane.BOOTSTRAP, store, null, null, true);

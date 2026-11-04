@@ -36,10 +36,30 @@ public interface OfflinePurchaseFacade {
      * transfers money; the refund completes only after the ledger accepts this proof.
      */
     RefundView confirmRefundPayout(ActorContext actor, RefundPayoutCommand command);
+    /** Bank instructions frozen into this order; disclosed only after durable issuance. */
+    record InstructionsView(String orderNo, Money payable, Instant paymentDueAt, String profileNo,
+            long profileVersion, Map<String, String> instructions) {}
+    /** Issues (idempotently) the frozen instructions for an offline order and returns them. */
+    InstructionsView issue(ActorContext actor, OrderQuery order);
+    InstructionsView instructions(ActorContext actor, OrderQuery order);
+    /** Merchants see their own declarations; operators see all declarations on the order. */
+    List<ClaimView> claims(ActorContext actor, OrderQuery order);
+    record PendingClaim(StoreRef store, String orderNo, ClaimView claim) {}
+    /** Operator review queue of SUBMITTED declarations, keyset-paged by (orderNo, claimNo). */
+    List<PendingClaim> pendingClaims(ActorContext actor, String afterOrderNo, String afterClaimNo, int limit);
+    record ProfileCommand(String profileNo, long expectedVersion, String platformMerchantNo, String currency,
+            String bankCode, String bankAccount, String accountName, String paymentWindowVersion,
+            long paymentWindowMs, boolean enabled, String reason) {}
+    /** Pay-domain collection profile; each change creates a new immutable version. */
+    OfflineCollectionTerms configureProfile(ActorContext actor, ProfileCommand command);
+    Optional<OfflineCollectionTerms> profile(ActorContext actor, String currency);
     ActionView confirm(ActorContext actor,ReviewCommand command);
     ActionView voidOrder(ActorContext actor,VoidCommand command);
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */
     void recover(FulfillmentQuery query);
+    record Sweep(int visited, int failed, String nextOrderNo) {}
+    /** Trusted scheduler: bounded scan of orders with ACCEPTED actions, resuming after {@code afterOrderNo}. */
+    Sweep recoverPending(String tenantNo, String afterOrderNo, int limit);
     EvidenceTicket reserveEvidence(ActorContext actor, OrderQuery order, String purpose);
     /** Uploads bytes once for the caller's own reservation; stored evidence is immutable. */
     void upload(ActorContext actor, OrderQuery order, String assetKey, ai.neargo.commerce.api.port.PrivateEvidencePort.Upload upload);

@@ -35,6 +35,19 @@ public final class JdbcOfflineRepository implements OfflineRepository {
         jdbc.update("INSERT INTO mall_offline_claim(tenant_no,order_no,claim_no,claim_snapshot) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE claim_snapshot=VALUES(claim_snapshot)",
                 q.store().tenantNo(),q.orderNo(),c.command().claimNo(),json.writeValueAsString(c));
     }
+    public List<Claim> claims(String t,String order) {
+        JdbcWriteGuard.require(ds,t);
+        return jdbc.query("SELECT claim_snapshot FROM mall_offline_claim WHERE tenant_no=? AND order_no=? ORDER BY claim_no",
+                (r,n)->json.readValue(r.getString(1),Claim.class),t,order);
+    }
+    public List<Claim> submittedClaims(String t,String afterOrder,String afterClaim,int limit) {
+        JdbcWriteGuard.require(ds,t);
+        String o=afterOrder==null?"":afterOrder,c=afterClaim==null?"":afterClaim;
+        return jdbc.query("SELECT claim_snapshot FROM mall_offline_claim WHERE tenant_no=?"
+                + " AND JSON_UNQUOTE(JSON_EXTRACT(claim_snapshot,'$.status'))='SUBMITTED'"
+                + " AND (order_no>? OR order_no=? AND claim_no>?) ORDER BY order_no,claim_no LIMIT ?",
+                (r,n)->json.readValue(r.getString(1),Claim.class),t,o,o,c,limit);
+    }
     public Optional<Action> action(String t,String order,String no) {
         JdbcWriteGuard.require(ds,t);
         return jdbc.query("SELECT action_snapshot FROM mall_offline_action WHERE tenant_no=? AND order_no=? AND action_no=? FOR UPDATE",
@@ -44,6 +57,11 @@ public final class JdbcOfflineRepository implements OfflineRepository {
         JdbcWriteGuard.require(ds,t);
         return jdbc.query("SELECT action_snapshot FROM mall_offline_action WHERE tenant_no=? AND order_no=? AND status='ACCEPTED' ORDER BY action_no FOR UPDATE",
                 (r,n)->json.readValue(r.getString(1),Action.class),t,order);
+    }
+    public List<String> pendingOrders(String t,String after,int limit) {
+        JdbcWriteGuard.require(ds,t);
+        return jdbc.queryForList("SELECT DISTINCT order_no FROM mall_offline_action WHERE status='ACCEPTED' AND tenant_no=? AND order_no>? ORDER BY order_no LIMIT ?",
+                String.class,t,after==null?"":after,limit);
     }
     public void saveAction(Action a) {
         var q=a.order();JdbcWriteGuard.require(ds,q.store().tenantNo());

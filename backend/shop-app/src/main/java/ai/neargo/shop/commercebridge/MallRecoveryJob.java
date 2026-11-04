@@ -1,6 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
 import ai.neargo.commerce.api.fulfillment.MallRecoveryFacade;
+import ai.neargo.commerce.api.offline.OfflinePurchaseFacade;
 import ai.neargo.job.api.*;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.pay.service.PlatformMoneyHandoffService;
@@ -8,6 +9,7 @@ import ai.neargo.shop.spi.pay.PlatformPaymentRecoveryPort;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -34,6 +36,8 @@ public class MallRecoveryJob implements JobHandler {
     private final int batchSize;
     private long orderCursor;
     private String handoffCursor;
+    private String offlineCursor;
+    private OfflinePurchaseFacade offline;
 
     public MallRecoveryJob(
             MallRecoveryFacade core,
@@ -48,6 +52,12 @@ public class MallRecoveryJob implements JobHandler {
         this.recovery = recovery;
         this.jobs = jobs;
         this.batchSize = batchSize;
+    }
+
+    /** Present only when the offline workflow is assembled. */
+    @Autowired(required = false)
+    void setOffline(OfflinePurchaseFacade offline) {
+        this.offline = offline;
     }
 
     public String name() {
@@ -99,7 +109,20 @@ public class MallRecoveryJob implements JobHandler {
         } catch (RuntimeException retry) {
             failed++;
         }
-        String detail = "账本交接检查%d，订单检查%d，待重试%d".formatted(checked, orders, failed);
+        int offlineOrders = 0;
+        if (offline != null) {
+            try {
+                var sweep = offline.recoverPending("MAIN", offlineCursor, batchSize);
+                offlineCursor = sweep.nextOrderNo();
+                offlineOrders = sweep.visited();
+                failed += sweep.failed();
+            } catch (RuntimeException retry) {
+                failed++;
+            }
+        }
+        String detail =
+                "账本交接检查%d，订单检查%d，线下核款恢复%d，待重试%d"
+                        .formatted(checked, orders, offlineOrders, failed);
         return failed > 0
                 ? JobResult.failed(detail, "MALL_RECOVERY_PENDING")
                 : JobResult.ok(detail);

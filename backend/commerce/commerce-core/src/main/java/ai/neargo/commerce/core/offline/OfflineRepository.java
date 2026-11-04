@@ -26,10 +26,14 @@ public interface OfflineRepository {
     }
     Optional<Action> action(String tenant,String orderNo,String actionNo);
     List<Action> pending(String tenant,String orderNo);
+    /** Distinct order numbers with ACCEPTED actions after the cursor, ordered. */
+    List<String> pendingOrders(String tenant,String afterOrderNo,int limit);
     void saveAction(Action action);
     void reserve(Evidence evidence);
     Optional<Evidence> evidence(String tenant, String key);
     List<String> retained(String tenant);
     Optional<Claim> claim(String tenant, String orderNo, String claimNo);
     void saveClaim(Claim claim);
+    List<Claim> claims(String tenant, String orderNo);
+    List<Claim> submittedClaims(String tenant, String afterOrderNo, String afterClaimNo, int limit);
 }

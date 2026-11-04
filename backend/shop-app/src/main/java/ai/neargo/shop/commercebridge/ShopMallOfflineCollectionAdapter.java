@@ -1,6 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
 import ai.neargo.commerce.api.offline.OfflineCollectionTerms;
+import ai.neargo.commerce.api.offline.OfflinePurchaseFacade;
 import ai.neargo.commerce.api.port.OfflineCollectionPort;
 import ai.neargo.commerce.api.port.PaymentIntentCommand;
 import ai.neargo.shop.pay.service.PlatformCollectionService;
@@ -16,15 +17,47 @@ import java.util.*;
 public final class ShopMallOfflineCollectionAdapter implements OfflineCollectionPort {
     private final PlatformCollectionService collection;
     private final PlatformRefundService refunds;
+    private final String recipient;
 
     public ShopMallOfflineCollectionAdapter(PlatformCollectionService collection) {
-        this(collection, null);
+        this(collection, null, null);
     }
 
     public ShopMallOfflineCollectionAdapter(
             PlatformCollectionService collection, PlatformRefundService refunds) {
+        this(collection, refunds, null);
+    }
+
+    /** @param recipient configured platform merchant; profiles for any other receiver are refused */
+    public ShopMallOfflineCollectionAdapter(
+            PlatformCollectionService collection, PlatformRefundService refunds, String recipient) {
         this.collection = Objects.requireNonNull(collection);
         this.refunds = refunds;
+        this.recipient = recipient;
+    }
+
+    @Override
+    public OfflineCollectionTerms configure(
+            String tenant, String operatorNo, OfflinePurchaseFacade.ProfileCommand c) {
+        if (c == null) throw new IllegalArgumentException("OFFLINE_PROFILE_INVALID");
+        if (recipient == null || !recipient.equals(c.platformMerchantNo()))
+            throw new IllegalArgumentException("OFFLINE_PROFILE_MERCHANT_MISMATCH");
+        return terms(
+                collection.configureOffline(
+                        new PlatformCollectionService.OfflineProfile(
+                                tenant,
+                                c.profileNo(),
+                                c.expectedVersion(),
+                                c.platformMerchantNo(),
+                                c.currency(),
+                                c.bankCode(),
+                                c.bankAccount(),
+                                c.accountName(),
+                                c.paymentWindowVersion(),
+                                c.paymentWindowMs(),
+                                c.enabled(),
+                                operatorNo,
+                                c.reason())));
     }
 
     static OfflineCollectionTerms terms(PlatformCollectionService.OfflineInstructions i) {

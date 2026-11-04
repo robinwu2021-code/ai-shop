@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Portable Commerce Mall — new host HTTP contracts",
-    "version": "task4-v1",
-    "description": "New endpoints only; existing 29 onboarding operations unchanged. Trusted session realm/tenant/store and named capabilities. No body actor, payer identity, paid flag or provider proof. CNY JSAPI protocol adapter is fail-closed until authoritative app-bound payer binding is installed; current TWD online routes unsupported. Offline/assisted orders and TWD quantum are Task8."
+    "version": "task8-v1",
+    "description": "New endpoints only; existing 29 onboarding operations unchanged. Trusted session realm/tenant/store and named capabilities. No body actor, payer identity, paid flag or provider proof. CNY JSAPI protocol adapter is fail-closed until authoritative app-bound payer binding is installed; TWD online routes (NewebPay, LINE Pay, JKOPay) remain unavailable. Task8 adds offline bank-transfer purchase: merchant declarations, private evidence, operator confirmation/void, assisted STORE orders and offline refund payouts. TWD policy twd-whole-v1 uses cash/allocation quantum 100."
   },
   "servers": [
     {
@@ -4805,6 +4805,3027 @@
           }
         }
       }
+    },
+    "/biz/stores/{storeNo}/mall/offline/quotes": {
+      "post": {
+        "operationId": "offlineQuote",
+        "summary": "offlineQuote",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Terms come from the deployment's pay-domain profile only. Place with POST /biz/stores/{storeNo}/mall/orders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QuoteView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions": {
+      "post": {
+        "operationId": "offlineIssue",
+        "summary": "offlineIssue",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Idempotently issues the frozen instructions; paymentDueAt is frozen at placement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineInstructionsView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineEmptyRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "offlineInstructions",
+        "summary": "offlineInstructions",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineInstructionsView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence": {
+      "post": {
+        "operationId": "offlineReserveEvidence",
+        "summary": "offlineReserveEvidence",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineEvidenceTicket"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineEmptyRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content": {
+      "post": {
+        "operationId": "offlineUploadEvidence",
+        "summary": "offlineUploadEvidence",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "assetKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_\\-/]+\\.(jpg|jpeg|png)$"
+            },
+            "description": "Key returned by the evidence reservation; never an external URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "jpeg/png up to 10MB, once per reserved key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineEvidenceUploaded"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 10485760
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 10485760
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/url": {
+      "get": {
+        "operationId": "offlineReadEvidence",
+        "summary": "offlineReadEvidence",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "assetKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_\\-/]+\\.(jpg|jpeg|png)$"
+            },
+            "description": "Key returned by the evidence reservation; never an external URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Own BUYER_RECEIPT only; short-lived signed URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineSignedRead"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims": {
+      "post": {
+        "operationId": "offlineSubmitClaim",
+        "summary": "offlineSubmitClaim",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A declaration only: creates no payment and no rights.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineClaimView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineClaimRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "offlineClaims",
+        "summary": "offlineClaims",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OfflineClaimView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/profile": {
+      "get": {
+        "operationId": "offlineProfile",
+        "summary": "offlineProfile",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:collection:profile:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "currency",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/OfflineCollectionTerms"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "offlineConfigureProfile",
+        "summary": "offlineConfigureProfile",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:collection:profile:write",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Creates a new immutable version; issued instructions keep their version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineCollectionTerms"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineProfileCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/claims": {
+      "get": {
+        "operationId": "offlinePendingClaims",
+        "summary": "offlinePendingClaims",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:review",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "afterOrderNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "afterClaimNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OfflinePendingClaim"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/quotes": {
+      "post": {
+        "operationId": "offlineAssistedQuote",
+        "summary": "offlineAssistedQuote",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:assisted:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QuoteView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders": {
+      "post": {
+        "operationId": "offlineAssistedPlace",
+        "summary": "offlineAssistedPlace",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:assisted:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "STORE buyer with the real operator as initiator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/instructions": {
+      "post": {
+        "operationId": "offlineAssistedIssue",
+        "summary": "offlineAssistedIssue",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:assisted:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineInstructionsView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineEmptyRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "offlineOpsInstructions",
+        "summary": "offlineOpsInstructions",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:order:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineInstructionsView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/claims": {
+      "get": {
+        "operationId": "offlineOpsClaims",
+        "summary": "offlineOpsClaims",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:order:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OfflineClaimView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/evidence": {
+      "post": {
+        "operationId": "offlineOpsReserveEvidence",
+        "summary": "offlineOpsReserveEvidence",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:evidence",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineEvidenceTicket"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineEvidenceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/evidence/content": {
+      "post": {
+        "operationId": "offlineOpsUploadEvidence",
+        "summary": "offlineOpsUploadEvidence",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:evidence",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "assetKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_\\-/]+\\.(jpg|jpeg|png)$"
+            },
+            "description": "Key returned by the evidence reservation; never an external URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineEvidenceUploaded"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 10485760
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 10485760
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/evidence/url": {
+      "get": {
+        "operationId": "offlineOpsReadEvidence",
+        "summary": "offlineOpsReadEvidence",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:evidence",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "assetKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_\\-/]+\\.(jpg|jpeg|png)$"
+            },
+            "description": "Key returned by the evidence reservation; never an external URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineSignedRead"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline": {
+      "post": {
+        "operationId": "offlineDeclineClaim",
+        "summary": "offlineDeclineClaim",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:review",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "claimNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Declining is not 'no money' and releases nothing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineClaimView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineDeclineRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/confirmations": {
+      "post": {
+        "operationId": "offlineConfirm",
+        "summary": "offlineConfirm",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:confirm",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records the actual bank credit. Mismatched amount becomes UNMATCHED cash without rights.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineActionView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineConfirmRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/voids": {
+      "post": {
+        "operationId": "offlineVoid",
+        "summary": "offlineVoid",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:void",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconciliation fence; later real money is still recorded and refunded, never rights.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OfflineActionView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineVoidRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts": {
+      "post": {
+        "operationId": "offlineRefundPayout",
+        "summary": "offlineRefundPayout",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:refund:confirm",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "refundNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records the real outgoing transfer; the system never transfers money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RefundView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflinePayoutRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6391,7 +9412,7 @@
           "minor": {
             "type": "string",
             "pattern": "^(0|[1-9][0-9]{0,18})$",
-            "description": "Exact nonnegative signed-long minor amount, at most 9223372036854775807. All new HTTP responses use decimal integer strings. No TWD quantum change in Task4."
+            "description": "Exact nonnegative signed-long minor amount (scale 2: TWD 69900 = NT$699.00), at most 9223372036854775807. All new HTTP responses use decimal integer strings."
           }
         }
       },
@@ -6819,6 +9840,455 @@
             "type": "null"
           }
         }
+      },
+      "OfflineEmptyRequest": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "OfflineEvidenceRequest": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "PLATFORM_RECEIPT",
+              "RECONCILIATION",
+              "REFUND_PROOF"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "purpose"
+        ]
+      },
+      "OfflineClaimRequest": {
+        "type": "object",
+        "properties": {
+          "claimNo": {
+            "type": "string"
+          },
+          "declaredAmount": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "declaredPaidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bankReference": {
+            "type": "string"
+          },
+          "evidenceKeys": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "claimNo",
+          "declaredAmount",
+          "declaredPaidAt",
+          "bankReference",
+          "evidenceKeys"
+        ]
+      },
+      "OfflineDeclineRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ]
+      },
+      "OfflineConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "claimNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actualAmount": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "actualPaidAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Actual bank credit time, whole seconds, not after now."
+          },
+          "actualReceiver": {
+            "type": "string"
+          },
+          "bankReference": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          },
+          "historical": {
+            "type": "boolean",
+            "description": "Explicit manual back-entry before instructions were prepared."
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "actionNo",
+          "actualAmount",
+          "actualPaidAt",
+          "actualReceiver",
+          "bankReference",
+          "evidenceKey",
+          "historical",
+          "reason"
+        ]
+      },
+      "OfflineVoidRequest": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "reconciliationReference": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          },
+          "unmatchedDispositions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Every MALL_UNMATCHED payment number on the order mapped to its disposition note."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "actionNo",
+          "reconciliationReference",
+          "reason",
+          "evidenceKey",
+          "unmatchedDispositions"
+        ]
+      },
+      "OfflinePayoutRequest": {
+        "type": "object",
+        "properties": {
+          "actualAmount": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "paidOutAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payeeReference": {
+            "type": "string"
+          },
+          "bankReference": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "actualAmount",
+          "paidOutAt",
+          "payeeReference",
+          "bankReference",
+          "evidenceKey"
+        ]
+      },
+      "OfflineProfileCommand": {
+        "type": "object",
+        "properties": {
+          "profileNo": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "platformMerchantNo": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "bankCode": {
+            "type": "string"
+          },
+          "bankAccount": {
+            "type": "string"
+          },
+          "accountName": {
+            "type": "string"
+          },
+          "paymentWindowVersion": {
+            "type": "string"
+          },
+          "paymentWindowMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 7776000000
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "profileNo",
+          "expectedVersion",
+          "platformMerchantNo",
+          "currency",
+          "bankCode",
+          "bankAccount",
+          "accountName",
+          "paymentWindowVersion",
+          "paymentWindowMs",
+          "enabled",
+          "reason"
+        ]
+      },
+      "OfflineInstructionsView": {
+        "type": "object",
+        "properties": {
+          "orderNo": {
+            "type": "string"
+          },
+          "payable": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "paymentDueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "profileNo": {
+            "type": "string"
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "instructions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Empty when nothing is payable."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "orderNo",
+          "payable",
+          "paymentDueAt",
+          "profileNo",
+          "profileVersion",
+          "instructions"
+        ]
+      },
+      "OfflineEvidenceTicket": {
+        "type": "object",
+        "properties": {
+          "assetKey": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "assetKey",
+          "purpose"
+        ]
+      },
+      "OfflineEvidenceUploaded": {
+        "type": "object",
+        "properties": {
+          "assetKey": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "assetKey"
+        ]
+      },
+      "OfflineSignedRead": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "url"
+        ]
+      },
+      "OfflineClaimView": {
+        "type": "object",
+        "properties": {
+          "claimNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "REVIEWING",
+              "CONFIRMED",
+              "MISMATCHED",
+              "DECLINED"
+            ]
+          },
+          "declaredAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "declaredPaidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "claimNo",
+          "status",
+          "declaredAmount",
+          "declaredPaidAt",
+          "submittedAt"
+        ]
+      },
+      "OfflinePendingClaim": {
+        "type": "object",
+        "properties": {
+          "store": {
+            "$ref": "#/components/schemas/StoreRef"
+          },
+          "orderNo": {
+            "type": "string"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/OfflineClaimView"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "store",
+          "orderNo",
+          "claim"
+        ]
+      },
+      "OfflineActionView": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "APPLIED",
+              "UNMATCHED",
+              "REJECTED"
+            ],
+            "description": "ACCEPTED is recoverable; it is not money. Read the order's payment/fulfillment status for facts."
+          },
+          "paymentNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "actionNo",
+          "status",
+          "paymentNo"
+        ]
+      },
+      "OfflineCollectionTerms": {
+        "type": "object",
+        "properties": {
+          "profileNo": {
+            "type": "string"
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "platformMerchantNo": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "receivingAccountKey": {
+            "type": "string"
+          },
+          "paymentWindowVersion": {
+            "type": "string"
+          },
+          "paymentWindowMs": {
+            "type": "integer"
+          },
+          "instructions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "profileNo",
+          "profileVersion",
+          "platformMerchantNo",
+          "currency",
+          "receivingAccountKey",
+          "paymentWindowVersion",
+          "paymentWindowMs",
+          "instructions"
+        ]
       }
     }
   }

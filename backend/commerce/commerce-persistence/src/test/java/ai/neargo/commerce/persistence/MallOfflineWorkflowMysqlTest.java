@@ -91,6 +91,11 @@ class MallOfflineWorkflowMysqlTest {
             cut.set(false);
             assertThrows(IllegalStateException.class,()->api.recover(new FulfillmentQuery("tenant-a",f.order().orderNo())));
             assertEquals("ACCEPTED",db.jdbc.queryForObject("SELECT status FROM mall_offline_action WHERE action_no='a-stuck'",String.class));
+            var sweep=api.recoverPending("tenant-a",null,10);
+            assertEquals(1,sweep.visited());
+            assertEquals(1,sweep.failed());
+            assertNull(sweep.nextOrderNo());
+            assertEquals(0,api.recoverPending("tenant-a",f.order().orderNo(),10).visited());
             assertEquals("UNMATCHED",db.jdbc.queryForObject("SELECT status FROM mall_offline_action WHERE action_no='b-later'",String.class));
             assertEquals("REJECTED",db.jdbc.queryForObject("SELECT status FROM mall_offline_action WHERE action_no='a-first'",String.class));
         }

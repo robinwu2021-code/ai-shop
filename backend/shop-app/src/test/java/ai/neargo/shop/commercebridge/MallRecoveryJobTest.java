@@ -36,4 +36,26 @@ class MallRecoveryJobTest {
         verify(core).recover(new MallRecoveryFacade.Batch(7, 1));
         verify(recovery, times(2)).recover("P1");
     }
+
+    @Test
+    void offlineSweepRotatesItsOwnCursorAndCountsFailures() {
+        var core = mock(MallRecoveryFacade.class);
+        when(core.recover(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new MallRecoveryFacade.Result(0, 0, 0, true));
+        var handoffs = mock(PlatformMoneyHandoffService.class);
+        when(handoffs.pending(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of());
+        var offline = mock(ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class);
+        when(offline.recoverPending("MAIN", null, 2))
+                .thenReturn(new ai.neargo.commerce.api.offline.OfflinePurchaseFacade.Sweep(2, 1, "O2"));
+        when(offline.recoverPending("MAIN", "O2", 2))
+                .thenReturn(new ai.neargo.commerce.api.offline.OfflinePurchaseFacade.Sweep(0, 0, null));
+        var job = new MallRecoveryJob(core, handoffs, mock(PlatformPaymentRecoveryPort.class), mock(JobSupport.class), 2);
+        job.setOffline(offline);
+        job.run(null);
+        job.run(null);
+        job.run(null);
+        verify(offline, times(2)).recoverPending("MAIN", null, 2);
+        verify(offline).recoverPending("MAIN", "O2", 2);
+    }
 }
