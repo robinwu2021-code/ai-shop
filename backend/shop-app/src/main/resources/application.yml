@@ -660,6 +660,13 @@ spring:
   config:
     activate:
       on-profile: api
+# 商城 HTTP 按部署面拆：公网 api 只挂 /biz 商家路由，内网 ops 只挂 /ops 运营路由。
+# 两边共用同一套宿主端口（ShopMallConfiguration 在两个 profile 都装配）。
+commerce:
+  mall:
+    http:
+      operator:
+        enabled: false
 
 ---
 spring:
@@ -669,6 +676,11 @@ spring:
 server:
   # 与 api 不同端口：即使误挂到公网，也不会撞上已开放的 8080
   port: 8081
+commerce:
+  mall:
+    http:
+      buyer:
+        enabled: false
 
 ---
 spring:

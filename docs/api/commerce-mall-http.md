@@ -87,6 +87,14 @@ commerce 独立迁移到 V9；Task4 新增 V8 审核报价、V9 零金额来源�
 
 Task8 可复用 public MallFacade/StorefrontFacade/MallQueryFacade、PaymentFacade.refresh、MallRecoveryFacade、RefundFacade 的请求/独立审核/可信恢复，以及原始 PaymentIntentCommand/PaymentQuery、ActorContext 可选 rawIdentity。host 的 PlatformCollectionService/PlatformRefundService/PlatformMoneyHandoffService 继续拥有唯一账本；ShopMallPayerBindings 是未来权威 app-bound 证明扩展点。库存 CoordinatedInventoryService 继续拥有真实库存。Task8 新增线下证据/代客订单/渠道设置及金额策略，不使用零金额 GRANT 假装实收，不直接由 host 写商业表；迁移从 commerce V10、宿主 V557、库存 V15 起按实际需要追加。
 
+## 部署面（2026-11-04 本地联调后修正）
+
+- **商家路由在 api 实例，运营路由在 ops 实例**：`application.yml` 的 api 段设 `commerce.mall.http.operator.enabled=false`，ops 段设 `commerce.mall.http.buyer.enabled=false`；两个实例都带相同的 `commerce.*` 开关与宿主端口（`ShopMallConfiguration` 在两个 profile 都装配）。此前运营路由只装在 api 实例上，而运营鉴权链只在 ops 实例，真实拆分部署下 `/ops/biz-mall/**` 不可用。`ControllerProfileTest.commerceSurfacesFollowProfiles` 守着这两项配置。
+- 两个实例都需要 `shop.auth.token-store-by-realm.operator=db`、`merchant=db`，同一主库。
+- `CommerceIdGenerator` 默认由 starter 提供（32 位随机十六进制），宿主可覆盖。
+- 发布三档前，部署须配置 `shop.commerce.mall.required-ends.<经营类型>`（FREE 必含的端）和 `accepted-deployments`。
+- 本地联调已知缺口：`/biz/merchant/quick-start` 没有市场输入，新主体默认 CN、FREE 期按 CNY 冻结，台湾门店看不到 TWD 商品。需由注册进件链路给出可信的市场来源（不在商城范围）。
+
 ## 线下银行转账购买（Task8）
 
 **开关**（在 Task4 配置之上追加；任一缺失则不装配，缺端口直接启动失败）：

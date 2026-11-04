@@ -15,6 +15,8 @@ public record OfflineCollectionTerms(String profileNo, long profileVersion, Stri
                 || paymentWindowMs < 1000 || paymentWindowMs > 90L * 86400000
                 || instructions == null || instructions.isEmpty())
             throw new IllegalArgumentException("OFFLINE_CONFIGURATION_INVALID");
-        instructions = Map.copyOf(instructions);
+        // Sorted, not Map.copyOf: its iteration order is salted per JVM, and this record is
+        // serialized into hashed, cross-instance operation snapshots.
+        instructions = java.util.Collections.unmodifiableMap(new java.util.TreeMap<>(instructions));
     }
 }

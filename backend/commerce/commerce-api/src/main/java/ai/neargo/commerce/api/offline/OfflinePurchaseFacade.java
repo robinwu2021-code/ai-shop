@@ -21,7 +21,7 @@ public interface OfflinePurchaseFacade {
     record VoidCommand(OrderQuery order,String actionNo,String reconciliationReference,String reason,String evidenceKey,
             Map<String,String> unmatchedDispositions) {
         public VoidCommand { unmatchedDispositions = unmatchedDispositions == null ? null
-                : Collections.unmodifiableMap(new LinkedHashMap<>(unmatchedDispositions)); }
+                : Collections.unmodifiableMap(new TreeMap<>(unmatchedDispositions)); }
     }
     record ActionView(String actionNo,String status,String paymentNo) {}
     /**

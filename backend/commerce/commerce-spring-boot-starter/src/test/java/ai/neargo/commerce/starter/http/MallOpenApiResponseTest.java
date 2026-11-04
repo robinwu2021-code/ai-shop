@@ -170,7 +170,8 @@ class MallOpenApiResponseTest {
                                         });
         var mvc =
                 MockMvcBuilders.standaloneSetup(
-                                new CommerceOfflineHttpController(
+                                new CommerceOfflineBuyerHttpController(facade, context, envelope),
+                                new CommerceOfflineOpsHttpController(
                                         facade,
                                         (MallFacade)
                                                 java.lang.reflect.Proxy.newProxyInstance(

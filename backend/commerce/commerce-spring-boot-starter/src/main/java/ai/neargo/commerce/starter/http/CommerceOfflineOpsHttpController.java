@@ -13,17 +13,15 @@ import java.time.Instant;
 import java.util.*;
 
 /**
- * Offline (bank transfer) purchase HTTP. Identity, store and actor always come from the host
- * context, never from JSON. Declarations never create money; only the ops confirmation does.
+ * Operator side of offline (bank transfer) purchase: collection profile, review queue, assisted
+ * orders, evidence, decline/confirm/void and refund payouts. Only the confirmation records money.
  */
 @RestController
-public final class CommerceOfflineHttpController extends MallHttpSupport {
-    private static final int MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
-
+public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
     private final OfflinePurchaseFacade offline;
     private final MallFacade mall;
 
-    public CommerceOfflineHttpController(
+    public CommerceOfflineOpsHttpController(
             OfflinePurchaseFacade offline,
             MallFacade mall,
             MallHttpContextPort context,
@@ -33,127 +31,9 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
         this.mall = Objects.requireNonNull(mall);
     }
 
-    static String assetKey(String value) {
-        if (value == null || value.length() > 255 || value.contains("..")
-                || !value.matches("[A-Za-z0-9_\\-/]+\\.(jpg|jpeg|png)"))
-            throw new MallException("INVALID_REQUEST");
-        return value;
-    }
-
-    private OrderQuery opsOrder(ActorContext actor, String store, String order) {
-        return new OrderQuery(new StoreRef(actor.tenantNo(), code(store)), code(order));
-    }
-
-    private static PrivateEvidencePort.Upload upload(byte[] body, String contentType) {
-        if (body == null || body.length == 0 || body.length > MAX_EVIDENCE_BYTES)
-            throw new MallException("INVALID_REQUEST");
-        String type = contentType == null ? "" : contentType.split(";")[0].trim().toLowerCase(Locale.ROOT);
-        byte[] copy = body.clone();
-        return new PrivateEvidencePort.Upload(() -> new ByteArrayInputStream(copy), copy.length, type);
-    }
-
-    // ---------------------------------------------------------------- merchant (B end)
 
     public record QuoteRequest(List<QuoteLine> lines, String currency) {}
-
-    @PostMapping("/biz/stores/{storeNo}/mall/offline/quotes")
-    public Object quote(@PathVariable("storeNo") String store, @RequestBody String body) {
-        var d = json.read(body, QuoteRequest.class);
-        var c = context.buyer(store, "commerce:mall:purchase");
-        return ok(offline.quote(c.actor(), new QuoteCommand(c.store(), d.lines(), d.currency())));
-    }
-
     public record EmptyRequest() {}
-
-    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions")
-    public Object issue(
-            @PathVariable("storeNo") String store,
-            @PathVariable("orderNo") String order,
-            @RequestBody String body) {
-        json.read(body, EmptyRequest.class);
-        var c = context.buyer(store, "commerce:mall:purchase");
-        return ok(offline.issue(c.actor(), new OrderQuery(c.store(), code(order))));
-    }
-
-    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions")
-    public Object instructions(
-            @PathVariable("storeNo") String store, @PathVariable("orderNo") String order) {
-        var c = context.buyer(store, "commerce:mall:read");
-        return ok(offline.instructions(c.actor(), new OrderQuery(c.store(), code(order))));
-    }
-
-    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence")
-    public Object reserve(
-            @PathVariable("storeNo") String store,
-            @PathVariable("orderNo") String order,
-            @RequestBody String body) {
-        json.read(body, EmptyRequest.class);
-        var c = context.buyer(store, "commerce:mall:purchase");
-        return ok(
-                offline.reserveEvidence(
-                        c.actor(), new OrderQuery(c.store(), code(order)), "BUYER_RECEIPT"));
-    }
-
-    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content")
-    public Object uploadBuyer(
-            @PathVariable("storeNo") String store,
-            @PathVariable("orderNo") String order,
-            @RequestParam("assetKey") String key,
-            @RequestHeader(value = "Content-Type", required = false) String type,
-            @RequestBody byte[] body) {
-        var c = context.buyer(store, "commerce:mall:purchase");
-        offline.upload(
-                c.actor(), new OrderQuery(c.store(), code(order)), assetKey(key), upload(body, type));
-        return ok(Map.of("assetKey", key));
-    }
-
-    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/url")
-    public Object readBuyer(
-            @PathVariable("storeNo") String store,
-            @PathVariable("orderNo") String order,
-            @RequestParam("assetKey") String key) {
-        var c = context.buyer(store, "commerce:mall:read");
-        return ok(
-                Map.of(
-                        "url",
-                        offline.evidence(
-                                c.actor(), new OrderQuery(c.store(), code(order)), assetKey(key))));
-    }
-
-    public record ClaimRequest(
-            String claimNo,
-            Money declaredAmount,
-            Instant declaredPaidAt,
-            String bankReference,
-            List<String> evidenceKeys) {}
-
-    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims")
-    public Object claim(
-            @PathVariable("storeNo") String store,
-            @PathVariable("orderNo") String order,
-            @RequestBody String body) {
-        var d = json.read(body, ClaimRequest.class);
-        var c = context.buyer(store, "commerce:mall:purchase");
-        return ok(
-                offline.submit(
-                        c.actor(),
-                        new ClaimCommand(
-                                new OrderQuery(c.store(), code(order)),
-                                d.claimNo(),
-                                d.declaredAmount(),
-                                d.declaredPaidAt(),
-                                d.bankReference(),
-                                d.evidenceKeys())));
-    }
-
-    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims")
-    public Object claims(
-            @PathVariable("storeNo") String store, @PathVariable("orderNo") String order) {
-        var c = context.buyer(store, "commerce:mall:read");
-        return ok(offline.claims(c.actor(), new OrderQuery(c.store(), code(order))));
-    }
-
-    // ---------------------------------------------------------------- operations
 
     @GetMapping("/ops/biz-mall/offline/profile")
     public Object profile(@RequestParam("currency") String currency) {

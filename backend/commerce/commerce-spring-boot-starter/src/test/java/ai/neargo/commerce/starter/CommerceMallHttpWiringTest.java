@@ -77,4 +77,53 @@ class CommerceMallHttpWiringTest {
                 .withBean(MallHttpEnvelopePort.class, () -> unused(MallHttpEnvelopePort.class))
                 .run(c -> assertNotNull(c.getStartupFailure()));
     }
+
+    private WebApplicationContextRunner mall() {
+        return web().withPropertyValues(
+                        "commerce.enabled=true",
+                        "commerce.catalog.enabled=true",
+                        "commerce.mall.enabled=true",
+                        "commerce.mall.http.enabled=true")
+                .withBean(CatalogFacade.class, () -> unused(CatalogFacade.class))
+                .withBean(MallFacade.class, () -> unused(MallFacade.class))
+                .withBean(StorefrontFacade.class, () -> unused(StorefrontFacade.class))
+                .withBean(MallQueryFacade.class, () -> unused(MallQueryFacade.class))
+                .withBean(
+                        ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class,
+                        () -> unused(ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class))
+                .withBean(MallHttpContextPort.class, () -> unused(MallHttpContextPort.class))
+                .withBean(MallHttpEnvelopePort.class, () -> unused(MallHttpEnvelopePort.class));
+    }
+
+    /** Split deployment: public instance mounts only /biz, internal instance only /ops. */
+    @Test
+    void eachDeploymentSurfaceMountsOnlyItsOwnRoutes() {
+        mall().run(
+                        c -> {
+                            assertNull(c.getStartupFailure());
+                            assertEquals(1, c.getBeansOfType(CommerceBuyerMallHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceOpsMallHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceOfflineBuyerHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceOfflineOpsHttpController.class).size());
+                        });
+        mall().withPropertyValues("commerce.mall.http.operator.enabled=false")
+                .run(
+                        c -> {
+                            assertEquals(1, c.getBeansOfType(CommerceBuyerMallHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceOfflineBuyerHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceOpsMallHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceCatalogHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceSourceHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceOfflineOpsHttpController.class).size());
+                        });
+        mall().withPropertyValues("commerce.mall.http.buyer.enabled=false")
+                .run(
+                        c -> {
+                            assertEquals(0, c.getBeansOfType(CommerceBuyerMallHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceOfflineBuyerHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceOpsMallHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceCatalogHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceOfflineOpsHttpController.class).size());
+                        });
+    }
 }

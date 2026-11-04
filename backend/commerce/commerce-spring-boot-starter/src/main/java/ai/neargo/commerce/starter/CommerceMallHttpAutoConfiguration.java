@@ -3,6 +3,7 @@ package ai.neargo.commerce.starter;
 import ai.neargo.commerce.api.catalog.CatalogFacade;
 import ai.neargo.commerce.starter.http.*;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.context.annotation.*;
@@ -25,72 +26,95 @@ import org.springframework.context.annotation.*;
         name = {"enabled", "mall.http.enabled"},
         havingValue = "true")
 public class CommerceMallHttpAutoConfiguration {
-    @Bean
-    @ConditionalOnProperty(prefix = "commerce", name = "catalog.enabled", havingValue = "true")
-    CommerceCatalogHttpController commerceCatalogHttpController(
-            CatalogFacade catalog, MallHttpContextPort context, MallHttpEnvelopePort envelope) {
-        return new CommerceCatalogHttpController(catalog, context, envelope);
+    /**
+     * Merchant surface (/biz/stores/{storeNo}/mall/**). A host that splits public and internal
+     * deployments turns it off on the internal instance with
+     * {@code commerce.mall.http.buyer.enabled=false}, so those routes do not exist there.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(
+            prefix = "commerce.mall.http.buyer",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    static class Buyer {
+        @Bean
+        @ConditionalOnProperty(prefix = "commerce", name = "mall.enabled", havingValue = "true")
+        CommerceBuyerMallHttpController commerceBuyerMallHttpController(
+                ai.neargo.commerce.api.mall.MallFacade mall,
+                ai.neargo.commerce.api.mall.StorefrontFacade storefront,
+                ai.neargo.commerce.api.mall.MallQueryFacade queries,
+                ObjectProvider<ai.neargo.commerce.api.fulfillment.PaymentFacade> payments,
+                ObjectProvider<ai.neargo.commerce.api.mall.RefundFacade> refunds,
+                MallHttpContextPort context,
+                MallHttpEnvelopePort envelope) {
+            return new CommerceBuyerMallHttpController(
+                    mall,
+                    storefront,
+                    queries,
+                    payments.getIfAvailable(),
+                    refunds.getIfAvailable(),
+                    context,
+                    envelope);
+        }
+
+        @Bean
+        @ConditionalOnBean(ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class)
+        CommerceOfflineBuyerHttpController commerceOfflineBuyerHttpController(
+                ai.neargo.commerce.api.offline.OfflinePurchaseFacade offline,
+                MallHttpContextPort context,
+                MallHttpEnvelopePort envelope) {
+            return new CommerceOfflineBuyerHttpController(offline, context, envelope);
+        }
     }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "commerce", name = "mall.enabled", havingValue = "true")
-    CommerceBuyerMallHttpController commerceBuyerMallHttpController(
-            ai.neargo.commerce.api.mall.MallFacade mall,
-            ai.neargo.commerce.api.mall.StorefrontFacade storefront,
-            ai.neargo.commerce.api.mall.MallQueryFacade queries,
-            org.springframework.beans.factory.ObjectProvider<
-                            ai.neargo.commerce.api.fulfillment.PaymentFacade>
-                    payments,
-            org.springframework.beans.factory.ObjectProvider<
-                            ai.neargo.commerce.api.mall.RefundFacade>
-                    refunds,
-            MallHttpContextPort context,
-            MallHttpEnvelopePort envelope) {
-        return new CommerceBuyerMallHttpController(
-                mall,
-                storefront,
-                queries,
-                payments.getIfAvailable(),
-                refunds.getIfAvailable(),
-                context,
-                envelope);
-    }
+    /**
+     * Operator surface (/ops/**: catalog, orders, subscription sources, offline review). A host
+     * turns it off on its public instance with {@code commerce.mall.http.operator.enabled=false}.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(
+            prefix = "commerce.mall.http.operator",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    static class Operator {
+        @Bean
+        @ConditionalOnProperty(prefix = "commerce", name = "catalog.enabled", havingValue = "true")
+        CommerceCatalogHttpController commerceCatalogHttpController(
+                CatalogFacade catalog, MallHttpContextPort context, MallHttpEnvelopePort envelope) {
+            return new CommerceCatalogHttpController(catalog, context, envelope);
+        }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "commerce", name = "mall.enabled", havingValue = "true")
-    CommerceOpsMallHttpController commerceOpsMallHttpController(
-            ai.neargo.commerce.api.mall.MallQueryFacade queries,
-            org.springframework.beans.factory.ObjectProvider<
-                            ai.neargo.commerce.api.fulfillment.FulfillmentFacade>
-                    fulfillment,
-            org.springframework.beans.factory.ObjectProvider<
-                            ai.neargo.commerce.api.mall.RefundFacade>
-                    refunds,
-            MallHttpContextPort context,
-            MallHttpEnvelopePort envelope) {
-        return new CommerceOpsMallHttpController(
-                queries, refunds.getIfAvailable(), fulfillment.getIfAvailable(), context, envelope);
-    }
+        @Bean
+        @ConditionalOnProperty(prefix = "commerce", name = "mall.enabled", havingValue = "true")
+        CommerceOpsMallHttpController commerceOpsMallHttpController(
+                ai.neargo.commerce.api.mall.MallQueryFacade queries,
+                ObjectProvider<ai.neargo.commerce.api.fulfillment.FulfillmentFacade> fulfillment,
+                ObjectProvider<ai.neargo.commerce.api.mall.RefundFacade> refunds,
+                MallHttpContextPort context,
+                MallHttpEnvelopePort envelope) {
+            return new CommerceOpsMallHttpController(
+                    queries, refunds.getIfAvailable(), fulfillment.getIfAvailable(), context, envelope);
+        }
 
-    /** Only when the offline workflow itself was assembled (its own opt-in and trusted ports). */
-    @Bean
-    @ConditionalOnBean(ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class)
-    CommerceOfflineHttpController commerceOfflineHttpController(
-            ai.neargo.commerce.api.offline.OfflinePurchaseFacade offline,
-            ai.neargo.commerce.api.mall.MallFacade mall,
-            MallHttpContextPort context,
-            MallHttpEnvelopePort envelope) {
-        return new CommerceOfflineHttpController(offline, mall, context, envelope);
-    }
+        @Bean
+        @ConditionalOnProperty(prefix = "commerce", name = "catalog.enabled", havingValue = "true")
+        CommerceSourceHttpController commerceSourceHttpController(
+                ObjectProvider<ai.neargo.commerce.api.subscription.SourceManagementFacade> sources,
+                MallHttpContextPort context,
+                MallHttpEnvelopePort envelope) {
+            return new CommerceSourceHttpController(sources.getIfAvailable(), context, envelope);
+        }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "commerce", name = "catalog.enabled", havingValue = "true")
-    CommerceSourceHttpController commerceSourceHttpController(
-            org.springframework.beans.factory.ObjectProvider<
-                            ai.neargo.commerce.api.subscription.SourceManagementFacade>
-                    sources,
-            MallHttpContextPort context,
-            MallHttpEnvelopePort envelope) {
-        return new CommerceSourceHttpController(sources.getIfAvailable(), context, envelope);
+        @Bean
+        @ConditionalOnBean(ai.neargo.commerce.api.offline.OfflinePurchaseFacade.class)
+        CommerceOfflineOpsHttpController commerceOfflineOpsHttpController(
+                ai.neargo.commerce.api.offline.OfflinePurchaseFacade offline,
+                ai.neargo.commerce.api.mall.MallFacade mall,
+                MallHttpContextPort context,
+                MallHttpEnvelopePort envelope) {
+            return new CommerceOfflineOpsHttpController(offline, mall, context, envelope);
+        }
     }
 }

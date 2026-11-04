@@ -6,24 +6,17 @@ import ai.neargo.shop.auth.*;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
-import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.sql.DataSource;
 
 @Configuration(proxyBeanMethods = false)
 @Profile("api")
 @ConditionalOnProperty(name = "commerce.enabled", havingValue = "true")
 @Import({
+    CommerceStoreDirectoryConfiguration.class,
     CommerceEndAccessConfiguration.class,
     ai.neargo.commerce.starter.CommerceFoundationConfiguration.class
 })
 class CommerceAccessConfiguration {
-    @Bean
-    ShopCommerceStoreAdapter commerceStoreDirectory(
-            DataSource ds, PlatformTransactionManager manager) {
-        return new ShopCommerceStoreAdapter(ds, manager);
-    }
-
     @Bean
     ShopCommerceActorAdapter commerceActorAuthority(
             AccountSessionVerifier sessions,

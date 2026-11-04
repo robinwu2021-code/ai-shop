@@ -35,14 +35,15 @@ public interface PlatformCollectionService {
             String paymentWindowVersion, long paymentWindowMs, boolean enabled, String operatorNo, String reason) {}
     record OfflineInstructions(String profileNo, long version, String merchantNo, String currency,
             String receivingAccountKey, String paymentWindowVersion, long paymentWindowMs, Map<String, String> instructions) {
-        public OfflineInstructions { instructions = Map.copyOf(instructions); }
+        /** Sorted for byte-stable JSON across instances (Map.copyOf order is salted per JVM). */
+        public OfflineInstructions { instructions = Collections.unmodifiableMap(new TreeMap<>(instructions)); }
     }
     /** Precision is assigned by this trusted manual rail, never supplied by the HTTP caller. */
     record OfflineProof(Key key, String operatorNo, String actualReceiver, long actualMinor, String currency,
             long actualPaidAt, String bankReference, String evidenceReference, String mode, long confirmedAt) {}
     record OfflineVoid(Key key, String operatorNo, String reconciliationReference, String reason,
             String evidenceReference, long reconciledAt, Map<String, String> unmatchedDispositions) {
-        public OfflineVoid { unmatchedDispositions = Map.copyOf(unmatchedDispositions); }
+        public OfflineVoid { unmatchedDispositions = Collections.unmodifiableMap(new TreeMap<>(unmatchedDispositions)); }
     }
     record ManualReceipt(String disposition, Receipt receipt) {}
     default OfflineInstructions configureOffline(OfflineProfile profile) { throw new UnsupportedOperationException(); }

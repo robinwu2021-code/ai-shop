@@ -94,7 +94,8 @@ class OfflineHttpContractTest {
                                 });
         mvc =
                 MockMvcBuilders.standaloneSetup(
-                                new CommerceOfflineHttpController(offline, mall, context, envelope))
+                                new CommerceOfflineBuyerHttpController(offline, context, envelope),
+                                new CommerceOfflineOpsHttpController(offline, mall, context, envelope))
                         .build();
     }
 

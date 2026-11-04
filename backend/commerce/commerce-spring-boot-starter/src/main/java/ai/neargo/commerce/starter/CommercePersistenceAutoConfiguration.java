@@ -1,6 +1,7 @@
 package ai.neargo.commerce.starter;
 
 import ai.neargo.commerce.api.port.CommerceEventPersistencePort;
+import ai.neargo.commerce.api.port.CommerceIdGenerator;
 import ai.neargo.commerce.core.catalog.CatalogRepository;
 import ai.neargo.commerce.core.spi.*;
 import ai.neargo.commerce.persistence.*;
@@ -50,5 +51,16 @@ public class CommercePersistenceAutoConfiguration {
     @ConditionalOnMissingBean(SubscriptionAccountRepository.class)
     SubscriptionAccountRepository commerceSubscriptionAccounts(DataSource ds) {
         return new JdbcSubscriptionAccountRepository(ds);
+    }
+
+    /**
+     * Opaque, collision-free business numbers (32 hex chars). Every commerce identifier is
+     * persisted with unique keys, so randomness is the only property required. A host may
+     * provide its own generator (for example with readable prefixes) and this one steps aside.
+     */
+    @Bean
+    @ConditionalOnMissingBean(CommerceIdGenerator.class)
+    CommerceIdGenerator commerceIdGenerator() {
+        return namespace -> java.util.UUID.randomUUID().toString().replace("-", "");
     }
 }

@@ -36,7 +36,15 @@ class ControllerProfileTest {
      */
     private static final java.util.Set<String> NO_PROFILE_OK = java.util.Set.of(
             // C 端与运营端可能部署在不同 profile 上，风控埋点两边都要收（见类注释）
-            "MpRiskController.java");
+            "MpRiskController.java",
+            // 商城可移植 starter 不认宿主 profile 名；部署面由 commerce.mall.http.buyer/operator.enabled
+            // 在 application.yml 的 api/ops 段里分别关掉 —— 由下面 commerceSurfacesFollowProfiles 守着
+            "CommerceBuyerMallHttpController.java",
+            "CommerceOfflineBuyerHttpController.java",
+            "CommerceCatalogHttpController.java",
+            "CommerceOpsMallHttpController.java",
+            "CommerceSourceHttpController.java",
+            "CommerceOfflineOpsHttpController.java");
 
     @Test
     @DisplayName("★★ 控制器的 @Profile 必须与路径前缀一致 —— 标错的端点在真实实例上根本不注册")
@@ -77,5 +85,23 @@ class ControllerProfileTest {
                         + "  **标错不会有任何编译期或测试期信号** —— 测试上下文两个 profile 都在，\n"
                         + "  症状只在真实实例上出现：那几条端点根本不注册，请求 404。")
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 商城 starter 的控制器按部署面挂：api 关运营面、ops 关商家面")
+    void commerceSurfacesFollowProfiles() throws IOException {
+        String yml = Files.readString(Path.of("src/main/resources/application.yml"));
+        String api = profileSection(yml, "api"), ops = profileSection(yml, "ops");
+        assertThat(api).as("api 段必须关掉商城运营面").containsPattern(
+                "commerce:\\s+mall:\\s+http:\\s+operator:\\s+enabled:\\s+false");
+        assertThat(ops).as("ops 段必须关掉商城商家面").containsPattern(
+                "commerce:\\s+mall:\\s+http:\\s+buyer:\\s+enabled:\\s+false");
+    }
+
+    /** The YAML document activated by exactly this profile. */
+    private static String profileSection(String yml, String profile) {
+        for (String doc : yml.split("\n---\n"))
+            if (doc.matches("(?s).*on-profile:\\s+" + profile + "\\s*\n.*")) return doc;
+        throw new AssertionError("no document for profile " + profile);
     }
 }

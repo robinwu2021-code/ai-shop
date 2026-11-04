@@ -25,7 +25,9 @@ import java.time.Clock;
 import java.util.*;
 
 @Configuration(proxyBeanMethods = false)
-@Profile("api")
+// api serves the merchant mall routes, ops the operator routes (see commerce.mall.http.* in
+// application.yml per profile). Both need the same trusted host ports.
+@Profile({"api", "ops"})
 @ConditionalOnProperty(
         prefix = "commerce",
         name = {"enabled", "mall.http.enabled"},
@@ -62,7 +64,9 @@ class ShopMallConfiguration {
                 buyers, operators.verifier(), resolver, stores, Clock.systemUTC(), bindings);
     }
 
+    /** Merchant plan cards only (/biz); the ops instance has no merchant foundation reads. */
     @Bean
+    @Profile("api")
     @ConditionalOnProperty(prefix = "commerce.mall", name = "enabled", havingValue = "true")
     ai.neargo.commerce.api.foundation.FoundationPurchaseAvailabilityPort mallFoundationAvailability(
             ai.neargo.commerce.api.foundation.FoundationAuthorityPort foundation,
