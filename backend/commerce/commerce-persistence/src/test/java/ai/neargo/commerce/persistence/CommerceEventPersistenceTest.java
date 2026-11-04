@@ -59,7 +59,7 @@ class CommerceEventPersistenceTest {
                     IllegalStateException.class,
                     () -> u.required(() -> port.append(event("A", "{\"v\":2}"))));
             assertThrows(
-                    IllegalStateException.class,
+                    InboundFactConflictException.class,
                     () -> u.required(() -> port.recordInbound(fact("A", "changed"))));
             assertThrows(
                     IllegalStateException.class,

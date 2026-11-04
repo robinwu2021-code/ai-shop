@@ -114,7 +114,7 @@ class MallOrderConcurrencyMysqlTest {
                         "source-" + i);
             api =
                     new DefaultMallFacade(
-                            new JdbcMallRepository(db.ds),
+                            new JdbcMallRepository(db.ds, new JdbcCommerceEventPersistence(db.ds)),
                             c.repo,
                             new JdbcSubscriptionAccountRepository(db.ds),
                             c.uow,
@@ -270,7 +270,8 @@ class MallOrderConcurrencyMysqlTest {
                             () -> {
                                 new JdbcSubscriptionAccountRepository(db.ds)
                                         .lockSubscriptionAccount(STORE);
-                                return new JdbcMallRepository(db.ds)
+                                return new JdbcMallRepository(
+                                                db.ds, new JdbcCommerceEventPersistence(db.ds))
                                         .order("tenant-a", o.orderNo())
                                         .orElseThrow();
                             });
@@ -321,7 +322,8 @@ class MallOrderConcurrencyMysqlTest {
                     () ->
                             f.c.uow.required(
                                     () -> {
-                                        f.place(q, "rollback");
+                                        var first = f.place(q, "rollback");
+                                        assertEquals(first, f.place(q, "rollback"));
                                         throw new IllegalStateException("rollback");
                                     }));
             for (String table :
@@ -342,6 +344,18 @@ class MallOrderConcurrencyMysqlTest {
                     db.jdbc.queryForObject(
                             "SELECT reserved_minor FROM mch_subscription_credit_account",
                             Long.class));
+            assertEquals(
+                    "VALID",
+                    db.jdbc.queryForObject(
+                            "SELECT status FROM mall_quote WHERE quote_no=?",
+                            String.class,
+                            q.quoteNo()));
+            assertEquals(
+                    0,
+                    db.jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM commerce_event_inbox WHERE"
+                                    + " source_system='MALL_ORDER_IDEMPOTENCY'",
+                            Integer.class));
             assertNotNull(f.place(q, "rollback"));
         }
     }
@@ -393,7 +407,9 @@ class MallOrderConcurrencyMysqlTest {
                     () -> {
                         new JdbcSubscriptionAccountRepository(db.ds).lockSubscriptionAccount(STORE);
                         var components =
-                                new JdbcMallRepository(db.ds).components(STORE, order.orderNo());
+                                new JdbcMallRepository(
+                                                db.ds, new JdbcCommerceEventPersistence(db.ds))
+                                        .components(STORE, order.orderNo());
                         assertEquals(1, components.size());
                         assertEquals(
                                 "device",
@@ -408,7 +424,8 @@ class MallOrderConcurrencyMysqlTest {
                         assertEquals(10000, components.getFirst().snapshot().allocation().gross());
                         assertEquals(9000, components.getFirst().snapshot().allocation().deal());
                         assertTrue(
-                                new JdbcMallRepository(db.ds)
+                                new JdbcMallRepository(
+                                                db.ds, new JdbcCommerceEventPersistence(db.ds))
                                         .components(
                                                 new StoreRef("tenant-a", "other-store"),
                                                 order.orderNo())
@@ -455,6 +472,337 @@ class MallOrderConcurrencyMysqlTest {
             assertEquals(created, f.api.order(BUYER, new OrderQuery(STORE, created.orderNo())));
             assertEquals(
                     1, db.jdbc.queryForObject("SELECT COUNT(*) FROM mall_order", Integer.class));
+        }
+    }
+
+    private Fixture crossStoreZeroLotFixture(MysqlDatabase db) {
+        var f = new Fixture(db, true);
+        var second = new StoreRef("tenant-a", "store-second");
+        var subscription = new JdbcSubscriptionRepository(db.ds, f.c.ids);
+        f.c.uow.required(
+                () -> {
+                    subscription.ensureAccount(
+                            new StoreSnapshot(
+                                    second,
+                                    "merchant",
+                                    "RETAIL",
+                                    StoreStatus.ACTIVE,
+                                    CommerceModel.STORE_V1),
+                            "buyer");
+                    subscription.insert(
+                            subscription.lock(second),
+                            new ai.neargo.commerce.core.spi.Period(
+                                    "free-second",
+                                    "initialize-second",
+                                    "FREE",
+                                    "RETAIL:FREE",
+                                    "free-1",
+                                    "FREE",
+                                    1000,
+                                    1000,
+                                    null,
+                                    Map.of("BASE", "BASE"),
+                                    0,
+                                    0,
+                                    "CNY",
+                                    "policy",
+                                    false),
+                            1,
+                            "buyer");
+                    return null;
+                });
+        db.jdbc.update(
+                "INSERT INTO"
+                    + " mch_subscription_credit_account(tenant_no,store_no,currency,balance_minor,reserved_minor,created_at,updated_at,version,deleted)"
+                    + " VALUES"
+                    + " ('tenant-a','store-second','CNY',0,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0)");
+        db.jdbc.update("DELETE FROM mch_subscription_credit_lot");
+        db.jdbc.update("UPDATE mch_subscription_credit_account SET balance_minor=0");
+        return f;
+    }
+
+    private List<String> crossStoreRace(Fixture f, boolean sameKey, boolean joined)
+            throws Exception {
+        assertEquals(
+                "REPEATABLE-READ",
+                f.db.jdbc.queryForObject("SELECT @@transaction_isolation", String.class));
+        var second = new StoreRef("tenant-a", "store-second");
+        var quotes =
+                List.of(
+                        f.quote(),
+                        f.api.quote(
+                                BUYER,
+                                new QuoteCommand(
+                                        second, List.of(new QuoteLine("sku-1", 1)), "CNY")));
+        var both = new CountDownLatch(2);
+        var delegate = new JdbcMallRepository(f.db.ds, new JdbcCommerceEventPersistence(f.db.ds));
+        var proxy =
+                (MallRepository)
+                        java.lang.reflect.Proxy.newProxyInstance(
+                                MallRepository.class.getClassLoader(),
+                                new Class<?>[] {MallRepository.class},
+                                (p, m, a) -> {
+                                    boolean before =
+                                            sameKey
+                                                    ? m.getName().equals("claimOrder")
+                                                    : m.getName().equals("create");
+                                    if (before) {
+                                        both.countDown();
+                                        if (!both.await(10, TimeUnit.SECONDS))
+                                            throw new AssertionError(
+                                                    "different stores did not reach the"
+                                                            + " claim/create concurrently");
+                                    }
+                                    Object result;
+                                    try {
+                                        result = m.invoke(delegate, a);
+                                    } catch (java.lang.reflect.InvocationTargetException e) {
+                                        throw e.getCause();
+                                    }
+                                    return result;
+                                });
+        var api =
+                new DefaultMallFacade(
+                        proxy,
+                        f.c.repo,
+                        new JdbcSubscriptionAccountRepository(f.db.ds),
+                        f.c.uow,
+                        store ->
+                                Optional.of(
+                                        new StoreSnapshot(
+                                                store,
+                                                "merchant",
+                                                "RETAIL",
+                                                StoreStatus.ACTIVE,
+                                                CommerceModel.STORE_V1)),
+                        (a, store, cap) ->
+                                new AuthorizationDecision(true, "OWNER", Optional.empty()),
+                        Clock.fixed(Instant.ofEpochMilli(2000), ZoneOffset.UTC),
+                        f.c.ids);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = new ArrayList<Future<String>>();
+            int sequence = 0;
+            for (var q : quotes) {
+                String key = sameKey ? "cross-store-key" : "different-key-" + (++sequence);
+                jobs.add(
+                        pool.submit(
+                                () -> {
+                                    java.util.function.Supplier<String> work =
+                                            () -> {
+                                                api.placeOrder(
+                                                        BUYER,
+                                                        new PlaceOrderCommand(
+                                                                q.quoteNo(),
+                                                                key,
+                                                                Optional.of(
+                                                                        new ShippingAddress(
+                                                                                "r", "p", "CN",
+                                                                                "region", "city",
+                                                                                "address",
+                                                                                "zip"))));
+                                                return "ORDER";
+                                            };
+                                    try {
+                                        return joined ? f.c.uow.required(work) : work.get();
+                                    } catch (MallException e) {
+                                        return e.code();
+                                    }
+                                }));
+            }
+            var result = new ArrayList<String>();
+            for (var job : jobs) result.add(job.get(20, TimeUnit.SECONDS));
+            Collections.sort(result);
+            return result;
+        }
+    }
+
+    private void assertNoPartialCrossStoreReservations(MysqlDatabase db, int orders) {
+        for (String table :
+                List.of("mall_order", "mall_order_item", "mall_order_component", "mall_shipment"))
+            assertEquals(
+                    orders, db.jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class));
+        for (String table :
+                List.of("mch_subscription_reservation", "mch_subscription_credit_ledger"))
+            assertEquals(0, db.jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class));
+        assertEquals(
+                0,
+                db.jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM mch_subscription_account WHERE"
+                                + " pending_change_order_no IS NOT NULL",
+                        Integer.class));
+        assertEquals(
+                0,
+                db.jdbc.queryForObject(
+                        "SELECT SUM(reserved_minor) FROM mch_subscription_credit_account",
+                        Long.class));
+    }
+
+    @Test
+    void crossStoreSameBuyerKeyRaceReturnsOneOrderAndDomainConflictWithZeroLots() throws Exception {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var f = crossStoreZeroLotFixture(db);
+            assertEquals(List.of("IDEMPOTENCY_CONFLICT", "ORDER"), crossStoreRace(f, true, false));
+            assertNoPartialCrossStoreReservations(db, 1);
+        }
+    }
+
+    @Test
+    void crossStoreDistinctKeysProgressConcurrentlyWithoutAbsentOrderGapLocks() throws Exception {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var f = crossStoreZeroLotFixture(db);
+            assertEquals(List.of("ORDER", "ORDER"), crossStoreRace(f, false, false));
+            assertNoPartialCrossStoreReservations(db, 2);
+        }
+    }
+
+    @Test
+    void joinedOuterCrossStoreRaceReturnsConflictAfterRollbackWithoutRetryingPoisonedTransaction()
+            throws Exception {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var f = crossStoreZeroLotFixture(db);
+            assertEquals(List.of("IDEMPOTENCY_CONFLICT", "ORDER"), crossStoreRace(f, true, true));
+            assertNoPartialCrossStoreReservations(db, 1);
+        }
+    }
+
+    @Test
+    void caughtJoinedConflictCannotReturnSuccessFromRollbackOnlyOuterTransaction() {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var f = crossStoreZeroLotFixture(db);
+            var q = f.quote();
+            f.place(q, "same-outer-key");
+            var second =
+                    f.api.quote(
+                            BUYER,
+                            new QuoteCommand(
+                                    new StoreRef("tenant-a", "store-second"),
+                                    List.of(new QuoteLine("sku-1", 1)),
+                                    "CNY"));
+            assertThrows(
+                    org.springframework.transaction.UnexpectedRollbackException.class,
+                    () ->
+                            f.c.uow.required(
+                                    () -> {
+                                        assertEquals(
+                                                "IDEMPOTENCY_CONFLICT",
+                                                assertThrows(
+                                                                MallException.class,
+                                                                () ->
+                                                                        f.place(
+                                                                                second,
+                                                                                "same-outer-key"))
+                                                        .code());
+                                        return "caller attempted to suppress the rollback";
+                                    }));
+            assertNoPartialCrossStoreReservations(db, 1);
+            assertEquals(
+                    "VALID",
+                    db.jdbc.queryForObject(
+                            "SELECT status FROM mall_quote WHERE quote_no=?",
+                            String.class,
+                            second.quoteNo()));
+        }
+    }
+
+    @Test
+    void configuredEventPortDelegatesThreeConcurrentImmutableDuplicateReplays() throws Exception {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var f = new Fixture(db, true);
+            var q = f.quote();
+            var reached = new CountDownLatch(3);
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            var actual = new JdbcCommerceEventPersistence(db.ds);
+            var custom =
+                    (ai.neargo.commerce.api.port.CommerceEventPersistencePort)
+                            java.lang.reflect.Proxy.newProxyInstance(
+                                    ai.neargo.commerce.api.port.CommerceEventPersistencePort.class
+                                            .getClassLoader(),
+                                    new Class<?>[] {
+                                        ai.neargo.commerce.api.port.CommerceEventPersistencePort
+                                                .class
+                                    },
+                                    (p, m, a) -> {
+                                        if (m.getName().equals("recordInbound")
+                                                && calls.incrementAndGet() > 1) {
+                                            reached.countDown();
+                                            if (!reached.await(10, TimeUnit.SECONDS))
+                                                throw new AssertionError(
+                                                        "replays did not enter the configured"
+                                                                + " adapter concurrently");
+                                        }
+                                        try {
+                                            return m.invoke(actual, a);
+                                        } catch (java.lang.reflect.InvocationTargetException e) {
+                                            throw e.getCause();
+                                        }
+                                    });
+            var api =
+                    new DefaultMallFacade(
+                            new JdbcMallRepository(db.ds, custom),
+                            f.c.repo,
+                            new JdbcSubscriptionAccountRepository(db.ds),
+                            f.c.uow,
+                            store ->
+                                    Optional.of(
+                                            new StoreSnapshot(
+                                                    store,
+                                                    "merchant",
+                                                    "RETAIL",
+                                                    StoreStatus.ACTIVE,
+                                                    CommerceModel.STORE_V1)),
+                            (a, store, cap) ->
+                                    new AuthorizationDecision(true, "OWNER", Optional.empty()),
+                            Clock.fixed(Instant.ofEpochMilli(2000), ZoneOffset.UTC),
+                            f.c.ids);
+            var command =
+                    new PlaceOrderCommand(
+                            q.quoteNo(),
+                            "custom-port",
+                            Optional.of(
+                                    new ShippingAddress(
+                                            "r", "p", "CN", "region", "city", "address", "zip")));
+            var first = api.placeOrder(BUYER, command);
+            var before =
+                    db.jdbc.queryForMap(
+                            "SELECT * FROM commerce_event_inbox WHERE"
+                                    + " source_system='MALL_ORDER_IDEMPOTENCY'");
+            try (var pool = Executors.newFixedThreadPool(3)) {
+                var jobs = new ArrayList<Future<OrderView>>();
+                for (int i = 0; i < 3; i++)
+                    jobs.add(pool.submit(() -> api.placeOrder(BUYER, command)));
+                for (var job : jobs) assertEquals(first, job.get(20, TimeUnit.SECONDS));
+            }
+            var late =
+                    new DefaultMallFacade(
+                            new JdbcMallRepository(db.ds, custom),
+                            f.c.repo,
+                            new JdbcSubscriptionAccountRepository(db.ds),
+                            f.c.uow,
+                            store ->
+                                    Optional.of(
+                                            new StoreSnapshot(
+                                                    store,
+                                                    "merchant",
+                                                    "RETAIL",
+                                                    StoreStatus.ACTIVE,
+                                                    CommerceModel.STORE_V1)),
+                            (a, store, cap) ->
+                                    new AuthorizationDecision(true, "OWNER", Optional.empty()),
+                            Clock.fixed(Instant.ofEpochMilli(1002000), ZoneOffset.UTC),
+                            f.c.ids);
+            assertEquals(first, late.placeOrder(BUYER, command));
+            assertEquals(5, calls.get());
+            assertEquals(
+                    before,
+                    db.jdbc.queryForMap(
+                            "SELECT * FROM commerce_event_inbox WHERE"
+                                    + " source_system='MALL_ORDER_IDEMPOTENCY'"));
+            assertNoPartialCrossStoreReservations(db, 1);
         }
     }
 }

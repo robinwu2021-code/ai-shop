@@ -23,6 +23,7 @@ class CommerceQuoteTest {
     long now = 1000, entitlement = 1, balanceVersion = 1, available = 50;
     String pending;
     boolean allowed = true;
+    boolean forceDuplicateClaim;
     String storeCurrency = "CNY";
     String storeMerchant = "merchant";
     List<BasePlan> plans = new ArrayList<>();
@@ -51,23 +52,32 @@ class CommerceQuoteTest {
                             .filter(q -> q.store().tenantNo().equals(t));
                 }
 
-                public Optional<Order> byQuote(String t, String q) {
+                public boolean claimOrder(
+                        String tenant, String buyer, String key, String hash, long at) {
+                    if (forceDuplicateClaim) return false;
+                    var existing = byIdempotency(tenant, buyer, key);
+                    if (existing.isPresent() && !hash.equals(existing.get().requestHash()))
+                        throw new MallException("IDEMPOTENCY_CONFLICT");
+                    return existing.isEmpty();
+                }
+
+                public Optional<Order> byIdempotency(String tenant, String buyer, String key) {
                     return orders.values().stream()
                             .filter(
                                     o ->
-                                            o.quote().store().tenantNo().equals(t)
-                                                    && o.quote().quoteNo().equals(q))
+                                            o.quote().store().tenantNo().equals(tenant)
+                                                    && o.quote().buyerNo().equals(buyer)
+                                                    && o.idempotencyKey().equals(key))
                             .findFirst();
                 }
 
-                public Optional<Order> byIdempotency(String t, String b, String k) {
-                    return orders.values().stream()
-                            .filter(
+                public void consumeQuote(String tenant, String quoteNo, String actor, long at) {
+                    if (orders.values().stream()
+                            .anyMatch(
                                     o ->
-                                            o.quote().store().tenantNo().equals(t)
-                                                    && o.quote().buyerNo().equals(b)
-                                                    && o.idempotencyKey().equals(k))
-                            .findFirst();
+                                            o.quote().store().tenantNo().equals(tenant)
+                                                    && o.quote().quoteNo().equals(quoteNo)))
+                        throw new MallException("QUOTE_USED");
                 }
 
                 public Optional<Order> order(String t, String n) {
@@ -584,5 +594,28 @@ class CommerceQuoteTest {
                         product.draft(), product.saleStatus(), product.version() + 1));
         error("VERSION_CONFLICT", () -> facade.placeOrder(buyer, place(q, "product-version")));
         assertTrue(orders.isEmpty());
+    }
+
+    @Test
+    void confirmedClaimWithoutOrderFailsConsistencyInsteadOfCreatingAnotherOrder() {
+        var q = quote("v");
+        forceDuplicateClaim = true;
+        error("ORDER_CLAIM_INCOMPLETE", () -> facade.placeOrder(buyer, place(q, "incomplete")));
+        assertTrue(orders.isEmpty());
+    }
+
+    @Test
+    void duplicateAdapterResultStillChecksWinningOrderRequestHash() {
+        var q = quote("v");
+        facade.placeOrder(buyer, place(q, "adapter-key"));
+        var another = quote("hw");
+        forceDuplicateClaim = true;
+        error(
+                "IDEMPOTENCY_CONFLICT",
+                () ->
+                        facade.placeOrder(
+                                buyer,
+                                new PlaceOrderCommand(
+                                        another.quoteNo(), "adapter-key", Optional.empty())));
     }
 }

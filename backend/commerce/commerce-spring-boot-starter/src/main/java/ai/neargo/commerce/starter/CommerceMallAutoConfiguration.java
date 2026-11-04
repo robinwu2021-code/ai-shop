@@ -32,8 +32,8 @@ public class CommerceMallAutoConfiguration {
     @Bean
     @DependsOn("commerceMigrationInitializer")
     @ConditionalOnMissingBean(MallRepository.class)
-    MallRepository commerceMallRepository(DataSource ds) {
-        return new JdbcMallRepository(ds);
+    MallRepository commerceMallRepository(DataSource ds, CommerceEventPersistencePort events) {
+        return new JdbcMallRepository(ds, events);
     }
 
     @Bean

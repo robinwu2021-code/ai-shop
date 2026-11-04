@@ -9,11 +9,12 @@ import java.util.*;
 
 /**
  * All operations require the identical local CommerceUnitOfWork. Immutable quote reads require
- * tenant scope; mutable reads are locking current reads. Lock order: subscription account, credit
- * balance, source periods, credit lots, order/tasks. Callers must hold the subscription account
- * lock before looking up idempotency keys or orders. create atomically persists all snapshots,
- * account occupancy, exact FIFO lot holds and ledger. No method may call an external payment or
- * inventory service while holding these locks.
+ * tenant scope; mutable reads are locking current reads. Placement enters before any commercial
+ * account lock. Lock order: immutable tenant/buyer/key claim, subscription account, credit balance,
+ * source periods, credit lots, order/tasks. Callers must hold the subscription account lock before
+ * looking up idempotency keys or orders. create atomically persists all snapshots, account
+ * occupancy, exact FIFO lot holds and ledger. No method may call an external payment or inventory
+ * service while holding these locks.
  */
 public interface MallRepository {
     CreditBalance lockBalance(StoreRef store, String currency);
@@ -26,9 +27,21 @@ public interface MallRepository {
 
     Optional<Quote> quote(String tenant, String quoteNo);
 
-    Optional<Order> byQuote(String tenant, String quoteNo);
+    /**
+     * Configured event port claims the immutable tenant/buyer/key fact in this UoW before account
+     * locks.
+     */
+    boolean claimOrder(String tenant, String buyer, String key, String requestHash, long at);
 
+    /**
+     * Only after claimOrder returned false and the quoted account is locked; the order must exist.
+     */
     Optional<Order> byIdempotency(String tenant, String buyer, String key);
+
+    /**
+     * Consumes only mutable status/audit metadata; quote pricing/valuation snapshots stay frozen.
+     */
+    void consumeQuote(String tenant, String quoteNo, String actor, long at);
 
     Optional<Order> order(String tenant, String orderNo);
 

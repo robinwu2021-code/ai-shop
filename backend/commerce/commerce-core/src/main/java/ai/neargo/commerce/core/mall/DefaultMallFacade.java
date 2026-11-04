@@ -270,13 +270,7 @@ public final class DefaultMallFacade implements MallFacade {
                 || command.idempotencyKey().isBlank()
                 || command.idempotencyKey().length() > 128
                 || command.shippingAddress() == null) throw fail("INVALID_REQUEST");
-        for (int attempt = 0; ; attempt++) {
-            try {
-                return uow.required(() -> place(actor, command));
-            } catch (MallException e) {
-                if (!"RETRY_ORDER".equals(e.code()) || attempt >= 2) throw e;
-            }
-        }
+        return uow.required(() -> place(actor, command));
     }
 
     private OrderView place(ActorContext actor, PlaceOrderCommand command) {
@@ -285,20 +279,25 @@ public final class DefaultMallFacade implements MallFacade {
                         .filter(v -> v.buyerNo().equals(actor.principalNo()))
                         .orElseThrow(() -> fail("NOT_FOUND"));
         var store = authorize(actor, q.store(), "commerce:mall:purchase");
-        var account = account(store);
         long at = clock.millis();
+        String hash = requestHash(command);
+        boolean freshClaim =
+                repo.claimOrder(
+                        actor.tenantNo(), actor.principalNo(), command.idempotencyKey(), hash, at);
+        var account = account(store);
         var balance = repo.lockBalance(q.store(), q.currency());
         var sources = repo.lockSources(q.store(), at);
         var lots = repo.lockLots(q.store(), q.currency(), at);
         var catalog = catalogs.load(actor.tenantNo(), CatalogLockMode.SHARED);
-        String hash = requestHash(command);
-        var existing =
-                repo.byIdempotency(actor.tenantNo(), actor.principalNo(), command.idempotencyKey());
-        if (existing.isPresent()) {
-            if (!hash.equals(existing.get().requestHash())) throw fail("IDEMPOTENCY_CONFLICT");
-            return existing.get().view();
+        if (!freshClaim) {
+            var existing =
+                    repo.byIdempotency(
+                                    actor.tenantNo(), actor.principalNo(), command.idempotencyKey())
+                            .orElseThrow(() -> fail("ORDER_CLAIM_INCOMPLETE"));
+            if (!hash.equals(existing.requestHash())) throw fail("IDEMPOTENCY_CONFLICT");
+            return existing.view();
         }
-        if (repo.byQuote(actor.tenantNo(), q.quoteNo()).isPresent()) throw fail("QUOTE_USED");
+        repo.consumeQuote(actor.tenantNo(), q.quoteNo(), actor.principalNo(), at);
         if (at >= q.expiresAt()) throw fail("QUOTE_EXPIRED");
         validateCurrentSale(q, catalog);
         if (account.entitlementVersion() != q.entitlementVersion()

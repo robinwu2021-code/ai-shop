@@ -77,7 +77,7 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
                     jdbc.query(
                             "SELECT event_id FROM commerce_event_inbox WHERE tenant_no=? AND"
                                     + " source_system=? AND event_id=? AND event_type=? AND"
-                                    + " aggregate_no=? AND payload_hash=? FOR UPDATE",
+                                    + " aggregate_no=? AND payload_hash=? FOR SHARE",
                             (rs, n) -> rs.getString(1),
                             f.tenantNo(),
                             f.producer(),
@@ -86,7 +86,8 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
                             f.aggregateNo(),
                             f.payloadDigest());
             if (same.isEmpty())
-                throw new IllegalStateException("Conflicting inbound fact identity", duplicate);
+                throw new InboundFactConflictException(
+                        "Conflicting inbound fact identity", duplicate);
             return false;
         }
     }
@@ -128,8 +129,8 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
             var existing =
                     jdbc.queryForList(
                             "SELECT aggregate_no FROM commerce_event_inbox WHERE tenant_no=? AND"
-                                + " source_system='STORE_CREATION' AND event_id=? AND"
-                                + " event_type='CREATE_BRANCH' AND payload_hash=? FOR UPDATE",
+                                    + " source_system='STORE_CREATION' AND event_id=? AND"
+                                    + " event_type='CREATE_BRANCH' AND payload_hash=? FOR UPDATE",
                             String.class,
                             tenant,
                             scopeKey,
