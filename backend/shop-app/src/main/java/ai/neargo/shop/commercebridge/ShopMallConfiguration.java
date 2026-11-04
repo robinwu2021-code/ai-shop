@@ -3,10 +3,15 @@ package ai.neargo.shop.commercebridge;
 import ai.neargo.commerce.api.fulfillment.PaymentFacade;
 import ai.neargo.commerce.api.mall.RefundFacade;
 import ai.neargo.commerce.api.port.CheckoutReadinessPort;
+import ai.neargo.commerce.api.port.OfflineCollectionPort;
+import ai.neargo.commerce.api.port.PrivateEvidencePort;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.commercebridge.port.ShopMallPaymentRecovery;
 import ai.neargo.shop.config.MallOperatorSessions;
 import ai.neargo.shop.inventory.service.CoordinatedInventoryService;
+import ai.neargo.shop.media.MediaStore;
+import ai.neargo.shop.media.MediaUploadService;
+import ai.neargo.shop.media.SysMediaAssetMapper;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.service.*;
 
@@ -137,9 +142,21 @@ class ShopMallConfiguration {
             prefix = "commerce.mall",
             name = {"payment.enabled", "offline.enabled"},
             havingValue = "true")
-    ai.neargo.commerce.api.port.OfflineCollectionPort mallOfflineCollection(
+    OfflineCollectionPort mallOfflineCollection(
             PlatformCollectionService collection) {
         return new ShopMallOfflineCollectionAdapter(collection);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "commerce.mall",
+            name = {"payment.enabled", "offline.enabled"},
+            havingValue = "true")
+    PrivateEvidencePort mallOfflineEvidence(
+            MediaStore media,
+            MediaUploadService uploads,
+            SysMediaAssetMapper assets) {
+        return new ShopMallPrivateEvidenceAdapter(media, uploads, assets, Clock.systemUTC());
     }
 
     @Bean

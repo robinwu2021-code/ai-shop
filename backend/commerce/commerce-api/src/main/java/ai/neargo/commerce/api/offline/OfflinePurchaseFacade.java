@@ -34,6 +34,8 @@ public interface OfflinePurchaseFacade {
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */
     void recover(FulfillmentQuery query);
     EvidenceTicket reserveEvidence(ActorContext actor, OrderQuery order, String purpose);
+    /** Uploads bytes once for the caller's own reservation; stored evidence is immutable. */
+    void upload(ActorContext actor, OrderQuery order, String assetKey, ai.neargo.commerce.api.port.PrivateEvidencePort.Upload upload);
     ClaimView submit(ActorContext actor, ClaimCommand command);
     ClaimView decline(ActorContext actor, DeclineCommand command);
     String evidence(ActorContext actor, OrderQuery order, String assetKey);

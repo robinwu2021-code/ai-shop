@@ -90,8 +90,9 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         if(!buyer && !Set.of("PLATFORM_RECEIPT","RECONCILIATION","REFUND_PROOF").contains(purpose))throw fail("INVALID_REQUEST");
         if(buyer && (actor==null || actor.subjectKind()!=SubjectKind.ACCOUNT) || !buyer && (actor==null || actor.subjectKind()!=SubjectKind.OPERATOR))throw fail("FORBIDDEN");
         return locked(actor,order,capability(actor,"commerce:mall:offline:evidence"),o->{
-            String key="mall-private/"+ids.nextBusinessNo("offline-evidence")+".jpg";
             var scope=new PrivateEvidencePort.Scope(order.store(),o.quote().entityNo(),o.orderNo(),actor.subjectKind(),actor.principalNo(),purpose);
+            String key=media.newKey(scope,ids.nextBusinessNo("offline-evidence"));
+            if(key==null || key.length()>255 || !key.matches("[A-Za-z0-9_\\-/]+\\.(jpg|jpeg|png)"))throw fail("EVIDENCE_UNAVAILABLE");
             offline.reserve(new OfflineRepository.Evidence(key,scope,clock.millis()));
             return new EvidenceTicket(key,purpose);
         });
@@ -110,6 +111,22 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         uow.requireOutsideTransaction();
         for(var e:evidence)if(!media.stored(e.scope(),e.assetKey()))throw fail("EVIDENCE_UNAVAILABLE");
         return evidence;
+    }
+    private static final java.util.Set<String> EVIDENCE_TYPES=java.util.Set.of("image/jpeg","image/png");
+    private static final long EVIDENCE_MAX_BYTES=10L*1024*1024;
+    public void upload(ActorContext actor,OrderQuery order,String key,PrivateEvidencePort.Upload upload) {
+        if(actor==null || order==null || key==null || key.isBlank() || key.length()>255 || upload==null || upload.content()==null
+                || upload.size()<1 || upload.size()>EVIDENCE_MAX_BYTES || !EVIDENCE_TYPES.contains(upload.contentType()))
+            throw fail("INVALID_REQUEST");
+        var record=locked(actor,order,capability(actor,"commerce:mall:offline:evidence"),o->{
+            var e=offline.evidence(actor.tenantNo(),key).orElseThrow(()->fail("EVIDENCE_FORBIDDEN"));
+            boolean buyerPurpose="BUYER_RECEIPT".equals(e.scope().purpose());
+            if(buyerPurpose!=(actor.subjectKind()==SubjectKind.ACCOUNT))throw fail("EVIDENCE_FORBIDDEN");
+            return ownEvidence(actor,order,key,e.scope().purpose());
+        });
+        uow.requireOutsideTransaction();
+        if(media.stored(record.scope(),record.assetKey()))throw fail("EVIDENCE_ALREADY_STORED");
+        media.store(record.scope(),record.assetKey(),upload);
     }
     public ClaimView submit(ActorContext actor,ClaimCommand c) {
         if(actor==null || actor.subjectKind()!=SubjectKind.ACCOUNT)throw fail("FORBIDDEN");

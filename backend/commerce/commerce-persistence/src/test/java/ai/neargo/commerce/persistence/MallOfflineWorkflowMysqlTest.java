@@ -159,6 +159,34 @@ class MallOfflineWorkflowMysqlTest {
         }
     }
 
+    @Test
+    void evidenceUploadIsOwnReservationOnlyAndImmutableOnceStored() {
+        try(var db=new MysqlDatabase()) {
+            var helper=new MallFulfillmentMysqlTest();var f=helper.setup(db,false);
+            new MallOfflineDeadlineMysqlTest().freezeOffline(db,86400000);
+            var bytes=new java.util.HashMap<String,PrivateEvidencePort.Scope>();
+            var media=new PrivateEvidencePort() {
+                public boolean stored(Scope scope,String key) { return scope.equals(bytes.get(key)); }
+                public String signedRead(Scope scope,String key) { return "/private/"+key; }
+                public void store(Scope scope,String key,Upload upload) { bytes.put(key,scope); }
+            };
+            var api=service(db,f,new OfflineCollectionPort(){},StoreStatus.ACTIVE,media);
+            var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());
+            var buyer=MallOrderConcurrencyMysqlTest.BUYER;var ops=f.mall().c.ops;
+            var image=new PrivateEvidencePort.Upload(()->new java.io.ByteArrayInputStream(new byte[]{1}),1,"image/jpeg");
+            var mine=api.reserveEvidence(buyer,q,"BUYER_RECEIPT");
+            var platform=api.reserveEvidence(ops,q,"PLATFORM_RECEIPT");
+            assertTrue(mine.assetKey().matches("[A-Za-z0-9_\\-/]+\\.jpg"));
+            assertEquals("INVALID_REQUEST",assertThrows(MallException.class,()->api.upload(buyer,q,mine.assetKey(),
+                    new PrivateEvidencePort.Upload(image.content(),1,"application/pdf"))).code());
+            assertEquals("EVIDENCE_FORBIDDEN",assertThrows(MallException.class,()->api.upload(buyer,q,platform.assetKey(),image)).code());
+            assertEquals("EVIDENCE_FORBIDDEN",assertThrows(MallException.class,()->api.upload(ops,q,mine.assetKey(),image)).code());
+            api.upload(buyer,q,mine.assetKey(),image);
+            assertEquals("EVIDENCE_ALREADY_STORED",assertThrows(MallException.class,()->api.upload(buyer,q,mine.assetKey(),image)).code());
+            assertEquals(List.of(mine.assetKey()),List.copyOf(bytes.keySet()));
+        }
+    }
+
     static String status(MysqlDatabase db,String claim) {
         return db.jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(claim_snapshot,'$.status')) FROM mall_offline_claim WHERE claim_no=?",String.class,claim);
     }
@@ -168,15 +196,17 @@ class MallOfflineWorkflowMysqlTest {
         return service(db,f,money,StoreStatus.ACTIVE);
     }
     DefaultOfflinePurchaseFacade service(MysqlDatabase db,MallFulfillmentMysqlTest.Fixture f,OfflineCollectionPort money,StoreStatus storeStatus) {
+        return service(db,f,money,storeStatus,new PrivateEvidencePort() {
+            public boolean stored(Scope scope,String key) { return true; }
+            public String signedRead(Scope scope,String key) { return "/private/test"; }
+        });
+    }
+    DefaultOfflinePurchaseFacade service(MysqlDatabase db,MallFulfillmentMysqlTest.Fixture f,OfflineCollectionPort money,StoreStatus storeStatus,PrivateEvidencePort media) {
         var events=new JdbcCommerceEventPersistence(db.ds);
         return new DefaultOfflinePurchaseFacade(new JdbcMallRepository(db.ds,events),new JdbcFulfillmentRepository(db.ds),
                 new JdbcOfflineRepository(db.ds),new JdbcSubscriptionAccountRepository(db.ds),f.mall().c.uow,
                 s->Optional.of(new StoreSnapshot(s,"merchant","RETAIL",storeStatus,CommerceModel.STORE_V1)),
                 (a,s,cap)->new AuthorizationDecision(true,"TEST",Optional.empty()),null,f.svc(),null,
-                money,
-                new PrivateEvidencePort() {
-                    public boolean stored(Scope scope,String key) { return true; }
-                    public String signedRead(Scope scope,String key) { return "/private/test"; }
-                },Clock.fixed(Instant.ofEpochMilli(5000),ZoneOffset.UTC),f.mall().c.ids);
+                money,media,Clock.fixed(Instant.ofEpochMilli(5000),ZoneOffset.UTC),f.mall().c.ids);
     }
 }
