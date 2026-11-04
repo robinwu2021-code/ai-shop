@@ -60,10 +60,14 @@ final class PlatformOfflineLedger {
         return jdbc.query("SELECT p.instructions_json FROM pay_platform_collection_profile p JOIN pay_platform_collection_head h ON h.tenant_no=p.tenant_no AND h.profile_no=p.profile_no AND h.current_version=p.profile_version WHERE h.tenant_no=? AND h.profile_no=? AND h.enabled=1",
                 (r,n)->json.readValue(r.getString(1),OfflineInstructions.class),tenant,profile).stream().filter(p->p.currency().equals(currency)).findFirst();
     }
+    /**
+     * The order froze one immutable profile version at quote time. Issue exactly that version while
+     * the profile stays enabled; a later reconfiguration only affects new quotes.
+     */
     void verifyIssuance(Request r) {
         var terms = r.offline();
         require(terms != null && terms.merchantNo().equals(r.merchantNo()) && terms.currency().equals(r.currency()),"OFFLINE_PROFILE_MISMATCH");
-        var frozen = jdbc.query("SELECT p.instructions_json FROM pay_platform_collection_profile p JOIN pay_platform_collection_head h ON h.tenant_no=p.tenant_no AND h.profile_no=p.profile_no WHERE p.tenant_no=? AND p.profile_no=? AND p.profile_version=? AND h.enabled=1 AND h.current_version=p.profile_version FOR SHARE",
+        var frozen = jdbc.query("SELECT p.instructions_json FROM pay_platform_collection_profile p JOIN pay_platform_collection_head h ON h.tenant_no=p.tenant_no AND h.profile_no=p.profile_no WHERE p.tenant_no=? AND p.profile_no=? AND p.profile_version=? AND h.enabled=1 FOR SHARE",
                 (row,n)->json.readValue(row.getString(1),OfflineInstructions.class),r.key().tenantNo(),terms.profileNo(),terms.version());
         require(frozen.size()==1 && terms.equals(frozen.getFirst()),"OFFLINE_PROFILE_UNAVAILABLE");
     }

@@ -41,6 +41,21 @@ class PlatformOfflineCollectionMysqlTest {
     }
 
     @Test
+    void placedOrderIssuesItsFrozenProfileVersionAfterReconfiguration() throws Exception {
+        try (var f = new Fixture()) {
+            var v1 = f.profile(1, "TWD");
+            var v2 = f.profile(2, "TWD");
+            assertEquals(2, v2.version());
+            var a = f.request("A", v1);
+            assertEquals("PENDING", f.base.service.create(a).state());
+            assertEquals(v1, f.base.service.query(a.key()).request().offline());
+            var forged = new PlatformCollectionService.OfflineInstructions(v1.profileNo(), 9, v1.merchantNo(), v1.currency(),
+                    v1.receivingAccountKey(), v1.paymentWindowVersion(), v1.paymentWindowMs(), v1.instructions());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.create(f.request("B", forged)));
+        }
+    }
+
+    @Test
     void secondRealDepositAfterPaymentIsRecordedAsUnmatchedNotLost() throws Exception {
         try (var f = new Fixture()) {
             var a = f.request("A", f.profile(1, "TWD"));

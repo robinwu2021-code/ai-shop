@@ -928,6 +928,19 @@ class CommerceQuoteTest {
     }
 
     @Test
+    void assistedIdempotencyKeysBelongToEachOperatorNotTheWholeStore() {
+        var terms = new ai.neargo.commerce.api.offline.OfflineCollectionTerms("profile", 1, "platform",
+                "CNY", "opaque-account", "window-v1", 86400000, Map.of("bank", "test-only"));
+        var a = new ActorContext("t", SubjectKind.OPERATOR, "ops-a", "trusted");
+        var b = new ActorContext("t", SubjectKind.OPERATOR, "ops-b", "trusted");
+        var qa = facade.quoteOffline(a, new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "CNY"), terms);
+        var qb = facade.quoteOffline(b, new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "CNY"), terms);
+        facade.placeOrder(a, place(qa, "same-key"));
+        // Operator B reaches the store-level digital occupancy rule, not A's idempotency record.
+        error("ACCOUNT_BUSY", () -> facade.placeOrder(b, place(qb, "same-key")));
+    }
+
+    @Test
     void offlineQuoteStillExpiresInFifteenMinutesAndCannotExtendPlacement() {
         var terms = new ai.neargo.commerce.api.offline.OfflineCollectionTerms("profile", 1, "platform",
                 "CNY", "opaque-account", "window-v1", 86400000, Map.of("bank", "test-only"));

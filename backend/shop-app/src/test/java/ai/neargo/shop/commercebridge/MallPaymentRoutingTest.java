@@ -94,7 +94,10 @@ class MallPaymentRoutingTest {
         when(invariant.successPaymentsSince(0,20)).thenReturn(List.of(new FundInvariantService.SuccessPayment("unmatched","mall",1000,"MALL_UNMATCHED")));
         when(source.notPaidOrders(any())).thenReturn(List.of("mall"));
         var paid=new OrderPaidReconciler(invariant,source,repair);paid.setPlatformRecovery(recovery);
-        assertEquals(0,paid.reconcile(0,20).repaired());
+        var result=paid.reconcile(0,20);
+        assertEquals(0,result.repaired());
+        assertEquals(0,result.failed());
+        assertEquals(1,result.awaitingDisposition());
         verifyNoInteractions(repair,recovery);
     }
 

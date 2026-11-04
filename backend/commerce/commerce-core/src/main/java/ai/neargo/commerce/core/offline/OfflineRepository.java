@@ -8,6 +8,7 @@ import java.util.*;
 public interface OfflineRepository {
     record Evidence(String assetKey, PrivateEvidencePort.Scope scope, long createdAt) {}
     record Claim(ClaimCommand command, String submitterNo, long submittedAt, String status, String reviewer, String reason) {
+        public Claim reviewed(String status,String reviewer,String reason) { return new Claim(command,submitterNo,submittedAt,status,reviewer,reason); }
         public ClaimView view() { return new ClaimView(command.claimNo(),status,command.declaredAmount(),command.declaredPaidAt(),java.time.Instant.ofEpochMilli(submittedAt)); }
     }
     record Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,

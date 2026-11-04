@@ -11,14 +11,18 @@ public interface OfflinePurchaseFacade {
     record EvidenceTicket(String assetKey, String purpose) {}
     record ClaimCommand(OrderQuery order, String claimNo, Money declaredAmount, Instant declaredPaidAt,
             String bankReference, List<String> evidenceKeys) {
-        public ClaimCommand { evidenceKeys = List.copyOf(evidenceKeys); }
+        /** Null-tolerant copy: the facade validates and returns INVALID_REQUEST, never an NPE. */
+        public ClaimCommand { evidenceKeys = evidenceKeys == null ? null : Collections.unmodifiableList(new ArrayList<>(evidenceKeys)); }
     }
     record DeclineCommand(OrderQuery order, String claimNo, String reason) {}
     record ClaimView(String claimNo, String status, Money declaredAmount, Instant declaredPaidAt, Instant submittedAt) {}
     record ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
             String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason) {}
     record VoidCommand(OrderQuery order,String actionNo,String reconciliationReference,String reason,String evidenceKey,
-            Map<String,String> unmatchedDispositions) { public VoidCommand { unmatchedDispositions=Map.copyOf(unmatchedDispositions); } }
+            Map<String,String> unmatchedDispositions) {
+        public VoidCommand { unmatchedDispositions = unmatchedDispositions == null ? null
+                : Collections.unmodifiableMap(new LinkedHashMap<>(unmatchedDispositions)); }
+    }
     record ActionView(String actionNo,String status,String paymentNo) {}
     /**
      * Offline quote: collection terms come only from the trusted pay-domain profile configured for this deployment,

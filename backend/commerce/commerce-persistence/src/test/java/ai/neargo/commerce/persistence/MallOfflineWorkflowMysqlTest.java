@@ -96,12 +96,82 @@ class MallOfflineWorkflowMysqlTest {
         }
     }
 
+    @Test
+    void suspendedStoreStillLetsOperatorRecordMoneyButNotMerchantDeclare() {
+        try(var db=new MysqlDatabase()) {
+            var helper=new MallFulfillmentMysqlTest();var f=helper.setup(db,false);
+            new MallOfflineDeadlineMysqlTest().freezeOffline(db,86400000);
+            f.svc().prepareOffline(new FulfillmentQuery("tenant-a",f.order().orderNo()));
+            OfflineCollectionPort money=new OfflineCollectionPort() {
+                public ManualResult confirm(ManualPayment command) { return new ManualResult("UNMATCHED","ledger-row"); }
+            };
+            var api=service(db,f,money,StoreStatus.DISABLED);
+            var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());
+            var e=assertThrows(MallException.class,()->api.reserveEvidence(MallOrderConcurrencyMysqlTest.BUYER,q,"BUYER_RECEIPT"));
+            assertEquals("STORE_UNAVAILABLE",e.code());
+            var evidence=api.reserveEvidence(f.mall().c.ops,q,"PLATFORM_RECEIPT");
+            var view=api.confirm(f.mall().c.ops,new OfflinePurchaseFacade.ReviewCommand(q,"suspended",null,new Money("CNY",8700),
+                    Instant.ofEpochMilli(3000),"platform","ref",evidence.assetKey(),false,"bank checked"));
+            assertEquals("UNMATCHED",view.status());
+        }
+    }
+
+    @Test
+    void missingCollectionsAreInvalidRequestsAndClaimFollowsReviewOutcome() {
+        try(var db=new MysqlDatabase()) {
+            var helper=new MallFulfillmentMysqlTest();var f=helper.setup(db,false);
+            new MallOfflineDeadlineMysqlTest().freezeOffline(db,86400000);
+            f.svc().prepareOffline(new FulfillmentQuery("tenant-a",f.order().orderNo()));
+            var refuse=new java.util.concurrent.atomic.AtomicBoolean(true);
+            OfflineCollectionPort money=new OfflineCollectionPort() {
+                public ManualResult confirm(ManualPayment command) {
+                    if(refuse.get())throw new IllegalArgumentException("OFFLINE_RECEIVER_MISMATCH");
+                    return new ManualResult("UNMATCHED","ledger-row");
+                }
+            };
+            var api=service(db,f,money);
+            var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());
+            var ops=f.mall().c.ops;
+            assertEquals("INVALID_REQUEST",assertThrows(MallException.class,()->api.submit(MallOrderConcurrencyMysqlTest.BUYER,
+                    new OfflinePurchaseFacade.ClaimCommand(q,"c",new Money("CNY",8800),Instant.ofEpochMilli(3000),"r",null))).code());
+            assertEquals("INVALID_REQUEST",assertThrows(MallException.class,()->api.confirm(ops,
+                    new OfflinePurchaseFacade.ReviewCommand(q,"x",null,new Money("CNY",8800),Instant.ofEpochMilli(3000),"platform","r",null,false,"why"))).code());
+            assertEquals("INVALID_REQUEST",assertThrows(MallException.class,()->api.voidOrder(ops,
+                    new OfflinePurchaseFacade.VoidCommand(q,"v","recon","why","evidence",null))).code());
+            var ticket=api.reserveEvidence(MallOrderConcurrencyMysqlTest.BUYER,q,"BUYER_RECEIPT");
+            api.submit(MallOrderConcurrencyMysqlTest.BUYER,new OfflinePurchaseFacade.ClaimCommand(q,"claim",new Money("CNY",8800),
+                    Instant.ofEpochMilli(3000),"buyer-ref",List.of(ticket.assetKey())));
+            var evidence=api.reserveEvidence(ops,q,"PLATFORM_RECEIPT");
+            var refused=new OfflinePurchaseFacade.ReviewCommand(q,"r1","claim",new Money("CNY",8700),Instant.ofEpochMilli(3000),
+                    "platform","bank-ref",evidence.assetKey(),false,"bank checked");
+            assertThrows(MallException.class,()->api.confirm(ops,refused));
+            assertEquals("SUBMITTED",status(db,"claim"));
+            refuse.set(false);
+            var applied=new OfflinePurchaseFacade.ReviewCommand(q,"r2","claim",new Money("CNY",8700),Instant.ofEpochMilli(3000),
+                    "platform","bank-ref",evidence.assetKey(),false,"bank checked");
+            assertEquals("UNMATCHED",api.confirm(ops,applied).status());
+            assertEquals("MISMATCHED",status(db,"claim"));
+            assertEquals("CLAIM_ALREADY_REVIEWED",assertThrows(MallException.class,()->api.decline(ops,
+                    new OfflinePurchaseFacade.DeclineCommand(q,"claim","late decline"))).code());
+            assertEquals("CLAIM_ALREADY_REVIEWED",assertThrows(MallException.class,()->api.confirm(ops,
+                    new OfflinePurchaseFacade.ReviewCommand(q,"r3","claim",new Money("CNY",8800),Instant.ofEpochMilli(3000),
+                            "platform","other-ref",evidence.assetKey(),false,"again"))).code());
+        }
+    }
+
+    static String status(MysqlDatabase db,String claim) {
+        return db.jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(claim_snapshot,'$.status')) FROM mall_offline_claim WHERE claim_no=?",String.class,claim);
+    }
+
     DefaultOfflinePurchaseFacade service(MysqlDatabase db,MallFulfillmentMysqlTest.Fixture f) { return service(db,f,new OfflineCollectionPort(){}); }
     DefaultOfflinePurchaseFacade service(MysqlDatabase db,MallFulfillmentMysqlTest.Fixture f,OfflineCollectionPort money) {
+        return service(db,f,money,StoreStatus.ACTIVE);
+    }
+    DefaultOfflinePurchaseFacade service(MysqlDatabase db,MallFulfillmentMysqlTest.Fixture f,OfflineCollectionPort money,StoreStatus storeStatus) {
         var events=new JdbcCommerceEventPersistence(db.ds);
         return new DefaultOfflinePurchaseFacade(new JdbcMallRepository(db.ds,events),new JdbcFulfillmentRepository(db.ds),
                 new JdbcOfflineRepository(db.ds),new JdbcSubscriptionAccountRepository(db.ds),f.mall().c.uow,
-                s->Optional.of(new StoreSnapshot(s,"merchant","RETAIL",StoreStatus.ACTIVE,CommerceModel.STORE_V1)),
+                s->Optional.of(new StoreSnapshot(s,"merchant","RETAIL",storeStatus,CommerceModel.STORE_V1)),
                 (a,s,cap)->new AuthorizationDecision(true,"TEST",Optional.empty()),null,f.svc(),null,
                 money,
                 new PrivateEvidencePort() {

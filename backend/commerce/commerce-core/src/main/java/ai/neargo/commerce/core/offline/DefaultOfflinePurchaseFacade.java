@@ -63,16 +63,19 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         return uow.required(()->{
             var allowed=auth.authorize(a,q.store(),capability);
             if(allowed==null || !allowed.allowed())throw fail("FORBIDDEN");
-            var live=stores.find(q.store()).filter(s->s.store().equals(q.store())).orElseThrow(()->fail("NOT_FOUND"));
+            var live=stores.find(q.store()).filter(s->s.store().equals(q.store()));
             var account=accounts.lockSubscriptionAccount(q.store());
-            if(live.status()!=StoreStatus.ACTIVE || live.model()!=CommerceModel.STORE_V1
-                    || !live.merchantNo().equals(account.entityNo()))throw fail("STORE_UNAVAILABLE");
+            // Merchants act only on a live store. Operators must still record or fence real money
+            // after a store is suspended, so they are bound to the order's frozen store/entity instead.
+            if(a.subjectKind()==SubjectKind.ACCOUNT && (live.isEmpty() || live.get().status()!=StoreStatus.ACTIVE
+                    || live.get().model()!=CommerceModel.STORE_V1 || !live.get().merchantNo().equals(account.entityNo())))
+                throw fail("STORE_UNAVAILABLE");
             String currency=operations.locate(a.tenantNo(),q.orderNo()).filter(l->q.store().equals(l.store()))
                     .orElseThrow(()->fail("NOT_FOUND")).currency();
             orders.lockBalance(q.store(),currency);orders.lockSources(q.store(),clock.millis());orders.lockLots(q.store(),currency,clock.millis());
             var o=orders.order(a.tenantNo(),q.orderNo()).filter(v->v.quote().store().equals(q.store())).orElseThrow(()->fail("NOT_FOUND"));
             if(o.quote().purchase().offline()==null)throw fail("OFFLINE_INTENT_REQUIRED");
-            if(!o.quote().entityNo().equals(live.merchantNo()))throw fail("FORBIDDEN");
+            if(a.subjectKind()==SubjectKind.ACCOUNT && !o.quote().entityNo().equals(live.get().merchantNo()))throw fail("FORBIDDEN");
             if(a.subjectKind()==SubjectKind.ACCOUNT && "ACCOUNT".equals(o.quote().purchase().buyerKind())
                     && !o.quote().buyerNo().equals(a.principalNo()))throw fail("FORBIDDEN");
             return work.apply(o);
@@ -101,7 +104,8 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         return e;
     }
     private List<OfflineRepository.Evidence> verifyEvidence(ActorContext actor,OrderQuery order,List<String> keys,String purpose,String cap) {
-        if(keys==null || keys.isEmpty() || keys.size()>10 || new HashSet<>(keys).size()!=keys.size())throw fail("INVALID_REQUEST");
+        if(keys==null || keys.isEmpty() || keys.size()>10 || keys.stream().anyMatch(k->k==null || k.isBlank() || k.length()>512)
+                || new HashSet<>(keys).size()!=keys.size())throw fail("INVALID_REQUEST");
         var evidence=locked(actor,order,cap,o->keys.stream().map(k->ownEvidence(actor,order,k,purpose)).toList());
         uow.requireOutsideTransaction();
         for(var e:evidence)if(!media.stored(e.scope(),e.assetKey()))throw fail("EVIDENCE_UNAVAILABLE");
@@ -109,7 +113,8 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     }
     public ClaimView submit(ActorContext actor,ClaimCommand c) {
         if(actor==null || actor.subjectKind()!=SubjectKind.ACCOUNT)throw fail("FORBIDDEN");
-        if(c==null || c.declaredAmount()==null || c.declaredAmount().minor()<=0 || c.declaredPaidAt()==null)throw fail("INVALID_REQUEST");
+        if(c==null || c.order()==null || c.declaredAmount()==null || c.declaredAmount().minor()<=0 || c.declaredPaidAt()==null
+                || c.evidenceKeys()==null)throw fail("INVALID_REQUEST");
         text(c.claimNo(),64);text(c.bankReference(),128);
         verifyEvidence(actor,c.order(),c.evidenceKeys(),"BUYER_RECEIPT","commerce:mall:purchase");
         return locked(actor,c.order(),"commerce:mall:purchase",o->{
@@ -123,13 +128,14 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         });
     }
     public ClaimView decline(ActorContext actor,DeclineCommand c) {
-        operator(actor);if(c==null)throw fail("INVALID_REQUEST");text(c.reason(),1024);
+        operator(actor);if(c==null || c.order()==null)throw fail("INVALID_REQUEST");text(c.claimNo(),64);text(c.reason(),1024);
         return locked(actor,c.order(),"commerce:mall:offline:review",o->{
             var prior=offline.claim(actor.tenantNo(),o.orderNo(),c.claimNo()).orElseThrow(()->fail("NOT_FOUND"));
             if("DECLINED".equals(prior.status())) {
                 if(!actor.principalNo().equals(prior.reviewer()) || !c.reason().equals(prior.reason()))throw fail("IDEMPOTENCY_CONFLICT");
                 return prior.view();
             }
+            if(!"SUBMITTED".equals(prior.status()))throw fail("CLAIM_ALREADY_REVIEWED");
             var declined=new OfflineRepository.Claim(prior.command(),prior.submitterNo(),prior.submittedAt(),"DECLINED",actor.principalNo(),c.reason());
             offline.saveClaim(declined);return declined.view();
         });
@@ -161,7 +167,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     }
     public ActionView confirm(ActorContext actor,ReviewCommand c) {
         operator(actor);
-        if(c==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null
+        if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null
                 || c.actualPaidAt().getNano()!=0 || c.actualPaidAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
         text(c.actionNo(),64);text(c.actualReceiver(),64);text(c.bankReference(),128);text(c.reason(),1024);
         verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"PLATFORM_RECEIPT","commerce:mall:offline:confirm");
@@ -172,15 +178,20 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
                 if(!c.equals(p.review()) || !actor.principalNo().equals(p.operatorNo()))throw fail("IDEMPOTENCY_CONFLICT");
                 return p;
             }
-            if(c.claimNo()!=null)offline.claim(actor.tenantNo(),o.orderNo(),c.claimNo()).orElseThrow(()->fail("NOT_FOUND"));
+            if(c.claimNo()!=null) {
+                var claim=offline.claim(actor.tenantNo(),o.orderNo(),c.claimNo()).orElseThrow(()->fail("NOT_FOUND"));
+                if(!"SUBMITTED".equals(claim.status()))throw fail("CLAIM_ALREADY_REVIEWED");
+                offline.saveClaim(claim.reviewed("REVIEWING",actor.principalNo(),c.reason()));
+            }
             var a=new OfflineRepository.Action(c.actionNo(),"CONFIRM",c.order(),actor.principalNo(),clock.millis(),c,null,payment(o),"ACCEPTED",null);
             offline.saveAction(a);return a;
         });
         return advance(action).view();
     }
     public ActionView voidOrder(ActorContext actor,VoidCommand c) {
-        operator(actor);if(c==null)throw fail("INVALID_REQUEST");
+        operator(actor);if(c==null || c.order()==null || c.evidenceKey()==null || c.unmatchedDispositions()==null)throw fail("INVALID_REQUEST");
         text(c.actionNo(),64);text(c.reconciliationReference(),128);text(c.reason(),1024);
+        for(var d:c.unmatchedDispositions().entrySet()){text(d.getKey(),64);text(d.getValue(),1024);}
         verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"RECONCILIATION","commerce:mall:offline:void");
         var action=locked(actor,c.order(),"commerce:mall:offline:void",o->{
             var previous=offline.action(actor.tenantNo(),o.orderNo(),c.actionNo());
@@ -219,7 +230,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             var query=new FulfillmentQuery(a.order().store().tenantNo(),a.order().orderNo());
             trusted(query,o->{
                 var current=offline.action(query.tenantNo(),query.orderNo(),a.actionNo()).orElseThrow(()->fail("NOT_FOUND"));
-                if("ACCEPTED".equals(current.status()))offline.saveAction(current.rejected(reason));
+                if("ACCEPTED".equals(current.status())) {var r=current.rejected(reason);offline.saveAction(r);settleClaim(r);}
                 return null;
             });
             throw fail(reason.length()>64?"OFFLINE_REJECTED":reason);
@@ -230,9 +241,21 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         return trusted(query,o->{
             var current=offline.action(query.tenantNo(),query.orderNo(),a.actionNo()).orElseThrow(()->fail("NOT_FOUND"));
             if(!"ACCEPTED".equals(current.status()))return current;
-            offline.saveAction(finished);return finished;
+            offline.saveAction(finished);settleClaim(finished);return finished;
         });
     }
+    /** Claim follows the operator outcome: confirmed, mismatched, or reopened when the ledger refused. */
+    private void settleClaim(OfflineRepository.Action a) {
+        if(!"CONFIRM".equals(a.kind()) || a.review().claimNo()==null)return;
+        var t=a.order().store().tenantNo();
+        offline.claim(t,a.order().orderNo(),a.review().claimNo()).filter(c->"REVIEWING".equals(c.status())).ifPresent(c->
+            offline.saveClaim(switch(a.status()) {
+                case "APPLIED" -> c.reviewed("CONFIRMED",a.operatorNo(),c.reason());
+                case "UNMATCHED" -> c.reviewed("MISMATCHED",a.operatorNo(),c.reason());
+                default -> c.reviewed("SUBMITTED",null,null);
+            }));
+    }
+
     public void recover(FulfillmentQuery query) {
         uow.requireOutsideTransaction();
         if(query==null)throw fail("INVALID_REQUEST");
