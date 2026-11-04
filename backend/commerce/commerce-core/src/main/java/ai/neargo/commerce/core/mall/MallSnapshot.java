@@ -84,7 +84,27 @@ public final class MallSnapshot {
             List<Line> lines,
             List<CreditUse> creditUses,
             List<ConversionSource> conversions,
-            Long convertedCredit) {
+            Long convertedCredit,
+            Long historicalAvailableCredit,
+            RawPrincipalIdentity buyerIdentity) {
+        public Quote(String quoteNo, StoreRef store, String entityNo, String buyerNo, String businessType,
+                String intent, String currency, long valuationAt, long expiresAt, long entitlementVersion,
+                long accountVersion, long balanceVersion, long catalogVersion, long businessTypeVersion,
+                String pricingPolicyVersion, String stackingPolicyVersion, List<Line> lines,
+                List<CreditUse> creditUses, List<ConversionSource> conversions, Long convertedCredit, Long historicalAvailableCredit) {
+            this(quoteNo, store, entityNo, buyerNo, businessType, intent, currency, valuationAt, expiresAt,
+                    entitlementVersion, accountVersion, balanceVersion, catalogVersion, businessTypeVersion,
+                    pricingPolicyVersion, stackingPolicyVersion, lines, creditUses, conversions, convertedCredit, historicalAvailableCredit, null);
+        }
+        public Quote(String quoteNo, StoreRef store, String entityNo, String buyerNo, String businessType,
+                String intent, String currency, long valuationAt, long expiresAt, long entitlementVersion,
+                long accountVersion, long balanceVersion, long catalogVersion, long businessTypeVersion,
+                String pricingPolicyVersion, String stackingPolicyVersion, List<Line> lines,
+                List<CreditUse> creditUses, List<ConversionSource> conversions, Long convertedCredit) {
+            this(quoteNo, store, entityNo, buyerNo, businessType, intent, currency, valuationAt, expiresAt,
+                    entitlementVersion, accountVersion, balanceVersion, catalogVersion, businessTypeVersion,
+                    pricingPolicyVersion, stackingPolicyVersion, lines, creditUses, conversions, convertedCredit, null);
+        }
         public Quote(
                 String quoteNo,
                 StoreRef store,
@@ -206,7 +226,12 @@ public final class MallSnapshot {
                     components(),
                     entitlementVersion,
                     balanceVersion,
-                    Instant.ofEpochMilli(expiresAt));
+                    Instant.ofEpochMilli(expiresAt),
+                    historicalAvailableCredit == null ? null : new ai.neargo.commerce.api.mall.QuoteCreditView(
+                            new Money(currency, convertedValue()), new Money(currency, historicalAvailableCredit),
+                            new Money(currency, credit()), new Money(currency, historicalCredit()),
+                            new Money(currency, Math.subtractExact(Math.addExact(historicalAvailableCredit, convertedValue()), credit())),
+                            Instant.ofEpochMilli(valuationAt)));
         }
     }
 

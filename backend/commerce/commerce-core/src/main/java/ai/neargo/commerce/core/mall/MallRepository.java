@@ -17,6 +17,9 @@ import java.util.*;
  * service while holding these locks.
  */
 public interface MallRepository {
+    /** Frozen source currency, read only after the owning account is locked. */
+    default String storeCurrency(StoreRef store) { throw new UnsupportedOperationException(); }
+
     CreditBalance lockBalance(StoreRef store, String currency);
 
     Sources lockSources(StoreRef store, long at);
@@ -53,6 +56,9 @@ public interface MallRepository {
     void consumeQuote(String tenant, String quoteNo, String actor, long at);
 
     Optional<Order> order(String tenant, String orderNo);
+
+    /** Bounded current store page after the owning account lock. */
+    default List<Order> orders(StoreRef store, String afterOrderNo, int limit) { throw new UnsupportedOperationException(); }
 
     /** Persisted component identities and frozen cycle targets for fulfillment workers. */
     List<OrderComponent> components(StoreRef store, String orderNo);

@@ -21,12 +21,12 @@ public class CommerceFoundationConfiguration {
             DataSource ds,
             CommerceUnitOfWork uow,
             FoundationAuthorityPort host,
-            ObjectProvider<Clock> clocks) {
+            ObjectProvider<Clock> clocks, ObjectProvider<FoundationPurchaseAvailabilityPort> purchase) {
         return new FoundationQueryService(
                 new JdbcCatalogRepository(ds),
                 new JdbcSubscriptionRepository(ds, ns -> UUID.randomUUID().toString()),
                 uow,
                 host,
-                clocks.getIfAvailable(Clock::systemUTC));
+                clocks.getIfAvailable(Clock::systemUTC),purchase.getIfAvailable(()->(a,c)->java.util.Set.of()));
     }
 }

@@ -168,16 +168,18 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
 
     public PaymentOutcome startPayment(ActorContext a, StartPaymentCommand c) {
         uow.requireOutsideTransaction();
+        boolean internalZero = c != null && "INTERNAL".equals(c.channel()) && "ZERO".equals(c.payMethod());
         if (c == null
                 || a == null
                 || c.store() == null
-                || !routes.contains(c.channel() + ":" + c.payMethod()))
+                || !internalZero && !routes.contains(c.channel() + ":" + c.payMethod()))
             throw fail("INVALID_REQUEST");
         locked(
                 a.tenantNo(),
                 c.orderNo(),
                 o -> {
                     buyer(a, c, o);
+                    if (internalZero && o.view().payable().minor() != 0) throw fail("INVALID_REQUEST");
                     if (o.axes().payment() == Payment.CLOSED
                             || o.axes().payment() == Payment.CANCEL_PENDING
                             || clock.millis() >= o.quote().expiresAt()) throw fail("INVALID_STATE");
@@ -221,7 +223,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                             c.channel(),
                                             c.payMethod(),
                                             c.payerReference(),
-                                            preparedAt);
+                                            preparedAt,o.quote().buyerIdentity());
                             var op =
                                     new Operation(
                                             attempt,
@@ -313,7 +315,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
     }
 
     private PaymentQuery query(Operation op) {
-        return new PaymentQuery(op.payment().tenantNo(), op.orderNo(), op.operationNo());
+        return new PaymentQuery(op.payment().tenantNo(), op.orderNo(), op.operationNo(),op.payment());
     }
 
     private PaymentOutcome unknown(Operation op) {
@@ -712,6 +714,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 || c.operationNo() == null
                 || c.operationNo().isBlank()
                 || c.operationNo().length() > 64
+                || c.operatorNo() != null && (c.operatorNo().isBlank() || c.operatorNo().length() > 64)
                 || c.quantity() <= 0
                 || c.quantity() > Integer.MAX_VALUE
                 || c.carrierCode() == null
@@ -781,7 +784,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                             c.quantity(),
                                             ref,
                                             c.carrierCode(),
-                                            c.trackingNo());
+                                            c.trackingNo(),
+                                            c.operatorNo());
                             var next =
                                     new Operation(
                                             ref,
@@ -821,6 +825,21 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 && response.errorCode().filter("NOT_FOUND"::equals).isPresent())
             return inventory.ship(shipment.inventory());
         return response;
+    }
+
+    @Override
+    public FulfillmentResult refresh(FulfillmentQuery query) {
+        uow.requireOutsideTransaction();
+        if (query == null) throw fail("INVALID_REQUEST");
+        var original = locked(query.tenantNo(), query.orderNo(), this::payment);
+        if (original.isPresent() && original.get().payment().amount().minor() > 0) {
+            var operation = original.get();
+            PaymentOutcome observed;
+            try { observed = payments.query(query(operation)); }
+            catch (RuntimeException unavailable) { observed = unknown(operation); }
+            applyPayment(query.tenantNo(), operation, observed);
+        }
+        return recover(query);
     }
 
     public FulfillmentResult recover(FulfillmentQuery q) {

@@ -9,7 +9,11 @@ public record InventoryCommand(
         long quantity,
         String operationNo,
         String carrierCode,
-        String trackingNo) {
+        String trackingNo,
+        String operatorNo) {
+    public InventoryCommand(String t,String o,String c,String s,long q,String op,String carrier,String tracking) {
+        this(t,o,c,s,q,op,carrier,tracking,null);
+    }
     public InventoryCommand {
         if (quantity <= 0
                 || quantity > Integer.MAX_VALUE

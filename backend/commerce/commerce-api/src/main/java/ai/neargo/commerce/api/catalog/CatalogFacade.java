@@ -19,5 +19,13 @@ public interface CatalogFacade {
 
     DraftSaveResult stopSale(ActorContext actor, StopSaleCommand command);
 
+    default CatalogOverview overview(ActorContext actor) {
+        throw new UnsupportedOperationException("CATALOG_OVERVIEW_UNAVAILABLE");
+    }
+
+    default java.util.List<BusinessEndDeploymentOption> deploymentOptions(ActorContext actor) {
+        return java.util.List.of();
+    }
+
     CatalogView catalog(ActorContext actor, String typeCode);
 }

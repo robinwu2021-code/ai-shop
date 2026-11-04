@@ -72,7 +72,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds, int lifecycleVersion) {
-        if (lifecycleVersion != 1 && lifecycleVersion != 2) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (lifecycleVersion != 1 && lifecycleVersion != 2 && lifecycleVersion != 3) throw BizException.of(ErrorCode.BAD_REQUEST);
         InvReservation exists = find(ownerId, externalRef);
         if (exists != null) {
             if (InvEnums.ReservationStatus.RELEASED.equals(exists.getStatus())
@@ -153,7 +153,7 @@ public class ReservationServiceImpl implements ReservationService {
             // 已释放/已过期的不能再确认 —— 那意味着货已经被别人买走了
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        if (Integer.valueOf(2).equals(head.getLifecycleVersion())) throw BizException.of(ErrorCode.CONFLICT);
+        if (!Integer.valueOf(1).equals(head.getLifecycleVersion())) throw BizException.of(ErrorCode.CONFLICT);
         List<InvReservationLine> rows = linesOf(head.getReservationId());
 
         // 先退预留、再出库：两步都是同一行上的条件更新，事务内由行锁串起来。
@@ -360,6 +360,7 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDateTime now = LocalDateTime.now();
         List<InvReservation> candidates = resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
+                .ne(InvReservation::getLifecycleVersion, 3)
                 .lt(InvReservation::getExpiresAt, now)
                 .select(InvReservation::getReservationId)
                 .last("LIMIT " + Math.min(limit, EXPIRE_BATCH_MAX)));
@@ -369,7 +370,8 @@ public class ReservationServiceImpl implements ReservationService {
             // lock because payment may have changed HELD to ALLOCATED in the meantime.
             InvReservation current = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
                     .eq(InvReservation::getReservationId, candidate.getReservationId()).last("FOR UPDATE"));
-            if (current == null || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
+            if (current == null || Integer.valueOf(3).equals(current.getLifecycleVersion())
+                    || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
                     || current.getExpiresAt() == null || !current.getExpiresAt().isBefore(now)) continue;
             unholdAll(current, InvEnums.ReservationStatus.EXPIRED);
             expired++;
@@ -381,6 +383,7 @@ public class ReservationServiceImpl implements ReservationService {
     public int countOverdue() {
         return Math.toIntExact(resMapper.selectCount(Wrappers.<InvReservation>lambdaQuery()
                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
+                .ne(InvReservation::getLifecycleVersion, 3)
                 .lt(InvReservation::getExpiresAt, LocalDateTime.now())));
     }
 

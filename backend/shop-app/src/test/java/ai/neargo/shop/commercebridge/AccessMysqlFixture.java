@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 
 final class AccessMysqlFixture implements AutoCloseable {
     final String schema = "commerce_test_" + UUID.randomUUID().toString().replace("-", "");
-    final DriverManagerDataSource ds;
+    final javax.sql.DataSource ds;
     final JdbcTemplate admin, jdbc;
     final DataSourceTransactionManager manager;
     final SessionDao dao;
@@ -46,7 +46,9 @@ final class AccessMysqlFixture implements AutoCloseable {
         this(Clock.fixed(Instant.parse("2026-10-01T00:00:00Z"), ZoneId.of("Asia/Shanghai")));
     }
 
-    AccessMysqlFixture(Clock clock) throws Exception {
+    AccessMysqlFixture(Clock clock) throws Exception { this(clock, java.util.function.UnaryOperator.identity()); }
+
+    AccessMysqlFixture(Clock clock, java.util.function.UnaryOperator<javax.sql.DataSource> wrapper) throws Exception {
         this.clock = clock;
         String url = System.getenv("COMMERCE_MYSQL_URL"),
                 user = System.getenv("COMMERCE_MYSQL_USER"),
@@ -54,7 +56,7 @@ final class AccessMysqlFixture implements AutoCloseable {
         assertTrue(url.matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/\\?.*"));
         admin = new JdbcTemplate(new DriverManagerDataSource(url, user, password));
         admin.execute("CREATE DATABASE " + schema);
-        ds = new DriverManagerDataSource(url.replace("/?", "/" + schema + "?"), user, password);
+        ds = wrapper.apply(new DriverManagerDataSource(url.replace("/?", "/" + schema + "?"), user, password));
         jdbc = new JdbcTemplate(ds);
         manager = new DataSourceTransactionManager(ds);
         var ddl =
@@ -76,7 +78,7 @@ final class AccessMysqlFixture implements AutoCloseable {
                         "sys_merchant_plan_def",
                         "mch_store",
                         "mch_store_role",
-                        "mch_role")) {
+                        "mch_role", "ops_session", "sys_ops_staff", "sys_role", "sys_role_point", "sys_function_point")) {
             var m =
                     Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS " + table + "\\s*\\(.*?\n\\);")
                             .matcher(ddl);
@@ -123,7 +125,11 @@ final class AccessMysqlFixture implements AutoCloseable {
                         ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class,
                         MchStoreMapper.class,
                         MchStoreRoleMapper.class,
-                        MchRoleMapper.class)) cfg.addMapper(type);
+                        MchRoleMapper.class,
+                        ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper.class,
+                        ai.neargo.shop.platform.perm.mapper.PermMappers.RoleMapper.class,
+                        ai.neargo.shop.platform.perm.mapper.PermMappers.RolePointMapper.class,
+                        ai.neargo.shop.platform.perm.mapper.PermMappers.FunctionPointMapper.class)) cfg.addMapper(type);
         loader =
                 new CompositeIdentityLoader<>(
                         new MerchantIdentityLoader(mybatis.getMapper(MchAccountMapper.class)),

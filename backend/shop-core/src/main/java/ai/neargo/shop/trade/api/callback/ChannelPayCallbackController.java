@@ -122,6 +122,8 @@ public class ChannelPayCallbackController {
          * 查到已支付就走原本的支付成功链路（幂等键 outTradeNo 保证不重复入账），
          * 而不是另写一段「补一下状态」—— 那段会漏掉发券、积分、通知里的某一个。
          */
+        if("PLATFORM_MALL".equals(settlePort.paymentBusiness(String.valueOf(outTradeNo))))
+            return platform(v,msgNo,String.valueOf(outTradeNo),payload);
         PayQueryPort.Result r = payQuery.query(channel, String.valueOf(outTradeNo));
         if (!r.ok()) {
             log.warn("[callback] {} 回查失败，回 FAIL 让通道重推：{}", channel, outTradeNo);
@@ -217,6 +219,8 @@ public class ChannelPayCallbackController {
             return v.ackFail();
         }
 
+        if("PLATFORM_MALL".equals(settlePort.paymentBusiness(String.valueOf(outRefundNo))))
+            return platform(v,msgNo,String.valueOf(outRefundNo),payload);
         PayQueryPort.Result r = payQuery.queryRefund(channel, String.valueOf(outRefundNo));
         if (!r.ok()) {
             log.warn("[callback] {} 退款回查失败，回 FAIL 让通道重推：{}", channel, outRefundNo);
@@ -252,4 +256,13 @@ public class ChannelPayCallbackController {
         log.info("[callback] {} 退款到账：{}（通道退款单号 {}）", channel, outRefundNo, r.tradeNo());
         return v.ackOk();
     }
+    private String platform(ChannelCallbackVerifier verifier,String message,String external,Map<String,Object> payload) {
+        boolean applied;
+        try { applied=settlePort.reconcilePlatformPayment(external); }
+        catch(RuntimeException unavailable) { applied=false; }
+        payMessage.callbackSettled(message,applied?PayMessagePort.ACCEPTED:PayMessagePort.REJECTED,
+                applied?null:"PLATFORM_PAYMENT_UNRESOLVED",external,null,payload);
+        return applied?verifier.ackOk():verifier.ackFail();
+    }
+
 }

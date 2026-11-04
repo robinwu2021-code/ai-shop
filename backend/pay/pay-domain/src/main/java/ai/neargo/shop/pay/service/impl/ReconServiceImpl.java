@@ -153,6 +153,8 @@ public class ReconServiceImpl implements ReconService {
     }
 
     private ReconService.Finding checkOne(StlPayment p,String day) {
+        if("PLATFORM_MALL".equals(p.getPayScene()))return new ReconService.Finding(p.getPaymentNo(),p.getOrderNo(),p.getPayChannel(),
+                p.getOutTradeNo(),p.getDirection(),p.getAmountMinor(),false,false,false,0,null,day,p.getCurrency(),null,"PLATFORM_RECOVERY_REQUIRED");
         PayQueryPort.Result r;
         ai.neargo.shop.spi.pay.RefundQueryResult.Status status=null;
         String error=null;

@@ -18,6 +18,47 @@ import java.time.*;
         matches = "jdbc:mysql://127\\.0\\.0\\.1:.*")
 class FreshAccountSessionVerifierTest {
     @Test
+    void oneConnectionBusinessPoolCannotStarveFreshSessionAndNestedMemberReads() throws Exception {
+        var pools = new java.util.ArrayList<com.zaxxer.hikari.HikariDataSource>();
+        javax.sql.DataSource[] raw = new javax.sql.DataSource[1];
+        try (var f = new AccessMysqlFixture(Clock.fixed(Instant.parse("2026-10-01T00:00:00Z"), ZoneOffset.UTC), source -> {
+            raw[0] = source;
+            for (int i = 0; i < 2; i++) {
+                var pool = new com.zaxxer.hikari.HikariDataSource();
+                pool.setDataSource(source);
+                pool.setMaximumPoolSize(1);
+                pool.setMinimumIdle(0);
+                pool.setConnectionTimeout(250);
+                pools.add(pool);
+            }
+            return new ai.neargo.shop.auth.store.FreshAccountReadDataSource(pools.get(0), pools.get(1));
+        })) {
+            var verifier = new DbAccountSessionVerifier(f.dao, f.loader, f.clock, f.manager);
+            var token = f.store.issue(TokenStore.SessionData.of(LoginUser.merchant("MA", "staff")));
+            var outer = new TransactionTemplate(f.manager);
+            outer.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+            outer.executeWithoutResult(tx -> {
+                assertEquals("merchant", f.jdbc.queryForObject("SELECT name FROM mch_entity WHERE entity_no='M'", String.class));
+                new org.springframework.jdbc.core.JdbcTemplate(raw[0]).update("UPDATE mch_entity SET name='fresh-governance' WHERE entity_no='M'");
+                assertEquals("merchant", f.jdbc.queryForObject("SELECT name FROM mch_entity WHERE entity_no='M'", String.class));
+                assertEquals("fresh-governance", verifier.withFresh(token, f.clock.instant(), session -> {
+                    assertEquals("MA", session.user().userNo());
+                    assertTrue(verifier.verifyFresh(token, f.clock.instant()).isPresent());
+                    return f.jdbc.queryForObject("SELECT name FROM mch_entity WHERE entity_no='M'", String.class);
+                }).orElseThrow());
+                assertEquals("merchant", f.jdbc.queryForObject("SELECT name FROM mch_entity WHERE entity_no='M'", String.class));
+            });
+            try (var occupied = pools.get(1).getConnection()) {
+                assertTimeout(Duration.ofSeconds(2), () -> assertThrows(
+                        ai.neargo.shop.auth.store.FreshAccountReadUnavailable.class,
+                        () -> verifier.verifyFresh(token, f.clock.instant())));
+                assertEquals(1, f.jdbc.queryForObject("SELECT 1", Integer.class));
+            }
+            assertTrue(verifier.verifyFresh(token, f.clock.instant()).isPresent());
+        } finally { pools.forEach(com.zaxxer.hikari.HikariDataSource::close); }
+    }
+
+    @Test
     void verifiesDatabaseRevocationAndDisabledIdentityDespiteCacheAndRepeatableReadSnapshot()
             throws Exception {
         try (var f = new AccessMysqlFixture()) {

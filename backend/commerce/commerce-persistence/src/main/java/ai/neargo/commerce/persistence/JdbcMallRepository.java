@@ -76,6 +76,13 @@ public final class JdbcMallRepository implements MallRepository {
                 row.values().toArray());
     }
 
+    public String storeCurrency(StoreRef store) {
+        guard(store.tenantNo());
+        var currencies = jdbc.queryForList("SELECT DISTINCT currency FROM mch_subscription_period WHERE tenant_no=? AND store_no=?", String.class, store.tenantNo(), store.storeNo());
+        if (currencies.size() != 1 || currencies.getFirst() == null) throw new MallException("CURRENCY_UNAVAILABLE");
+        return currencies.getFirst();
+    }
+
     public CreditBalance lockBalance(StoreRef s, String currency) {
         guard(s.tenantNo());
         return jdbc
@@ -104,7 +111,7 @@ public final class JdbcMallRepository implements MallRepository {
         var permanent = new HashSet<String>();
         jdbc.query(
                 "SELECT * FROM mch_subscription_period WHERE tenant_no=? AND store_no=? AND state"
-                    + " IN ('NORMAL','CONVERTED','FROZEN','REFUNDED') ORDER BY delivery_seq,id FOR"
+                    + " IN ('NORMAL','CONVERTED','FROZEN','REFUNDED','REVOKED') ORDER BY delivery_seq,id FOR"
                     + " UPDATE",
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r -> {
@@ -163,6 +170,7 @@ public final class JdbcMallRepository implements MallRepository {
                         },
                 s.tenantNo(),
                 s.storeNo());
+        new JdbcSubscriptionRepository(ds,namespace -> { throw new IllegalStateException("read only"); }).verifyRevokedEvidence(s);
         if (currencies.size() != 1) throw new MallException("STORE_CURRENCY_UNAVAILABLE");
         return new Sources(currencies.iterator().next(), plans, permanent, conversions);
     }
@@ -377,6 +385,14 @@ public final class JdbcMallRepository implements MallRepository {
 
     public Optional<Order> order(String tenant, String no) {
         return findOrder(tenant, "o.order_no=?", no);
+    }
+
+    public List<Order> orders(StoreRef store, String after, int limit) {
+        guard(store.tenantNo());
+        if (limit < 1 || limit > 100) throw new MallException("INVALID_REQUEST");
+        var numbers = jdbc.queryForList("SELECT order_no FROM mall_order WHERE tenant_no=? AND store_no=? AND order_no>? ORDER BY order_no LIMIT ? FOR UPDATE",
+                String.class, store.tenantNo(), store.storeNo(), after == null ? "" : after, limit);
+        return numbers.stream().map(no -> order(store.tenantNo(), no).orElseThrow()).toList();
     }
 
     public List<OrderComponent> components(StoreRef store, String no) {

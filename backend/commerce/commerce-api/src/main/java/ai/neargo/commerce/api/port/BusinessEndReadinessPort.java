@@ -9,6 +9,10 @@ import java.util.Set;
  * certification.
  */
 public interface BusinessEndReadinessPort {
+    default java.util.List<ai.neargo.commerce.api.catalog.BusinessEndDeploymentOption> acceptedDeployments(String tenantNo) {
+        return java.util.List.of();
+    }
+
     boolean verified(String tenantNo, BusinessEndDraft registration);
 
     /**

@@ -44,6 +44,14 @@ public class CommerceMallAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(ai.neargo.commerce.api.mall.StorefrontFacade.class)
+    ai.neargo.commerce.api.mall.StorefrontFacade commerceStorefrontFacade(CatalogRepository catalog,
+            MallRepository mall, SubscriptionAccountRepository accounts, CommerceUnitOfWork uow,
+            StoreDirectoryPort stores, ActorAuthorizationPort auth, CheckoutReadinessPort readiness) {
+        return new DefaultStorefrontFacade(catalog, mall, accounts, uow, stores, auth, readiness);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(MallFacade.class)
     MallFacade commerceMallFacade(
             MallRepository orders,
@@ -52,6 +60,7 @@ public class CommerceMallAutoConfiguration {
             CommerceUnitOfWork uow,
             StoreDirectoryPort stores,
             ActorAuthorizationPort authorization,
+            CheckoutReadinessPort readiness,
             CommerceIdGenerator ids,
             org.springframework.beans.factory.ObjectProvider<
                             ai.neargo.commerce.api.mall.RefundFacade>
@@ -65,6 +74,6 @@ public class CommerceMallAutoConfiguration {
                 authorization,
                 Clock.systemUTC(),
                 ids,
-                refunds.getIfAvailable());
+                refunds.getIfAvailable(), readiness);
     }
 }

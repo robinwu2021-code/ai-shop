@@ -1,0 +1,133 @@
+package ai.neargo.shop.commercebridge;
+
+import ai.neargo.commerce.api.fulfillment.PaymentFacade;
+import ai.neargo.commerce.api.mall.RefundFacade;
+import ai.neargo.commerce.api.port.CheckoutReadinessPort;
+import ai.neargo.shop.auth.*;
+import ai.neargo.shop.commercebridge.port.ShopMallPaymentRecovery;
+import ai.neargo.shop.config.MallOperatorSessions;
+import ai.neargo.shop.inventory.service.CoordinatedInventoryService;
+import ai.neargo.shop.pay.channel.PayGateway;
+import ai.neargo.shop.pay.service.*;
+
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.*;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.*;
+
+import java.time.Clock;
+import java.util.*;
+
+@Configuration(proxyBeanMethods = false)
+@Profile("api")
+@ConditionalOnProperty(
+        prefix = "commerce",
+        name = {"enabled", "mall.http.enabled"},
+        havingValue = "true")
+@EnableConfigurationProperties(ShopMallProperties.class)
+class ShopMallConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(ShopMallPayerBindings.class)
+    ShopMallPayerBindings mallPayerBindings() {
+        return ShopMallPayerBindings.UNAVAILABLE;
+    }
+
+    @Bean
+    ShopMallAuthority mallAuthority(
+            AccountSessionVerifier buyers,
+            MallOperatorSessions operators,
+            BizIdentityResolver resolver,
+            ShopCommerceStoreAdapter stores,
+            ShopMallPayerBindings bindings) {
+        return new ShopMallAuthority(
+                buyers, operators.verifier(), resolver, stores, Clock.systemUTC(), bindings);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "commerce.mall", name = "enabled", havingValue = "true")
+    ai.neargo.commerce.api.foundation.FoundationPurchaseAvailabilityPort mallFoundationAvailability(
+            ai.neargo.commerce.api.foundation.FoundationAuthorityPort foundation,
+            ShopMallAuthority authority,
+            ai.neargo.commerce.api.mall.StorefrontFacade storefront) {
+        return new ShopMallFoundationAvailability(foundation, authority, storefront);
+    }
+
+    @Bean
+    ShopMallEnvelope mallEnvelope() {
+        return new ShopMallEnvelope();
+    }
+
+    @Bean
+    ShopMallDeploymentRegistry mallDeployments(ShopMallProperties settings) {
+        return new ShopMallDeploymentRegistry(
+                settings.acceptedDeployments(), settings.requiredEnds());
+    }
+
+    @Bean
+    ShopMallHardwareInventoryAdapter mallInventory(
+            ObjectProvider<CoordinatedInventoryService> inventory, ShopMallProperties settings) {
+        return new ShopMallHardwareInventoryAdapter(
+                inventory.getIfAvailable(), settings.inventoryMappings());
+    }
+
+    @Bean
+    CheckoutReadinessPort mallCheckoutReadiness(
+            ShopMallHardwareInventoryAdapter inventory,
+            ShopMallPayerBindings bindings,
+            ObjectProvider<PayGateway> gateways,
+            @Value("${commerce.mall.payment.enabled:false}") boolean enabled,
+            @Value("${commerce.mall.payment.platform-merchant-no:}") String recipient,
+            @Value("${commerce.mall.payment.routes:}") String routes) {
+        Set<String> allowed = new HashSet<>(Arrays.asList(routes.split(",")));
+        // Capabilities read local configuration/certificate availability only, never provider IO.
+        var options =
+                gateways.orderedStream()
+                        .flatMap(
+                                g ->
+                                        g.platformCollectionCapability().stream()
+                                                .filter(
+                                                        c ->
+                                                                c.merchantNo().equals(recipient)
+                                                                        && allowed.contains(
+                                                                                g.payChannel()
+                                                                                        + ":"
+                                                                                        + c
+                                                                                                .method()))
+                                                .map(
+                                                        c ->
+                                                                new CheckoutReadinessPort
+                                                                        .PaymentOption(
+                                                                        g.payChannel(),
+                                                                        c.method(),
+                                                                        c.currency(),
+                                                                        c.maximumMinor())))
+                        .toList();
+        return new ShopMallCheckoutReadiness(enabled, inventory, () -> options, bindings);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "commerce.mall.payment", name = "enabled", havingValue = "true")
+    ShopMallPlatformPaymentAdapter mallPayments(
+            PlatformCollectionService collection,
+            ObjectProvider<PlatformRefundService> refunds,
+            ShopMallPayerBindings bindings) {
+        return new ShopMallPlatformPaymentAdapter(collection, refunds.getIfAvailable(), bindings);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "commerce.mall.payment", name = "enabled", havingValue = "true")
+    ShopMallPaymentRecovery mallPaymentRecovery(
+            PlatformCollectionService collection,
+            ObjectProvider<PlatformRefundService> refunds,
+            PlatformMoneyHandoffService handoffs,
+            PaymentFacade payments,
+            ObjectProvider<RefundFacade> coreRefunds) {
+        return new ShopMallPaymentRecovery(
+                collection,
+                refunds.getIfAvailable(),
+                handoffs,
+                payments,
+                coreRefunds.getIfAvailable());
+    }
+}

@@ -28,22 +28,29 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
                     + " CAST('LEGACY' AS BINARY(6)))";
     private final JdbcTemplate jdbc;
     private final TransactionTemplate fresh;
+    private final ai.neargo.shop.auth.store.FreshAccountReadDataSource routing;
 
     ShopCommerceStoreAdapter(DataSource ds, PlatformTransactionManager manager) {
         jdbc = new JdbcTemplate(ds);
+        routing = ds instanceof ai.neargo.shop.auth.store.FreshAccountReadDataSource source ? source : null;
         fresh = new TransactionTemplate(manager);
         fresh.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         fresh.setReadOnly(true);
+        fresh.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    }
+
+    private <T> T freshRead(java.util.function.Supplier<T> action) {
+        return routing == null ? fresh.execute(tx -> action.get()) : routing.read(fresh, action);
     }
 
     StoreSnapshot current(StoreRef ref) {
-        return fresh.execute(tx -> find(ref).filter(s -> ref.equals(s.store())).orElseThrow());
+        return freshRead(() -> find(ref).filter(s -> ref.equals(s.store())).orElseThrow());
     }
 
     FoundationTarget legacyFinanceTarget(
             LoginUser user, String currentEntity, String storeNo, BizIdentityResolver resolver) {
-        return fresh.execute(
-                tx -> {
+        return freshRead(
+                () -> {
                     var ref = new StoreRef(user.tenantNo(), storeNo);
                     var store =
                             find(ref)

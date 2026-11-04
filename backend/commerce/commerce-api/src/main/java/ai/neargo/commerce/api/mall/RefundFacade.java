@@ -21,6 +21,14 @@ public interface RefundFacade {
 
     RefundView approve(ActorContext operator, RefundApprovalCommand command);
 
+    default RefundView reject(ActorContext operator, RefundRejectionCommand command) {
+        throw new UnsupportedOperationException("REFUND_REVIEW_UNAVAILABLE");
+    }
+
+    default RefundReviewQuoteView reviewQuote(ActorContext operator, RefundReviewQuoteCommand command) {
+        throw new UnsupportedOperationException("REFUND_REVIEW_UNAVAILABLE");
+    }
+
     /** Trusted worker boundary; never expose unverified provider facts through a buyer route. */
     RefundView recover(RefundQuery query);
 

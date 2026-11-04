@@ -11,4 +11,7 @@ public interface PaymentFacade {
     PaymentOutcome startPayment(ActorContext actor, StartPaymentCommand command);
 
     FulfillmentResult recover(FulfillmentQuery query);
+
+    /** Trusted refresh also queries closed attempts for late cash; callers must authorize order ownership first. */
+    default FulfillmentResult refresh(FulfillmentQuery query) { return recover(query); }
 }

@@ -20,6 +20,7 @@ import javax.sql.DataSource;
 
 public final class JdbcSubscriptionRepository
         implements SubscriptionRepository, FoundationRepository {
+    private final tools.jackson.databind.json.JsonMapper mapper = tools.jackson.databind.json.JsonMapper.builder().build();
     private final DataSource ds;
     private final JdbcTemplate jdbc;
     private final JdbcSubscriptionAccountRepository accounts;
@@ -57,6 +58,12 @@ VALUES (?,?,?,?,0,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0) ON DUPLICATE KEY UP
                 actor);
     }
 
+    public void verifyRevokedEvidence(StoreRef store) {
+        requireOuterTransaction(store);
+        if (!jdbc.queryForList("SELECT period_no FROM mch_subscription_period WHERE tenant_no=? AND store_no=? AND state='REVOKED' LIMIT 1 FOR SHARE",
+                String.class,store.tenantNo(),store.storeNo()).isEmpty()) periods(store);
+    }
+
     public List<Period> periods(StoreRef s) {
         requireOuterTransaction(s);
         var ends = new HashMap<String, Map<String, String>>();
@@ -65,7 +72,7 @@ VALUES (?,?,?,?,0,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0) ON DUPLICATE KEY UP
 SELECT p.period_no,e.ec,e.bc FROM mch_subscription_period p
 JOIN JSON_TABLE(p.source_policy_snapshot,'$.ends[*]' COLUMNS(
     ec VARCHAR(64) PATH '$.code',bc VARCHAR(64) PATH '$.end')) e ON TRUE
-WHERE p.tenant_no=? AND p.store_no=? AND p.state IN ('NORMAL','CONVERTED','FROZEN','REFUNDED') FOR SHARE OF p
+WHERE p.tenant_no=? AND p.store_no=? AND p.state IN ('NORMAL','CONVERTED','FROZEN','REFUNDED','REVOKED') FOR SHARE OF p
 """,
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r ->
@@ -75,7 +82,7 @@ WHERE p.tenant_no=? AND p.store_no=? AND p.state IN ('NORMAL','CONVERTED','FROZE
                 s.storeNo());
         return jdbc.query(
                 """
-SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot->>'$.gift' gift FROM mch_subscription_period p WHERE tenant_no=? AND store_no=? AND state IN ('NORMAL','CONVERTED','FROZEN','REFUNDED') ORDER BY delivery_seq,id FOR SHARE
+SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot->>'$.gift' gift FROM mch_subscription_period p WHERE tenant_no=? AND store_no=? AND state IN ('NORMAL','CONVERTED','FROZEN','REFUNDED','REVOKED') ORDER BY delivery_seq,id FOR SHARE
 """,
                 (r, i) ->
                         new Period(
@@ -98,9 +105,36 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
                                         ? null
                                         : r.getObject("effective_end_at", Long.class),
                                 r.getLong("revoked_duration_ms"),
-                                r.getString("state")),
+                                r.getString("state"),
+                                revocation(r.getString("state"),r.getString("revoked_by_no"),r.getString("revocation_snapshot"))),
                 s.tenantNo(),
                 s.storeNo());
+    }
+
+    private ai.neargo.commerce.core.spi.SourceRevocation revocation(String state,String operation,String raw) {
+        if (!"REVOKED".equals(state)) {
+            if (operation != null || raw != null) throw new IllegalStateException("unexpected revocation evidence");
+            return null;
+        }
+        if (operation == null || raw == null) throw new IllegalStateException("missing revocation evidence");
+        var proof=mapper.readValue(raw,ai.neargo.commerce.core.spi.SourceRevocation.class);
+        if (!operation.equals(proof.operationNo())) throw new IllegalStateException("revocation operation mismatch");
+        return proof;
+    }
+
+    public void revokeZeroValue(StoreRef store,String sourceNo,ai.neargo.commerce.core.spi.SourceRevocation proof) {
+        requireOuterTransaction(store);
+        int changed=jdbc.update("""
+UPDATE mch_subscription_period SET state='REVOKED',revoked_by_no=?,revocation_snapshot=?,
+ effective_end_at=GREATEST(original_start_at,IF(plan_no IS NULL,?,LEAST(original_end_at,?))),
+ revoked_duration_ms=granted_duration_ms-?,updated_by=?,updated_at=UTC_TIMESTAMP(3),version=version+1
+WHERE tenant_no=? AND store_no=? AND period_no=? AND state='NORMAL' AND converted_by_no IS NULL
+ AND revoked_by_no IS NULL AND granted_duration_ms=? AND cash_basis_minor=0 AND credit_basis_minor=0
+ AND eligible_basis_minor=0 AND (source_type='GRANT' OR source_policy_snapshot->>'$.gift'='true')
+ AND (tier_code IS NULL OR tier_code<>'FREE') AND ?>=0 AND ?<=granted_duration_ms
+""",proof.operationNo(),mapper.writeValueAsString(proof),proof.effectiveAt(),proof.effectiveAt(),proof.usedDuration(),proof.operatorNo(),
+                store.tenantNo(),store.storeNo(),sourceNo,proof.originalDuration(),proof.usedDuration(),proof.usedDuration());
+        if(changed!=1)throw new ai.neargo.commerce.api.mall.MallException("SOURCE_REVOCATION_FORBIDDEN");
     }
 
     public void cutSources(
@@ -138,10 +172,10 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
         jdbc.query(
                 """
 SELECT g.entitlement_code,g.end_code,g.state,
-       (p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED') OR p.effective_end_at IS NULL OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR p.deleted=1 OR g.deleted=1) invalid_parent
+       (p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED','REVOKED') OR (p.state='REVOKED' AND (p.revoked_by_no IS NULL OR p.revocation_snapshot IS NULL)) OR p.effective_end_at IS NULL OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR p.deleted=1 OR g.deleted=1) invalid_parent
 FROM mch_store_end_grant g LEFT JOIN mch_subscription_period p
   ON p.tenant_no=g.tenant_no AND p.store_no=g.store_no AND p.period_no=g.period_no
-WHERE g.tenant_no=? AND g.store_no=? AND (g.state IN ('NORMAL','REVOKED','FROZEN') OR (g.state='SUPERSEDED' AND p.state IN ('CONVERTED','FROZEN','REFUNDED')))
+WHERE g.tenant_no=? AND g.store_no=? AND (g.state IN ('NORMAL','REVOKED','FROZEN') OR (g.state='SUPERSEDED' AND p.state IN ('CONVERTED','FROZEN','REFUNDED','REVOKED')))
 ORDER BY g.entitlement_code,g.id FOR SHARE
 """,
                 (org.springframework.jdbc.core.RowCallbackHandler)

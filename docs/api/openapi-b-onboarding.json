@@ -6581,6 +6581,16 @@
               "description": ""
             },
             "description": "此笔实际贡献的业务端权益编码。"
+          },
+          "lifecycle": {
+            "type": "string",
+            "description": "兼容可选字段：NORMAL/FROZEN/CONVERTED/REFUNDED/REVOKED，来源实际生命周期，不以原到期时间推导有效。"
+          },
+          "revokedDurationMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "兼容可选字段：实际撤销的未用时长毫秒，已使用历史仍保留。"
           }
         },
         "required": [

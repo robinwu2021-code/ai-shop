@@ -30,6 +30,7 @@ public final class DefaultMallFacade implements MallFacade {
     private final Clock clock;
     private final CommerceIdGenerator ids;
     private final RefundFacade refunds;
+    private CheckoutReadinessPort readiness;
 
     public DefaultMallFacade(
             MallRepository repo,
@@ -62,6 +63,21 @@ public final class DefaultMallFacade implements MallFacade {
         this.auth = Objects.requireNonNull(auth);
         this.clock = Objects.requireNonNull(clock);
         this.ids = Objects.requireNonNull(ids);
+    }
+
+    public DefaultMallFacade(MallRepository repo, CatalogRepository catalogs,
+            SubscriptionAccountRepository accounts, CommerceUnitOfWork uow, StoreDirectoryPort stores,
+            ActorAuthorizationPort auth, Clock clock, CommerceIdGenerator ids, RefundFacade refunds,
+            CheckoutReadinessPort readiness) {
+        this(repo, catalogs, accounts, uow, stores, auth, clock, ids, refunds);
+        this.readiness = Objects.requireNonNull(readiness);
+    }
+
+    private void requireReady(StoreSnapshot store, Quote quote) {
+        if (readiness == null) return; // Existing embedded API constructor; starter always requires the port.
+        var result = readiness.evaluate(store, new Money(quote.currency(), quote.deal()-quote.credit()),
+                quote.lines().stream().map(Line::sku).toList());
+        if (result == null || !result.available()) throw fail("CHECKOUT_UNAVAILABLE");
     }
 
     private static MallException fail(String code) {
@@ -297,13 +313,16 @@ public final class DefaultMallFacade implements MallFacade {
                                     lines,
                                     uses,
                                     conversions,
-                                    convertedUsed);
+                                    convertedUsed,
+                                    historicalAvailable,
+                                    actor.rawIdentity());
                     try {
                         q.deal();
                         q.gross();
                     } catch (ArithmeticException e) {
                         throw fail("INVALID_REQUEST");
                     }
+                    requireReady(store, q);
                     repo.saveQuote(q, actor.principalNo());
                     return q.view();
                 });
@@ -334,6 +353,7 @@ public final class DefaultMallFacade implements MallFacade {
         var q =
                 repo.quote(actor.tenantNo(), command.quoteNo())
                         .filter(v -> v.buyerNo().equals(actor.principalNo()))
+                        .filter(v -> command.expectedStore() == null || command.expectedStore().equals(v.store()))
                         .orElseThrow(() -> fail("NOT_FOUND"));
         var store = authorize(actor, q.store(), "commerce:mall:purchase");
         long at = clock.millis();
@@ -357,6 +377,7 @@ public final class DefaultMallFacade implements MallFacade {
         repo.consumeQuote(actor.tenantNo(), q.quoteNo(), actor.principalNo(), at);
         if (at >= q.expiresAt()) throw fail("QUOTE_EXPIRED");
         validateCurrentSale(q, catalog);
+        requireReady(store, q);
         if (account.entitlementVersion() != q.entitlementVersion()
                 || account.rowVersion() != q.accountVersion()
                 || balance.version() != q.balanceVersion()

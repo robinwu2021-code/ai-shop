@@ -52,7 +52,7 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(RolePermResolver.class);
 
-    private record Snapshot(Map<String, Set<String>> byRole, Set<String> wildcardRoles,
+    private record Snapshot(Map<String, Set<String>> byRole, Set<String> wildcardRoles, Set<String> knownRoles,
                            long loadedAt) {
     }
 
@@ -130,6 +130,18 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
         return of(roles);
     }
 
+    @Override public boolean supportsFreshReads() { return true; }
+
+    @Override
+    public List<String> resolveFresh(List<String> roles) {
+        if (roles == null || roles.isEmpty()) return List.of();
+        Snapshot fresh = load(); // Deliberately bypass both snapshot cache and Perms.of fallback.
+        if (roles.stream().anyMatch(fresh.wildcardRoles()::contains)) return List.of("*");
+        Set<String> granted = new LinkedHashSet<>();
+        for (String role : roles) if (fresh.knownRoles().contains(role)) granted.addAll(fresh.byRole().getOrDefault(role, Set.of()));
+        return List.copyOf(granted);
+    }
+
     /**
      * 配置变更后清缓存。
      *
@@ -179,9 +191,9 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
     private static final long STALE_ALERT_MS = 5 * 60_000L;
 
     private Snapshot load() {
-        Set<String> wildcards = roleMapper.selectList(Wrappers.<SysRole>lambdaQuery()
-                        .eq(SysRole::getEndCode, "OPS"))
-                .stream().filter(r -> Boolean.TRUE.equals(r.getWildcard()))
+        var currentRoles = roleMapper.selectList(Wrappers.<SysRole>lambdaQuery().eq(SysRole::getEndCode, "OPS"));
+        Set<String> knownRoles = currentRoles.stream().map(SysRole::getRoleCode).collect(java.util.stream.Collectors.toSet());
+        Set<String> wildcards = currentRoles.stream().filter(r -> Boolean.TRUE.equals(r.getWildcard()))
                 .map(SysRole::getRoleCode).collect(java.util.stream.Collectors.toSet());
         // point_code → perm_code（null 的点不进：它们是「不受权限约束」或「后端未实现」，
         // 两种都不该变成一个权限码）
@@ -199,6 +211,6 @@ public class RolePermResolver implements ai.neargo.shop.auth.LivePermResolver {
                 byRole.computeIfAbsent(rp.getRoleCode(), k -> new LinkedHashSet<>()).add(perm);
             }
         }
-        return new Snapshot(byRole, wildcards, clock.getAsLong());
+        return new Snapshot(byRole, wildcards, knownRoles, clock.getAsLong());
     }
 }

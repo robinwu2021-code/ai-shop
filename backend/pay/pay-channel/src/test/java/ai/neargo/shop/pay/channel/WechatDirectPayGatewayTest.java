@@ -34,6 +34,46 @@ class WechatDirectPayGatewayTest {
     private static final String NOTIFY = "https://example.test/callback/pay/channel/WECHAT";
     private static final String OPENID = "oABCDEFGHIJKLMN";
 
+    @Test void queryRetainsActualProviderTimeReceiverAndClosedEvidence() throws Exception {
+        var client=new RecordingClient();
+        client.reply=Map.of("trade_state","SUCCESS","out_trade_no","M1","mchid",MCH_ID,
+                "success_time","2026-11-01T12:34:56+08:00","transaction_id","WX1","amount",Map.of("total",100,"currency","CNY"));
+        var result=gateway(client).query("M1");
+        assertThat(result.actualPaidAt()).isEqualTo(java.time.Instant.parse("2026-11-01T04:34:56Z").toEpochMilli());
+        assertThat(result.receiverNo()).isEqualTo(MCH_ID);assertThat(result.outTradeNo()).isEqualTo("M1");
+        client.reply=Map.of("trade_state","CLOSED","out_trade_no","M1","mchid",MCH_ID);
+        var closed=gateway(client).close("M1");
+        assertThat(closed.providerState()).isEqualTo("CLOSED");assertThat(closed.receiverNo()).isEqualTo(MCH_ID);
+        assertThat(client.api).isEqualTo("/v3/pay/transactions/out-trade-no/M1/close");
+        assertThat(client.body).containsExactlyEntriesOf(Map.of("mchid",MCH_ID));
+        client.reply=Map.of("trade_state","SUCCESS","transaction_id","WX1","amount",Map.of("total",100,"currency","CNY"));
+        var unproven=gateway(client).query("M1");
+        assertThat(unproven.actualPaidAt()).isNull();assertThat(unproven.receiverNo()).isNull();
+    }
+
+    @Test void refundQueryRetainsOriginalPaymentAndActualRefundTime() throws Exception {
+        var client=new RecordingClient();client.reply=Map.of("status","SUCCESS","out_refund_no","R1","refund_id","WR1",
+                "out_trade_no","M1","transaction_id","WX1","success_time","2026-11-01T13:00:00+08:00",
+                "amount",Map.of("refund",60,"total",100,"currency","CNY"));
+        var proof=gateway(client).queryRefundOutcome("R1");
+        assertThat(proof.originalOutTradeNo()).isEqualTo("M1");assertThat(proof.originalTradeNo()).isEqualTo("WX1");
+        assertThat(proof.originalTotalMinor()).isEqualTo(100);assertThat(proof.receiverNo()).isEqualTo(MCH_ID);
+        assertThat(proof.actualRefundAt()).isEqualTo(java.time.Instant.parse("2026-11-01T05:00:00Z").toEpochMilli());
+    }
+
+    @Test void fractionalAndOverflowProviderMoneyNeverBecomeVerifiedIntegerCash() throws Exception {
+        var client=new RecordingClient();
+        for(var invalid:List.of(new java.math.BigDecimal("100.5"),new java.math.BigInteger("9223372036854775808"))) {
+            client.reply=Map.of("trade_state","SUCCESS","out_trade_no","M1","mchid",MCH_ID,
+                    "success_time","2026-11-01T12:34:56+08:00","transaction_id","WX1","amount",Map.of("total",invalid,"currency","CNY"));
+            assertThat(gateway(client).query("M1").paid()).isFalse();
+            client.reply=Map.of("status","SUCCESS","out_refund_no","R1","refund_id","WR1",
+                    "out_trade_no","M1","transaction_id","WX1","success_time","2026-11-01T13:00:00+08:00",
+                    "amount",Map.of("refund",60,"total",invalid,"currency","CNY"));
+            assertThat(gateway(client).queryRefundOutcome("R1").status()).isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.UNKNOWN);
+        }
+    }
+
     // ---------------------------------------------------------------- 下单
 
     @Test

@@ -1,5 +1,8 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.spi.pay.PlatformPaymentRecoveryPort;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.pay.service.FundInvariantService;
 import ai.neargo.shop.pay.service.FundInvariantService.SuccessPayment;
 import ai.neargo.shop.spi.trade.OrderRepairPort;
@@ -65,6 +68,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class OrderPaidReconciler {
 
+    private PlatformPaymentRecoveryPort platformRecovery;
+    @Autowired(required=false)
+    public void setPlatformRecovery(PlatformPaymentRecoveryPort recovery) { this.platformRecovery=recovery; }
+
     private static final Logger log = LoggerFactory.getLogger(OrderPaidReconciler.class);
 
     private final FundInvariantService payInvariants;
@@ -92,11 +99,16 @@ public class OrderPaidReconciler {
          * 逐笔一个 SELECT 的话这个任务自己会变成数据库上的一次小型压测。
          */
         Set<String> notPaid = Set.copyOf(
-                tradeSource.notPaidOrders(paid.stream().map(SuccessPayment::orderNo).toList()));
+                tradeSource.notPaidOrders(paid.stream().filter(p->!"PLATFORM_MALL".equals(p.paymentBusiness())).map(SuccessPayment::orderNo).toList()));
 
         int repaired = 0;
         int failed = 0;
         for (SuccessPayment p : paid) {
+            if("PLATFORM_MALL".equals(p.paymentBusiness())) {
+                try { if(platformRecovery!=null&&platformRecovery.recover(p.paymentNo()))repaired++;else failed++; }
+                catch(RuntimeException unavailable){failed++;}
+                continue;
+            }
             if (!notPaid.contains(p.orderNo())) {
                 continue;
             }

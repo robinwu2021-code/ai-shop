@@ -113,6 +113,12 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
         // Old V6 commands omitted preparedAt. Preserve their canonical immutable request/hash.
         if (immutable.payment() != null && immutable.payment().preparedAt() == null)
             ((ObjectNode) requestTree.get("payment")).remove("preparedAt");
+        if (immutable.payment() != null && immutable.payment().buyerIdentity() == null)
+            ((ObjectNode) requestTree.get("payment")).remove("buyerIdentity");
+        if (immutable.inventory() != null && immutable.inventory().operatorNo() == null)
+            ((ObjectNode) requestTree.get("inventory")).remove("operatorNo");
+        if (immutable.shipment() != null && immutable.shipment().operatorNo() == null)
+            ((ObjectNode) requestTree.get("shipment")).remove("operatorNo");
         String request = encode(requestTree),
                 hash = ai.neargo.commerce.core.spi.FactDigest.of(List.of(request));
         boolean pay = op.kind().equals("PAYMENT");

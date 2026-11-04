@@ -71,6 +71,32 @@
         "sql_type": "VARCHAR(1024)",
         "nullable": true,
         "mapping": "Independent operations approval evidence; original buyer reason remains in reason"
+      },
+      {
+        "name": "review_quotes_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Append-only independent operator review quotes bound to immutable original request"
+      },
+      {
+        "name": "approved_review_quote_no",
+        "sql_type": "VARCHAR(64)",
+        "nullable": true,
+        "mapping": "Selected immutable operator review quote; null uses original buyer preview"
+      }
+    ],
+    "mch_subscription_period": [
+      {
+        "name": "revoked_by_no",
+        "sql_type": "VARCHAR(64)",
+        "nullable": true,
+        "mapping": "Immutable zero-value source revocation operation"
+      },
+      {
+        "name": "revocation_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Original zero economics, used duration, effective cut and operator evidence"
       }
     ]
   },

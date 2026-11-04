@@ -51,27 +51,32 @@ public final class JdbcRefundRepository implements RefundRepository {
         return jdbc
                 .query(
                         "SELECT * FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE",
-                        (r, n) ->
-                                new State(
-                                        decode(r.getString("policy_snapshot"), Preview.class),
-                                        r.getString("status"),
-                                        r.getLong("approved_cash_minor"),
-                                        r.getLong("restore_credit_minor"),
-                                        r.getString("reviewed_by"),
-                                        r.getString("reviewed_by") == null
-                                                ? r.getString("reason")
-                                                : r.getString("review_evidence"),
-                                        decode(
-                                                r.getString("command_snapshot"),
-                                                PaymentRefundCommand.class),
-                                        decode(
-                                                r.getString("verified_fact_snapshot"),
-                                                VerifiedRefundFact.class),
-                                        r.getObject("reviewed_at", Long.class)),
+                        (r, n) -> {
+                            var original = decode(r.getString("policy_snapshot"), Preview.class);
+                            String reviewNo = r.getString("approved_review_quote_no");
+                            var chosen = original;
+                            if (reviewNo != null) chosen = Arrays.stream(decode(r.getString("review_quotes_snapshot"), ReviewQuote[].class))
+                                    .filter(q -> reviewNo.equals(q.reviewQuoteNo()) && original.digest().equals(q.requestDigest()))
+                                    .findFirst().orElseThrow(() -> new MallException("REVIEW_EVIDENCE_MISSING")).preview();
+                            return new State(chosen, r.getString("status"), r.getLong("approved_cash_minor"),
+                                    r.getLong("restore_credit_minor"), r.getString("reviewed_by"),
+                                    r.getString("reviewed_by") == null ? r.getString("reason") : r.getString("review_evidence"),
+                                    decode(r.getString("command_snapshot"), PaymentRefundCommand.class),
+                                    decode(r.getString("verified_fact_snapshot"), VerifiedRefundFact.class),
+                                    r.getObject("reviewed_at", Long.class), original.digest(), reviewNo);
+                        },
                         tenant,
                         no)
                 .stream()
                 .findFirst();
+    }
+
+    public List<State> forOrder(MallSnapshot.Order order) {
+        var store = order.quote().store();
+        guard(store.tenantNo());
+        return jdbc.queryForList("SELECT refund_no FROM mall_refund WHERE tenant_no=? AND store_no=? AND order_no=? ORDER BY id FOR UPDATE",
+                String.class, store.tenantNo(), store.storeNo(), order.orderNo())
+                .stream().map(no -> find(store.tenantNo(), no).orElseThrow()).toList();
     }
 
     public Optional<State> latestLatePayment(String tenant, String orderNo, String prefix) {
@@ -261,6 +266,32 @@ public final class JdbcRefundRepository implements RefundRepository {
                                 c));
     }
 
+    public Preview requestPreview(String tenant, String refundNo) {
+        guard(tenant);
+        return decode(jdbc.queryForObject("SELECT policy_snapshot FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, tenant, refundNo), Preview.class);
+    }
+
+    public Optional<ReviewQuote> reviewQuote(String tenant, String refundNo, String reviewNo) {
+        guard(tenant);
+        String raw = jdbc.queryForObject("SELECT review_quotes_snapshot FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, tenant, refundNo);
+        return raw == null ? Optional.empty() : Arrays.stream(decode(raw, ReviewQuote[].class))
+                .filter(q -> reviewNo.equals(q.reviewQuoteNo())).findFirst();
+    }
+
+    public void createReviewQuote(ReviewQuote quote) {
+        var p = quote.preview();
+        guard(p.store().tenantNo());
+        var state = find(p.store().tenantNo(), p.refundNo()).orElseThrow();
+        if (!"REQUESTED".equals(state.status()) || !state.requestDigest().equals(quote.requestDigest()))
+            throw new MallException("VERSION_CONFLICT");
+        String raw = jdbc.queryForObject("SELECT review_quotes_snapshot FROM mall_refund WHERE tenant_no=? AND refund_no=? FOR UPDATE", String.class, p.store().tenantNo(), p.refundNo());
+        var quotes = new ArrayList<ReviewQuote>(raw == null ? List.of() : Arrays.asList(decode(raw, ReviewQuote[].class)));
+        if (quotes.stream().anyMatch(q -> q.reviewQuoteNo().equals(quote.reviewQuoteNo())))
+            throw new MallException("IDEMPOTENCY_CONFLICT");
+        quotes.add(quote);
+        changed(jdbc.update("UPDATE mall_refund SET review_quotes_snapshot=?,version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE tenant_no=? AND refund_no=? AND status='REQUESTED'", encode(quotes), p.store().tenantNo(), p.refundNo()));
+    }
+
     public void create(State s) {
         var p = s.preview();
         guard(p.store().tenantNo());
@@ -307,11 +338,12 @@ public final class JdbcRefundRepository implements RefundRepository {
         changed(
                 jdbc.update(
                         "UPDATE mall_refund SET"
-                            + " status=?,approved_cash_minor=?,restore_credit_minor=?,reviewed_by=?,reviewed_at=IF(?"
+                            + " status=?,approved_review_quote_no=?,approved_cash_minor=?,restore_credit_minor=?,reviewed_by=?,reviewed_at=IF(?"
                             + " IS NULL,NULL,COALESCE(reviewed_at,?)),reason=IF(? IS"
                             + " NULL,?,reason),review_evidence=?,command_snapshot=?,verified_fact_snapshot=?,pay_refund_no=?,version=version+1,updated_at=UTC_TIMESTAMP(3)"
                             + " WHERE tenant_no=? AND refund_no=?",
                         s.status(),
+                        s.reviewQuoteNo(),
                         s.approvedCash(),
                         s.restoredCredit(),
                         s.reviewer(),

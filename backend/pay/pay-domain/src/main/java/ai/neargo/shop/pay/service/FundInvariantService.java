@@ -74,7 +74,8 @@ public interface FundInvariantService {
      *                  提现、补贴这类流水没有订单，调用方要自己滤掉
      * @param paidAt    通道回执的成功时刻
      */
-    record SuccessPayment(String paymentNo, String orderNo, long paidAt) {
+    record SuccessPayment(String paymentNo, String orderNo, long paidAt,String paymentBusiness) {
+        public SuccessPayment(String paymentNo,String orderNo,long paidAt) {this(paymentNo,orderNo,paidAt,"CONSUMER");}
     }
 
     /**

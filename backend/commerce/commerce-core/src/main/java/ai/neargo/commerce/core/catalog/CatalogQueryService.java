@@ -11,6 +11,23 @@ final class CatalogQueryService {
         this.support = support;
     }
 
+    java.util.List<BusinessEndDeploymentOption> deploymentOptions(ActorContext actor) {
+        support.authorize(actor,"read");
+        return java.util.List.copyOf(support.readiness.acceptedDeployments(actor.tenantNo()));
+    }
+
+    CatalogOverview overview(ActorContext actor) {
+        var s = support.read(actor);
+        return new CatalogOverview(
+                s.types.values().stream().map(t -> new BusinessTypeView(t.draft(), t.version())).toList(),
+                s.ends.values().stream().map(e -> new BusinessEndView(e.draft(), e.version())).toList(),
+                s.plans.values().stream().map(p -> new PlanDefinitionView(p.planNo(),p.typeCode(),p.tier(),p.currentVersionNo(),p.saleStatus(),p.version())).toList(),
+                s.planVersions.values().stream().map(p -> new PlanVersionView(p.draft(),p.status(),p.revision(),p.version())).toList(),
+                s.products.values().stream().map(p -> new ProductView(p.draft(),p.saleStatus(),p.version())).toList(),
+                s.skus.values().stream().map(v -> new SkuDefinitionView(v.skuNo(),v.productNo(),v.title(),v.maxPerOrder(),v.currentVersionNo(),v.saleStatus(),v.version())).toList(),
+                s.skuVersions.values().stream().map(v -> new SkuVersionView(v.draft(),v.status(),v.revision(),v.version())).toList());
+    }
+
     CatalogView catalog(ActorContext actor, String type) {
         var state = support.read(actor);
         var businessType = CatalogSupport.require(state.types, type);

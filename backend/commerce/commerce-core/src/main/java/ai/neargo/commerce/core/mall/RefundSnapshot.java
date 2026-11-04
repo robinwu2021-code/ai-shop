@@ -120,6 +120,12 @@ public final class RefundSnapshot {
         }
     }
 
+    public record ReviewQuote(String reviewQuoteNo, String requestDigest, Preview preview) {
+        public RefundReviewQuoteView view() {
+            return new RefundReviewQuoteView(reviewQuoteNo, requestDigest, preview.view());
+        }
+    }
+
     public record State(
             Preview preview,
             String status,
@@ -129,7 +135,24 @@ public final class RefundSnapshot {
             String reviewEvidence,
             PaymentRefundCommand command,
             VerifiedRefundFact fact,
-            Long reviewedAt) {
+            Long reviewedAt,
+            String requestDigest,
+            String reviewQuoteNo) {
+        public State(Preview preview, String status, long approvedCash, long restoredCredit,
+                String reviewer, String reviewEvidence, PaymentRefundCommand command,
+                VerifiedRefundFact fact, Long reviewedAt) {
+            this(preview, status, approvedCash, restoredCredit, reviewer, reviewEvidence, command,
+                    fact, reviewedAt, preview.digest(), null);
+        }
+        public State withReview(ReviewQuote quote) {
+            return new State(quote.preview(), status, approvedCash, restoredCredit, reviewer,
+                    reviewEvidence, command, fact, reviewedAt, quote.requestDigest(), quote.reviewQuoteNo());
+        }
+        public State inheritReview(State previous) {
+            return new State(preview, status, approvedCash, restoredCredit, reviewer, reviewEvidence,
+                    command, fact, reviewedAt == null ? previous.reviewedAt() : reviewedAt,
+                    previous.requestDigest(), previous.reviewQuoteNo());
+        }
         public State(
                 Preview preview,
                 String status,
@@ -157,12 +180,13 @@ public final class RefundSnapshot {
                     preview.orderNo(),
                     switch (status) {
                         case "SUCCEEDED" -> AsyncStatus.SUCCEEDED;
-                        case "REJECTED" -> AsyncStatus.FAILED;
+                        case "REJECTED", "DECLINED" -> AsyncStatus.FAILED;
                         case "UNKNOWN", "DISPATCHING" -> AsyncStatus.UNKNOWN;
                         default -> AsyncStatus.PENDING;
                     },
                     new Money(preview.currency(), approvedCash),
-                    new Money(preview.currency(), restoredCredit));
+                    new Money(preview.currency(), restoredCredit),
+                    status, requestDigest, reviewQuoteNo);
         }
     }
 }

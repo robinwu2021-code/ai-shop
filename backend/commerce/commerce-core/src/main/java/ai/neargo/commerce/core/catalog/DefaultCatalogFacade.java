@@ -67,6 +67,10 @@ public final class DefaultCatalogFacade implements CatalogFacade {
         return skus.stop(a, d);
     }
 
+    public java.util.List<BusinessEndDeploymentOption> deploymentOptions(ActorContext actor) { return queries.deploymentOptions(actor); }
+
+    public CatalogOverview overview(ActorContext actor) { return queries.overview(actor); }
+
     public CatalogView catalog(ActorContext actor, String typeCode) {
         return queries.catalog(actor, typeCode);
     }

@@ -621,3 +621,7 @@ commerce_expiry_notice	sent_at	bigint	YES
 mall_refund	command_snapshot	json	YES
 mall_refund	verified_fact_snapshot	json	YES
 mall_refund	review_evidence	varchar(1024)	YES
+mall_refund	review_quotes_snapshot	json	YES
+mall_refund	approved_review_quote_no	varchar(64)	YES
+mch_subscription_period	revoked_by_no	varchar(64)	YES
+mch_subscription_period	revocation_snapshot	json	YES

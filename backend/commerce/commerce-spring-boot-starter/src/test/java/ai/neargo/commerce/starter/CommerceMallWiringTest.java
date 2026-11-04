@@ -59,6 +59,11 @@ class CommerceMallWiringTest {
     }
 
     ApplicationContextRunner wired() {
+        return wiredWithoutReadiness().withBean(CheckoutReadinessPort.class,
+                () -> (s,m,skus) -> new CheckoutReadinessPort.Readiness(false, java.util.List.of("TEST_UNAVAILABLE"), java.util.List.of()));
+    }
+
+    ApplicationContextRunner wiredWithoutReadiness() {
         return runner().withPropertyValues("commerce.enabled=true", "commerce.mall.enabled=true")
                 .withBean(MallRepository.class, () -> unused(MallRepository.class))
                 .withBean(CatalogRepository.class, () -> unused(CatalogRepository.class))
@@ -70,6 +75,13 @@ class CommerceMallWiringTest {
                 .withBean(
                         CommerceIdGenerator.class,
                         () -> n -> java.util.UUID.randomUUID().toString());
+    }
+
+    @Test
+    void specificallyMissingCheckoutReadinessFailsClosed() {
+        wiredWithoutReadiness().withBean(ActorAuthorizationPort.class,
+                () -> (a,s,p) -> new ai.neargo.commerce.api.common.AuthorizationDecision(false,"NONE",java.util.Optional.empty()))
+                .run(c -> assertNotNull(c.getStartupFailure()));
     }
 
     @Test

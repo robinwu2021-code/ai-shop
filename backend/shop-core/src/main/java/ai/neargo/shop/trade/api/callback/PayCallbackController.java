@@ -88,6 +88,8 @@ public class PayCallbackController {
          * 多通道那个，测试当场红在「一笔成功支付都没扫到」——
          * 因为今天真正在用的是这个 stub 入口。
          */
+        // Shared-secret test callbacks never authorize platform mall cash facts.
+        if("PLATFORM_MALL".equals(settlePort.paymentBusiness(body.outTradeNo())))return "FAIL";
         var initiated = settlePort.paymentByOutTradeNo(body.outTradeNo());
         if (initiated == null) {
             payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED, "流水里没有这个商户单号",

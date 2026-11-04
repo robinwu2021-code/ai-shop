@@ -18,12 +18,28 @@ import java.time.*;
 import java.util.*;
 
 class MallFulfillmentMysqlTest {
+    @Test void boundedScheduledRecoveryUsesPersistedIdentifiersAndNeverHoldsTransactionAcrossProvider() throws Exception {
+        try(var db=new MysqlDatabase()) {
+            var f=setup(db,false);start(f);
+            f.bridge.payment=new PaymentOutcome(f.order.orderNo(),Optional.of("pay"),"platform",f.order.payable(),
+                    AsyncStatus.SUCCEEDED,Optional.of(Instant.ofEpochMilli(2000)),Optional.empty());
+            var recovery=new DefaultMallRecoveryFacade(new JdbcRecoveryRepository(db.ds),f.mall.c.uow,f.svc,null);
+            var first=recovery.recover(new MallRecoveryFacade.Batch(0,1));
+            assertEquals(1,first.visited());assertEquals(0,first.failed());assertTrue(first.nextOrderId()>0);
+            assertEquals("PAID",db.jdbc.queryForObject("SELECT pay_status FROM mall_order",String.class));
+            assertEquals("COMPLETED",db.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order",String.class));
+            assertTrue(recovery.recover(new MallRecoveryFacade.Batch(first.nextOrderId(),1)).endOfScan());
+            assertThrows(IllegalArgumentException.class,()->recovery.recover(new MallRecoveryFacade.Batch(0,501)));
+            assertThrows(IllegalStateException.class,()->f.mall.c.uow.required(()->recovery.recover(new MallRecoveryFacade.Batch(0,1))));
+        }
+    }
     static final StoreRef STORE = MallOrderConcurrencyMysqlTest.STORE;
     static final ActorContext BUYER = MallOrderConcurrencyMysqlTest.BUYER;
     static final Clock CLOCK = Clock.fixed(Instant.ofEpochMilli(2000), ZoneOffset.UTC);
 
     static class Bridge implements PlatformPaymentPort, HardwareInventoryPort {
         PaymentIntentCommand intent;
+        PaymentQuery lastPaymentQuery;
         PaymentOutcome payment;
         boolean closed;
         boolean unknownInventory;
@@ -55,6 +71,7 @@ class MallFulfillmentMysqlTest {
         }
 
         public PaymentOutcome query(PaymentQuery q) {
+            lastPaymentQuery=q;
             external();
             queries++;
             return payment == null
@@ -205,7 +222,8 @@ class MallFulfillmentMysqlTest {
         var events = new JdbcCommerceEventPersistence(db.ds);
         var subscription = new JdbcSubscriptionRepository(db.ds, m.c.ids);
         var schedule = new EndScheduleService(subscription, m.c.uow, events, m.c.ids, CLOCK);
-        m.c.uow.required(
+        // Pre-V6 migration fixtures seed historical data, not current V9 source-management columns.
+        if (migrate) m.c.uow.required(
                 () -> {
                     schedule.persist(
                             subscription.lock(STORE),
@@ -356,10 +374,11 @@ class MallFulfillmentMysqlTest {
                             "ship-1",
                             "carrier",
                             "tracking-1",
-                            1);
+                            1,"ops-shipping");
             f.svc.confirmShipment(first);
             f.svc.confirmShipment(first);
             assertEquals(1, f.bridge.ships);
+            assertEquals("ops-shipping",f.bridge.lastShipment.operatorNo());
             assertThrows(
                     MallException.class,
                     () ->
@@ -606,6 +625,22 @@ class MallFulfillmentMysqlTest {
         }
     }
 
+    @Test void canonicalInternalZeroRouteDoesNotDependOnExternalSdkRoutesAndRejectsPositiveCash() {
+        try(var db=new MysqlDatabase()) {
+            var f=setup(db,false,null,m->{
+                db.jdbc.update("update mch_subscription_credit_account set balance_minor=9000");
+                db.jdbc.update("update mch_subscription_credit_lot set issued_minor=4500,remaining_minor=4500");
+            });
+            var paid=f.svc.startPayment(BUYER,new StartPaymentCommand(STORE,f.order.orderNo(),"INTERNAL","ZERO",null));
+            assertEquals(AsyncStatus.SUCCEEDED,paid.status());assertEquals(0,f.bridge.creates);
+        }
+        try(var db=new MysqlDatabase()) {
+            var f=setup(db,false);
+            assertThrows(MallException.class,()->f.svc.startPayment(BUYER,new StartPaymentCommand(STORE,f.order.orderNo(),"INTERNAL","ZERO",null)));
+            assertEquals(0,f.bridge.creates);
+            assertEquals(0,count(db,"select count(*) from mall_payment_ref"));
+        }
+    }
     @Test
     void zeroPayableSettlesThroughInternalFactWithNoPaymentPortCall() {
         try (var db = new MysqlDatabase()) {
@@ -1128,6 +1163,30 @@ class MallFulfillmentMysqlTest {
         legacyTaskCannotBeIgnored(true);
     }
 
+    @Test void trustedRefreshRecordsLateCashAfterClosedOrderWithoutDeliveringRights() {
+        try(var db=new MysqlDatabase()) {
+            var f=setup(db,false);start(f);f.bridge.closed=true;
+            f.mall.api.cancelOrder(BUYER,new CancelOrderCommand(STORE,f.order.orderNo(),"cancel-refresh","cancel"));
+            f.svc.recover(new FulfillmentQuery(STORE.tenantNo(),f.order.orderNo()));
+            f.bridge.payment=new PaymentOutcome(f.order.orderNo(),Optional.of("pay"),"platform",f.order.payable(),AsyncStatus.SUCCEEDED,
+                    Optional.of(Instant.ofEpochMilli(2100)),Optional.empty());
+            f.svc.refresh(new FulfillmentQuery(STORE.tenantNo(),f.order.orderNo()));
+            assertEquals("PAID",db.jdbc.queryForObject("SELECT pay_status FROM mall_order",String.class));
+            assertEquals("REFUNDING",db.jdbc.queryForObject("SELECT refund_status FROM mall_order",String.class));
+            assertEquals(1,count(db,"SELECT count(*) FROM mch_subscription_period"));
+        }
+    }
+
+    @Test void recoveryCarriesOnlyThePersistedOriginalIntentForHostCloseFencing() {
+        try(var db=new MysqlDatabase()) {
+            var f=setup(db,false);start(f);
+            f.svc.recover(new FulfillmentQuery(STORE.tenantNo(),f.order.orderNo()));
+            var tree=tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(f.bridge.lastPaymentQuery);
+            assertNotNull(tree.get("original"),"recovery must carry the frozen intent, never client-supplied close metadata");
+            assertEquals(f.bridge.intent.paymentAttemptNo(),tree.get("original").get("paymentAttemptNo").asString());
+        }
+    }
+
     @Test
     void preFixNonzeroAttemptWithoutPreparationTimeRetainsItsRequestHash() {
         try (var db = new MysqlDatabase()) {
@@ -1161,6 +1220,7 @@ class MallFulfillmentMysqlTest {
             var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
             var tree = mapper.valueToTree(original);
             ((tools.jackson.databind.node.ObjectNode) tree.get("payment")).remove("preparedAt");
+            ((tools.jackson.databind.node.ObjectNode) tree.get("payment")).remove("buyerIdentity");
             String request = mapper.writeValueAsString(tree);
             String hash = ai.neargo.commerce.core.spi.FactDigest.of(List.of(request));
             db.jdbc.update(

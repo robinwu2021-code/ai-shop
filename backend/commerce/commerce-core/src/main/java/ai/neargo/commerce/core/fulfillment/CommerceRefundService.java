@@ -130,19 +130,28 @@ public final class CommerceRefundService implements RefundFacade {
     private State previewLocked(ActorContext actor, MallSnapshot.Order o, RefundPreviewCommand c) {
         var existing = refunds.find(actor.tenantNo(), c.refundNo());
         if (existing.isPresent()) {
-            var p = existing.get().preview();
+            var saved = existing.get();
+            var p = refunds.requestPreview(actor.tenantNo(), c.refundNo());
             if (!p.orderNo().equals(o.orderNo())
                     || !p.buyerNo().equals(actor.principalNo())
                     || !c.sourcePeriodNos().isEmpty()
                             && !new HashSet<>(c.sourcePeriodNos())
                                     .equals(new HashSet<>(p.view().sourcePeriodNos())))
                 throw fail("IDEMPOTENCY_CONFLICT");
-            return existing.get();
+            return new State(p, saved.status(), saved.approvedCash(), saved.restoredCredit(),
+                    saved.reviewer(), saved.reviewEvidence(), saved.command(), saved.fact(),
+                    saved.reviewedAt(), saved.requestDigest(), saved.reviewQuoteNo());
         }
+        var calculated = calculatePreview(actor.principalNo(), o, c);
+        refunds.create(calculated);
+        return calculated;
+    }
+
+    private State calculatePreview(String buyerNo, MallSnapshot.Order o, RefundPreviewCommand c) {
         if (o.axes().payment() != OrderState.Payment.PAID
                 || o.axes().refund() == OrderState.Refund.REFUNDING) throw fail("INVALID_STATE");
         var all = refunds.ownedSources(o);
-        if (all.isEmpty()) return pendingPreview(actor, o, c);
+        if (all.isEmpty()) return pendingPreview(buyerNo, o, c);
         if (accounts.lockSubscriptionAccount(c.store()).pendingChangeOrderNo() != null)
             throw fail("ACCOUNT_BUSY");
         var chosen =
@@ -202,7 +211,7 @@ public final class CommerceRefundService implements RefundFacade {
                                 c.refundNo(),
                                 o.orderNo(),
                                 c.store().toString(),
-                                actor.principalNo(),
+                                buyerNo,
                                 Long.toString(at),
                                 selected.toString(),
                                 proof.toString()));
@@ -212,7 +221,7 @@ public final class CommerceRefundService implements RefundFacade {
                         o.orderNo(),
                         c.store(),
                         o.quote().currency(),
-                        actor.principalNo(),
+                        buyerNo,
                         at,
                         Math.addExact(at, 900000),
                         selected,
@@ -222,11 +231,10 @@ public final class CommerceRefundService implements RefundFacade {
                         digest,
                         o.axes().refund().name());
         var state = new State(p, "PREVIEW", 0, 0, null, null, null, null);
-        refunds.create(state);
         return state;
     }
 
-    private State pendingPreview(ActorContext actor, MallSnapshot.Order o, RefundPreviewCommand c) {
+    private State pendingPreview(String buyerNo, MallSnapshot.Order o, RefundPreviewCommand c) {
         if (!c.sourcePeriodNos().isEmpty()
                 || o.axes().refund() != OrderState.Refund.NONE
                 || !o.orderNo()
@@ -242,7 +250,7 @@ public final class CommerceRefundService implements RefundFacade {
                         o.orderNo(),
                         c.store(),
                         o.quote().currency(),
-                        actor.principalNo(),
+                        buyerNo,
                         at,
                         Math.addExact(at, 900000),
                         List.of(),
@@ -260,7 +268,6 @@ public final class CommerceRefundService implements RefundFacade {
                         tasks);
         if (p.cashLimit() > proof.fact().paid().minor()) throw fail("REFUND_LIMIT");
         var s = new State(p, "PREVIEW", 0, 0, null, null, null, null);
-        refunds.create(s);
         return s;
     }
 
@@ -296,6 +303,74 @@ public final class CommerceRefundService implements RefundFacade {
                 });
     }
 
+    public RefundReviewQuoteView reviewQuote(ActorContext actor, RefundReviewQuoteCommand c) {
+        if (c == null || !text(c.requestDigest()) || !buyerRefundNo(c.reviewQuoteNo()))
+            throw fail("INVALID_REQUEST");
+        return locked(actor == null ? null : actor.tenantNo(), c.orderNo(), o -> {
+            authorize(actor, o, true);
+            coordinates(c.store(), o);
+            var request = state(o, c.refundNo());
+            if (!request.requestDigest().equals(c.requestDigest())) throw fail("VERSION_CONFLICT");
+            var existing = refunds.reviewQuote(actor.tenantNo(), c.refundNo(), c.reviewQuoteNo());
+            if (existing.isPresent()) {
+                if (!existing.get().requestDigest().equals(c.requestDigest())) throw fail("IDEMPOTENCY_CONFLICT");
+                return existing.get().view();
+            }
+            if (!"REQUESTED".equals(request.status())) throw fail("INVALID_STATE");
+            var original = request.preview();
+            var current = calculatePreview(original.buyerNo(), o,
+                    new RefundPreviewCommand(c.store(), c.orderNo(), c.refundNo(),
+                            original.view().sourcePeriodNos())).preview();
+            // An unmaterialized complete group is a distinct request intent, never a source refund.
+            if (!original.pendingTasks().isEmpty() && !original.pendingTasks().equals(current.pendingTasks())
+                    || original.pendingTasks().isEmpty() && !current.pendingTasks().isEmpty())
+                throw fail("VERSION_CONFLICT");
+            var bounded = new ArrayList<Source>();
+            for (var source : current.sources()) {
+                var prior = original.sources().stream()
+                        .filter(v -> v.period().no().equals(source.period().no()))
+                        .findFirst().orElseThrow(() -> fail("VERSION_CONFLICT"));
+                bounded.add(new Source(source.period(), source.version(), source.componentNo(),
+                        Math.min(prior.cashLimit(), source.cashLimit()),
+                        Math.min(prior.creditLimit(), source.creditLimit()), source.usedDuration(),
+                        source.manual() || prior.manual(), source.creditSlices()));
+            }
+            if (bounded.size() != original.sources().size()) throw fail("VERSION_CONFLICT");
+            var digest = FactDigest.of(List.of(c.reviewQuoteNo(), c.requestDigest(),
+                    current.digest(), bounded.toString(), current.previousRefund()));
+            var quote = new ReviewQuote(c.reviewQuoteNo(), c.requestDigest(),
+                    new Preview(current.refundNo(), current.orderNo(), current.store(), current.currency(),
+                            original.buyerNo(), current.createdAt(), current.expiresAt(), bounded,
+                            current.history(), current.payment(), false, digest,
+                            current.previousRefund(), current.pendingTasks()));
+            if (quote.preview().cashLimit() > original.cashLimit()
+                    || quote.preview().creditLimit() > original.creditLimit()) throw fail("REFUND_LIMIT");
+            refunds.createReviewQuote(quote);
+            return quote.view();
+        });
+    }
+
+    public RefundView reject(ActorContext actor, RefundRejectionCommand c) {
+        if (c == null || !text(c.requestDigest()) || !text(c.reviewEvidence())
+                || c.reviewEvidence().length() > 1024) throw fail("INVALID_REQUEST");
+        return locked(actor == null ? null : actor.tenantNo(), c.orderNo(), o -> {
+            authorize(actor, o, true);
+            coordinates(c.store(), o);
+            var s = state(o, c.refundNo());
+            if (!s.requestDigest().equals(c.requestDigest())) throw fail("VERSION_CONFLICT");
+            if ("DECLINED".equals(s.status())) {
+                if (!actor.principalNo().equals(s.reviewer())
+                        || !c.reviewEvidence().equals(s.reviewEvidence())) throw fail("IDEMPOTENCY_CONFLICT");
+                return s.view();
+            }
+            if (!"REQUESTED".equals(s.status())) throw fail("INVALID_STATE");
+            var declined = new State(s.preview(), "DECLINED", 0, 0, actor.principalNo(),
+                    c.reviewEvidence(), null, null, clock.millis()).inheritReview(s);
+            refunds.save(declined);
+            return declined.view();
+        });
+    }
+
     public RefundView approve(ActorContext actor, RefundApprovalCommand c) {
         if (c == null
                 || !text(c.reviewEvidence())
@@ -309,6 +384,15 @@ public final class CommerceRefundService implements RefundFacade {
                     authorize(actor, o, true);
                     coordinates(c.store(), o);
                     var s = state(o, c.refundNo());
+                    if ("DECLINED".equals(s.status())) throw fail("INVALID_STATE");
+                    if (c.reviewQuoteNo() != null) {
+                        var review = refunds.reviewQuote(actor.tenantNo(), c.refundNo(), c.reviewQuoteNo())
+                                .orElseThrow(() -> fail("VERSION_CONFLICT"));
+                        if (!review.requestDigest().equals(s.requestDigest())) throw fail("VERSION_CONFLICT");
+                        if (s.reviewQuoteNo() != null && !s.reviewQuoteNo().equals(c.reviewQuoteNo()))
+                            throw fail("IDEMPOTENCY_CONFLICT");
+                        s = s.withReview(review);
+                    } else if (s.reviewQuoteNo() != null) throw fail("IDEMPOTENCY_CONFLICT");
                     var p = s.preview();
                     if (actor.principalNo().equals(p.buyerNo())) throw fail("FORBIDDEN");
                     if (!p.digest().equals(c.approvalDigest())
@@ -430,7 +514,7 @@ public final class CommerceRefundService implements RefundFacade {
                         f.platformMerchantNo(),
                         f.paid());
         return new State(
-                p, "APPROVED", cash, credit, reviewer, evidence, command, null, clock.millis());
+                p, "APPROVED", cash, credit, reviewer, evidence, command, null, clock.millis()).inheritReview(s);
     }
 
     private static Map<String, List<AccessSegment>> clipped(
@@ -477,7 +561,7 @@ public final class CommerceRefundService implements RefundFacade {
                                             s.reviewer(),
                                             s.reviewEvidence(),
                                             s.command(),
-                                            s.fact());
+                                            s.fact()).inheritReview(s);
                             refunds.save(next);
                             return new Dispatch(next, fresh);
                         });
@@ -541,7 +625,7 @@ public final class CommerceRefundService implements RefundFacade {
                                     latest.reviewer(),
                                     latest.reviewEvidence(),
                                     latest.command(),
-                                    null);
+                                    null).inheritReview(latest);
                     refunds.save(unknown);
                     return unknown.view();
                 });
@@ -589,7 +673,7 @@ public final class CommerceRefundService implements RefundFacade {
                                     s.reviewer(),
                                     s.reviewEvidence(),
                                     c,
-                                    fact);
+                                    fact).inheritReview(s);
                     if (s.preview().late()) {
                         if (success && refunds.hasReservedHold(o))
                             fulfillment.settleHolds(o, false);

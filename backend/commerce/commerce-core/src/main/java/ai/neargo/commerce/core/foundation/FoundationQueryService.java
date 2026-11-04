@@ -20,6 +20,7 @@ public final class FoundationQueryService implements FoundationQueryFacade {
     private final CommerceUnitOfWork uow;
     private final FoundationAuthorityPort authority;
     private final Clock clock;
+    private final ai.neargo.commerce.api.foundation.FoundationPurchaseAvailabilityPort purchase;
 
     public FoundationQueryService(
             CatalogRepository catalog,
@@ -27,6 +28,11 @@ public final class FoundationQueryService implements FoundationQueryFacade {
             CommerceUnitOfWork uow,
             FoundationAuthorityPort authority,
             Clock clock) {
+        this(catalog,repository,uow,authority,clock,(a,c)->Set.of());
+    }
+    public FoundationQueryService(CatalogRepository catalog,FoundationRepository repository,CommerceUnitOfWork uow,
+            FoundationAuthorityPort authority,Clock clock,ai.neargo.commerce.api.foundation.FoundationPurchaseAvailabilityPort purchase) {
+        this.purchase=purchase;
         this.catalog = catalog;
         this.repository = repository;
         this.uow = uow;
@@ -76,7 +82,10 @@ public final class FoundationQueryService implements FoundationQueryFacade {
     }
 
     public PlanCatalog plans(ActorContext actor, String typeCode) {
-        return catalog(actor, s -> MerchantCatalog.plans(s, typeCode));
+        var result=catalog(actor, s -> MerchantCatalog.plans(s, typeCode));
+        // Optional availability must never widen identity or change the legacy read contract on uncertainty.
+        try { return MerchantCatalog.withAvailability(result,purchase.availableSkuVersions(actor,result)); }
+        catch(RuntimeException unavailable) { return result; }
     }
 
     public Subscription subscription(ActorContext actor, StoreRef store) {

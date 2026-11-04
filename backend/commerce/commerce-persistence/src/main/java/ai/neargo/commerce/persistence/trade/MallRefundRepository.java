@@ -24,8 +24,8 @@ public final class MallRefundRepository {
         return JdbcInsert.insert(
                 jdbc,
                 "INSERT INTO `mall_refund`"
-                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`refund_no`,`order_no`,`store_no`,`reason`,`policy_snapshot`,`requested_cash_minor`,`approved_cash_minor`,`restore_credit_minor`,`pay_refund_no`,`status`,`idempotency_key`,`reviewed_by`,`reviewed_at`,`command_snapshot`,`verified_fact_snapshot`,`review_evidence`)"
-                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`refund_no`,`order_no`,`store_no`,`reason`,`policy_snapshot`,`requested_cash_minor`,`approved_cash_minor`,`restore_credit_minor`,`pay_refund_no`,`status`,`idempotency_key`,`reviewed_by`,`reviewed_at`,`command_snapshot`,`verified_fact_snapshot`,`review_evidence`,`review_quotes_snapshot`,`approved_review_quote_no`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row.tenantNo(),
                 row.createdAt(),
                 row.updatedAt(),
@@ -48,7 +48,7 @@ public final class MallRefundRepository {
                 row.reviewedAt(),
                 row.commandSnapshot(),
                 row.verifiedFactSnapshot(),
-                row.reviewEvidence());
+                row.reviewEvidence(), row.reviewQuotesSnapshot(), row.approvedReviewQuoteNo());
     }
 
     public Optional<MallRefundRecord> findById(String tenantNo, long id) {
@@ -81,7 +81,7 @@ public final class MallRefundRepository {
                                         rs.getObject("reviewed_at", Long.class),
                                         rs.getString("command_snapshot"),
                                         rs.getString("verified_fact_snapshot"),
-                                        rs.getString("review_evidence")),
+                                        rs.getString("review_evidence"), rs.getString("review_quotes_snapshot"), rs.getString("approved_review_quote_no")),
                         tenantNo,
                         id)
                 .stream()

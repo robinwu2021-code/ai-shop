@@ -43,4 +43,7 @@ public interface SubscriptionRepository {
             long effectiveAt) {
         throw new UnsupportedOperationException("conversion unavailable");
     }
+    default void revokeZeroValue(StoreRef store,String sourceNo,SourceRevocation proof) {
+        throw new UnsupportedOperationException("source revocation unavailable");
+    }
 }

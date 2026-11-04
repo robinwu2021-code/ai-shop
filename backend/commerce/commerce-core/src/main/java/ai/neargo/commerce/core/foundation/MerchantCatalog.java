@@ -79,6 +79,16 @@ final class MerchantCatalog {
         return new PlanCatalog(code, type.catalogVersion(), "PUBLISHED", List.copyOf(cards));
     }
 
+    static PlanCatalog withAvailability(PlanCatalog catalog,Set<String> skuVersions) {
+        var cards=catalog.plans().stream().map(p->{
+            boolean available=p.tier()!=PlanTier.FREE && "ON_SALE".equals(p.saleStatus())
+                    && p.priceOptions().size()==1 && skuVersions.contains(p.priceOptions().getFirst().skuVersionNo());
+            return new PlanCard(p.planNo(),p.planVersionNo(),p.tier(),p.displayName(),p.summary(),p.entitlementCodes(),
+                    p.saleStatus(),p.priceOptions(),p.priceStatus(),available);
+        }).toList();
+        return new PlanCatalog(catalog.businessTypeCode(),catalog.catalogVersion(),catalog.status(),cards);
+    }
+
     private static List<PriceOption> prices(CatalogState state, PlanDraft plan) {
         if (plan.tier() == PlanTier.FREE) return List.of();
         var result = new ArrayList<PriceOption>();

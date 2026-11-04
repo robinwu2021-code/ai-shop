@@ -11,6 +11,8 @@ import java.util.*;
 public interface RefundRepository {
     Optional<State> find(String tenant, String refundNo);
 
+    default List<State> forOrder(MallSnapshot.Order order) { throw new UnsupportedOperationException(); }
+
     /** One bounded latest-row lookup; no scan/retry loop is performed by the coordinator. */
     Optional<State> latestLatePayment(String tenant, String orderNo, String prefix);
 
@@ -30,6 +32,12 @@ public interface RefundRepository {
     void freezeTasks(State state);
 
     void resolveTasks(State state, boolean success);
+
+    Preview requestPreview(String tenant, String refundNo);
+
+    Optional<ReviewQuote> reviewQuote(String tenant, String refundNo, String reviewQuoteNo);
+
+    void createReviewQuote(ReviewQuote quote);
 
     void create(State state);
 

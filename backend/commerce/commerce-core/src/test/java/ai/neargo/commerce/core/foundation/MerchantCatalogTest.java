@@ -57,6 +57,14 @@ class MerchantCatalogTest {
                 result.plans().stream().map(p -> p.planVersionNo()).toList());
         var pro = result.plans().get(1);
         assertFalse(pro.purchaseAvailable());
+        var ready=MerchantCatalog.withAvailability(result,Set.of("annualv"));
+        assertTrue(ready.plans().get(1).purchaseAvailable());
+        assertFalse(ready.plans().getFirst().purchaseAvailable());
+        assertFalse(MerchantCatalog.withAvailability(result,Set.of("obsoletev")).plans().get(1).purchaseAvailable());
+        var ambiguous=new ai.neargo.commerce.api.foundation.FoundationQueryFacade.PlanCatalog("R",4L,"PUBLISHED",
+                List.of(new ai.neargo.commerce.api.foundation.FoundationQueryFacade.PlanCard(pro.planNo(),pro.planVersionNo(),pro.tier(),
+                        pro.displayName(),pro.summary(),pro.entitlementCodes(),pro.saleStatus(),List.of(pro.priceOptions().getFirst(),pro.priceOptions().getFirst()),"DISPLAY_ONLY",false)));
+        assertFalse(MerchantCatalog.withAvailability(ambiguous,Set.of("annualv")).plans().getFirst().purchaseAvailable());
         assertEquals(List.of("annual"), pro.priceOptions().stream().map(p -> p.skuNo()).toList());
         assertEquals(new Money("CNY", 1234), pro.priceOptions().getFirst().price());
         assertEquals("UNAVAILABLE", MerchantCatalog.plans(state, "F").status());

@@ -60,7 +60,7 @@ public class FundInvariantServiceImpl implements FundInvariantService {
                                 new SuccessPayment(
                                         p.getPaymentNo(),
                                         p.getOrderNo(),
-                                        p.getSucceededAt() == null ? 0L : p.getSucceededAt()))
+                                        p.getSucceededAt() == null ? 0L : p.getSucceededAt(),"PLATFORM_MALL".equals(p.getPayScene())?"PLATFORM_MALL":"CONSUMER"))
                 .toList();
     }
 

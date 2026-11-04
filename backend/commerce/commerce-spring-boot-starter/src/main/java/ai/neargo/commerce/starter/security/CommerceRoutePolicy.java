@@ -145,6 +145,18 @@ public final class CommerceRoutePolicy {
                     BIZ,
                     method.equals("PUT") ? "biz:store:admin" : "biz:store");
         if (path.startsWith("/biz/stores/")) {
+            if (tail.startsWith("mall/")) {
+                if (!store.matches(ID)) return new Route(Lane.DENY, store, null, null, true);
+                String mallId = "[A-Za-z0-9_.:-]{1,64}";
+                boolean read = method.equals("GET") && (tail.equals("mall/orders")
+                        || tail.matches("mall/orders/" + mallId + "(?:/payments)?"));
+                boolean write = method.equals("POST") && (Set.of("mall/quotes", "mall/upgrade-quotes", "mall/orders").contains(tail)
+                        || tail.matches("mall/orders/" + mallId + "/(?:cancel|payments|payments/refresh|refund-previews|refunds)"));
+                if (read || write) return new Route(Lane.BOOTSTRAP, store, null, PROCUREMENT_DUTY, true);
+                if (method.equals("GET") && Set.of("mall/categories", "mall/products").contains(tail))
+                    return new Route(Lane.BOOTSTRAP, store, null, null, true);
+                return new Route(Lane.DENY, store, null, null, true);
+            }
             if (method.equals("GET")
                     && store.matches(ID)
                     && Set.of("context", "subscription", "entitlements").contains(tail))
@@ -156,8 +168,6 @@ public final class CommerceRoutePolicy {
                                     .contains(tail)
                     || method.equals("POST") && tail.equals("end-sessions"))
                 return new Route(Lane.BOOTSTRAP, store, null, null, true);
-            if (method.equals("POST") && Set.of("mall/quotes", "mall/orders").contains(tail))
-                return new Route(Lane.BOOTSTRAP, store, null, PROCUREMENT_DUTY, true);
             // Preserve actual legacy store handlers. A new or unregistered plural route
             // stays closed even when MVC accepts a broader verb (e.g. HEAD for GET).
             if (Set.of("GET", "HEAD").contains(method) && tail.matches("fulfillment/[^/]+/impact"))

@@ -21,7 +21,12 @@ public record PaymentIntentCommand(
         String channel,
         String payMethod,
         String payerReference,
-        Instant preparedAt) {
+        Instant preparedAt,
+        ai.neargo.commerce.api.common.RawPrincipalIdentity buyerIdentity) {
+    public PaymentIntentCommand(String tenantNo,String orderNo,String platformMerchantNo,Money amount,Instant expiresAt,
+            String paymentAttemptNo,String buyerNo,String channel,String payMethod,String payerReference,Instant preparedAt) {
+        this(tenantNo,orderNo,platformMerchantNo,amount,expiresAt,paymentAttemptNo,buyerNo,channel,payMethod,payerReference,preparedAt,null);
+    }
     public PaymentIntentCommand(
             String tenantNo,
             String orderNo,

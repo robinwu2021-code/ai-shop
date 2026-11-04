@@ -37,6 +37,14 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
+    public String paymentBusiness(String id) {
+        if(id==null||id.isBlank())return "CONSUMER";
+        var row=DataScopeContext.executeWithoutScope(()->paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                .and(q->q.eq(StlPayment::getPaymentNo,id).or().eq(StlPayment::getOutTradeNo,id)).last("LIMIT 1")));
+        return row!=null&&"PLATFORM_MALL".equals(row.getPayScene())?"PLATFORM_MALL":"CONSUMER";
+    }
+
+    @Override
     @Transactional("payTxManager")
     public String open(SettlePort.PaymentOpen cmd) {
         if (successPayment(cmd.orderNo()) != null) {
@@ -102,7 +110,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     public Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
         StlPayment row = byOutTradeNo(outTradeNo);
-        if (row == null || row.getPaymentRequestJson() == null) {
+        if (row == null || "PLATFORM_MALL".equals(row.getPayScene()) || row.getPaymentRequestJson() == null) {
             return Optional.empty();
         }
         var request = json.readValue(row.getPaymentRequestJson(), SettlePort.PaymentOpen.class);
@@ -191,6 +199,11 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                         .last("LIMIT 1")));
     }
 
+    private static void requireConsumer(StlPayment row) {
+        if (row != null && "PLATFORM_MALL".equals(row.getPayScene()))
+            throw new IllegalStateException("Platform cash requires its original intent and proof owner");
+    }
+
     @Override
     @Transactional(value="payTxManager", isolation=Isolation.READ_COMMITTED)
     public String refund(String orderNo, String subOrderNo, String afterSaleNo,
@@ -207,8 +220,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (origin == null) {
             return null;
         }
+        requireConsumer(origin);
         StlPayment exist = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundByAfterSale(afterSaleNo));
+        requireConsumer(exist);
         if (exist != null) {
             if (!orderNo.equals(exist.getOrderNo()) || !subOrderNo.equals(exist.getSubOrderNo())
                     || exist.getAmountMinor() == null || exist.getAmountMinor() != amountMinor) {
@@ -257,7 +272,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public boolean claimRefundDispatch(String refundPaymentNo) {
-        var origin = capacity.lockOriginal(byPaymentNo(refundPaymentNo));
+        var candidate = byPaymentNo(refundPaymentNo);
+        requireConsumer(candidate);
+        var origin = capacity.lockOriginal(candidate);
         if (origin != null && "FROZEN".equals(origin.getRefundCapacityState())) return false;
         StlPayment refund = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
@@ -279,7 +296,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     public java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo) {
         StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
+        if (r == null || "PLATFORM_MALL".equals(r.getPayScene()) || !StlPayment.REFUND.equals(r.getDirection())) {
             return java.util.Optional.empty();
         }
         if (r.getRefundRequestJson() == null) {
@@ -299,6 +316,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                                String providerNo, String reason) {
         StlPayment r = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        requireConsumer(r);
         if (r == null || !StlPayment.PENDING.equals(r.getStatus())) {
             return;
         }
@@ -347,6 +365,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     public void markRefundRejected(String paymentNo, String reason) {
         var row = DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(paymentNo));
         if (row == null) throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        requireConsumer(row);
         if (StlPayment.SUCCESS.equals(row.getStatus())) return;
         capacity.rejected(row, reason);
         markRefundSent(paymentNo, false, false, null, reason);
@@ -356,6 +375,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor) {
         var candidate = byPaymentNo(refundPaymentNo);
+        requireConsumer(candidate);
         if (candidate != null) capacity.lockOriginal(candidate);
         StlPayment refund=DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(refundPaymentNo));
         if (refund==null) { throw new IllegalArgumentException("PAY_REFUND_UNKNOWN"); }
@@ -402,6 +422,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             log.warn("[payment-ledger] 记付款人时找不到流水 {}", outTradeNo);
             return;
         }
+        requireConsumer(p);
         StlPayment patch = new StlPayment();
         patch.setId(p.getId());
         patch.setPayerOpenid(payerId);
@@ -450,6 +471,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             isolation = Isolation.READ_COMMITTED)
     public void close(String outTradeNo, String reason) {
         StlPayment p = lockPayment(outTradeNo);
+        if(p!=null&&"PLATFORM_MALL".equals(p.getPayScene()))throw new IllegalStateException("PLATFORM_PAYMENT_OWNER_REQUIRED");
         if (p == null || StlPayment.SUCCESS.equals(p.getStatus())
                 || StlPayment.CLOSED.equals(p.getStatus())) {
             /*
@@ -472,7 +494,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public String settle(SettlePort.PaymentSettled cmd) {
         StlPayment existing = lockPayment(cmd.outTradeNo());
-        if (existing == null || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
+        if (existing == null || "PLATFORM_MALL".equals(existing.getPayScene()) || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
                 || cmd.tradeNo() == null || cmd.tradeNo().isBlank() || cmd.amountMinor() < 0
                 || cmd.currency() == null || cmd.currency().isBlank()) {
             return null;

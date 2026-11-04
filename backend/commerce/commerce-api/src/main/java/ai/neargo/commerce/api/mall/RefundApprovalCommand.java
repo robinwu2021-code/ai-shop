@@ -10,4 +10,10 @@ public record RefundApprovalCommand(
         String approvalDigest,
         Money cashAmount,
         Money restoreCredit,
-        String reviewEvidence) {}
+        String reviewEvidence,
+        String reviewQuoteNo) {
+    public RefundApprovalCommand(StoreRef store, String orderNo, String refundNo,
+            String approvalDigest, Money cashAmount, Money restoreCredit, String reviewEvidence) {
+        this(store, orderNo, refundNo, approvalDigest, cashAmount, restoreCredit, reviewEvidence, null);
+    }
+}

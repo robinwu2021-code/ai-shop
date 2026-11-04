@@ -24,9 +24,9 @@ public final class MchSubscriptionPeriodRepository {
         return JdbcInsert.insert(
                 jdbc,
                 "INSERT INTO `mch_subscription_period`"
-                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`period_no`,`store_no`,`entity_no`,`business_type_code`,`stream_key`,`source_type`,`source_ref_no`,`fulfillment_task_no`,`plan_no`,`plan_version_no`,`standalone_entitlement_code`,`tier_code`,`delivered_at`,`delivery_seq`,`granted_duration_ms`,`revoked_duration_ms`,`original_start_at`,`original_end_at`,`effective_start_at`,`effective_end_at`,`eligible_basis_minor`,`cash_basis_minor`,`credit_basis_minor`,`currency`,`state`,`converted_by_no`,`source_policy_snapshot`)"
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`period_no`,`store_no`,`entity_no`,`business_type_code`,`stream_key`,`source_type`,`source_ref_no`,`fulfillment_task_no`,`plan_no`,`plan_version_no`,`standalone_entitlement_code`,`tier_code`,`delivered_at`,`delivery_seq`,`granted_duration_ms`,`revoked_duration_ms`,`original_start_at`,`original_end_at`,`effective_start_at`,`effective_end_at`,`eligible_basis_minor`,`cash_basis_minor`,`credit_basis_minor`,`currency`,`state`,`converted_by_no`,`source_policy_snapshot`,`revoked_by_no`,`revocation_snapshot`)"
                     + " VALUES"
-                    + " (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row.tenantNo(),
                 row.createdAt(),
                 row.updatedAt(),
@@ -60,7 +60,7 @@ public final class MchSubscriptionPeriodRepository {
                 row.currency(),
                 row.state(),
                 row.convertedByNo(),
-                row.sourcePolicySnapshot());
+                row.sourcePolicySnapshot(),row.revokedByNo(),row.revocationSnapshot());
     }
 
     public Optional<MchSubscriptionPeriodRecord> findById(String tenantNo, long id) {
@@ -104,7 +104,7 @@ public final class MchSubscriptionPeriodRepository {
                                         rs.getString("currency"),
                                         rs.getString("state"),
                                         rs.getString("converted_by_no"),
-                                        rs.getString("source_policy_snapshot")),
+                                        rs.getString("source_policy_snapshot"),rs.getString("revoked_by_no"),rs.getString("revocation_snapshot")),
                         tenantNo,
                         id)
                 .stream()
