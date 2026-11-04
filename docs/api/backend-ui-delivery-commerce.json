@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "商城套餐的商家端由 Flutter 应用（ai-shop-bapp 仓库）接入，本仓 b-app 不是这些接口的调用方；接入前保留为分阶段交付，不伪造入口。",
+  "plan": "docs/technical/商城线下购买-B端对接说明-2026-11-04.md",
+  "contract": "docs/api/commerce-mall-openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/url"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/orders"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/payments"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/mall/products"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/offline/quotes"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/orders"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/cancel"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/payments"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/payments/refresh"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/refund-previews"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/orders/{orderNo}/refunds"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/quotes"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/mall/upgrade-quotes"
+    }
+  ]
+}

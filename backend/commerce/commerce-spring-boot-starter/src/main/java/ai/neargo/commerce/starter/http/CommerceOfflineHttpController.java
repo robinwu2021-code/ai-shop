@@ -18,8 +18,6 @@ import java.util.*;
  */
 @RestController
 public final class CommerceOfflineHttpController extends MallHttpSupport {
-    static final String BIZ = "/biz/stores/{storeNo}/mall/offline";
-    static final String OPS = "/ops/biz-mall/offline";
     private static final int MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
 
     private final OfflinePurchaseFacade offline;
@@ -58,7 +56,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
 
     public record QuoteRequest(List<QuoteLine> lines, String currency) {}
 
-    @PostMapping(BIZ + "/quotes")
+    @PostMapping("/biz/stores/{storeNo}/mall/offline/quotes")
     public Object quote(@PathVariable("storeNo") String store, @RequestBody String body) {
         var d = json.read(body, QuoteRequest.class);
         var c = context.buyer(store, "commerce:mall:purchase");
@@ -67,7 +65,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
 
     public record EmptyRequest() {}
 
-    @PostMapping(BIZ + "/orders/{orderNo}/instructions")
+    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions")
     public Object issue(
             @PathVariable("storeNo") String store,
             @PathVariable("orderNo") String order,
@@ -77,14 +75,14 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
         return ok(offline.issue(c.actor(), new OrderQuery(c.store(), code(order))));
     }
 
-    @GetMapping(BIZ + "/orders/{orderNo}/instructions")
+    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions")
     public Object instructions(
             @PathVariable("storeNo") String store, @PathVariable("orderNo") String order) {
         var c = context.buyer(store, "commerce:mall:read");
         return ok(offline.instructions(c.actor(), new OrderQuery(c.store(), code(order))));
     }
 
-    @PostMapping(BIZ + "/orders/{orderNo}/evidence")
+    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence")
     public Object reserve(
             @PathVariable("storeNo") String store,
             @PathVariable("orderNo") String order,
@@ -96,7 +94,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
                         c.actor(), new OrderQuery(c.store(), code(order)), "BUYER_RECEIPT"));
     }
 
-    @PostMapping(BIZ + "/orders/{orderNo}/evidence/content")
+    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content")
     public Object uploadBuyer(
             @PathVariable("storeNo") String store,
             @PathVariable("orderNo") String order,
@@ -109,7 +107,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
         return ok(Map.of("assetKey", key));
     }
 
-    @GetMapping(BIZ + "/orders/{orderNo}/evidence/url")
+    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/url")
     public Object readBuyer(
             @PathVariable("storeNo") String store,
             @PathVariable("orderNo") String order,
@@ -129,7 +127,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
             String bankReference,
             List<String> evidenceKeys) {}
 
-    @PostMapping(BIZ + "/orders/{orderNo}/claims")
+    @PostMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims")
     public Object claim(
             @PathVariable("storeNo") String store,
             @PathVariable("orderNo") String order,
@@ -148,7 +146,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
                                 d.evidenceKeys())));
     }
 
-    @GetMapping(BIZ + "/orders/{orderNo}/claims")
+    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims")
     public Object claims(
             @PathVariable("storeNo") String store, @PathVariable("orderNo") String order) {
         var c = context.buyer(store, "commerce:mall:read");
@@ -157,20 +155,20 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
 
     // ---------------------------------------------------------------- operations
 
-    @GetMapping(OPS + "/profile")
+    @GetMapping("/ops/biz-mall/offline/profile")
     public Object profile(@RequestParam("currency") String currency) {
         var actor = context.operator("commerce:collection:profile:read");
         return ok(offline.profile(actor, currency).orElse(null));
     }
 
-    @PutMapping(OPS + "/profile")
+    @PutMapping("/ops/biz-mall/offline/profile")
     public Object configure(@RequestBody String body) {
         var d = json.read(body, ProfileCommand.class);
         var actor = context.operator("commerce:collection:profile:write");
         return ok(offline.configureProfile(actor, d));
     }
 
-    @GetMapping(OPS + "/claims")
+    @GetMapping("/ops/biz-mall/offline/claims")
     public Object pending(
             @RequestParam(value = "afterOrderNo", required = false) String afterOrder,
             @RequestParam(value = "afterClaimNo", required = false) String afterClaim,
@@ -184,7 +182,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
                         limit));
     }
 
-    @PostMapping(OPS + "/quotes")
+    @PostMapping("/ops/biz-mall/offline/quotes")
     public Object assistedQuote(@RequestParam("storeNo") String store, @RequestBody String body) {
         var d = json.read(body, QuoteRequest.class);
         var actor = context.operator("commerce:mall:assisted:purchase");
@@ -198,7 +196,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
     public record PlaceRequest(
             String quoteNo, String idempotencyKey, ShippingAddress shippingAddress) {}
 
-    @PostMapping(OPS + "/orders")
+    @PostMapping("/ops/biz-mall/offline/orders")
     public Object assistedPlace(@RequestParam("storeNo") String store, @RequestBody String body) {
         var d = json.read(body, PlaceRequest.class);
         var actor = context.operator("commerce:mall:assisted:purchase");
@@ -212,7 +210,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
                                 new StoreRef(actor.tenantNo(), code(store)))));
     }
 
-    @PostMapping(OPS + "/orders/{orderNo}/instructions")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/instructions")
     public Object assistedIssue(
             @PathVariable("orderNo") String order,
             @RequestParam("storeNo") String store,
@@ -222,14 +220,14 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
         return ok(offline.issue(actor, opsOrder(actor, store, order)));
     }
 
-    @GetMapping(OPS + "/orders/{orderNo}/instructions")
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/instructions")
     public Object opsInstructions(
             @PathVariable("orderNo") String order, @RequestParam("storeNo") String store) {
         var actor = context.operator("commerce:mall:order:read");
         return ok(offline.instructions(actor, opsOrder(actor, store, order)));
     }
 
-    @GetMapping(OPS + "/orders/{orderNo}/claims")
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/claims")
     public Object opsClaims(
             @PathVariable("orderNo") String order, @RequestParam("storeNo") String store) {
         var actor = context.operator("commerce:mall:order:read");
@@ -238,7 +236,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
 
     public record EvidenceRequest(String purpose) {}
 
-    @PostMapping(OPS + "/orders/{orderNo}/evidence")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/evidence")
     public Object opsReserve(
             @PathVariable("orderNo") String order,
             @RequestParam("storeNo") String store,
@@ -248,7 +246,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
         return ok(offline.reserveEvidence(actor, opsOrder(actor, store, order), d.purpose()));
     }
 
-    @PostMapping(OPS + "/orders/{orderNo}/evidence/content")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/evidence/content")
     public Object opsUpload(
             @PathVariable("orderNo") String order,
             @RequestParam("storeNo") String store,
@@ -260,7 +258,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
         return ok(Map.of("assetKey", key));
     }
 
-    @GetMapping(OPS + "/orders/{orderNo}/evidence/url")
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/evidence/url")
     public Object opsRead(
             @PathVariable("orderNo") String order,
             @RequestParam("storeNo") String store,
@@ -271,7 +269,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
 
     public record DeclineRequest(String reason) {}
 
-    @PostMapping(OPS + "/orders/{orderNo}/claims/{claimNo}/decline")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline")
     public Object decline(
             @PathVariable("orderNo") String order,
             @PathVariable("claimNo") String claim,
@@ -295,7 +293,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
             boolean historical,
             String reason) {}
 
-    @PostMapping(OPS + "/orders/{orderNo}/confirmations")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/confirmations")
     public Object confirm(
             @PathVariable("orderNo") String order,
             @RequestParam("storeNo") String store,
@@ -325,7 +323,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
             String evidenceKey,
             Map<String, String> unmatchedDispositions) {}
 
-    @PostMapping(OPS + "/orders/{orderNo}/voids")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/voids")
     public Object voidOrder(
             @PathVariable("orderNo") String order,
             @RequestParam("storeNo") String store,
@@ -351,7 +349,7 @@ public final class CommerceOfflineHttpController extends MallHttpSupport {
             String bankReference,
             String evidenceKey) {}
 
-    @PostMapping(OPS + "/orders/{orderNo}/refunds/{refundNo}/payouts")
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts")
     public Object payout(
             @PathVariable("orderNo") String order,
             @PathVariable("refundNo") String refund,

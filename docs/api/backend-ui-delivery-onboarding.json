@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "B 端注册、进件、门店上下文与权益由 Flutter 应用（ai-shop-bapp 仓库）接入，本仓 b-app 不是这些接口的调用方；接入前保留为分阶段交付。",
+  "plan": "docs/technical/B端Flutter-注册进件对接跟踪-2026-11-04.md",
+  "contract": "docs/api/openapi-b-onboarding.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/business-types"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/business-types/{typeCode}/plans"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/context"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/entitlements"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/subscription"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/logout"
+    }
+  ]
+}

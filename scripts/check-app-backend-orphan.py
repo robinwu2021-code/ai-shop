@@ -66,18 +66,40 @@ def validate_deferred(data, published, handlers, missing):
     return result
 
 
+DEFAULT_CONTRACT = "docs/api/entitlement-backend.openapi.json"
+
+
+def delivery_files():
+    """The original manifest plus per-domain manifests `backend-ui-delivery-<domain>.json`."""
+    first = ROOT / "docs/api/backend-ui-delivery.json"
+    return ([first] if first.exists() else []) + sorted((ROOT / "docs/api").glob("backend-ui-delivery-*.json"))
+
+
+def published_paths(contract_path):
+    """(METHOD, path) published by one OpenAPI contract inside docs/api/."""
+    if not contract_path.startswith("docs/api/") or ".." in Path(contract_path).parts \
+            or not (ROOT / contract_path).is_file():
+        raise ValueError(f"Staged delivery contract must be an existing docs/api/ OpenAPI file: {contract_path}")
+    spec = json.loads((ROOT / contract_path).read_text(encoding="utf-8"))
+    return {(method.upper(), norm(path)) for path, methods in spec["paths"].items()
+            for method in methods if method in {"get", "post", "put", "patch", "delete"}}
+
+
 def deferred_delivery(missing):
-    file = ROOT / "docs/api/backend-ui-delivery.json"
-    if not file.exists():
-        return set()
-    data = json.loads(file.read_text(encoding="utf-8"))
-    plan = data.get("plan", "")
-    if not plan.startswith("docs/technical/") or ".." in Path(plan).parts or not (ROOT / plan).is_file():
-        raise ValueError("Staged delivery must point to its existing frontend task plan")
-    spec = json.loads((ROOT / "docs/api/entitlement-backend.openapi.json").read_text(encoding="utf-8"))
-    published = {(method.upper(), norm(path)) for path, methods in spec["paths"].items()
-                 for method in methods if method in {"get", "post", "put", "patch", "delete"}}
-    return validate_deferred(data, published, set(backend()), missing)
+    """Each manifest names its frontend plan and the published contract its entries must exist in."""
+    handlers = set(backend())
+    result = set()
+    for file in delivery_files():
+        data = json.loads(file.read_text(encoding="utf-8"))
+        plan = data.get("plan", "")
+        if not plan.startswith("docs/technical/") or ".." in Path(plan).parts or not (ROOT / plan).is_file():
+            raise ValueError(f"Staged delivery must point to its existing frontend task plan: {file.name}")
+        published = published_paths(data.get("contract", DEFAULT_CONTRACT))
+        staged = validate_deferred(data, published, handlers, missing)
+        if staged & result:
+            raise ValueError(f"Endpoint staged in more than one manifest: {sorted(staged & result)}")
+        result |= staged
+    return result
 
 # **按设计就没有端上出口的端点** —— 服务器到服务器调用。
 # 把它们记进「只准变短」的名单是错的：那种行永远变不短，而一份含着
