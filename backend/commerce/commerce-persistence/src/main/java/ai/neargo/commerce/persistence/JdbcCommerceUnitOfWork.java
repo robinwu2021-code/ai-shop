@@ -4,8 +4,8 @@ import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.function.Supplier;
 
@@ -23,11 +23,19 @@ public final class JdbcCommerceUnitOfWork implements CommerceUnitOfWork {
         transactions = new TransactionTemplate(manager);
     }
 
+    public void requireOutsideTransaction() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isSynchronizationActive()
+                || !TransactionSynchronizationManager.getResourceMap().isEmpty())
+            throw new IllegalStateException("external coordination cannot join a transaction");
+    }
+
     public <T> T required(Supplier<T> work) {
         JdbcTransactionOwnership.rejectForeignTransactions(dataSource);
         if (TransactionSynchronizationManager.isActualTransactionActive()
                 && !JdbcTransactionOwnership.active(dataSource))
-            throw new IllegalStateException("Commerce requires the current shared DataSource transaction");
+            throw new IllegalStateException(
+                    "Commerce requires the current shared DataSource transaction");
         return transactions.execute(status -> work.get());
     }
 }

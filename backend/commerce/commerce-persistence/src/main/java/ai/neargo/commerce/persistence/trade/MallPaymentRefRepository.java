@@ -24,8 +24,8 @@ public final class MallPaymentRefRepository {
         return JdbcInsert.insert(
                 jdbc,
                 "INSERT INTO `mall_payment_ref`"
-                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`payment_attempt_no`,`order_no`,`pay_order_no`,`receiver_account_no`,`payment_business_type`,`currency`,`amount_minor`,`status`,`provider_paid_at`)"
-                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`payment_attempt_no`,`order_no`,`pay_order_no`,`receiver_account_no`,`payment_business_type`,`currency`,`amount_minor`,`status`,`provider_paid_at`,`request_snapshot`,`request_hash`,`outcome_snapshot`,`dispatch_state`,`closure_reference`,`verified_fact_snapshot`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row.tenantNo(),
                 row.createdAt(),
                 row.updatedAt(),
@@ -41,7 +41,13 @@ public final class MallPaymentRefRepository {
                 row.currency(),
                 row.amountMinor(),
                 row.status(),
-                row.providerPaidAt());
+                row.providerPaidAt(),
+                row.requestSnapshot(),
+                row.requestHash(),
+                row.outcomeSnapshot(),
+                row.dispatchState(),
+                row.closureReference(),
+                row.verifiedFactSnapshot());
     }
 
     public Optional<MallPaymentRefRecord> findById(String tenantNo, long id) {
@@ -67,7 +73,13 @@ public final class MallPaymentRefRepository {
                                         rs.getString("currency"),
                                         rs.getObject("amount_minor", Long.class),
                                         rs.getString("status"),
-                                        rs.getObject("provider_paid_at", Long.class)),
+                                        rs.getObject("provider_paid_at", Long.class),
+                                        rs.getString("request_snapshot"),
+                                        rs.getString("request_hash"),
+                                        rs.getString("outcome_snapshot"),
+                                        rs.getString("dispatch_state"),
+                                        rs.getString("closure_reference"),
+                                        rs.getString("verified_fact_snapshot")),
                         tenantNo,
                         id)
                 .stream()

@@ -475,7 +475,13 @@ class CommerceTypedRepositoryTest {
                                 "v13",
                                 15L,
                                 "v15",
-                                17L);
+                                17L,
+                                "{\"request\": true}",
+                                "proof-requestHash",
+                                "{\"result\": true}",
+                                "DISPATCHED",
+                                "proof-closureReference",
+                                "{\"verified\": true}");
                 var repo = new ai.neargo.commerce.persistence.trade.MallPaymentRefRepository(db.ds);
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
@@ -507,7 +513,12 @@ class CommerceTypedRepositoryTest {
                                 15L,
                                 "v15",
                                 "v16",
-                                18L);
+                                18L,
+                                "proof-orderNo",
+                                "{\"request\": true}",
+                                "proof-requestHash",
+                                "{\"result\": true}",
+                                "DISPATCHED");
                 var repo =
                         new ai.neargo.commerce.persistence.trade.MallFulfillmentTaskRepository(
                                 db.ds);

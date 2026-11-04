@@ -174,7 +174,46 @@ public final class SubscriptionService {
                 });
     }
 
+    /** Frozen targets are accepted only from the internal paid-order coordinator. */
+    public record FrozenDelivery(Delivery delivery, PlanDraft plan, Map<String, String> ends) {
+        public FrozenDelivery {
+            Objects.requireNonNull(delivery);
+            ends = Map.copyOf(ends);
+            if (delivery.origin() != Origin.ORDER
+                    || plan == null && ends.isEmpty()
+                    || !Objects.equals(
+                            delivery.planVersion(), plan == null ? null : plan.planVersionNo())
+                    || plan == null && !ends.keySet().equals(Set.of(delivery.entitlementCode()))
+                    || plan != null
+                            && !new HashSet<>(plan.entitlementCodes()).containsAll(ends.keySet()))
+                throw new IllegalArgumentException("invalid frozen delivery target");
+        }
+    }
+
+    public void deliverOrder(StoreRef store, String orderNo, List<FrozenDelivery> batch) {
+        key(orderNo);
+        var frozen = new LinkedHashMap<String, FrozenDelivery>();
+        for (var d : batch)
+            if (frozen.put(d.delivery().ref(), d) != null)
+                throw new IllegalArgumentException("duplicate frozen source");
+        deliver(
+                store,
+                orderNo,
+                batch.stream().map(FrozenDelivery::delivery).toList(),
+                orderNo,
+                frozen);
+    }
+
     public void deliver(StoreRef store, String operationNo, List<Delivery> batch) {
+        deliver(store, operationNo, batch, null, Map.of());
+    }
+
+    private void deliver(
+            StoreRef store,
+            String operationNo,
+            List<Delivery> batch,
+            String owningOrder,
+            Map<String, FrozenDelivery> frozen) {
         var deliveries = List.copyOf(batch);
         if (deliveries.isEmpty()
                 || deliveries.stream().map(Delivery::ref).distinct().count() != deliveries.size())
@@ -192,9 +231,18 @@ public final class SubscriptionService {
                             store,
                             operationNo,
                             "DELIVERY",
-                            deliveries.stream().flatMap(d -> d.identity().stream()).toList(),
+                            deliveries.stream()
+                                    .flatMap(d -> sourceIdentity(d, frozen.get(d.ref())).stream())
+                                    .toList(),
                             at)) return null;
-                    writable(account, repo.lastChange(store), at.toEpochMilli());
+                    if (owningOrder == null)
+                        writable(account, repo.lastChange(store), at.toEpochMilli());
+                    else {
+                        if (!owningOrder.equals(account.pendingChangeOrderNo()))
+                            throw new IllegalStateException("order does not own digital occupancy");
+                        if (at.toEpochMilli() < repo.lastChange(store))
+                            throw new IllegalArgumentException("backdated schedule change");
+                    }
                     var free =
                             prior.stream()
                                     .filter(p -> p.duration() == null)
@@ -220,7 +268,7 @@ public final class SubscriptionService {
                                         store,
                                         d.ref(),
                                         "SOURCE",
-                                        d.identity(),
+                                        sourceIdentity(d, frozen.get(d.ref())),
                                         at,
                                         "SUB_SOURCE_" + d.origin());
                         if (!fresh && existing.isEmpty())
@@ -237,7 +285,15 @@ public final class SubscriptionService {
                                 throw new IllegalStateException("conflicting source identity");
                             continue;
                         }
-                        var p = materialize(account, d, state, free, prior, at.toEpochMilli());
+                        var p =
+                                materialize(
+                                        account,
+                                        d,
+                                        state,
+                                        free,
+                                        prior,
+                                        at.toEpochMilli(),
+                                        frozen.get(d.ref()));
                         repo.insert(account, p, Math.incrementExact((long) prior.size()), null);
                         prior.add(p);
                         codes.addAll(p.ends().keySet());
@@ -249,20 +305,41 @@ public final class SubscriptionService {
                 });
     }
 
+    private static List<String> sourceIdentity(Delivery d, FrozenDelivery frozen) {
+        var identity = new ArrayList<>(d.identity());
+        if (frozen != null) {
+            identity.add("FROZEN_V1");
+            identity.add(frozen.plan() == null ? "END" : frozen.plan().toString());
+            new TreeMap<>(frozen.ends())
+                    .forEach(
+                            (code, end) -> {
+                                identity.add(code);
+                                identity.add(end);
+                            });
+        }
+        return identity;
+    }
+
     private Period materialize(
             AccountSnapshot account,
             Delivery d,
             CatalogState state,
             Period free,
             List<Period> prior,
-            long at) {
+            long at,
+            FrozenDelivery frozen) {
         String plan = null, tier = null, policy = "FIFO_V1";
         long start = at;
         Map<String, String> ends;
         if (!free.currency().equals(d.currency()))
             throw new IllegalArgumentException("source currency differs from store market");
         if (d.planVersion() != null) {
-            var draft = published(state, d.planVersion(), account.businessTypeCode());
+            var draft =
+                    frozen == null
+                            ? published(state, d.planVersion(), account.businessTypeCode())
+                            : frozen.plan();
+            if (!draft.typeCode().equals(account.businessTypeCode()))
+                throw new IllegalArgumentException("frozen plan type mismatch");
             if (draft.tier() == PlanTier.FREE)
                 throw new IllegalArgumentException("finite FREE not allowed");
             plan = draft.planNo();
@@ -275,13 +352,21 @@ public final class SubscriptionService {
                     start = Math.max(start, previous.end());
                 }
             }
-            ends = bindings(state, draft.entitlementCodes());
+            ends =
+                    frozen == null
+                            ? bindings(state, draft.entitlementCodes())
+                            : new TreeMap<>(frozen.ends());
             ends.keySet().removeAll(free.ends().keySet());
         } else {
-            ends = bindings(state, List.of(d.entitlementCode()));
-            var end = state.ends.get(ends.get(d.entitlementCode())).draft();
-            if (end.scope() != EndScope.STORE
-                    || !end.allowedBusinessTypes().contains(account.businessTypeCode())
+            ends =
+                    frozen == null
+                            ? bindings(state, List.of(d.entitlementCode()))
+                            : new TreeMap<>(frozen.ends());
+            var end = frozen == null ? state.ends.get(ends.get(d.entitlementCode())).draft() : null;
+            if (frozen == null
+                            && (end.scope() != EndScope.STORE
+                                    || !end.allowedBusinessTypes()
+                                            .contains(account.businessTypeCode()))
                     || free.ends().containsKey(d.entitlementCode()))
                 throw new IllegalArgumentException("invalid independent end");
         }

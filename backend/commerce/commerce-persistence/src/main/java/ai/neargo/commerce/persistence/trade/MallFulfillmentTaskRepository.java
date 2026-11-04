@@ -24,8 +24,8 @@ public final class MallFulfillmentTaskRepository {
         return JdbcInsert.insert(
                 jdbc,
                 "INSERT INTO `mall_fulfillment_task`"
-                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`task_no`,`order_component_no`,`unit_seq`,`task_type`,`status`,`attempt_count`,`next_retry_at`,`result_no`,`last_error_code`,`lease_until`)"
-                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`task_no`,`order_component_no`,`unit_seq`,`task_type`,`status`,`attempt_count`,`next_retry_at`,`result_no`,`last_error_code`,`lease_until`,`order_no`,`request_snapshot`,`request_hash`,`outcome_snapshot`,`dispatch_state`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row.tenantNo(),
                 row.createdAt(),
                 row.updatedAt(),
@@ -42,7 +42,12 @@ public final class MallFulfillmentTaskRepository {
                 row.nextRetryAt(),
                 row.resultNo(),
                 row.lastErrorCode(),
-                row.leaseUntil());
+                row.leaseUntil(),
+                row.orderNo(),
+                row.requestSnapshot(),
+                row.requestHash(),
+                row.outcomeSnapshot(),
+                row.dispatchState());
     }
 
     public Optional<MallFulfillmentTaskRecord> findById(String tenantNo, long id) {
@@ -69,7 +74,12 @@ public final class MallFulfillmentTaskRepository {
                                         rs.getObject("next_retry_at", Long.class),
                                         rs.getString("result_no"),
                                         rs.getString("last_error_code"),
-                                        rs.getObject("lease_until", Long.class)),
+                                        rs.getObject("lease_until", Long.class),
+                                        rs.getString("order_no"),
+                                        rs.getString("request_snapshot"),
+                                        rs.getString("request_hash"),
+                                        rs.getString("outcome_snapshot"),
+                                        rs.getString("dispatch_state")),
                         tenantNo,
                         id)
                 .stream()

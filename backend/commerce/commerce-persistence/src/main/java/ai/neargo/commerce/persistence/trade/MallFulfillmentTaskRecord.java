@@ -19,4 +19,9 @@ public record MallFulfillmentTaskRecord(
         Long nextRetryAt,
         String resultNo,
         String lastErrorCode,
-        Long leaseUntil) {}
+        Long leaseUntil,
+        String orderNo,
+        String requestSnapshot,
+        String requestHash,
+        String outcomeSnapshot,
+        String dispatchState) {}

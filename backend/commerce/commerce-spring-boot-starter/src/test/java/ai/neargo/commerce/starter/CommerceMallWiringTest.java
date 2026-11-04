@@ -15,7 +15,10 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 class CommerceMallWiringTest {
     ApplicationContextRunner runner() {
         return new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(CommerceMallAutoConfiguration.class));
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                CommerceMallAutoConfiguration.class,
+                                CommerceFulfillmentAutoConfiguration.class));
     }
 
     @Test
@@ -85,6 +88,83 @@ class CommerceMallWiringTest {
                         c -> {
                             assertNull(c.getStartupFailure());
                             assertEquals(1, c.getBeansOfType(MallFacade.class).size());
+                        });
+    }
+
+    @Test
+    void paymentOptInWithoutPaymentPortsFailsClosed() {
+        wired().withPropertyValues(
+                        "commerce.mall.payment.enabled=true",
+                        "commerce.mall.payment.platform-merchant-no=platform",
+                        "commerce.mall.payment.routes=APP:WECHAT")
+                .withBean(
+                        ActorAuthorizationPort.class,
+                        () ->
+                                (a, s, p) ->
+                                        new ai.neargo.commerce.api.common.AuthorizationDecision(
+                                                false, "NONE", java.util.Optional.empty()))
+                .run(c -> assertNotNull(c.getStartupFailure()));
+    }
+
+    @Test
+    void completePaymentAssemblyExposesBothTrustedFacades() {
+        wired().withAllowBeanDefinitionOverriding(true)
+                .withPropertyValues(
+                        "commerce.mall.payment.enabled=true",
+                        "commerce.mall.payment.platform-merchant-no=platform",
+                        "commerce.mall.payment.routes=APP:WECHAT")
+                .withBean(
+                        CommerceUnitOfWork.class,
+                        () ->
+                                new CommerceUnitOfWork() {
+                                    int depth;
+
+                                    public <T> T required(java.util.function.Supplier<T> work) {
+                                        depth++;
+                                        try {
+                                            return work.get();
+                                        } finally {
+                                            depth--;
+                                        }
+                                    }
+
+                                    public void requireOutsideTransaction() {
+                                        if (depth != 0) throw new IllegalStateException();
+                                    }
+                                })
+                .withBean(
+                        ActorAuthorizationPort.class,
+                        () ->
+                                (a, s, p) ->
+                                        new ai.neargo.commerce.api.common.AuthorizationDecision(
+                                                false, "NONE", java.util.Optional.empty()))
+                .withBean(
+                        ai.neargo.commerce.core.fulfillment.FulfillmentRepository.class,
+                        () ->
+                                unused(
+                                        ai.neargo.commerce.core.fulfillment.FulfillmentRepository
+                                                .class))
+                .withBean(SubscriptionRepository.class, () -> unused(SubscriptionRepository.class))
+                .withBean(
+                        CommerceEventPersistencePort.class,
+                        () -> unused(CommerceEventPersistencePort.class))
+                .withBean(PlatformPaymentPort.class, () -> unused(PlatformPaymentPort.class))
+                .withBean(HardwareInventoryPort.class, () -> unused(HardwareInventoryPort.class))
+                .run(
+                        c -> {
+                            assertNull(c.getStartupFailure());
+                            assertEquals(
+                                    1,
+                                    c.getBeansOfType(
+                                                    ai.neargo.commerce.api.fulfillment.PaymentFacade
+                                                            .class)
+                                            .size());
+                            assertEquals(
+                                    1,
+                                    c.getBeansOfType(
+                                                    ai.neargo.commerce.api.fulfillment
+                                                            .FulfillmentFacade.class)
+                                            .size());
                         });
     }
 }

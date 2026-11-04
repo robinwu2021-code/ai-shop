@@ -29,6 +29,13 @@ class MallOrderConcurrencyMysqlTest {
         }
 
         Fixture(MysqlDatabase db, boolean hardware) {
+            this(db, hardware, null);
+        }
+
+        Fixture(
+                MysqlDatabase db,
+                boolean hardware,
+                java.util.List<ai.neargo.commerce.api.catalog.SkuComponent> components) {
             this.hardware = hardware;
             this.db = db;
             c = new JdbcCatalogFixture(db);
@@ -37,21 +44,23 @@ class MallOrderConcurrencyMysqlTest {
             c.product();
             c.facade.saveSku(
                     c.ops,
-                    hardware
-                            ? c.sku(
-                                    "sku-1",
-                                    List.of(
-                                            c.component(
-                                                    "hw",
-                                                    ComponentKind.HARDWARE,
-                                                    null,
-                                                    null,
-                                                    "device",
-                                                    null,
-                                                    2,
-                                                    100,
-                                                    false)))
-                            : c.sku());
+                    components != null
+                            ? c.sku("sku-1", components)
+                            : hardware
+                                    ? c.sku(
+                                            "sku-1",
+                                            List.of(
+                                                    c.component(
+                                                            "hw",
+                                                            ComponentKind.HARDWARE,
+                                                            null,
+                                                            null,
+                                                            "device",
+                                                            null,
+                                                            2,
+                                                            100,
+                                                            false)))
+                                    : c.sku());
             c.facade.publishIndustry(c.ops, c.publication(List.of("sku-1"), 0));
             var type =
                     c.repo.load("tenant-a", ai.neargo.commerce.core.catalog.CatalogLockMode.NONE)

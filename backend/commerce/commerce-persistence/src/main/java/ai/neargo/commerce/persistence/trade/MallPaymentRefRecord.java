@@ -18,4 +18,10 @@ public record MallPaymentRefRecord(
         String currency,
         Long amountMinor,
         String status,
-        Long providerPaidAt) {}
+        Long providerPaidAt,
+        String requestSnapshot,
+        String requestHash,
+        String outcomeSnapshot,
+        String dispatchState,
+        String closureReference,
+        String verifiedFactSnapshot) {}

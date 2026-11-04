@@ -175,6 +175,76 @@ class SubscriptionMysqlTest {
         }
     }
 
+    @Test
+    void frozenPaidGroupRequiresOwnerAndRollsBackEverySourceOnOneFailure() {
+        try (var db = new MysqlDatabase()) {
+            var f = setup(db);
+            var svc = services(db, f, NOV1);
+            f.uow.required(() -> svc.create.initializeFree(OWNER, init()));
+            db.jdbc.update("update mch_subscription_account set pending_change_order_no='order-1'");
+            var plan =
+                    f.repo.load("tenant-a", ai.neargo.commerce.core.catalog.CatalogLockMode.NONE)
+                            .planVersions
+                            .get("pro-1")
+                            .draft();
+            var good =
+                    new SubscriptionService.FrozenDelivery(
+                            plan("unit-1"), plan, Map.of("BASE", "BASE", "POS", "FROZEN_POS"));
+            var bad =
+                    new SubscriptionService.FrozenDelivery(
+                            new SubscriptionService.Delivery(
+                                    "unit-2",
+                                    SubscriptionService.Origin.ORDER,
+                                    "pro-1",
+                                    null,
+                                    MONTH,
+                                    100,
+                                    0,
+                                    "USD",
+                                    false),
+                            plan,
+                            Map.of("BASE", "BASE", "POS", "FROZEN_POS"));
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> svc.service.deliverOrder(STORE, "other-order", List.of(good)));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> svc.service.deliverOrder(STORE, "order-1", List.of(good, bad)));
+            assertEquals(
+                    1,
+                    db.jdbc.queryForObject(
+                            "select count(*) from mch_subscription_period", Integer.class));
+            assertEquals(
+                    1,
+                    db.jdbc.queryForObject(
+                            "select entitlement_version from mch_subscription_account",
+                            Integer.class));
+            svc.service.deliverOrder(STORE, "order-1", List.of(good));
+            svc.service.deliverOrder(STORE, "order-1", List.of(good));
+            assertEquals(
+                    2,
+                    db.jdbc.queryForObject(
+                            "select count(*) from mch_subscription_period", Integer.class));
+            assertEquals(
+                    2,
+                    db.jdbc.queryForObject(
+                            "select entitlement_version from mch_subscription_account",
+                            Integer.class));
+            assertEquals(
+                    "FROZEN_POS",
+                    db.jdbc.queryForObject(
+                            "select end_code from mch_store_end_grant where entitlement_code='POS'"
+                                    + " and state='NORMAL'",
+                            String.class));
+            assertEquals(
+                    0,
+                    db.jdbc.queryForObject(
+                            "select count(*) from mch_store_end_grant where entitlement_code='BASE'"
+                                    + " and end_at is not null",
+                            Integer.class));
+        }
+    }
+
     String tail(MysqlDatabase db) {
         return Instant.ofEpochMilli(
                         db.jdbc.queryForObject(
