@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1817" viewBox="0 0 1540 1817" role="img" aria-label="事件、排期历史、迁移与到期提醒 · ER关系与键">
 <title>事件、排期历史、迁移与到期提醒 · ER关系与键</title>
+<desc>行业Plan商城候选数据模型中「事件、排期历史、迁移与到期提醒」域的ER图：commerce_outbox、mch_subscription_migration_map、mch_end_schedule_event、commerce_expiry_notice 四张候选表的唯一键，以及与 mch_store、旧合同 mch_entity_plan 等表的逻辑引用和基数。字段级候选设计，不是生产DDL。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#50657c"/></marker></defs>
 <rect width="1540" height="1817" fill="#f5f7fb"/>
 <text x="44" y="51" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="29" fill="#24364b" font-weight="bold" text-anchor="start">事件、排期历史、迁移与到期提醒 · ER关系与键</text>

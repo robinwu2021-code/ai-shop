@@ -11,8 +11,8 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**34 个权限码 × 6 个角色 × 341 个受控功能点**
-（另有 39 个登录即可、1 个「任一权限即可」）。
+统计：**34 个权限码 × 6 个角色 × 342 个受控功能点**
+（另有 40 个登录即可、8 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -36,7 +36,7 @@
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:print:device` | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
-| `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
@@ -511,6 +511,7 @@
 | 破损短少上报 | POST | `/biz/pickup/:orderNo/report` | `mReportShortage` | picking |
 | 标记到货 | POST | `/biz/pickup/arrived` | `mMarkArrived` | picking |
 | 分拣单 | GET | `/biz/pickup/picking` | `mPickingList` | picking |
+| —（b-app 未接） | — | `/biz/stores/{}/pos/access` | — | — |
 
 ### `pay:ent:read`　查看主体级权益目录，不授予变更能力
 
@@ -857,6 +858,7 @@
 | `/biz/stored-value/recharges/{}/cancel` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/recharges/{}/receive` | `pay:sv:recharge:receive` | 老板 |
 | `/biz/stored-value/recharges/{}/submit` | `pay:sv:recharge:create` | 老板 |
+| `/biz/stores/{}/pos/access` | `biz:receive` | 老板、店长、店员、理货员 |
 
 > 这些是「写了、测了、没人调用」—— 要么排期接上，要么从 `REQUIRED` 删掉。
 > `noStaleEntries` 只拦已删除的端点，**拦不住「端点还在但没人用」**。
@@ -908,6 +910,7 @@
 | 端点 | 功能点 |
 |---|---|
 | `/biz/auth/login` | 商家登录 |
+| `/biz/auth/logout` | — |
 | `/biz/auth/otp/send` | 发送验证码 |
 | `/biz/auth/password` | 设置登录密码 |
 | `/biz/auth/staff-login` | 员工登录 |
@@ -952,5 +955,12 @@
 一次返回好几件互不相干的事，**粒度由端上按 `perms` 裁**。
 仍然要求「在这家店有角色」——空角色的人一样进不来。
 
+- `/biz/business-types`　
+- `/biz/business-types/{}/plans`　
 - `/biz/dashboard/todo`　工作台待办
+- `/biz/stores/{}/context`　
+- `/biz/stores/{}/end-access`　
+- `/biz/stores/{}/end-sessions`　
+- `/biz/stores/{}/entitlements`　
+- `/biz/stores/{}/subscription`　
 

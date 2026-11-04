@@ -42,6 +42,8 @@ class ControllerProfileTest {
             "CommerceBuyerMallHttpController.java",
             "CommerceOfflineBuyerHttpController.java",
             "CommerceCatalogHttpController.java",
+            "CommerceMallProductHttpController.java",
+            "CommerceStorefrontHttpController.java",
             "CommerceOpsMallHttpController.java",
             "CommerceSourceHttpController.java",
             "CommerceOfflineOpsHttpController.java");

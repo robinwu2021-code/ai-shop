@@ -31,7 +31,14 @@ export function readDeferredDelivery(root, file, {app, prefix, handlers, missing
             || data.plan.split('/').includes('..') || !existsSync(join(root, data.plan))) {
         throw new Error('Staged delivery must name an existing frontend task plan');
     }
-    const spec = JSON.parse(readFileSync(join(root, 'docs/api/entitlement-backend.openapi.json'), 'utf8'));
+    // 每份清单可以用 contract 指明它的条目必须出现在哪份 docs/api 下的 OpenAPI 里（按域分清单）；
+    // 不写则沿用最早那份权益契约。
+    const contract = data.contract ?? 'docs/api/entitlement-backend.openapi.json';
+    if (typeof contract !== 'string' || !contract.startsWith('docs/api/') || contract.split('/').includes('..')
+            || !existsSync(join(root, contract))) {
+        throw new Error('Staged delivery must name an existing docs/api OpenAPI contract');
+    }
+    const spec = JSON.parse(readFileSync(join(root, contract), 'utf8'));
     const published = new Set(Object.entries(spec.paths).flatMap(([path, methods]) => Object.keys(methods)
         .filter(method => ['get', 'post', 'put', 'patch', 'delete'].includes(method))
         .map(method => keyOf({method: method.toUpperCase(), path}))));

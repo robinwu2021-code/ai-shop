@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1775" viewBox="0 0 1540 1775" role="img" aria-label="商城商品与平台库存 · ER关系与键">
 <title>商城商品与平台库存 · ER关系与键</title>
+<desc>行业Plan商城候选数据模型中「商城商品与平台库存」域的ER图：mall_product、mall_sku、mall_sku_version、mall_sku_component、mall_sku_stock 五张候选表的唯一键与逻辑引用（SPU→SKU→可成交版本→交付清单，硬件SKU按仓库的平台库存）。字段级候选设计，不是生产DDL。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#50657c"/></marker></defs>
 <rect width="1540" height="1775" fill="#f5f7fb"/>
 <text x="44" y="51" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="29" fill="#24364b" font-weight="bold" text-anchor="start">商城商品与平台库存 · ER关系与键</text>

@@ -102,6 +102,8 @@ class CommerceMallHttpWiringTest {
                         c -> {
                             assertNull(c.getStartupFailure());
                             assertEquals(1, c.getBeansOfType(CommerceBuyerMallHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceStorefrontHttpController.class).size());
+                            assertEquals(1, c.getBeansOfType(CommerceMallProductHttpController.class).size());
                             assertEquals(1, c.getBeansOfType(CommerceOpsMallHttpController.class).size());
                             assertEquals(1, c.getBeansOfType(CommerceOfflineBuyerHttpController.class).size());
                             assertEquals(1, c.getBeansOfType(CommerceOfflineOpsHttpController.class).size());
@@ -113,6 +115,7 @@ class CommerceMallHttpWiringTest {
                             assertEquals(1, c.getBeansOfType(CommerceOfflineBuyerHttpController.class).size());
                             assertEquals(0, c.getBeansOfType(CommerceOpsMallHttpController.class).size());
                             assertEquals(0, c.getBeansOfType(CommerceCatalogHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceMallProductHttpController.class).size());
                             assertEquals(0, c.getBeansOfType(CommerceSourceHttpController.class).size());
                             assertEquals(0, c.getBeansOfType(CommerceOfflineOpsHttpController.class).size());
                         });
@@ -120,6 +123,7 @@ class CommerceMallHttpWiringTest {
                 .run(
                         c -> {
                             assertEquals(0, c.getBeansOfType(CommerceBuyerMallHttpController.class).size());
+                            assertEquals(0, c.getBeansOfType(CommerceStorefrontHttpController.class).size());
                             assertEquals(0, c.getBeansOfType(CommerceOfflineBuyerHttpController.class).size());
                             assertEquals(1, c.getBeansOfType(CommerceOpsMallHttpController.class).size());
                             assertEquals(1, c.getBeansOfType(CommerceCatalogHttpController.class).size());

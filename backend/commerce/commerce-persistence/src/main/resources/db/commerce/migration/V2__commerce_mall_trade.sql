@@ -33,7 +33,7 @@ CREATE TABLE `mall_quote` (
   UNIQUE KEY uk_0 (`tenant_no`,`quote_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_order` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -72,7 +72,7 @@ CREATE TABLE `mall_order` (
   UNIQUE KEY uk_2 (`tenant_no`,`buyer_user_no`,`idempotency_key`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_order_item` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -96,7 +96,7 @@ CREATE TABLE `mall_order_item` (
   UNIQUE KEY uk_0 (`tenant_no`,`order_item_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_order_component` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -123,7 +123,7 @@ CREATE TABLE `mall_order_component` (
   UNIQUE KEY uk_1 (`tenant_no`,`order_item_no`,`component_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_payment_ref` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -147,7 +147,7 @@ CREATE TABLE `mall_payment_ref` (
   UNIQUE KEY uk_1 (`tenant_no`,`pay_order_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_fulfillment_task` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -172,7 +172,7 @@ CREATE TABLE `mall_fulfillment_task` (
   UNIQUE KEY uk_1 (`tenant_no`,`order_component_no`,`unit_seq`,`task_type`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_shipment` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -195,7 +195,7 @@ CREATE TABLE `mall_shipment` (
   UNIQUE KEY uk_0 (`tenant_no`,`shipment_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_refund` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -224,7 +224,7 @@ CREATE TABLE `mall_refund` (
   UNIQUE KEY uk_2 (`tenant_no`,`pay_refund_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_refund_item` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -248,7 +248,7 @@ CREATE TABLE `mall_refund_item` (
   UNIQUE KEY uk_0 (`tenant_no`,`refund_item_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `commerce_event_inbox` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -270,7 +270,7 @@ CREATE TABLE `commerce_event_inbox` (
   UNIQUE KEY uk_0 (`tenant_no`,`source_system`,`event_id`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE INDEX idx_0 ON `mall_quote` (`tenant_no`,`store_no`,`created_at`);
 

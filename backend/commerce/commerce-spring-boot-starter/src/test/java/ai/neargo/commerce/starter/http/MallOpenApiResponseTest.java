@@ -106,7 +106,7 @@ class MallOpenApiResponseTest {
         var mvc =
                 MockMvcBuilders.standaloneSetup(
                                 new CommerceBuyerMallHttpController(
-                                        null, null, queries, null, null, context, envelope),
+                                        null, queries, null, null, context, envelope),
                                 new CommerceCatalogHttpController(catalog, context, envelope))
                         .build();
         var order = mvc.perform(get("/biz/stores/S/mall/orders/order")).andReturn().getResponse();

@@ -12,14 +12,12 @@ import java.util.*;
 @RequestMapping("/biz/stores/{storeNo}/mall")
 public final class CommerceBuyerMallHttpController extends MallHttpSupport {
     private final MallFacade mall;
-    private final StorefrontFacade storefront;
     private final MallQueryFacade queries;
     private final PaymentFacade payments;
     private final RefundFacade refunds;
 
     public CommerceBuyerMallHttpController(
             MallFacade mall,
-            StorefrontFacade storefront,
             MallQueryFacade queries,
             PaymentFacade payments,
             RefundFacade refunds,
@@ -27,16 +25,9 @@ public final class CommerceBuyerMallHttpController extends MallHttpSupport {
             MallHttpEnvelopePort envelope) {
         super(context, envelope);
         this.mall = mall;
-        this.storefront = storefront;
         this.queries = queries;
         this.payments = payments;
         this.refunds = refunds;
-    }
-
-    @GetMapping("/products")
-    public Object products(@PathVariable("storeNo") String store) {
-        var c = context.buyer(store, "commerce:mall:browse");
-        return ok(storefront.catalog(c.actor(), c.store()));
     }
 
     public record QuoteRequest(List<QuoteLine> lines, String currency) {}

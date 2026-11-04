@@ -27921,6 +27921,18 @@
           "ar": "اسم المستخدم {0} مُستخدم بالفعل"
         },
         {
+          "key": "err.store.business_type_required",
+          "zh-CN": "请先在建店入口选择已发布的经营类型",
+          "en": "Choose a published business type when creating the store",
+          "ar": "اختر نوع نشاط منشورًا عند إنشاء المتجر"
+        },
+        {
+          "key": "err.store.commerce_migration_required",
+          "zh-CN": "这家门店使用旧商业模型，请先完成迁移",
+          "en": "Migrate this legacy store before choosing a business type",
+          "ar": "يجب ترحيل هذا المتجر القديم قبل اختيار نوع النشاط"
+        },
+        {
           "key": "err.store.slug_invalid",
           "zh-CN": "门店代码只能用 3-32 位小写字母、数字和连字符，首尾不能是连字符",
           "en": "Store code must be 3-32 lowercase letters, digits or hyphens, and cannot start or end with a hyphen",
@@ -37717,6 +37729,23 @@
     ],
     "javaEnums": [
       {
+        "name": "AccessStatus",
+        "values": [
+          "ALLOWED",
+          "NOT_PURCHASED",
+          "EXPIRED",
+          "NOT_STARTED",
+          "REVOKED",
+          "CHECK_UNAVAILABLE",
+          "FORBIDDEN",
+          "STORE_DISABLED",
+          "CONTEXT_REFRESH_REQUIRED",
+          "ACCOUNT_INVALID"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
         "name": "Action",
         "values": [
           "TOPUP_U",
@@ -37947,6 +37976,17 @@
         "module": "shop-base"
       },
       {
+        "name": "AsyncStatus",
+        "values": [
+          "PENDING",
+          "SUCCEEDED",
+          "FAILED",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
         "name": "AuthorizationState",
         "values": [
           "UNKNOWN",
@@ -38021,6 +38061,28 @@
         "module": "logistics"
       },
       {
+        "name": "CatalogErrorCode",
+        "values": [
+          "INVALID_ARGUMENT",
+          "NOT_FOUND",
+          "VERSION_CONFLICT",
+          "FORBIDDEN",
+          "IMMUTABLE_VERSION"
+        ],
+        "zh": "Stable module outcomes; transport adapters map codes rather than parsing messages.",
+        "module": "commerce"
+      },
+      {
+        "name": "CatalogLockMode",
+        "values": [
+          "NONE",
+          "SHARED",
+          "EXCLUSIVE"
+        ],
+        "zh": "Shared current reads support READ COMMITTED and real READ ONLY host transactions.",
+        "module": "commerce"
+      },
+      {
         "name": "Cell",
         "values": [
           "ALLOW",
@@ -38047,6 +38109,25 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "CommerceModel",
+        "values": [
+          "LEGACY",
+          "STORE_V1"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
+        "name": "ComponentKind",
+        "values": [
+          "PLAN",
+          "END_PACKAGE",
+          "HARDWARE"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "CouponMode",
@@ -38078,6 +38159,17 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "DeliveryStatus",
+        "values": [
+          "SENT",
+          "RETRYABLE",
+          "UNKNOWN",
+          "PERMANENT_FAILURE"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "Deployment",
@@ -38127,6 +38219,15 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "EndScope",
+        "values": [
+          "STORE",
+          "SYSTEM"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "ErrorCode",
@@ -38354,6 +38455,8 @@
           "BIZ_ROLE_FORBIDDEN",
           "SERVICE_SCOPE_NOT_ALLOWED",
           "STORE_QUOTA_EXCEEDED",
+          "STORE_BUSINESS_TYPE_REQUIRED",
+          "STORE_COMMERCE_MIGRATION_REQUIRED",
           "STORE_SUSPENDED_BY_PLATFORM",
           "STAFF_QUOTA_EXCEEDED",
           "PLAN_CAPABILITY_REQUIRED",
@@ -38499,6 +38602,19 @@
         ],
         "zh": "履约进度 —— 售后「货还能不能拦下来」的判据（TDD-售后规则-审核与部分退款 §2.1）。",
         "module": "shop-core"
+      },
+      {
+        "name": "Fulfillment",
+        "values": [
+          "WAIT_INVENTORY",
+          "PENDING",
+          "PROCESSING",
+          "PARTIAL",
+          "COMPLETED",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "FundBucket",
@@ -38728,6 +38844,18 @@
         "module": "shop-store-mybatis"
       },
       {
+        "name": "Lane",
+        "values": [
+          "ACCOUNT",
+          "BOOTSTRAP",
+          "END_PROTECTED",
+          "LEGACY_PREVIEW",
+          "DENY"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
         "name": "LimitPath",
         "values": [
           "TOTAL",
@@ -38808,6 +38936,20 @@
         ],
         "zh": "上移 / 下移的方向。",
         "module": "shop-core"
+      },
+      {
+        "name": "NoticeStatus",
+        "values": [
+          "PENDING",
+          "SENDING",
+          "SENT",
+          "RETRYABLE",
+          "UNKNOWN",
+          "DEAD",
+          "SUPERSEDED"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "ObservedPrintStatus",
@@ -38892,6 +39034,24 @@
       {
         "name": "OrderStatus",
         "values": [
+          "PENDING_INVENTORY",
+          "AWAITING_PAYMENT",
+          "PAYMENT_UNKNOWN",
+          "PAID",
+          "FULFILLING",
+          "COMPLETED",
+          "CANCEL_PENDING",
+          "CLOSED",
+          "REFUNDING",
+          "PARTIALLY_REFUNDED",
+          "REFUNDED"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
+        "name": "OrderStatus",
+        "values": [
           "WAIT_PAY",
           "WAIT_FULFILL",
           "FULFILLING",
@@ -38901,6 +39061,15 @@
         ],
         "zh": "订单（ord_sub_order）状态。",
         "module": "shop-core"
+      },
+      {
+        "name": "Origin",
+        "values": [
+          "ORDER",
+          "GRANT"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "Outcome",
@@ -38958,6 +39127,19 @@
         ],
         "zh": "",
         "module": "pay/pay-channel"
+      },
+      {
+        "name": "Payment",
+        "values": [
+          "UNPAID",
+          "PAYING",
+          "PAYMENT_UNKNOWN",
+          "CANCEL_PENDING",
+          "PAID",
+          "CLOSED"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "PaymentEvent",
@@ -39040,6 +39222,16 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "PlanTier",
+        "values": [
+          "FREE",
+          "PRO",
+          "CHAIN"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "PreviewReason",
@@ -39237,6 +39429,17 @@
         "module": "print"
       },
       {
+        "name": "ProductKind",
+        "values": [
+          "PLAN",
+          "END_ACCESS",
+          "HARDWARE",
+          "BUNDLE"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
         "name": "Quality",
         "values": [
           "SALEABLE",
@@ -39291,6 +39494,17 @@
         "module": "shop-base"
       },
       {
+        "name": "Refund",
+        "values": [
+          "NONE",
+          "REFUNDING",
+          "PARTIAL",
+          "REFUNDED"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
         "name": "RefundProgress",
         "values": [
           "NONE",
@@ -39299,6 +39513,16 @@
         ],
         "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
         "module": "shop-core"
+      },
+      {
+        "name": "ReleaseStatus",
+        "values": [
+          "PLANNED",
+          "VERIFIED",
+          "RETIRED"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "ResolutionPurpose",
@@ -39356,6 +39580,16 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "SaleTarget",
+        "values": [
+          "PLAN",
+          "SKU",
+          "PRODUCT"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "Scope",
@@ -39682,6 +39916,17 @@
         "module": "shop-core"
       },
       {
+        "name": "Status",
+        "values": [
+          "RESERVED",
+          "SHIPPED",
+          "RELEASED",
+          "NOT_FOUND"
+        ],
+        "zh": "",
+        "module": "shop-inventory"
+      },
+      {
         "name": "StoreActivityType",
         "values": [
           "RECHARGE",
@@ -39689,6 +39934,26 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "StoreStatus",
+        "values": [
+          "ACTIVE",
+          "DISABLED",
+          "CLOSED"
+        ],
+        "zh": "",
+        "module": "commerce"
+      },
+      {
+        "name": "SubjectKind",
+        "values": [
+          "ACCOUNT",
+          "OPERATOR",
+          "SYSTEM"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "SubjectKind",
@@ -39820,6 +40085,15 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "UnusedDigital",
+        "values": [
+          "FULL_ORIGINAL_ALLOCATION",
+          "MANUAL_ONLY"
+        ],
+        "zh": "",
+        "module": "commerce"
       },
       {
         "name": "ZeroCashReason",
@@ -42617,6 +42891,22 @@
     ]
   },
   "constants": [
+    {
+      "host": "CommerceRoutePolicy",
+      "name": "BIZ",
+      "type": "String",
+      "value": "\"END_BIZ_APP\", POS = \"END_APP_POS\"",
+      "zh": "",
+      "module": "commerce"
+    },
+    {
+      "host": "CommerceRoutePolicy",
+      "name": "PROCUREMENT_DUTY",
+      "type": "String",
+      "value": "\"biz:store:admin\"",
+      "zh": "",
+      "module": "commerce"
+    },
     {
       "host": "ElecInternal",
       "name": "SESSION",
@@ -46205,6 +46495,7 @@
   "dependencies": {
     "maven": {
       "properties": {
+        "commerce.version": "0.1.0-SNAPSHOT",
         "archunit.version": "1.3.0",
         "shedlock.version": "6.9.0",
         "cos.version": "5.6.245",
@@ -46212,6 +46503,10 @@
         "s2.version": "2.0.0"
       },
       "managed": [
+        "ai.neargo.commerce:commerce-api",
+        "ai.neargo.commerce:commerce-core",
+        "ai.neargo.commerce:commerce-persistence",
+        "ai.neargo.commerce:commerce-spring-boot-starter",
         "com.google.errorprone:error_prone_annotations",
         "com.google.geometry:s2-geometry",
         "com.qcloud:cos_api",

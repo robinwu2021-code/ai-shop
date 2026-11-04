@@ -42,7 +42,6 @@ public class CommerceMallHttpAutoConfiguration {
         @ConditionalOnProperty(prefix = "commerce", name = "mall.enabled", havingValue = "true")
         CommerceBuyerMallHttpController commerceBuyerMallHttpController(
                 ai.neargo.commerce.api.mall.MallFacade mall,
-                ai.neargo.commerce.api.mall.StorefrontFacade storefront,
                 ai.neargo.commerce.api.mall.MallQueryFacade queries,
                 ObjectProvider<ai.neargo.commerce.api.fulfillment.PaymentFacade> payments,
                 ObjectProvider<ai.neargo.commerce.api.mall.RefundFacade> refunds,
@@ -50,12 +49,20 @@ public class CommerceMallHttpAutoConfiguration {
                 MallHttpEnvelopePort envelope) {
             return new CommerceBuyerMallHttpController(
                     mall,
-                    storefront,
                     queries,
                     payments.getIfAvailable(),
                     refunds.getIfAvailable(),
                     context,
                     envelope);
+        }
+
+        @Bean
+        @ConditionalOnProperty(prefix = "commerce", name = "mall.enabled", havingValue = "true")
+        CommerceStorefrontHttpController commerceStorefrontHttpController(
+                ai.neargo.commerce.api.mall.StorefrontFacade storefront,
+                MallHttpContextPort context,
+                MallHttpEnvelopePort envelope) {
+            return new CommerceStorefrontHttpController(storefront, context, envelope);
         }
 
         @Bean
@@ -84,6 +91,13 @@ public class CommerceMallHttpAutoConfiguration {
         CommerceCatalogHttpController commerceCatalogHttpController(
                 CatalogFacade catalog, MallHttpContextPort context, MallHttpEnvelopePort envelope) {
             return new CommerceCatalogHttpController(catalog, context, envelope);
+        }
+
+        @Bean
+        @ConditionalOnProperty(prefix = "commerce", name = "catalog.enabled", havingValue = "true")
+        CommerceMallProductHttpController commerceMallProductHttpController(
+                CatalogFacade catalog, MallHttpContextPort context, MallHttpEnvelopePort envelope) {
+            return new CommerceMallProductHttpController(catalog, context, envelope);
         }
 
         @Bean

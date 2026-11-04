@@ -17,7 +17,7 @@ CREATE TABLE `sys_business_type` (
   UNIQUE KEY uk_0 (`tenant_no`,`business_type_code`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `sys_business_end` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -42,7 +42,7 @@ CREATE TABLE `sys_business_end` (
   UNIQUE KEY uk_1 (`tenant_no`,`entitlement_code`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `sys_industry_plan` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -65,7 +65,7 @@ CREATE TABLE `sys_industry_plan` (
   UNIQUE KEY uk_2 (`tenant_no`,`business_type_code`,`rank`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `sys_industry_plan_version` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -90,7 +90,7 @@ CREATE TABLE `sys_industry_plan_version` (
   UNIQUE KEY uk_1 (`tenant_no`,`plan_no`,`revision`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `sys_plan_version_end` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -108,7 +108,7 @@ CREATE TABLE `sys_plan_version_end` (
   UNIQUE KEY uk_0 (`tenant_no`,`plan_version_no`,`entitlement_code`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_product` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -131,7 +131,7 @@ CREATE TABLE `mall_product` (
   UNIQUE KEY uk_0 (`tenant_no`,`product_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_sku` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -151,7 +151,7 @@ CREATE TABLE `mall_sku` (
   UNIQUE KEY uk_0 (`tenant_no`,`sku_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_sku_version` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -176,7 +176,7 @@ CREATE TABLE `mall_sku_version` (
   UNIQUE KEY uk_1 (`tenant_no`,`sku_no`,`revision`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mall_sku_component` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -203,4 +203,4 @@ CREATE TABLE `mall_sku_component` (
   UNIQUE KEY uk_1 (`tenant_no`,`sku_version_no`,`component_seq`),
   PRIMARY KEY (`id`),
   CHECK (deleted IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

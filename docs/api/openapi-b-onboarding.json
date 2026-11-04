@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "B端注册至进件资料提交 API",
-    "version": "2026-11-04.1",
-    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共29个操作；未新增业务端点。"
+    "version": "2026-11-04.3-end-access",
+    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。"
   },
   "servers": [
     {
@@ -4505,6 +4505,578 @@
           }
         ]
       }
+    },
+    "/biz/merchant/store-setup": {
+      "get": {
+        "operationId": "getMerchantStoreSetup",
+        "summary": "读取首店经营市场与平台行业子业态映射",
+        "description": "需登录但无需已有门店。市场元数据来自sys_market；只返回启用映射且实际已发布的商业类型。账号电话地区与经营市场正交。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/StoreSetup"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-flutter-client-status": "implemented",
+        "x-live-dev-request-policy": "allowed"
+      }
+    },
+    "/biz/stores/{storeNo}/end-access": {
+      "get": {
+        "operationId": "getStoreEndAccess",
+        "summary": "查询某端在所选店的准入",
+        "description": "按端码读取当前权益判定；判不出（ACCOUNT_INVALID/CHECK_UNAVAILABLE）以错误返回。路径店号必须等于 X-Store-No。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "持有该端进入岗位的所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/EndAccessDecision"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          },
+          {
+            "name": "endCode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "端码，如 BIZ_APP"
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "客户端标识"
+          }
+        ]
+      }
+    },
+    "/biz/stores/{storeNo}/end-sessions": {
+      "post": {
+        "operationId": "issueStoreEndSession",
+        "summary": "签发端上下文令牌",
+        "description": "准入通过才签发；进入端前调用，令牌过期后重新签发。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "持有该端进入岗位的所选店成员",
+        "x-retry": "同一意图可重试；每次返回新令牌，旧令牌到期自然失效。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/EndContextToken"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndSessionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stores/{storeNo}/pos/access": {
+      "get": {
+        "operationId": "getStorePosAccess",
+        "summary": "读取 POS 端入口",
+        "description": "收银岗位可读，返回 POS 端码供客户端随后查询 end-access。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "有收银权限的所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/PosAccess"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6951,6 +7523,238 @@
           "nextBoundaryAt",
           "subscription",
           "entitlements"
+        ]
+      },
+      "StoreSetup": {
+        "type": "object",
+        "required": [
+          "markets"
+        ],
+        "properties": {
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreSetupMarket"
+            },
+            "description": "只返回启用市场+启用平台映射+真实已发布商业目录的交集；无配置不补造。"
+          }
+        }
+      },
+      "StoreSetupMarket": {
+        "type": "object",
+        "required": [
+          "market",
+          "displayName",
+          "currency",
+          "currencyScale",
+          "timeZone",
+          "industries"
+        ],
+        "properties": {
+          "market": {
+            "type": "string",
+            "description": "经营市场；不由账号手机号地区推导。"
+          },
+          "displayName": {
+            "type": "string",
+            "description": ""
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "currencyScale": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "来自sys_market的IANA时区。"
+          },
+          "industries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreSetupIndustry"
+            }
+          }
+        }
+      },
+      "StoreSetupIndustry": {
+        "type": "object",
+        "required": [
+          "industryCode",
+          "displayName",
+          "subIndustries"
+        ],
+        "properties": {
+          "industryCode": {
+            "type": "string",
+            "description": "经营行业；独立于证照industry。"
+          },
+          "displayName": {
+            "type": "string",
+            "description": ""
+          },
+          "subIndustries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreSetupSubIndustry"
+            }
+          }
+        }
+      },
+      "StoreSetupSubIndustry": {
+        "type": "object",
+        "required": [
+          "subIndustryCode",
+          "displayName",
+          "businessTypeCode",
+          "businessTypeDisplayName",
+          "catalogVersion"
+        ],
+        "properties": {
+          "subIndustryCode": {
+            "type": "string",
+            "description": ""
+          },
+          "displayName": {
+            "type": "string",
+            "description": ""
+          },
+          "businessTypeCode": {
+            "type": "string",
+            "description": ""
+          },
+          "businessTypeDisplayName": {
+            "type": "string",
+            "description": "来自真实已发布商业目录，不从行业名称推断。"
+          },
+          "catalogVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "EndAccessDecision": {
+        "type": "object",
+        "description": "端准入判定（commerce-api AccessDecision）。ACCOUNT_INVALID / CHECK_UNAVAILABLE 不走成功信封，而以错误返回。",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ALLOWED",
+              "NOT_PURCHASED",
+              "EXPIRED",
+              "NOT_STARTED",
+              "REVOKED",
+              "FORBIDDEN",
+              "STORE_DISABLED"
+            ]
+          },
+          "store": {
+            "type": "object",
+            "properties": {
+              "tenantNo": {
+                "type": "string"
+              },
+              "storeNo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tenantNo",
+              "storeNo"
+            ]
+          },
+          "entitlementCode": {
+            "type": "string"
+          },
+          "entitlementVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "serverNow": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextBoundaryAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "denialCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextAction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "store",
+          "entitlementCode",
+          "entitlementVersion",
+          "serverNow",
+          "nextAction"
+        ]
+      },
+      "EndContextToken": {
+        "type": "object",
+        "description": "短期端上下文令牌；客户端只透传 value，不解析。",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entitlementVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "value",
+          "expiresAt",
+          "entitlementVersion"
+        ]
+      },
+      "EndSessionRequest": {
+        "type": "object",
+        "properties": {
+          "endCode": {
+            "type": "string",
+            "description": "如 BIZ_APP / APP_POS"
+          },
+          "clientId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endCode",
+          "clientId"
+        ]
+      },
+      "PosAccess": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string"
+          },
+          "endCode": {
+            "type": "string",
+            "const": "APP_POS"
+          }
+        },
+        "required": [
+          "storeNo",
+          "endCode"
         ]
       }
     }

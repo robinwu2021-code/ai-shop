@@ -60,7 +60,8 @@ function opsEndpointsExpectingReason(): Set<string> {
       // 往下找 4 行内的方法签名
       const sig = lines.slice(i, i + 5).join(" ");
       for (const req of reqWithReason) {
-        if (new RegExp(`\\b${req}\\b`).test(sig)) out.add(map[1]!);
+        // 只认请求体：返回值类型（如 List<WordVO>）里带 reason 不等于要客户端发 reason
+        if (new RegExp(`RequestBody(?:\\([^)]*\\))?\\s+(?:@[\\w.]+(?:\\([^)]*\\))?\\s+)*${req}\\b`).test(sig)) out.add(map[1]!);
       }
     }
   }

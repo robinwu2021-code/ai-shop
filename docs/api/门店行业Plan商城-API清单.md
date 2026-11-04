@@ -2,7 +2,7 @@
 
 日期：2026-11-03。状态：建议接口合同，除明确标为“已有”的端点外，均不表示已经实现。
 
-上游：[需求](../requirements/注册开店与行业Plan商城-需求.md)、[总体方案](../superpowers/specs/2026-11-03-industry-plan-mall-design.md)、[数据设计](../technical/design/门店行业Plan商城-数据库设计.md)。
+上游：需求《注册开店与行业Plan商城-需求》（未入本仓库）、[总体方案](../superpowers/specs/2026-11-03-industry-plan-mall-design.md)、[数据设计](../technical/design/门店行业Plan商城-数据库设计.md)。
 
 叠加策略已由用户确认：同门店同 code 的所有来源有限时长累计。报价、订单和交付记录 `stackingPolicyVersion=END_CODE_ACCUMULATE_V1`，返回累计结果与来源时间片；不存在跨来源重叠消耗的候选规则。
 
@@ -264,7 +264,7 @@ selectedSkuNo 只表示用户意向，建店接口不扣款、不假定付费权
 
 官网可新增只读发布接口 `GET /public/business-types/{typeCode}/plans`，只输出已发布名称、端组合、期限、公开价格与停售状态，不泄露客户订单与内部折价规则；以它替代 `site/lib/plans.ts` 的固定种子展示。
 
-运营端页面、动作权限、流程及为原型闭环需补清的列表／预览合同见 [运营端原型需求包](../requirements/平台运营端-经营类型Plan商城权益-原型需求包.md) §7.1。补充合同均为目标建议，不表示本API清单中的新接口已经实现。
+运营端页面、动作权限、流程及为原型闭环需补清的列表／预览合同见 运营端原型需求包《平台运营端-经营类型Plan商城权益-原型需求包》（未入本仓库） §7.1。补充合同均为目标建议，不表示本API清单中的新接口已经实现。
 
 ## 10. 整体模块、认证与到期提醒补充
 

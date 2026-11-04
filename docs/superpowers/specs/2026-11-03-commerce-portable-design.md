@@ -4,7 +4,7 @@
 
 目标：把经营类型、行业Plan、平台商城商品、商家采购订单、门店订阅、整端访问权益、升级抵扣和到期提醒作为一个可整体移植的商业模块；账号、门店身份、真实支付、库存、消息通道继续由宿主提供。
 
-本稿是后续开发的总体入口。业务细则沿用 [原业务设计](./2026-11-03-industry-plan-mall-design.md)；数据见 [表清单](../../technical/design/门店行业Plan商城-数据库表清单.md)、[字段字典与ER](../../technical/design/门店行业Plan商城-数据库字典.md)。配套 [开发计划](../plans/2026-11-03-commerce-portable-development-plan.md)、[B端原型要求](../../requirements/B端App-注册开店Plan商城-原型需求包.md)、[运营端原型要求](../../requirements/平台运营端-经营类型Plan商城权益-原型需求包.md)、[API清单](../../api/门店行业Plan商城-API清单.md)。
+本稿是后续开发的总体入口。业务细则沿用 [原业务设计](./2026-11-03-industry-plan-mall-design.md)；数据见 [表清单、字段字典与ER](../../technical/design/门店行业Plan商城-数据库字典.md)。配套 [开发计划](../plans/2026-11-03-commerce-portable-development-plan.md)、B端原型要求《B端App-注册开店Plan商城-原型需求包》（未入本仓库）、运营端原型要求《平台运营端-经营类型Plan商城权益-原型需求包》（未入本仓库）、[API清单](../../api/门店行业Plan商城-API清单.md)。
 
 ## 1. 结论：作为 commerce 模块群整体归属
 

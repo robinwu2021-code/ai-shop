@@ -16,6 +16,7 @@ import { ApiError } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { useUserStore } from "@/stores/user";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
+import { openExternalLink, trackPlatform } from "@/ports/track-platform";
 import type { TrackView } from "@shared/types";
 
 const { t } = useI18n();
@@ -39,22 +40,21 @@ async function load() {
   miniLink.value = "";
   miniLinkLoaded.value = false;
   try {
-    // #ifdef MP-WEIXIN
-    // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
-    const user = useUserStore();
-    if (!user.isPhoneLogin) {
-      loaded.value = true;
-      uni.redirectTo({
-        url: `${ROUTES.login}?redirect=${encodeURIComponent(ROUTES.track + "?t=" + token.value)}`,
-      });
-      return;
+    if (trackPlatform.miniApp) {
+      // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
+      const user = useUserStore();
+      if (!user.isPhoneLogin) {
+        loaded.value = true;
+        uni.redirectTo({
+          url: `${ROUTES.login}?redirect=${encodeURIComponent(ROUTES.track + "?t=" + token.value)}`,
+        });
+        return;
+      }
+      view.value = token.value ? await api.trackMine(token.value) : null;
+    } else {
+      // H5：免登录收窄视图，谁都能看一眼
+      view.value = token.value ? await api.track(token.value) : null;
     }
-    view.value = token.value ? await api.trackMine(token.value) : null;
-    // #endif
-    // #ifndef MP-WEIXIN
-    // H5：免登录收窄视图，谁都能看一眼
-    view.value = token.value ? await api.track(token.value) : null;
-    // #endif
   } catch (e) {
     // 403 = 登录号与收货号不一致（非本人）；其余当失效
     if (e instanceof ApiError && e.code === 80103) {
@@ -73,7 +73,7 @@ async function load() {
 const miniLink = ref("");
 const miniLinkLoaded = ref(false);
 async function loadMiniLink() {
-  // #ifdef H5
+  if (!trackPlatform.h5) return;
   try {
     const r = token.value ? await api.trackMiniLink(token.value) : null;
     miniLink.value = r?.url ?? "";
@@ -82,14 +82,11 @@ async function loadMiniLink() {
   } finally {
     miniLinkLoaded.value = true;
   }
-  // #endif
 }
 function openInMini() {
-  // #ifdef H5
-  if (miniLink.value) {
-    window.location.href = miniLink.value;
+  if (trackPlatform.h5 && miniLink.value) {
+    openExternalLink(miniLink.value);
   }
-  // #endif
 }
 
 function goHome() {
@@ -142,13 +139,13 @@ onShareAppMessage(() => ({
         <text v-if="view.buyerNickname" class="txt-caption sh-muted">
           {{ $t("track.orderedBy") }}：{{ view.buyerNickname }}
         </text>
-        <!-- #ifdef H5 -->
-        <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
-          {{ $t("track.openInMini") }}
-        </view>
-        <text v-if="miniLink" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniJumpHint") }}</text>
-        <text v-else-if="miniLinkLoaded" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniUnavailable") }}</text>
-        <!-- #endif -->
+        <template v-if="trackPlatform.h5">
+          <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
+            {{ $t("track.openInMini") }}
+          </view>
+          <text v-if="miniLink" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniJumpHint") }}</text>
+          <text v-else-if="miniLinkLoaded" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniUnavailable") }}</text>
+        </template>
       </view>
 
       <!-- 物流状态 + 轨迹 -->

@@ -4892,7 +4892,7 @@ components:
       properties:
         token:
           type: "string"
-          description: "商家账号会话令牌（BTK）。个人登录共享 USR 身份；商家与 C 端使用独立会话池，令牌不通用。"
+          description: "访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用"
         merchant:
           "$ref": "#/components/schemas/MerchantProfile"
           description: "商家档案"
@@ -11712,7 +11712,7 @@ components:
       properties:
         grantType:
           "$ref": "#/components/schemas/GrantType"
-          description: "登录方式。个人登录复用 C 端 USR；手机号 OTP 在没有个人商家主体且匹配员工时签发 MCH 员工会话。"
+          description: "登录方式。**商家池与 C 端用户池是两套账号**，同一手机号登两端是两个身份"
         principal:
           type: "string"
           description: "`WX_MINI`: wx.login code；`PHONE_OTP`: 手机号"

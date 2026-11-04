@@ -75,7 +75,7 @@ class MallCoordinationHttpTest {
         var mvc =
                 MockMvcBuilders.standaloneSetup(
                                 new CommerceBuyerMallHttpController(
-                                        null, null, queries, payments, null, context, envelope))
+                                        null, queries, payments, null, context, envelope))
                         .build();
         String path = "/biz/stores/S/mall/orders/order:1/payments/refresh";
         assertEquals(

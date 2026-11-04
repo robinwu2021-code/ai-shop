@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2080" height="1850" viewBox="0 0 2080 1850" role="img" aria-label="行业Plan商城：全部33张候选表与核心关系">
 <title>行业Plan商城：全部33张候选表与核心关系</title>
+<desc>行业Plan商城数据库全局关系与表导航：33张候选表分为5个逻辑域（经营类型/业务端/Plan 5张、商城商品与平台库存 5张、报价订单支付履约退款 10张、门店订阅端权益转换抵扣 9张、事件排期迁移到期提醒 4张），沿用现有MySQL，所有业务键与引用带 tenant_no；各域细节见同名分域图。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#50657c"/></marker></defs>
 <rect width="2080" height="1850" fill="#f5f7fb"/>
 <text x="44" y="54" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="34" fill="#24364b" font-weight="bold" text-anchor="start">行业 Plan 商城 · 数据库全局关系与表导航</text>

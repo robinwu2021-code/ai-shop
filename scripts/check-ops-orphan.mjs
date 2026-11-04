@@ -84,9 +84,20 @@ export function orphans() {
 }
 
 const allRows = orphans();
-const deferred = readDeferredDelivery(ROOT, 'docs/api/backend-ops-ui-delivery.json', {
-  app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
-});
+/*
+ * 分阶段清单按域分文件：docs/api/backend-ops-ui-delivery.json（权益）+ backend-ops-ui-delivery-<域>.json，
+ * 每份写明自己的 plan 与 contract。同一端点不许登记在两份里。
+ */
+const deferred = new Set();
+for (const file of ["backend-ops-ui-delivery.json", ...readdirSync(join(ROOT, "docs/api"))
+    .filter((f) => /^backend-ops-ui-delivery-[\w-]+\.json$/.test(f)).sort()]) {
+  for (const key of readDeferredDelivery(ROOT, `docs/api/${file}`, {
+    app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
+  })) {
+    if (deferred.has(key)) throw new Error(`Staged API listed in two delivery manifests: ${key}`);
+    deferred.add(key);
+  }
+}
 const rows = allRows.filter(row => !deferred.has(`${row.method} ${norm(row.path)}`));
 const check = process.argv.includes("--check");
 const known = existsSync(BASELINE)

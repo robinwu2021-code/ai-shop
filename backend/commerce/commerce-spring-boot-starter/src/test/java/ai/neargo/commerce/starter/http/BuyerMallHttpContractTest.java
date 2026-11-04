@@ -76,7 +76,7 @@ class BuyerMallHttpContractTest {
         var mvc =
                 MockMvcBuilders.standaloneSetup(
                                 new CommerceBuyerMallHttpController(
-                                        facade, null, null, null, null, context, envelope))
+                                        facade, null, null, null, context, envelope))
                         .build();
         String quote =
                 "{\"lines\":[{\"skuVersionNo\":\"sku.1:current\",\"quantity\":1}],\"currency\":\"CNY\"}";

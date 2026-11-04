@@ -99,3 +99,11 @@
 # 这两条它看不到；登进去反而会被它当成「已经修好、请删除」。
 /biz/goods/{goodsNo}/revisions/{revisionNo}  revisions
 /biz/goods/{goodsNo}/revisions/{revisionNo}/fork  revisions
+
+# 2026-11-04 合并积分版本 / 统一进销存时随别的模块进来、已在线的 5 条（商城套餐会话清 pre-push 时发现）。
+# 都是已上线路径，按本表规矩「拦新增、存量随模块重构带走」，不在这次改名。
+/biz/inventory/transfers/{no}/void  transfers
+/ops/banned-word/{id}/remove  banned-word
+/ops/merchant/{entityNo}/nudge  merchant
+/ops/merchant/{entityNo}/stock-doubt  merchant
+/ops/product/{goodsNo}/chain  product

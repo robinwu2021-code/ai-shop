@@ -23,6 +23,26 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  // 套餐商城（可移植 commerce starter）。码就是控制器 context.operator(...) 里写的那个，
+  // 已是细码，由 V556/V558 播种、只授给 SUPER_ADMIN；改这里须与控制器同改。
+  ["GET", /^\/ops\/(business-types|business-ends(\/deployment-options)?|industry-plans|biz-mall\/(catalog|products|sku-versions\/\{versionNo\}))$/, "commerce:catalog:read"],
+  ["*", /^\/ops\/(business-types(\/\{typeCode\})?|business-ends|industry-plans\/\{planNo\}\/versions|biz-mall\/products(\/\{productNo\}(\/skus)?)?)$/, "commerce:catalog:edit"],
+  ["POST", /^\/ops\/(business-types\/\{typeCode\}\/plan-publications|biz-mall\/sku-versions\/\{versionNo\}\/publish|industry-plans\/\{planNo\}\/off-sale|biz-mall\/skus\/\{skuNo\}\/off-sale)$/, "commerce:catalog:publish"],
+  ["GET", /^\/ops\/biz-mall\/orders(\/\{orderNo\})?$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/orders\/\{orderNo\}\/shipments$/, "commerce:mall:shipment:write"],
+  ["POST", /^\/ops\/biz-mall\/orders\/\{orderNo\}\/refunds\/\{refundNo\}\/(review-quotes|approve|reject)$/, "commerce:refund:review"],
+  ["GET", /^\/ops\/stores\/\{storeNo\}\/subscription$/, "commerce:subscription:read"],
+  ["POST", /^\/ops\/stores\/\{storeNo\}\/subscription\/grants$/, "commerce:subscription:grant"],
+  ["POST", /^\/ops\/stores\/\{storeNo\}\/subscription\/sources\/\{sourceNo\}\/revoke$/, "commerce:subscription:revoke"],
+  ["*", /^\/ops\/biz-mall\/offline\/profile$/, "commerce:collection:profile:read", "GET 读、PUT 写（commerce:collection:profile:write）"],
+  ["GET", /^\/ops\/biz-mall\/offline\/claims$/, "commerce:mall:offline:review"],
+  ["POST", /^\/ops\/biz-mall\/offline\/(quotes|orders|orders\/\{orderNo\}\/instructions)$/, "commerce:mall:assisted:purchase"],
+  ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/(instructions|claims)$/, "commerce:mall:order:read"],
+  ["*", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/evidence(\/content|\/url)?$/, "commerce:mall:offline:evidence"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/claims\/\{claimNo\}\/decline$/, "commerce:mall:offline:review"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/confirmations$/, "commerce:mall:offline:confirm"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/voids$/, "commerce:mall:offline:void"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/refunds\/\{refundNo\}\/payouts$/, "commerce:mall:offline:refund:confirm"],
   ["GET", /^\/ops\/pay\/entitlement-dead-letters$/, "ops:pay:ent:read"],
   ["GET", /^\/ops\/pay\/entitlement-exceptions(?:\/\{exceptionNo\}(?:\/actions)?)?$/, "ops:pay:ent:read"],
   ["GET", /^\/ops\/pay\/entitlement-reconciliations(?:\/\{reconNo\}(?:\/differences)?)?$/, "ops:pay:ent:read"],

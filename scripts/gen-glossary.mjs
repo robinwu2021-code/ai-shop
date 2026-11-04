@@ -517,15 +517,22 @@ function collectMaven() {
    * 覆盖传递依赖声明的版本），它只会让模块测试与发布物跑两个版本，而 Maven 一个字不报。
    */
   const literals = [];
+  /*
+   * 商城（backend/commerce）是可移植库家族：自己的 Maven 根 commerce-parent，不继承 backend/pom.xml，
+   * 能单独构建发布。它的根 POM 就是这个家族唯一放版本的地方（等同 backend/pom.xml 的角色），
+   * 家族内部模块之间用 ${project.version}。子模块照样不许写版本。
+   */
+  const VERSION_ROOTS = new Set([parentRel, "backend/commerce/pom.xml"]);
+  const INTERNAL_GROUPS = new Set(["ai.neargo.shop", "ai.neargo.commerce"]);
   for (const m of modules) {
-    if (m.rel === parentRel) continue;
+    if (VERSION_ROOTS.has(m.rel)) continue;
     const scan = read(join(ROOT, m.rel))
       .replace(/<parent>[\s\S]*?<\/parent>/, "")
       .replace(/<build>[\s\S]*?<\/build>/g, "");
     for (const d of scan.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
       const g = tagOf(d[1], "groupId"); const a = tagOf(d[1], "artifactId"); const v = tagOf(d[1], "version");
       if (!a || !v) continue;
-      if (g === "ai.neargo.shop" && v === "${project.version}") continue;
+      if (INTERNAL_GROUPS.has(g) && v === "${project.version}") continue;
       literals.push({ module: m.rel, ga: `${g}:${a}`, version: v });
     }
   }

@@ -1,6 +1,7 @@
 // Business key ownership and semantic collisions shared by schema guards and ER generation.
 export const KEY_OWNER_DEFINITIONS = {
   execution_no: { table: "ord_refund_execution" },
+  profile_no: { table: "pay_platform_collection_profile" },
   config_no: { table: "ord_store_pricing_config" },
   agent_no: { table: "prn_agent" },
   printer_no: { table: "prn_printer" },

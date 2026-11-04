@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 const m=vi.hoisted(()=>({track:vi.fn(),mine:vi.fn(),miniLink:vi.fn(),load:undefined as undefined|((q:Record<string,string>)=>void)}));
 vi.mock("@/api",()=>({api:{track:m.track,trackMine:m.mine,trackMiniLink:m.miniLink},ApiError:class ApiError extends Error{code:number;constructor(code:number){super();this.code=code;}}}));
+// 端差异在 ports/track-platform（条件编译只在 uni 构建时生效，vitest 里不处理）；这组用例按 H5 跑。
+vi.mock("@/ports/track-platform",()=>({trackPlatform:{miniApp:false,h5:true},openExternalLink:vi.fn()}));
 vi.mock("@/stores/user",()=>({useUserStore:()=>({isLogin:true,isPhoneLogin:true})}));
 vi.mock("vue-i18n",()=>({useI18n:()=>({t:(k:string)=>k})}));
 vi.mock("@dcloudio/uni-app",()=>({onLoad:(cb:typeof m.load)=>{m.load=cb;},onShareAppMessage:vi.fn(),onShow:vi.fn(),onHide:vi.fn()}));

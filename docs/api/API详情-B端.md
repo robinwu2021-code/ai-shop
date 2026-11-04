@@ -638,7 +638,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `grantType` | [`GrantType`](#granttype) | 是 | 登录方式。个人登录复用 C 端 USR；手机号 OTP 在没有个人商家主体且匹配员工时签发 MCH 员工会话。 |
+| `grantType` | [`GrantType`](#granttype) | 是 | 登录方式。**商家池与 C 端用户池是两套账号**，同一手机号登两端是两个身份 |
 | `principal` | `string` | 是 | `WX_MINI`: wx.login code；`PHONE_OTP`: 手机号 |
 | `credential` | `string` | 否 | `PHONE_OTP`: 验证码 |
 | `agreed` | `boolean` | 否 | 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去）， **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。 |
@@ -649,7 +649,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `token` | `string` | 是 | 商家账号会话令牌（BTK）。个人登录共享 USR 身份；商家与 C 端使用独立会话池，令牌不通用。 |
+| `token` | `string` | 是 | 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 |
 | `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
 
 
@@ -705,7 +705,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `token` | `string` | 是 | 商家账号会话令牌（BTK）。个人登录共享 USR 身份；商家与 C 端使用独立会话池，令牌不通用。 |
+| `token` | `string` | 是 | 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 |
 | `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
 
 
@@ -9929,7 +9929,7 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `grantType` | [`GrantType`](#granttype) | 是 | 登录方式。个人登录复用 C 端 USR；手机号 OTP 在没有个人商家主体且匹配员工时签发 MCH 员工会话。 |
+| `grantType` | [`GrantType`](#granttype) | 是 | 登录方式。**商家池与 C 端用户池是两套账号**，同一手机号登两端是两个身份 |
 | `principal` | `string` | 是 | `WX_MINI`: wx.login code；`PHONE_OTP`: 手机号 |
 | `credential` | `string` | 否 | `PHONE_OTP`: 验证码 |
 | `agreed` | `boolean` | 否 | 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去）， **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。 |
@@ -9938,7 +9938,7 @@ Inventory wire value domain.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `token` | `string` | 是 | 商家账号会话令牌（BTK）。个人登录共享 USR 身份；商家与 C 端使用独立会话池，令牌不通用。 |
+| `token` | `string` | 是 | 访问令牌。**商家池与 C 端用户池是两套账号**，token 不通用 |
 | `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
 
 ### MerchantOffers

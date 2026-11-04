@@ -34,6 +34,26 @@
       "app": "b-app",
       "method": "POST",
       "path": "/biz/auth/logout"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/merchant/store-setup"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/end-access"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/pos/access"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/stores/{storeNo}/end-sessions"
     }
   ]
 }

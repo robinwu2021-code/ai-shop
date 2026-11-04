@@ -24,7 +24,7 @@ CREATE TABLE `commerce_outbox` (
   `occurred_at` BIGINT NOT NULL,
   `published_at` BIGINT NULL,
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mch_subscription_migration_map` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -49,7 +49,7 @@ CREATE TABLE `mch_subscription_migration_map` (
   UNIQUE KEY uk_1 (`tenant_no`,`new_period_no`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `mch_end_schedule_event` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -76,7 +76,7 @@ CREATE TABLE `mch_end_schedule_event` (
   UNIQUE KEY uk_2 (`tenant_no`,`operation_ref_no`,`entitlement_code`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `commerce_expiry_notice` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -111,7 +111,7 @@ CREATE TABLE `commerce_expiry_notice` (
   UNIQUE KEY uk_1 (`tenant_no`,`dedup_key`),
   PRIMARY KEY (`id`),
   CHECK (deleted = 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE INDEX idx_15 ON `commerce_outbox` (`tenant_no`,`status`,`next_retry_at`);
 

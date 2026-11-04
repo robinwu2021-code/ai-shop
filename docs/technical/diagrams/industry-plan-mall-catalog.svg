@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1949" viewBox="0 0 1540 1949" role="img" aria-label="经营类型、业务端与Plan · ER关系与键">
 <title>经营类型、业务端与Plan · ER关系与键</title>
+<desc>行业Plan商城候选数据模型中「经营类型、业务端与Plan」域的ER图：sys_business_type、sys_business_end、sys_industry_plan、sys_industry_plan_version、sys_plan_version_end 五张候选表的唯一键，以及它们与 mch_entity、mch_store 之间按 tenant_no 的逻辑引用和基数。字段级候选设计，不是生产DDL。</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#50657c"/></marker></defs>
 <rect width="1540" height="1949" fill="#f5f7fb"/>
 <text x="44" y="51" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="29" fill="#24364b" font-weight="bold" text-anchor="start">经营类型、业务端与Plan · ER关系与键</text>

@@ -38,6 +38,10 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  pay_platform_collection_head: "平台线下收款档案的当前版本指针，由 PlatformOfflineLedger 经 JdbcTemplate 在行锁内读写，不使用 ORM 实体。",
+  pay_platform_collection_profile: "平台线下收款档案的不可变版本（发出后的指引原样保留），由 PlatformOfflineLedger 经 JdbcTemplate 追加与按版本读取，不使用 ORM 实体。",
+  inv_coordinated_reservation: "商城硬件协调预留（生命周期3），只由 CoordinatedInventoryService 经 JdbcTemplate 在库存事务内读写，旧库存接口不得改写，不使用 ORM 实体。",
+  inv_coordinated_shipment: "商城硬件协调发货证据，只由 CoordinatedInventoryService 经 JdbcTemplate 追加，不使用 ORM 实体。",
   pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",

@@ -68,6 +68,17 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
   /*
+   * 套餐商城运营查询（/ops/biz-mall/**，可移植 commerce starter）。静态调用图从
+   * MallHttpContextPort 进到 ShopMallAuthority，而它的**商家分支**会经 BizIdentityResolver
+   * 解析门店成员；运营分支（operator(...)）只读运营会话与功能点，不解析商家身份。
+   * 商城运营数据本身是平台口径（套餐目录、平台收款、全平台订单），**没有接运营数据域**：
+   * 成立的前提是 commerce:* 功能点只授给 SUPER_ADMIN（V556/V558）。要把这些码授给
+   * 配了数据域的角色，必须先给商城查询接上数据域，并删掉这一条。
+   */
+  "BizIdentityResolverImpl#resolve":
+    "商城运营路由经 ShopMallAuthority 的静态可达；运行时运营分支不解析商家身份。商城运营查询为平台口径，"
+    + "commerce:* 只授 SUPER_ADMIN（V556/V558）；授给有数据域的角色前须先接数据域并删除本条",
+  /*
    * 供应商收款账户的回捞（ADR-011）。这个方法**同时服务两侧**：
    * B 端商家看自己的账户（那边的会话里没有运营数据域，直查会 SELECT 不到），
    * 和 ops 付款清单按主体取「这家的钱打去哪」。
