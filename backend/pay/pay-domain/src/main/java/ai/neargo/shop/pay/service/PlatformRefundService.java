@@ -25,6 +25,15 @@ public interface PlatformRefundService {
             Long verifiedAt,
             String errorCode) {}
 
+    /**
+     * Actual bank payout for a refund whose original was collected OFFLINE. Nothing is transferred
+     * by the system; the operator records the real outgoing transfer. Amount must equal the frozen
+     * refund intent; the bank reference is unique across all platform bank facts.
+     */
+    record OfflinePayout(Key key, String operatorNo, long actualMinor, String currency, long paidOutAt,
+            String payeeReference, String bankReference, String evidenceReference, long confirmedAt) {}
+    default Receipt confirmOfflinePayout(OfflinePayout payout) { throw new UnsupportedOperationException(); }
+
     Receipt refund(Request request);
 
     Receipt query(Key key);

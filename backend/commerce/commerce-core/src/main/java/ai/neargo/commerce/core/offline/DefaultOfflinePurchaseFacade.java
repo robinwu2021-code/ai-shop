@@ -182,6 +182,24 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             return work.apply(orders.order(q.tenantNo(),q.orderNo()).orElseThrow(()->fail("NOT_FOUND")));
         });
     }
+    public RefundView confirmRefundPayout(ActorContext actor,RefundPayoutCommand c) {
+        operator(actor);
+        if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0
+                || c.paidOutAt()==null || c.paidOutAt().getNano()!=0 || c.paidOutAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
+        text(c.refundNo(),64);text(c.payeeReference(),128);text(c.bankReference(),128);
+        verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"REFUND_PROOF","commerce:mall:offline:refund:confirm");
+        uow.requireOutsideTransaction();
+        try {
+            collection.payout(new OfflineCollectionPort.RefundPayout(actor.tenantNo(),c.order().orderNo(),c.refundNo(),
+                    actor.principalNo(),c.actualAmount(),c.paidOutAt(),c.payeeReference(),c.bankReference(),c.evidenceKey(),clock.instant()));
+        } catch(IllegalArgumentException refused) {
+            String reason=refused.getMessage();
+            throw fail(reason==null || reason.isBlank() || reason.length()>64?"OFFLINE_PAYOUT_REJECTED":reason);
+        }
+        if(refunds==null)throw fail("REFUND_UNAVAILABLE");
+        return refunds.recover(new RefundQuery(actor.tenantNo(),c.order().orderNo(),c.refundNo()));
+    }
+
     public ActionView confirm(ActorContext actor,ReviewCommand c) {
         operator(actor);
         if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null

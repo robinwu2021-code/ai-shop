@@ -141,7 +141,9 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         var original = originals.getFirst();
         require(
                 "SUCCESS".equals(original.get("status"))
-                        && "PLATFORM_MALL".equals(original.get("pay_scene"))
+                        && ("PLATFORM_MALL".equals(original.get("pay_scene"))
+                                || PlatformCollectionService.UNMATCHED_BUSINESS.equals(
+                                        original.get("pay_scene")))
                         && !"FROZEN".equals(original.get("refund_capacity_state"))
                         && r.key().orderNo().equals(original.get("order_no"))
                         && r.merchantNo().equals(original.get("entity_no"))
@@ -249,8 +251,15 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
                         && request.originalPaidMinor() == original.request().amountMinor()
                         && request.currency().equals(original.request().currency()),
                 "REFUND_ORIGINAL_UNPROVEN");
+        // Unmatched manual cash may only be returned through the offline payout flow.
+        require(
+                !PlatformCollectionService.UNMATCHED_BUSINESS.equals(scene(request))
+                        || "OFFLINE".equals(original.request().channel()),
+                "REFUND_ORIGINAL_MISMATCH");
         Row prepared = tx.execute(s -> prepare(request, original));
         if ("SUCCESS".equals(prepared.state)) return receipt(prepared);
+        // Bank transfer originals: hold capacity and wait for a recorded real payout. No gateway.
+        if (OFFLINE.equals(prepared.frozen.channel)) return receipt(prepared);
         var gateway = gateway(prepared);
         boolean dispatch =
                 Boolean.TRUE.equals(
@@ -295,6 +304,9 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         if (prior == null)
             return new Receipt(null, null, "UNKNOWN", null, null, "REFUND_NOT_FOUND");
         if ("SUCCESS".equals(prior.state)) return receipt(prior);
+        if (OFFLINE.equals(prior.frozen.channel))
+            return new Receipt(prior.paymentNo, prior.frozen.request, "PENDING", null, null,
+                    "OFFLINE_PAYOUT_PENDING");
         try {
             var proof = gateway(prior).queryRefundOutcome(prior.external);
             var r = prior.frozen.request;
@@ -334,6 +346,96 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
                     });
         } catch (RuntimeException uncertain) {
             return unknown(key, "REFUND_QUERY_UNKNOWN");
+        }
+    }
+
+    private static final String OFFLINE = "OFFLINE";
+
+    private String scene(Request r) {
+        var scenes =
+                jdbc.queryForList(
+                        "SELECT pay_scene FROM stl_payment WHERE tenant_no=? AND payment_no=? AND"
+                                + " direction='PAY'",
+                        String.class,
+                        r.key().tenantNo(),
+                        r.originalPaymentNo());
+        return scenes.size() == 1 ? scenes.getFirst() : null;
+    }
+
+    private static String bankKey(String tenant, String reference) {
+        try {
+            return HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(
+                                            ("platform-bank-payout:v1\0" + tenant + "\0"
+                                                            + reference.trim().toUpperCase(java.util.Locale.ROOT))
+                                                    .getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public Receipt confirmOfflinePayout(OfflinePayout p) {
+        outside();
+        require(p != null, "OFFLINE_PAYOUT_REQUIRED");
+        key(p.key());
+        text(p.operatorNo(), 64);
+        text(p.payeeReference(), 128);
+        text(p.bankReference(), 128);
+        text(p.evidenceReference(), 1024);
+        require(
+                p.actualMinor() > 0
+                        && p.currency() != null
+                        && p.paidOutAt() > 0
+                        && p.paidOutAt() % 1000 == 0
+                        && p.confirmedAt() >= p.paidOutAt(),
+                "OFFLINE_PAYOUT_INVALID");
+        try {
+            return tx.execute(
+                    s -> {
+                        Row current = row(p.key());
+                        require(current != null, "REFUND_NOT_FOUND");
+                        require(OFFLINE.equals(current.frozen.channel), "OFFLINE_PAYOUT_ROUTE_MISMATCH");
+                        var r = current.frozen.request;
+                        lockOriginal(r);
+                        String stored =
+                                jdbc.queryForObject(
+                                        "SELECT platform_manual_proof FROM stl_payment WHERE payment_no=?",
+                                        String.class,
+                                        current.paymentNo);
+                        if ("SUCCESS".equals(current.state)) {
+                            require(
+                                    stored != null
+                                            && p.equals(json.readValue(stored, OfflinePayout.class)),
+                                    "OFFLINE_PAYOUT_CONFLICT");
+                            return receipt(current);
+                        }
+                        require(
+                                r.refundMinor() == p.actualMinor() && r.currency().equals(p.currency()),
+                                "OFFLINE_PAYOUT_AMOUNT_MISMATCH");
+                        // Unmatched-cash returns are not commerce refunds: no commerce handoff.
+                        String handoff =
+                                PlatformCollectionService.UNMATCHED_BUSINESS.equals(scene(r))
+                                        ? null
+                                        : "PENDING";
+                        jdbc.update(
+                                "UPDATE stl_payment SET"
+                                    + " status='SUCCESS',platform_handoff_state=?,trade_no=?,succeeded_at=?,refund_verified_provider_no=?,refund_verified_minor=?,refund_verified_at=?,refund_capacity_state='CONSUMED',refund_query_state='SUCCEEDED',platform_bank_ref_key=?,platform_manual_proof=?,err_code=NULL,version=version+1"
+                                    + " WHERE payment_no=?",
+                                handoff,
+                                p.bankReference(),
+                                p.paidOutAt(),
+                                p.bankReference(),
+                                p.actualMinor(),
+                                p.paidOutAt(),
+                                bankKey(p.key().tenantNo(), p.bankReference()),
+                                json.writeValueAsString(p),
+                                current.paymentNo);
+                        return receipt(row(p.key()));
+                    });
+        } catch (org.springframework.dao.DuplicateKeyException duplicate) {
+            throw new IllegalArgumentException("OFFLINE_BANK_REFERENCE_CONFLICT", duplicate);
         }
     }
 

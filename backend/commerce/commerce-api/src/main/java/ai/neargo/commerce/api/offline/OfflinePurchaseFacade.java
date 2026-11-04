@@ -29,6 +29,13 @@ public interface OfflinePurchaseFacade {
      * never from the caller. A merchant ACCOUNT quotes for itself; an OPERATOR quotes as assisted STORE purchase.
      */
     QuoteView quote(ActorContext actor, QuoteCommand command);
+    record RefundPayoutCommand(OrderQuery order,String refundNo,Money actualAmount,Instant paidOutAt,
+            String payeeReference,String bankReference,String evidenceKey) {}
+    /**
+     * Records the real bank payout of an approved refund on an OFFLINE order. The system never
+     * transfers money; the refund completes only after the ledger accepts this proof.
+     */
+    RefundView confirmRefundPayout(ActorContext actor, RefundPayoutCommand command);
     ActionView confirm(ActorContext actor,ReviewCommand command);
     ActionView voidOrder(ActorContext actor,VoidCommand command);
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */

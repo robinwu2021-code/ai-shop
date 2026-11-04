@@ -4,6 +4,7 @@ import ai.neargo.commerce.api.offline.OfflineCollectionTerms;
 import ai.neargo.commerce.api.port.OfflineCollectionPort;
 import ai.neargo.commerce.api.port.PaymentIntentCommand;
 import ai.neargo.shop.pay.service.PlatformCollectionService;
+import ai.neargo.shop.pay.service.PlatformRefundService;
 
 import java.util.*;
 
@@ -14,9 +15,16 @@ import java.util.*;
  */
 public final class ShopMallOfflineCollectionAdapter implements OfflineCollectionPort {
     private final PlatformCollectionService collection;
+    private final PlatformRefundService refunds;
 
     public ShopMallOfflineCollectionAdapter(PlatformCollectionService collection) {
+        this(collection, null);
+    }
+
+    public ShopMallOfflineCollectionAdapter(
+            PlatformCollectionService collection, PlatformRefundService refunds) {
         this.collection = Objects.requireNonNull(collection);
+        this.refunds = refunds;
     }
 
     static OfflineCollectionTerms terms(PlatformCollectionService.OfflineInstructions i) {
@@ -81,6 +89,24 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
         if (receipt == null || receipt.receipt() == null)
             throw new IllegalStateException("OFFLINE_MONEY_UNKNOWN");
         return new ManualResult(receipt.disposition(), receipt.receipt().paymentNo());
+    }
+
+    @Override
+    public void payout(RefundPayout p) {
+        if (refunds == null) throw new IllegalStateException("REFUND_UNAVAILABLE");
+        if (p == null || p.actualAmount() == null || p.paidOutAt() == null || p.confirmedAt() == null)
+            throw new IllegalArgumentException("OFFLINE_PAYOUT_REQUIRED");
+        refunds.confirmOfflinePayout(
+                new PlatformRefundService.OfflinePayout(
+                        new PlatformRefundService.Key(p.tenantNo(), p.orderNo(), p.refundNo()),
+                        p.operatorNo(),
+                        p.actualAmount().minor(),
+                        p.actualAmount().currency(),
+                        p.paidOutAt().toEpochMilli(),
+                        p.payeeReference(),
+                        p.bankReference(),
+                        p.evidenceReference(),
+                        p.confirmedAt().toEpochMilli()));
     }
 
     @Override

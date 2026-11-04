@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.service.impl;
 
 import static org.junit.jupiter.api.Assertions.*;
 import ai.neargo.shop.pay.service.PlatformCollectionService;
+import ai.neargo.shop.pay.service.PlatformRefundService;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +38,49 @@ class PlatformOfflineCollectionMysqlTest {
             f.base.service.create(b);
             assertThrows(IllegalArgumentException.class, () -> f.base.service.confirmOffline(f.proof(b, "bank-1", 10000, "TWD", "NORMAL")));
             assertEquals(1, f.base.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS' AND direction='PAY'", Integer.class));
+        }
+    }
+
+    @Test
+    void offlineRefundWaitsForRecordedPayoutAndNeverCallsAGateway() throws Exception {
+        try (var f = new Fixture()) {
+            var a = f.request("A", f.profile(1, "TWD"));
+            f.base.service.create(a);
+            var paid = f.base.service.confirmOffline(f.proof(a, "in-1", 10000, "TWD", "NORMAL")).receipt();
+            var refunds = f.refunds();
+            var key = new PlatformRefundService.Key("MAIN", "A", "refund-1");
+            var request = new PlatformRefundService.Request(key, "S1", "A", paid.paymentNo(), "platform-mch", 10000, 4000, "TWD", "partial");
+            assertEquals("PENDING", refunds.refund(request).state());
+            assertEquals("OFFLINE_PAYOUT_PENDING", refunds.query(key).errorCode());
+            org.mockito.Mockito.verify(f.base.gateway, org.mockito.Mockito.never()).refund(org.mockito.Mockito.any(), org.mockito.Mockito.anyLong(), org.mockito.Mockito.any(), org.mockito.Mockito.any());
+            org.mockito.Mockito.verify(f.base.gateway, org.mockito.Mockito.never()).queryRefundOutcome(org.mockito.Mockito.any());
+            assertThrows(IllegalArgumentException.class, () -> refunds.confirmOfflinePayout(f.payout(key, 3900, "out-1")));
+            var done = refunds.confirmOfflinePayout(f.payout(key, 4000, "out-1"));
+            assertEquals("SUCCESS", done.state());
+            assertEquals(done, refunds.confirmOfflinePayout(f.payout(key, 4000, "out-1")));
+            assertThrows(IllegalArgumentException.class, () -> refunds.confirmOfflinePayout(f.payout(key, 4000, "out-2")));
+            assertEquals("PENDING", f.base.jdbc.queryForObject("SELECT platform_handoff_state FROM stl_payment WHERE payment_no=?", String.class, done.paymentNo()));
+            var key2 = new PlatformRefundService.Key("MAIN", "A", "refund-2");
+            refunds.refund(new PlatformRefundService.Request(key2, "S1", "A", paid.paymentNo(), "platform-mch", 10000, 6000, "TWD", "rest"));
+            assertThrows(IllegalArgumentException.class, () -> refunds.confirmOfflinePayout(f.payout(key2, 6000, "out-1")));
+            assertThrows(IllegalArgumentException.class, () -> refunds.refund(new PlatformRefundService.Request(
+                    new PlatformRefundService.Key("MAIN", "A", "refund-3"), "S1", "A", paid.paymentNo(), "platform-mch", 10000, 1, "TWD", "over")));
+        }
+    }
+
+    @Test
+    void unmatchedCashIsReturnedByPayoutWithoutCommerceHandoff() throws Exception {
+        try (var f = new Fixture()) {
+            var a = f.request("A", f.profile(1, "TWD"));
+            f.base.service.create(a);
+            var stray = f.base.service.confirmOffline(f.proof(a, "stray", 9900, "TWD", "NORMAL")).receipt();
+            var refunds = f.refunds();
+            var key = new PlatformRefundService.Key("MAIN", "A", "return-stray");
+            refunds.refund(new PlatformRefundService.Request(key, "S1", stray.key().attemptNo(), stray.paymentNo(), "platform-mch", 9900, 9900, "TWD", "return"));
+            var done = refunds.confirmOfflinePayout(f.payout(key, 9900, "back-1"));
+            assertEquals("SUCCESS", done.state());
+            assertNull(f.base.jdbc.queryForObject("SELECT platform_handoff_state FROM stl_payment WHERE payment_no=?", String.class, done.paymentNo()));
+            assertEquals("PENDING", f.base.service.query(a.key()).state());
         }
     }
 
@@ -128,6 +172,12 @@ class PlatformOfflineCollectionMysqlTest {
         }
         PlatformCollectionService.OfflineProof proof(PlatformCollectionService.Request r, String ref, long amount, String currency, String mode, long at) {
             return new PlatformCollectionService.OfflineProof(r.key(), "ops", "platform-mch", amount, currency, at, ref, "private-proof", mode, 10000);
+        }
+        PlatformRefundServiceImpl refunds() {
+            return new PlatformRefundServiceImpl(base.ds, new org.springframework.jdbc.datasource.DataSourceTransactionManager(base.ds), base.service, base.router);
+        }
+        PlatformRefundService.OfflinePayout payout(PlatformRefundService.Key key, long amount, String ref) {
+            return new PlatformRefundService.OfflinePayout(key, "ops", amount, "TWD", 20000, "buyer-account", ref, "payout-proof", 30000);
         }
         public void close() { base.close(); }
     }

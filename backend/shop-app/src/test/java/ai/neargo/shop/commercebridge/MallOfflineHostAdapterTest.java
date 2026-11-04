@@ -107,6 +107,22 @@ class MallOfflineHostAdapterTest {
     }
 
     @Test
+    void refundPayoutTranslatesToTheLedgerOrIsUnavailableWithoutRefundService() {
+        var refunds = mock(ai.neargo.shop.pay.service.PlatformRefundService.class);
+        var port = new ShopMallOfflineCollectionAdapter(mock(PlatformCollectionService.class), refunds);
+        var payout = new OfflineCollectionPort.RefundPayout("MAIN", "order", "refund-1", "ops",
+                new Money("TWD", 4000), Instant.ofEpochMilli(20000), "payee", "out-1", "proof", Instant.ofEpochMilli(30000));
+        port.payout(payout);
+        var sent = ArgumentCaptor.forClass(ai.neargo.shop.pay.service.PlatformRefundService.OfflinePayout.class);
+        verify(refunds).confirmOfflinePayout(sent.capture());
+        assertEquals(4000, sent.getValue().actualMinor());
+        assertEquals(20000, sent.getValue().paidOutAt());
+        assertEquals("refund-1", sent.getValue().key().refundNo());
+        assertThrows(IllegalStateException.class,
+                () -> new ShopMallOfflineCollectionAdapter(mock(PlatformCollectionService.class)).payout(payout));
+    }
+
+    @Test
     void manualRailRefusesNonOfflineOriginals() {
         var port = new ShopMallOfflineCollectionAdapter(mock(PlatformCollectionService.class));
         var online =

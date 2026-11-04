@@ -187,6 +187,48 @@ class MallOfflineWorkflowMysqlTest {
         }
     }
 
+    @Test
+    void refundPayoutNeedsOperatorRefundProofThenRecoversTheRefund() {
+        try(var db=new MysqlDatabase()) {
+            var helper=new MallFulfillmentMysqlTest();var f=helper.setup(db,false);
+            new MallOfflineDeadlineMysqlTest().freezeOffline(db,86400000);
+            var payouts=new java.util.ArrayList<OfflineCollectionPort.RefundPayout>();
+            OfflineCollectionPort money=new OfflineCollectionPort() {
+                public void payout(RefundPayout p) {
+                    if("bad".equals(p.bankReference()))throw new IllegalArgumentException("OFFLINE_PAYOUT_AMOUNT_MISMATCH");
+                    payouts.add(p);
+                }
+            };
+            var recovered=new java.util.ArrayList<RefundQuery>();
+            var refunds=(RefundFacade)java.lang.reflect.Proxy.newProxyInstance(RefundFacade.class.getClassLoader(),new Class<?>[]{RefundFacade.class},
+                    (proxy,m,args)->{ if(m.getName().equals("recover"))recovered.add((RefundQuery)args[0]); return null; });
+            var events=new JdbcCommerceEventPersistence(db.ds);
+            var api=new DefaultOfflinePurchaseFacade(new JdbcMallRepository(db.ds,events),new JdbcFulfillmentRepository(db.ds),
+                    new JdbcOfflineRepository(db.ds),new JdbcSubscriptionAccountRepository(db.ds),f.mall().c.uow,
+                    s->Optional.of(new StoreSnapshot(s,"merchant","RETAIL",StoreStatus.ACTIVE,CommerceModel.STORE_V1)),
+                    (a,s,cap)->new AuthorizationDecision(true,"TEST",Optional.empty()),null,f.svc(),refunds,money,
+                    new PrivateEvidencePort() {
+                        public boolean stored(Scope scope,String key) { return true; }
+                        public String signedRead(Scope scope,String key) { return "/private/test"; }
+                    },Clock.fixed(Instant.ofEpochMilli(5000),ZoneOffset.UTC),f.mall().c.ids);
+            var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());
+            var ops=f.mall().c.ops;
+            var proof=api.reserveEvidence(ops,q,"REFUND_PROOF");
+            var receipt=api.reserveEvidence(ops,q,"PLATFORM_RECEIPT");
+            assertEquals("FORBIDDEN",assertThrows(MallException.class,()->api.confirmRefundPayout(MallOrderConcurrencyMysqlTest.BUYER,
+                    new OfflinePurchaseFacade.RefundPayoutCommand(q,"refund-1",new Money("CNY",100),Instant.ofEpochMilli(3000),"payee","out",proof.assetKey()))).code());
+            assertEquals("EVIDENCE_FORBIDDEN",assertThrows(MallException.class,()->api.confirmRefundPayout(ops,
+                    new OfflinePurchaseFacade.RefundPayoutCommand(q,"refund-1",new Money("CNY",100),Instant.ofEpochMilli(3000),"payee","out",receipt.assetKey()))).code());
+            assertEquals("OFFLINE_PAYOUT_AMOUNT_MISMATCH",assertThrows(MallException.class,()->api.confirmRefundPayout(ops,
+                    new OfflinePurchaseFacade.RefundPayoutCommand(q,"refund-1",new Money("CNY",100),Instant.ofEpochMilli(3000),"payee","bad",proof.assetKey()))).code());
+            assertTrue(recovered.isEmpty());
+            api.confirmRefundPayout(ops,new OfflinePurchaseFacade.RefundPayoutCommand(q,"refund-1",new Money("CNY",100),Instant.ofEpochMilli(3000),"payee","out",proof.assetKey()));
+            assertEquals(1,payouts.size());
+            assertEquals(ops.principalNo(),payouts.getFirst().operatorNo());
+            assertEquals(List.of(new RefundQuery("tenant-a",f.order().orderNo(),"refund-1")),recovered);
+        }
+    }
+
     static String status(MysqlDatabase db,String claim) {
         return db.jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(claim_snapshot,'$.status')) FROM mall_offline_claim WHERE claim_no=?",String.class,claim);
     }
