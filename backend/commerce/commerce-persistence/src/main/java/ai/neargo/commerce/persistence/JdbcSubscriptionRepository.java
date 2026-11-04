@@ -138,7 +138,7 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
         jdbc.query(
                 """
 SELECT g.entitlement_code,g.end_code,g.state,
-       (p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED') OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR p.deleted=1 OR g.deleted=1) invalid_parent
+       (p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED') OR p.effective_end_at IS NULL OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR p.deleted=1 OR g.deleted=1) invalid_parent
 FROM mch_store_end_grant g LEFT JOIN mch_subscription_period p
   ON p.tenant_no=g.tenant_no AND p.store_no=g.store_no AND p.period_no=g.period_no
 WHERE g.tenant_no=? AND g.store_no=? AND (g.state IN ('NORMAL','REVOKED','FROZEN') OR (g.state='SUPERSEDED' AND p.state IN ('CONVERTED','FROZEN','REFUNDED')))

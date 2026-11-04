@@ -356,6 +356,10 @@ public final class CommerceRefundService implements RefundFacade {
                                 actor.principalNo());
                         return approved.view();
                     }
+                    // The rejection baseline is immutable preview evidence. Another completed
+                    // source refund must invalidate it before any freeze or external dispatch.
+                    if (!o.axes().refund().name().equals(p.previousRefund()))
+                        throw fail("VERSION_CONFLICT");
                     if (accounts.lockSubscriptionAccount(p.store()).pendingChangeOrderNo() != null)
                         throw fail("ACCOUNT_BUSY");
                     var current = refunds.ownedSources(o);

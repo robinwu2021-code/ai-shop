@@ -539,6 +539,14 @@ class MallUpgradeRefundMysqlTest {
 
     CommerceRefundService refundService(
             MysqlDatabase db, MallFulfillmentMysqlTest.Fixture f, RefundBridge bridge) {
+        return refundService(db, f, bridge, MallFulfillmentMysqlTest.CLOCK);
+    }
+
+    CommerceRefundService refundService(
+            MysqlDatabase db,
+            MallFulfillmentMysqlTest.Fixture f,
+            RefundBridge bridge,
+            Clock clock) {
         var sub = new JdbcSubscriptionRepository(db.ds, f.mall().c.ids);
         var events = new JdbcCommerceEventPersistence(db.ds);
         return new CommerceRefundService(
@@ -547,12 +555,7 @@ class MallUpgradeRefundMysqlTest {
                 new JdbcFulfillmentRepository(db.ds),
                 sub,
                 new JdbcSubscriptionAccountRepository(db.ds),
-                new EndScheduleService(
-                        sub,
-                        f.mall().c.uow,
-                        events,
-                        f.mall().c.ids,
-                        MallFulfillmentMysqlTest.CLOCK),
+                new EndScheduleService(sub, f.mall().c.uow, events, f.mall().c.ids, clock),
                 f.mall().c.uow,
                 (a, st, cap) ->
                         new AuthorizationDecision(
@@ -560,7 +563,7 @@ class MallUpgradeRefundMysqlTest {
                                 "OPS",
                                 Optional.empty()),
                 bridge,
-                MallFulfillmentMysqlTest.CLOCK);
+                clock);
     }
 
     @Test
@@ -1741,5 +1744,259 @@ class MallUpgradeRefundMysqlTest {
                                 "SELECT refund_status FROM mall_order", String.class));
                 assertEquals(0, bridge.refunds);
             }
+    }
+
+    @Test
+    void staleDeliveredPreviewCannotEraseAnInterveningPartialRefund() {
+        try (var db = new MysqlDatabase()) {
+            var helper = new MallFulfillmentMysqlTest();
+            var f = twoCycleOrder(db, helper);
+            var bridge = new RefundBridge();
+            var clock = Clock.fixed(Instant.ofEpochMilli(3000 + 365 * DAY), ZoneOffset.UTC);
+            var refunds = refundService(db, f, bridge, clock);
+            var sources =
+                    db.jdbc.queryForList(
+                            "SELECT period_no FROM mch_subscription_period WHERE"
+                                    + " source_type='ORDER' ORDER BY original_start_at",
+                            String.class);
+            var stale =
+                    refunds.preview(
+                            BUYER,
+                            new RefundPreviewCommand(
+                                    STORE,
+                                    f.order().orderNo(),
+                                    "stale-future",
+                                    List.of(sources.get(1))));
+            refunds.request(
+                    BUYER,
+                    new RefundCommand(
+                            STORE,
+                            f.order().orderNo(),
+                            stale.refundNo(),
+                            stale.cashLimit(),
+                            "future",
+                            List.of(sources.get(1))));
+            String frozen =
+                    db.jdbc.queryForObject(
+                            "SELECT policy_snapshot FROM mall_refund WHERE"
+                                    + " refund_no='stale-future'",
+                            String.class);
+            var first =
+                    refunds.preview(
+                            BUYER,
+                            new RefundPreviewCommand(
+                                    STORE,
+                                    f.order().orderNo(),
+                                    "expired-first",
+                                    List.of(sources.get(0))));
+            assertEquals(0, first.cashLimit().minor());
+            approve(f, refunds, first, List.of(sources.get(0)));
+            refunds.recover(new RefundQuery("tenant-a", f.order().orderNo(), first.refundNo()));
+            assertEquals(
+                    "PARTIAL",
+                    db.jdbc.queryForObject("SELECT refund_status FROM mall_order", String.class));
+            assertEquals(
+                    "VERSION_CONFLICT",
+                    assertThrows(
+                                    MallException.class,
+                                    () ->
+                                            refunds.approve(
+                                                    f.mall().c.ops,
+                                                    new RefundApprovalCommand(
+                                                            STORE,
+                                                            f.order().orderNo(),
+                                                            stale.refundNo(),
+                                                            stale.approvalDigest(),
+                                                            stale.cashLimit(),
+                                                            stale.creditLimit(),
+                                                            "stale review")))
+                            .code());
+            assertEquals(
+                    AsyncStatus.PENDING,
+                    refunds.recover(
+                                    new RefundQuery(
+                                            "tenant-a", f.order().orderNo(), stale.refundNo()))
+                            .status());
+            assertEquals(
+                    "PARTIAL",
+                    db.jdbc.queryForObject("SELECT refund_status FROM mall_order", String.class));
+            assertEquals(
+                    "REQUESTED",
+                    db.jdbc.queryForObject(
+                            "SELECT status FROM mall_refund WHERE refund_no='stale-future'",
+                            String.class));
+            assertEquals(
+                    frozen,
+                    db.jdbc.queryForObject(
+                            "SELECT policy_snapshot FROM mall_refund WHERE"
+                                    + " refund_no='stale-future'",
+                            String.class));
+            assertEquals(
+                    "NORMAL",
+                    db.jdbc.queryForObject(
+                            "SELECT state FROM mch_subscription_period WHERE period_no=?",
+                            String.class,
+                            sources.get(1)));
+            assertNull(
+                    db.jdbc.queryForObject(
+                            "SELECT pending_change_order_no FROM mch_subscription_account",
+                            String.class));
+            assertEquals(0, bridge.refunds);
+        }
+    }
+
+    MallFulfillmentMysqlTest.Fixture twoCycleOrder(
+            MysqlDatabase db, MallFulfillmentMysqlTest helper) {
+        var f =
+                helper.setup(
+                        db,
+                        false,
+                        List.of(
+                                new SkuComponent(
+                                        null,
+                                        ComponentKind.PLAN,
+                                        "pro-1",
+                                        null,
+                                        null,
+                                        365,
+                                        2,
+                                        100,
+                                        false,
+                                        "ON_FULFILLMENT")));
+        helper.start(f);
+        f.svc().confirmPayment(helper.paid(f, 8800));
+        f.svc().fulfill(new FulfillmentQuery("tenant-a", f.order().orderNo()));
+        return f;
+    }
+
+    @Test
+    void retiredNullCutFailsBothOutwardValidatorsWhileActivePermanentNullEndRemainsValid() {
+        try (var db = new MysqlDatabase()) {
+            var helper = new MallFulfillmentMysqlTest();
+            var f = twoCycleOrder(db, helper);
+            var clock = Clock.fixed(Instant.ofEpochMilli(3000 + 365 * DAY), ZoneOffset.UTC);
+            var refunds = refundService(db, f, new RefundBridge(), clock);
+            var sub = new JdbcSubscriptionRepository(db.ds, f.mall().c.ids);
+            String source =
+                    db.jdbc.queryForObject(
+                            "SELECT period_no FROM mch_subscription_period WHERE"
+                                    + " source_type='ORDER' ORDER BY original_start_at LIMIT 1",
+                            String.class);
+            var preview =
+                    refunds.preview(
+                            BUYER,
+                            new RefundPreviewCommand(
+                                    STORE, f.order().orderNo(), "expired-cut", List.of(source)));
+            approve(f, refunds, preview, List.of(source));
+            refunds.recover(new RefundQuery("tenant-a", f.order().orderNo(), preview.refundNo()));
+            assertFalse(
+                    f.mall()
+                            .c
+                            .uow
+                            .required(
+                                    () ->
+                                            new JdbcEndAccessRepository(db.ds)
+                                                    .lockAndRead(STORE, "POS", "POS", "client"))
+                            .revoked());
+            assertEquals(
+                    1,
+                    f.mall()
+                            .c
+                            .uow
+                            .required(
+                                    () ->
+                                            new JdbcEndAccessRepository(db.ds)
+                                                    .lockAndRead(STORE, "POS", "POS", "client"))
+                            .segments()
+                            .size());
+            assertTrue(
+                    f.mall()
+                            .c
+                            .uow
+                            .required(
+                                    () -> {
+                                        sub.lock(STORE);
+                                        return sub.grantStates(STORE);
+                                    })
+                            .containsKey("BASE"));
+            assertNull(
+                    db.jdbc.queryForObject(
+                            "SELECT effective_end_at FROM mch_subscription_period WHERE"
+                                    + " period_no='free'",
+                            Long.class));
+            var permanent =
+                    f.mall()
+                            .c
+                            .uow
+                            .required(
+                                    () ->
+                                            new JdbcEndAccessRepository(db.ds)
+                                                    .lockAndRead(STORE, "BASE", "BASE", "client"));
+            assertFalse(permanent.revoked());
+            assertTrue(
+                    permanent.segments().stream()
+                            .anyMatch(
+                                    segment ->
+                                            segment.sourceNo().equals("free")
+                                                    && segment.endsAt() == null));
+            Long cut =
+                    db.jdbc.queryForObject(
+                            "SELECT effective_end_at FROM mch_subscription_period WHERE"
+                                    + " period_no=?",
+                            Long.class,
+                            source);
+            db.jdbc.update(
+                    "UPDATE mch_subscription_period SET effective_end_at=NULL WHERE period_no=?",
+                    source);
+            var denied =
+                    assertThrows(
+                            ai.neargo.commerce.api.access.AccessDenied.class,
+                            () ->
+                                    f.mall()
+                                            .c
+                                            .uow
+                                            .required(
+                                                    () ->
+                                                            new JdbcEndAccessRepository(db.ds)
+                                                                    .lockAndRead(
+                                                                            STORE, "POS", "POS",
+                                                                            "client")));
+            assertEquals(
+                    ai.neargo.commerce.api.access.AccessStatus.CHECK_UNAVAILABLE, denied.status());
+            assertThrows(
+                    IllegalStateException.class,
+                    () ->
+                            f.mall()
+                                    .c
+                                    .uow
+                                    .required(
+                                            () -> {
+                                                sub.lock(STORE);
+                                                return sub.grantStates(STORE);
+                                            }));
+            db.jdbc.update(
+                    "UPDATE mch_subscription_period SET effective_end_at=? WHERE period_no=?",
+                    cut,
+                    source);
+            assertFalse(
+                    f.mall()
+                            .c
+                            .uow
+                            .required(
+                                    () ->
+                                            new JdbcEndAccessRepository(db.ds)
+                                                    .lockAndRead(STORE, "POS", "POS", "client"))
+                            .revoked());
+            assertTrue(
+                    f.mall()
+                            .c
+                            .uow
+                            .required(
+                                    () -> {
+                                        sub.lock(STORE);
+                                        return sub.grantStates(STORE);
+                                    })
+                            .containsKey("BASE"));
+        }
     }
 }

@@ -48,7 +48,7 @@ SELECT g.state FROM mch_store_end_grant g LEFT JOIN mch_subscription_period p
 ON p.tenant_no=g.tenant_no AND p.store_no=g.store_no AND p.period_no=g.period_no
 WHERE g.tenant_no=? AND g.store_no=? AND g.entitlement_code=? AND
 (g.state IN ('REVOKED','FROZEN') OR (g.state='NORMAL' AND
-(p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED') OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR g.end_code<>? OR p.deleted=1 OR g.deleted=1)))
+(p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED') OR p.effective_end_at IS NULL OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR g.end_code<>? OR p.deleted=1 OR g.deleted=1)))
 FOR SHARE
 """,
                         String.class,
