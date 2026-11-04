@@ -1,0 +1,110 @@
+# 套餐商城设置管理与购买闭环实施计划
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 完成经营类型/业务端/三档Plan/商城商品SKU的运营管理，以及门店报价、下单、平台付款、数字权益交付、升级与退款的可验证闭环。
+
+**Architecture:** 继续使用已批准的独立 commerce 四模块，承接已交付T01–T05，落实原计划T06–T09及本闭环所需T11接入。宿主通过JDK契约适配身份、平台支付、库存和审计；运营端管理新商业目录，不覆盖旧主体额度Plan。B端API合同稳定后才协调Flutter接入，不继续短信/进件设备排查。
+
+**Tech Stack:** 项目现有Java21、Spring Boot4/Spring7、JDBC/Flyway/MySQL、Next.js16运营端、Flutter B端；不升级基础依赖。
+
+**Spec:** `docs/superpowers/specs/2026-11-03-commerce-portable-design.md` 和 `docs/superpowers/specs/2026-11-03-industry-plan-mall-design.md`，原执行计划 `2026-11-03-commerce-portable-development-plan.md`。用户已授权按原方案实施，本次是续接实施，不重做方案审批。
+
+## Global Constraints
+
+- commerce-api仅JDK；core仅api/JDK；持久化与starter不依赖宿主；宿主不得越过公开契约直接修改商业表。
+- 使用现有租户边界、可信ActorContext和严格StoreRef；金额采用整数最小单位，不能取客户端总价、paid标记或伪造SYSTEM身份。
+- 同门店所有数字变更订单共用唯一占用；账户→余额→来源→批次→任务固定锁序；实际本地事务和真实当前读；不持数据库锁调用支付/库存网络。
+- 报价默认有效15分钟；保存商品、权益、余额和策略版本。已发布快照不可变；普通停售不篡改既有有效订单快照。
+- 订单=行=组件=周期金额守恒；固定序尾差分配。硬件/独立端包不消耗Plan抵扣余额；赠送基数为0。
+- 续费/交付重放不重复增加权益；同code累计复用T04；升级只关闭锁定旧Plan未用部分，独立端包已用历史及未用量保留。
+- 支付未知、库存未知、取消未知不可假定成功/释放；可信事实校验租户、平台收款主体、币种、金额、原支付号。登出不影响已付款订单履行。
+- 新功能显式开关和可信宿主端口缺失时拒绝启用；不降低现有生产身份/端准入。旧三档只读API保持兼容，购买可用性只在实际闭环可用时开放。
+- 实际行业价格由运营配置；只创建明确开发测试目录，不编造正式售价、商家资质或支付成功。不得发真实短信/扣款、发布或修改生产数据库。
+- 保留既有未提交设计/跟踪文档；只提交本任务明确文件，不使用git add -A；不并行实现同一工作树。
+
+## Review Focus
+
+1. 租户/门店/买家不同但quoteNo或幂等键相同：不得串单、泄漏金额或重复占用；Task1/4覆盖。
+2. 发布版本/余额/排期变化、超大金额或重复SKU行：拒绝旧报价，整数运算不溢出且分摊守恒；Task1覆盖。
+3. 外部超时、重复/迟到付款、退出账号或停售：订单按原事实恢复，未知不释放或重复发权益；Task2/4覆盖。
+4. 多周期、混合硬件、连续升级及退款：来源价值不复制，现金与抵扣不双补，余量不丢；Task3覆盖。
+5. 无运营发布权、无门店采购权、过期商业端：禁止越权写，但合法续费入口可达；Task4/5覆盖。
+
+### Task 1: 报价订单与持久化 T06
+
+**Files:** 新建core `mall/`报价/订单服务和仓储合同，persistence `JdbcMallRepository`；必要兼容扩展api/mall，starter新增显式mall装配。测试core `CommerceQuoteTest`、`ComponentAllocationTest`、persistence `MallOrderConcurrencyMysqlTest`。
+
+**Interfaces:** 实现既有 `MallFacade.quote/placeOrder/order/cancelOrder`。交易仓储提供同一UoW的报价保存、订单快照、幂等/版本锁定、账户占用；与后续付款/交付共享明确状态入口。`quoteUpgrade/refund`保留明确不可用错误直到Task3完成，不伪造结果。
+
+- [ ] RED：同键同参同单、异参冲突，跨买家/租户不读报价；过期或版本变化拒绝；同时两个数字单仅一个占用，纯硬件不占数字账户。
+- [ ] RED：套餐按组件和多周期分配，尾差稳定，硬件抵扣0，整数溢出和重复行合并/拒绝规则明确。
+- [ ] 实现快照定价、只引用可售已发布SKU、报价15分钟、确定订单状态与信用历史批次预留；外部库存预占不在本事务内。
+- [ ] GREEN：core聚焦测试及原生MySQL两个独立事务并发、幂等竞争、回滚；更新module-info/manifest仅在实际需要时，历史迁移不可改。
+- [ ] 提交明确文件并给任务报告；独立任务评审。
+
+### Task 2: 平台支付、硬件协调与数字交付 T07/T08
+
+**Files:** core `mall/`付款/取消/恢复服务、`fulfillment/`数字与硬件协调；api/port必要兼容扩展；persistence交付事实/任务适配及starter装配。测试支付恢复、数字组幂等和硬件分包。
+
+**Interfaces:** 复用Task1仓储；实现 `FulfillmentFacade.confirmPayment/fulfill/confirmShipment` 和 `PlatformPaymentPort`稳定意图流程；原生事务内通过T04 `SubscriptionRepository`/服务完成全部数字来源、排期和版本更新。
+
+- [ ] RED：错主体/金额/币种、伪paid、重复事实拒绝或幂等；支付/关单/库存超时不能释放占用。
+- [ ] RED：多组件一步失败全组回滚；重复交付不加时；数字开通不等硬件签收，硬件不超发。
+- [ ] 实现付款意图、事实入站、关单查明、重试恢复、可靠外部库存协调及全数字组交付；迟到矛盾付款进入可恢复异常/退款路径。
+- [ ] GREEN：真实MySQL原子性/恢复和core合同测试；明确可信内部调用边界，提供后续宿主的API入口。
+- [ ] 提交、报告、独立任务评审。
+
+### Task 3: 升级抵扣与退款 T08/T09
+
+**Files:** core conversion/credit/refund服务、持久化适配、api必要命令/视图与starter；测试转换/退款原子性。
+
+**Interfaces:** 完成 `MallFacade.quoteUpgrade/refund`，必要增加预览/可信退款事实接口；Task2付款与交付使用同一转换快照和余额谱系。
+
+- [ ] RED：365元365天用165天剩200元，升699元现金499元；余额800购699留101；未来周期全值、赠送0、独立端包余量不变。
+- [ ] RED：仅一个升级目标周期；混合硬件不能吃抵扣；连续转换不能重复用旧来源；退款现金只退本单实付、抵扣恢复余额不恢复旧周期双补。
+- [ ] 实现显式预览、版本/来源占用、价值谱系、来源冻结和可信退款恢复；退款政策未配置时明确拒绝自动退款而非自行假定。
+- [ ] GREEN：core及原生MySQL并发/原子性/重放测试。
+- [ ] 提交、报告、独立任务评审。
+
+### Task 4: 宿主目录与商城 HTTP 接入
+
+**Files:** `shop-app/.../commercebridge`目录权限/端验收/支付库存审计适配及运营/商家控制器；宿主迁移权限种子；starter可信服务装配；场景测试。
+
+**Interfaces:** 运营目录CRUD/组合发布/停售、订单列表详情、权益来源与受控操作；B端商品目录/报价/订单/支付创建查单/取消/升级。请求/响应保持既有信封；具体路径写成OpenAPI后供Task5和Flutter使用。
+
+- [ ] RED：运营只用既有ops身份及专门能力，B端fresh成员和采购权；body伪造tenant/store/actor无效；商城恢复入口不要求未购买端证明。
+- [ ] 实现真实平台付款/库存适配，完整独立关闭条件，不使用商家收款号作为平台收款号；注册ACCOUNT/BOOTSTRAP精确路由。
+- [ ] RED/GREEN：Mvc真实控制器、DB会话、来源授权与旧端兼容；缺支付/库存映射拒绝对应商品购买，禁止假成功。
+- [ ] 同步公开API文档/OpenAPI及错误码；B端旧29操作不破坏。提交、报告、独立任务评审。
+
+### Task 5: 运营端套餐商城设置管理
+
+**Files:** ops-web新增commerce页面及API/类型/权限导航，使用现有组件，保留旧merchants/plans-tab；tests及管理对接记录。
+
+**Interfaces:** 消费Task4已确认合同；管理经营类型、业务端code/验收、三档Plan权益/周期、商品SKU/价格/组件、发布/停售、订单及门店权益来源。
+
+- [ ] 先读ops-web/AGENTS.md及本地Next16文档；按锁文件安装依赖，不升级框架。
+- [ ] RED：编辑/发布权分开、空和错误态真实、版本冲突刷新、金额整数币种、下架不改历史订单、没有接口不回落mock成功。
+- [ ] 实现实际表单和列表/详情、不可变发布版本、确认操作及审计原因；不将JSON调试编辑器当普通运营流程。
+- [ ] GREEN：typecheck、相关Vitest、lint/生产构建及浏览器关键配置流程。提交、报告、独立任务评审。
+
+### Task 6: B端合同协调与购买流程
+
+**Files:** 后端公开商城API对接文档；由现有ai-shop-bapp会话按稳定接口修改商城页面/仓库及测试，本工作树不并行覆盖Flutter文件。
+
+**Interfaces:** 明确Task4的目录、quote/order/pay/query/cancel/upgrade和权益刷新接口；前台只展示服务端可用状态，不以paid标志发权益。
+
+- [ ] 后端合同和测试证据就绪后同步B端：这是用户指定的需要API配合时的切换点。
+- [ ] 客户端接入已购/未购、金额确认、付款未知/重复点击、关闭与回读、成功交付后权益刷新及切店失效。
+- [ ] 验证相关单元/Widget及真实开发HTTP路径；不发真实短信或真实扣款来替代可重复集成场景。
+- [ ] 回读B端证据和源码范围；记录API兼容性和真实支付配置边界。
+
+### Task 7: 全闭环独立验收与运维交付
+
+**Files:** commerce接入README/运维说明、集成测试及本计划实施记录，更新全链路状态文档。
+
+- [ ] 独立模块clean verify、原生MySQL、宿主打包与定向兼容回归；既有3项打印架构失败作基线对照，不修改规则掩盖。
+- [ ] 完整开发链：真实目录发布→测试门店FREE→报价→订单→受控支付事实→数字交付→同code累计→升级抵扣→受控退款恢复；单独验证混合硬件协调。
+- [ ] 运营端真实API页面配置与查单；Flutter可用购买链和错误恢复；区分HTTP/数据库/页面、stub/沙箱/真实供应商证据。
+- [ ] 整分支独立审查，关闭阻断问题，更新API/配置/迁移/恢复说明；不推送、合并或启用真实收费。
