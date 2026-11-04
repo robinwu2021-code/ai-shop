@@ -30,7 +30,7 @@ class MallPlatformPaymentAdapterMysqlTest {
                             "WECHAT",
                             "JSAPI",
                             "binding:1",
-                            Instant.ofEpochMilli(1000),
+                            Instant.ofEpochMilli(10250),
                             raw);
             var unavailable =
                     new ShopMallPlatformPaymentAdapter(
@@ -77,10 +77,12 @@ class MallPlatformPaymentAdapterMysqlTest {
                             10000L,
                             "platform-mch",
                             external,
-                            "SUCCESS"));
+                            "SUCCESS",
+                            1000L));
             var paid = adapter.query(new PaymentQuery("MAIN", "order", "A", command));
             assertEquals(AsyncStatus.SUCCEEDED, paid.status());
             assertEquals(Optional.of(Instant.ofEpochMilli(10000)), paid.paidAt());
+            assertEquals(1000L, paid.paidAtPrecisionMs());
             assertEquals(pending.paymentNo(), paid.paymentNo());
             var wrong =
                     new PaymentIntentCommand(

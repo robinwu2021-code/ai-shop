@@ -23,6 +23,87 @@ import java.util.regex.Pattern;
 
 class CoordinatedInventoryMysqlTest {
     @Test
+    void legacyMutatorsCannotChangeCoordinatedOwnershipAndCorruptionIsNotCertified()
+            throws Exception {
+        try (var f = new Fixture()) {
+            var service =
+                    new CoordinatedInventoryServiceImpl(
+                            f.ds, f.manager, f.reservations, f.outbound);
+            var ref = new CoordinatedInventoryService.Reference("PLATFORM_MALL", "owner-fence");
+            service.reserve(
+                    new CoordinatedInventoryService.Reserve(
+                            ref,
+                            "r",
+                            new CoordinatedInventoryService.Binding("P", "I", "L", "v1"),
+                            5));
+            String external =
+                    f.jdbc.queryForObject("SELECT external_ref FROM inv_reservation", String.class);
+            f.jdbc.update("UPDATE inv_reservation_line SET fulfillment_ref='legacy-fulfillment'");
+            List<Runnable> legacy =
+                    List.of(
+                            () -> f.reservations.release("P", external),
+                            () -> f.reservations.releaseByRef(external),
+                            () -> f.reservations.cancelByRef("P", external),
+                            () -> f.reservations.releaseAllocatedByRef(external),
+                            () ->
+                                    f.reservations.releaseAllocatedByFulfillmentRef(
+                                            "legacy-fulfillment"),
+                            () ->
+                                    f.reservations.issueByFulfillmentRef(
+                                            "legacy-fulfillment", "legacy"),
+                            () -> f.reservations.allocatePaidByRef(external));
+            for (String state :
+                    List.of(
+                            "HELD",
+                            "ALLOCATED",
+                            ai.neargo.shop.inventory.support.InvEnums.ReservationStatus
+                                    .PARTIALLY_COMMITTED)) {
+                f.jdbc.update("UPDATE inv_reservation SET status=?", state);
+                for (Runnable mutation : legacy) {
+                    try {
+                        f.tx.executeWithoutResult(tx -> mutation.run());
+                    } catch (RuntimeException expected) {
+                    }
+                    assertEquals(
+                            5,
+                            f.jdbc.queryForObject(
+                                    "SELECT reserved FROM inv_stock_balance WHERE owner_id='P'",
+                                    Integer.class));
+                    assertEquals(
+                            state,
+                            f.jdbc.queryForObject(
+                                    "SELECT status FROM inv_reservation", String.class));
+                    assertEquals(
+                            0,
+                            f.jdbc.queryForObject(
+                                    "SELECT issued_qty+released_qty FROM inv_reservation_line",
+                                    Integer.class));
+                }
+            }
+            for (String corrupt : List.of("RELEASED", "EXPIRED", "COMMITTED", "ALLOCATED")) {
+                f.jdbc.update("UPDATE inv_reservation SET status=?", corrupt);
+                assertThrows(RuntimeException.class, () -> service.query(ref, "r"));
+            }
+            f.jdbc.update("UPDATE inv_reservation SET status='HELD',lifecycle_version=1");
+            assertThrows(RuntimeException.class, () -> service.query(ref, "r"));
+            f.jdbc.update("UPDATE inv_reservation SET lifecycle_version=3");
+            assertEquals(5, service.query(ref, "r").held());
+            service.ship(
+                    new CoordinatedInventoryService.Shipment(
+                            ref, "s", 2, "carrier", "tracking", "ops"));
+            for (Runnable mutation : legacy) {
+                try {
+                    f.tx.executeWithoutResult(tx -> mutation.run());
+                } catch (RuntimeException expected) {
+                }
+            }
+            assertEquals(3, service.query(ref, "r").held());
+            assertEquals(0, service.release(ref, "r").held());
+            assertEquals(0, service.release(ref, "r").held());
+        }
+    }
+
+    @Test
     void externallyCoordinatedHoldDoesNotExpireWhilePaymentIsUnknown() throws Exception {
         try (var f = new Fixture()) {
             String reservation =

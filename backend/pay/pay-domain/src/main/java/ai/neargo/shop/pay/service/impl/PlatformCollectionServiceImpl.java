@@ -120,7 +120,7 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
         var rows =
                 jdbc.query(
                         "SELECT"
-                            + " payment_no,payment_request_json,status,trade_no,succeeded_at,platform_dispatch_at,platform_close_fence,platform_checkout_json,err_code,out_trade_no"
+                            + " payment_no,payment_request_json,status,trade_no,succeeded_at,platform_dispatch_at,platform_close_fence,platform_checkout_json,err_code,out_trade_no,platform_receipt_json"
                             + " FROM stl_payment WHERE tenant_no=? AND payment_no=? AND pay_scene=?"
                             + " AND direction='PAY' FOR UPDATE",
                         (rs, n) -> {
@@ -148,7 +148,14 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
                                             rs.getObject("succeeded_at", Long.class),
                                             params,
                                             rs.getString("platform_close_fence"),
-                                            rs.getString("err_code")),
+                                            rs.getString("err_code"),
+                                            rs.getString("platform_receipt_json") == null
+                                                    ? 1L
+                                                    : json.readValue(
+                                                                    rs.getString(
+                                                                            "platform_receipt_json"),
+                                                                    PayGateway.QueryResult.class)
+                                                            .paidAtPrecisionMs()),
                                     rs.getString("out_trade_no"),
                                     rs.getObject("platform_dispatch_at", Long.class));
                         },
@@ -323,7 +330,8 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
                         || proof.amountMinor() != request.amountMinor()
                         || !request.currency().equals(proof.currency())
                         || proof.actualPaidAt() == null
-                        || proof.actualPaidAt() < request.preparedAt()
+                        || Math.addExact(proof.actualPaidAt(), proof.paidAtPrecisionMs() - 1)
+                                < request.preparedAt()
                         || proof.tradeNo() == null
                         || proof.tradeNo().isBlank()))
             return uncertainty(request.key(), "PAYMENT_PROOF_MISMATCH");

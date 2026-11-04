@@ -19,6 +19,110 @@ import java.util.regex.Pattern;
 
 class PlatformCollectionMysqlTest {
     @Test
+    void providerPrecisionPreservesActualTimeAndRejectsEarlierBuckets() throws Exception {
+        for (long paidAt : List.of(9000L, 10000L)) {
+            try (var f = new Fixture()) {
+                var old = f.request("A");
+                var request =
+                        new PlatformCollectionService.Request(
+                                old.key(),
+                                old.buyerNo(),
+                                old.merchantNo(),
+                                old.channel(),
+                                old.method(),
+                                old.amountMinor(),
+                                old.currency(),
+                                old.expiresAt(),
+                                10250,
+                                old.payer());
+                f.service.create(request);
+                String external =
+                        f.jdbc.queryForObject("SELECT out_trade_no FROM stl_payment", String.class);
+                f.answer.set(
+                        new PayGateway.QueryResult(
+                                true,
+                                true,
+                                true,
+                                100,
+                                "WX1",
+                                "CNY",
+                                paidAt,
+                                "platform-mch",
+                                external,
+                                "SUCCESS",
+                                1000L));
+                var result = f.service.query(request.key());
+                assertEquals(paidAt == 10000 ? "SUCCESS" : "UNKNOWN", result.state());
+                if (paidAt == 10000) {
+                    assertEquals(paidAt, result.paidAt());
+                    assertEquals(1000L, result.paidAtPrecisionMs());
+                    assertEquals(
+                            "PENDING",
+                            f.jdbc.queryForObject(
+                                    "SELECT platform_handoff_state FROM stl_payment",
+                                    String.class));
+                    assertEquals(result, f.service.query(request.key()));
+                }
+            }
+        }
+        try (var f = new Fixture()) {
+            var r = f.request("A");
+            f.service.create(r);
+            String external =
+                    f.jdbc.queryForObject("SELECT out_trade_no FROM stl_payment", String.class);
+            f.answer.set(
+                    new PayGateway.QueryResult(
+                            true,
+                            true,
+                            true,
+                            100,
+                            "WX1",
+                            "CNY",
+                            r.preparedAt(),
+                            "platform-mch",
+                            external,
+                            "SUCCESS"));
+            var legacy = f.service.query(r.key());
+            assertEquals("SUCCESS", legacy.state());
+            assertEquals(1L, legacy.paidAtPrecisionMs());
+            f.jdbc.update(
+                    "UPDATE stl_payment SET"
+                        + " platform_receipt_json=JSON_REMOVE(platform_receipt_json,'$.paidAtPrecisionMs')");
+            assertEquals(legacy, f.service.query(r.key()));
+        }
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        new PayGateway.QueryResult(
+                                true,
+                                true,
+                                true,
+                                100,
+                                "WX1",
+                                "CNY",
+                                Long.MAX_VALUE,
+                                "platform-mch",
+                                "M1",
+                                "SUCCESS",
+                                1000L));
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        new PayGateway.QueryResult(
+                                true,
+                                true,
+                                true,
+                                100,
+                                "WX1",
+                                "CNY",
+                                10000L,
+                                "platform-mch",
+                                "M1",
+                                "SUCCESS",
+                                -1L));
+    }
+
+    @Test
     void oneLedgerPreservesFirstActualProofAndUnknownNeverClosesDispatchedIntent()
             throws Exception {
         try (var f = new Fixture()) {

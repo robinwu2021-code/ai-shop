@@ -4836,7 +4836,14 @@
             "$ref": "#/components/schemas/PlanTier"
           },
           "currentVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "saleStatus": {
             "type": "string"
@@ -4885,7 +4892,14 @@
             "description": "UTC ISO-8601 instant."
           },
           "creditBreakdown": {
-            "$ref": "#/components/schemas/QuoteCreditView"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuoteCreditView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -4896,7 +4910,14 @@
             "type": "string"
           },
           "reviewQuoteNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -4972,7 +4993,14 @@
             "$ref": "#/components/schemas/QuoteView"
           },
           "shippingAddress": {
-            "$ref": "#/components/schemas/ShippingAddress"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShippingAddress"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "paymentAttempts": {
             "type": "array",
@@ -5141,15 +5169,53 @@
             "$ref": "#/components/schemas/AsyncStatus"
           },
           "paymentNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "paidAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "UTC ISO-8601 instant."
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO-8601 instant."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "errorCode": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidAtPrecisionMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  1,
+                  1000
+                ],
+                "default": 1,
+                "description": "Trusted provider precision in milliseconds. paidAt is the unchanged inclusive lower bound; missing legacy metadata means 1ms. Not accepted from buyer/OPS request bodies."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null before a paid timestamp exists; otherwise the trusted precision of paidAt."
           }
         }
       },
@@ -5218,6 +5284,15 @@
                 "type": "null"
               }
             ]
+          },
+          "paidAtPrecisionMs": {
+            "type": "integer",
+            "enum": [
+              1,
+              1000
+            ],
+            "default": 1,
+            "description": "Trusted provider precision in milliseconds. paidAt is the unchanged inclusive lower bound; missing legacy metadata means 1ms. Not accepted from buyer/OPS request bodies."
           }
         }
       },
@@ -5283,7 +5358,14 @@
             "type": "string"
           },
           "skuVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "title": {
             "type": "string"
@@ -5370,7 +5452,14 @@
             "type": "string"
           },
           "description": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "allowedBusinessTypes": {
             "type": "array",
@@ -5441,7 +5530,14 @@
             "type": "boolean"
           },
           "deploymentNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "expectedVersion": {
             "type": "integer",
@@ -5522,7 +5618,14 @@
             "format": "int64"
           },
           "targetSkuVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -5676,10 +5779,17 @@
             "type": "string"
           },
           "sourcePeriodNos": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -5697,10 +5807,17 @@
             "type": "string"
           },
           "sourcePeriodNos": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -5774,7 +5891,14 @@
             "type": "string"
           },
           "shippingAddress": {
-            "$ref": "#/components/schemas/ShippingAddress"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShippingAddress"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -5783,7 +5907,14 @@
         "type": "object",
         "properties": {
           "planVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "typeCode": {
             "type": "string"
@@ -5795,7 +5926,14 @@
             "type": "string"
           },
           "summary": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "entitlementCodes": {
             "type": "array",
@@ -5835,13 +5973,34 @@
             "$ref": "#/components/schemas/Money"
           },
           "reviewStatus": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "requestDigest": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reviewQuoteNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -5852,7 +6011,14 @@
             "type": "string"
           },
           "draftVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "version": {
             "type": "integer",
@@ -5873,7 +6039,14 @@
             "type": "string"
           },
           "description": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "allowedBusinessTypes": {
             "type": "array",
@@ -5930,7 +6103,14 @@
             "type": "string"
           },
           "reviewQuoteNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "cashAmount": {
             "$ref": "#/components/schemas/MoneyInput"
@@ -6054,13 +6234,34 @@
             "type": "boolean"
           },
           "clientId": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "routePolicyRef": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "acceptanceRef": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "expectedVersion": {
             "type": "integer",
@@ -6094,7 +6295,14 @@
             "$ref": "#/components/schemas/AsyncStatus"
           },
           "errorCode": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -6199,23 +6407,58 @@
         "type": "object",
         "properties": {
           "componentNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "kind": {
             "$ref": "#/components/schemas/ComponentKind"
           },
           "planVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "entitlementCode": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "hardwareSkuNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "periodDays": {
-            "type": "integer",
-            "format": "int32"
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int32"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "unitCount": {
             "type": "integer",
@@ -6269,16 +6512,37 @@
             "type": "string"
           },
           "region": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "city": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "addressLine": {
             "type": "string"
           },
           "postalCode": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -6400,7 +6664,14 @@
             "format": "int32"
           },
           "currentVersionNo": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "saleStatus": {
             "type": "string"
@@ -6430,7 +6701,14 @@
             "type": "string"
           },
           "summary": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "entitlementCodes": {
             "type": "array",

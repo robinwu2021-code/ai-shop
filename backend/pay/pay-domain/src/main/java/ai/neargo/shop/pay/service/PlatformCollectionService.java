@@ -31,7 +31,44 @@ public interface PlatformCollectionService {
             Long paidAt,
             Map<String, String> checkoutParameters,
             String closureReference,
-            String errorCode) {}
+            String errorCode,
+            Long paidAtPrecisionMs) {
+        public Receipt {
+            paidAtPrecisionMs = paidAtPrecisionMs == null ? 1L : paidAtPrecisionMs;
+            if (paidAtPrecisionMs != 1 && paidAtPrecisionMs != 1000)
+                throw new IllegalArgumentException("INVALID_PAYMENT_TIME_PRECISION");
+            if (paidAt != null) {
+                try {
+                    Math.addExact(paidAt, paidAtPrecisionMs - 1);
+                } catch (ArithmeticException overflow) {
+                    throw new IllegalArgumentException("INVALID_PAYMENT_TIME_RANGE", overflow);
+                }
+            }
+        }
+
+        public Receipt(
+                Key key,
+                String paymentNo,
+                Request request,
+                String state,
+                String providerNo,
+                Long paidAt,
+                Map<String, String> checkoutParameters,
+                String closureReference,
+                String errorCode) {
+            this(
+                    key,
+                    paymentNo,
+                    request,
+                    state,
+                    providerNo,
+                    paidAt,
+                    checkoutParameters,
+                    closureReference,
+                    errorCode,
+                    1L);
+        }
+    }
 
     Receipt create(Request request);
 

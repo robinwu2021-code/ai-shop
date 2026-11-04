@@ -16,6 +16,68 @@ import java.util.concurrent.atomic.*;
 
 class PlatformRefundMysqlTest {
     @Test
+    void fullAcceptedReviewEvidenceIsFrozenAndDispatchableAtEveryBoundary() throws Exception {
+        for (int size : List.of(1000, 1001, 1024)) {
+            try (var f = new PlatformCollectionMysqlTest.Fixture()) {
+                f.service.create(f.request("A"));
+                String external =
+                        f.jdbc.queryForObject("SELECT out_trade_no FROM stl_payment", String.class);
+                f.answer.set(
+                        new PayGateway.QueryResult(
+                                true,
+                                true,
+                                true,
+                                100,
+                                "WX1",
+                                "CNY",
+                                10000L,
+                                "platform-mch",
+                                external,
+                                "SUCCESS"));
+                var paid = f.service.query(f.request("A").key());
+                String evidence = "核".repeat(size);
+                var request =
+                        new PlatformRefundService.Request(
+                                new PlatformRefundService.Key("MAIN", "order", "R1"),
+                                "store",
+                                "A",
+                                paid.paymentNo(),
+                                "platform-mch",
+                                100,
+                                60,
+                                "CNY",
+                                evidence);
+                when(f.gateway.supportsRefundCurrency("CNY")).thenReturn(true);
+                when(f.gateway.refund(any(), anyLong(), any(), eq(evidence)))
+                        .thenReturn(PayGateway.Result.ok("accepted"));
+                when(f.gateway.queryRefundOutcome(any()))
+                        .thenReturn(RefundQueryResult.unknown("unknown"));
+                var refunds =
+                        new PlatformRefundServiceImpl(
+                                f.ds, new DataSourceTransactionManager(f.ds), f.service, f.router);
+                var result = assertDoesNotThrow(() -> refunds.refund(request));
+                assertEquals(evidence, result.request().reason());
+                assertEquals(evidence, refunds.refund(request).request().reason());
+                verify(f.gateway, times(1)).refund(any(), eq(60L), any(), eq(evidence));
+                assertThrows(
+                        RuntimeException.class,
+                        () ->
+                                refunds.refund(
+                                        new PlatformRefundService.Request(
+                                                request.key(),
+                                                "store",
+                                                "A",
+                                                paid.paymentNo(),
+                                                "platform-mch",
+                                                100,
+                                                60,
+                                                "CNY",
+                                                "changed")));
+            }
+        }
+    }
+
+    @Test
     void refundUsesOriginalCashCapacityAndRequiresExactFinalOriginalPaymentProof()
             throws Exception {
         try (var f = new PlatformCollectionMysqlTest.Fixture()) {

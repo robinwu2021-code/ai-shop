@@ -116,7 +116,8 @@ public final class ShopMallPlatformPaymentAdapter implements PlatformPaymentPort
                 Optional.ofNullable(r.errorCode()),
                 status == AsyncStatus.PENDING ? r.checkoutParameters() : Map.of(),
                 closed,
-                Optional.ofNullable(r.closureReference()));
+                Optional.ofNullable(r.closureReference()),
+                r.paidAtPrecisionMs());
     }
 
     public PaymentRefundOutcome refund(PaymentRefundCommand c) {

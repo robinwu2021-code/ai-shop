@@ -52,6 +52,8 @@ shop:
 
 新接口请求 DTO 不接受 tenant、actor、store、openid、支付成功或供应商事实等未知字段。店号来自路径或 OPS 的明确 storeNo 查询参数，再经公共 facade 校验。金额响应统一 `{ "currency": "TWD", "minor": "69900" }`，minor 为精确十进制整数文本。请求推荐同格式；兼容 0..9007199254740991 的整数数字 token。小数/浮点 token、前导零、负数、long 溢出和不安全数字拒绝。Task4 不重解释 minor，也未加入 TWD quantum 策略；Task8 将显式扩展。Instant 时间为 UTC ISO-8601，毫秒 long 字段保持原 API 标注语义。
 
+响应保留显式 `null`：未付款的 paymentNo/paidAt/errorCode、数字订单 shippingAddress、无审核报价的 reviewQuoteNo、非版本草稿保存的 draftVersionNo，以及未发布目录当前版本/可选描述和端验收字段。OpenAPI 3.1 以明确 null 分支表达；属性可省略不代表可为 null。精确 Money 约束不变。真实 MVC 响应契约门为 `MallOpenApiResponseTest`，运行后执行 `python3 backend/commerce/commerce-spring-boot-starter/src/test/python/validate_mall_openapi.py`（jsonschema 4.x，Draft 2020-12）。
+
 成功信封 `{code:0,msg:"success",data:...}`。新增业务错误的 HTTP 400/403/404/409/503 对应 code=10000+HTTP状态，msg 保留机器原因。既有安全过滤器的会话错误仍使用原宿主信封与错误码。常见原因：FORBIDDEN、NOT_FOUND、INVALID_REQUEST、VERSION_CONFLICT、QUOTE_EXPIRED、QUOTE_USED、IDEMPOTENCY_CONFLICT、DIGITAL_CHANGE_PENDING、CHECKOUT_UNAVAILABLE、PAYER_BINDING_UNPROVEN、PAYMENT_UNAVAILABLE、REFUND_UNAVAILABLE、FULFILLMENT_UNAVAILABLE、SOURCE_MANAGEMENT_UNAVAILABLE、DEPLOYMENT_UNAVAILABLE、CHECK_UNAVAILABLE。storefront 的 readiness.reasons 还区分 PAYMENT_COORDINATION_DISABLED、STORE_UNAVAILABLE、PAYMENT_ROUTE_UNAVAILABLE、INVENTORY_MAPPING_UNAVAILABLE。
 
 ## 稳定购买与审核流程
@@ -68,6 +70,12 @@ shop:
 ## 资金与恢复边界
 
 现有 `stl_payment` 是唯一资金账本。PLATFORM_MALL 显式分流 callback、PaymentReconReconciler 与 OrderPaidReconciler；通用 consumer 结算/关闭/退款写入口不得改写平台意图。原支付意图与接收主体、币种、金额、provider号及真实 paidAt 一致才产生成功事实。NOT_FOUND/超时/请求失败不是关闭证明；派发前本地 tombstone 排除迟到 create，派发后需要真实供应商关闭证据。
+
+可信 `paidAtPrecisionMs` 随 gateway→宿主收据→PaymentOutcome→VerifiedPaymentFact/订单付款明细传递：旧构造器与缺失字段为 1ms，微信 seconds-formatted success_time 为 1000ms；原 paidAt 始终是不变的提供方时间下界，不改为查询时间。按毫秒桶 `[paidAt, paidAt+precision-1]` 检查准备时间是否重叠，拒绝真正早于准备时间的整个桶；桶尾晚于订单截止时间则记录真实现金但进入异常退款、不给权益。1ms 且 paidAt 等于截止时间仍兼容旧规则。精度仅允许 1/1000、算术溢出拒绝；客户端请求不能设置。第一次事实含精度不可变；旧 1ms 事实 digest 不变。
+
+退款审核证据最多 1024 个 Java UTF-16 code unit，核心与宿主接受范围一致，完整证据持久保留且重试不能更换。微信退款的通道描述独立从原证据按 Unicode code point 截取到 UTF-8 80 字节，不把通道限制施加于完整审核记录。[微信退款接口](https://pay.wechatpay.cn/doc/v3/merchant/4012791903) 与 [付款时间定义](https://pay.wechatpay.cn/doc/v3/merchant/4012791858) 是对应协议依据。
+
+生命周期 3 的协调库存只能由 CoordinatedInventoryService 释放/发货；旧 release/cancel/allocated/fulfillment-reference 入口不能修改其库存与证据。查询核对实际生命周期、状态及行数量后才认证预留，异常状态失败关闭。
 
 平台支付与退款的 SUCCESS 和 `platform_handoff_state=PENDING` 在同一账本事务提交。提交后才调用 core，callback ACK 对应现金与交接已持久，而非下游已经发放。下游失败保留 PENDING；重试不新建支付、不替换第一次现金证明。真实关单后晚到现金仍记录并进入异常退款，不补发权益。供应商/库存 IO 均不在商业或宿主账本事务中。
 

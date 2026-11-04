@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -182,11 +183,19 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
          * paySign 本身**不打**：它没有长期价值，而日志会被采集、转发、贴进工单。
          * 其余五项都不是机密（本来就要原样发给端上），而它们正是排查要对的东西。
          */
-        log.info("[wechat-direct] 端上六件套 appId={} timeStamp={} nonceStr={} package={} signType={} paySign自验={}",
-                appId, timeStamp, nonceStr, pkg, WechatApiV3Signer.SIGN_TYPE,
+        log.info(
+                "[wechat-direct] 端上六件套 appId={} timeStamp={} nonceStr={} package={} signType={}"
+                    + " paySign自验={}",
+                appId,
+                timeStamp,
+                nonceStr,
+                pkg,
+                WechatApiV3Signer.SIGN_TYPE,
                 signer.verifyOwnSignature(
-                        WechatApiV3Signer.paySignContent(appId, timeStamp, nonceStr, pkg), paySign)
-                        ? "通过" : "**失败**");
+                                WechatApiV3Signer.paySignContent(appId, timeStamp, nonceStr, pkg),
+                                paySign)
+                        ? "通过"
+                        : "**失败**");
         return Map.of(
                 "appId", appId,
                 "timeStamp", timeStamp,
@@ -206,15 +215,24 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
      */
     @Override
     public java.util.Optional<PlatformCollectionCapability> platformCollectionCapability() {
-        if(mchId==null||mchId.isBlank()||appId==null||appId.isBlank()||notifyUrl==null||!notifyUrl.startsWith("https://")
-                ||signer==null||!signer.canVerifyResponse())return java.util.Optional.empty();
-        return java.util.Optional.of(new PlatformCollectionCapability(mchId,appId,"JSAPI","CNY",Integer.MAX_VALUE));
+        if (mchId == null
+                || mchId.isBlank()
+                || appId == null
+                || appId.isBlank()
+                || notifyUrl == null
+                || !notifyUrl.startsWith("https://")
+                || signer == null
+                || !signer.canVerifyResponse()) return java.util.Optional.empty();
+        return java.util.Optional.of(
+                new PlatformCollectionCapability(mchId, appId, "JSAPI", "CNY", Integer.MAX_VALUE));
     }
 
     @Override
     public QueryResult close(String outTradeNo) {
         try {
-            client.post(WechatDirectApis.TRANSACTION_BY_OUT_TRADE_NO+outTradeNo+"/close",Map.of("mchid",mchId));
+            client.post(
+                    WechatDirectApis.TRANSACTION_BY_OUT_TRADE_NO + outTradeNo + "/close",
+                    Map.of("mchid", mchId));
             // Even an accepted close is re-read: absence cannot fence a concurrent prepay.
             return query(outTradeNo);
         } catch(RuntimeException uncertain) { return query(outTradeNo); }
@@ -239,10 +257,21 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
                 return new QueryResult(true,false,true,0,null,null,null,
                         string(resp,"mchid"),string(resp,"out_trade_no"),String.valueOf(state));
             }
-            return new QueryResult(true, true, true, totalOf(resp),
+            return new QueryResult(
+                    true,
+                    true,
+                    true,
+                    totalOf(resp),
                     resp.get("transaction_id") instanceof String trade ? trade : null,
-                    resp.get("amount") instanceof Map<?, ?> details && details.get("currency") instanceof String currency
-                            ? currency : null, paidAt(resp.get("success_time")),string(resp,"mchid"),string(resp,"out_trade_no"),"SUCCESS");
+                    resp.get("amount") instanceof Map<?, ?> details
+                                    && details.get("currency") instanceof String currency
+                            ? currency
+                            : null,
+                    paidAt(resp.get("success_time")),
+                    string(resp, "mchid"),
+                    string(resp, "out_trade_no"),
+                    "SUCCESS",
+                    1000L);
         } catch (ChannelClient.ChannelException e) {
             /*
              * **只有 ORDER_NOT_EXIST 才是「通道没有这笔」**，其余失败一律 failed()。
@@ -254,7 +283,10 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             log.warn("[wechat-direct] 查单失败，不据此关单：{}（{}）", outTradeNo, e.getMessage());
             return QueryResult.failed();
         } catch (RuntimeException malformed) {
-            log.warn("[wechat-direct] 查单证据无效 no={} exception={}", outTradeNo, malformed.getClass().getSimpleName());
+            log.warn(
+                    "[wechat-direct] 查单证据无效 no={} exception={}",
+                    outTradeNo,
+                    malformed.getClass().getSimpleName());
             return QueryResult.failed();
         }
     }
@@ -291,17 +323,34 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             String provider = resp.get("refund_id") instanceof String value ? value : null;
             String currency = resp.get("amount") instanceof Map<?, ?> amount
                     && amount.get("currency") instanceof String value ? value : null;
-            return new ai.neargo.shop.spi.pay.RefundQueryResult(status, raw, no,
+            return new ai.neargo.shop.spi.pay.RefundQueryResult(
+                    status,
+                    raw,
+                    no,
                     status == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
-                            || status == ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED
-                            ? refundAmountOf(resp) : 0,
-                    provider, currency, System.currentTimeMillis(),
-                    no.equals(string(resp,"out_refund_no"))?string(resp,"out_trade_no"):null,
-                    no.equals(string(resp,"out_refund_no"))?string(resp,"transaction_id"):null,
-                    resp.get("amount") instanceof Map<?,?> details && details.get("total") instanceof Number total?exactMinor(total):null,
-                    paidAt(resp.get("success_time")),no.equals(string(resp,"out_refund_no"))?mchId:null);
+                                    || status
+                                            == ai.neargo.shop.spi.pay.RefundQueryResult.Status
+                                                    .TERMINAL_FAILED
+                            ? refundAmountOf(resp)
+                            : 0,
+                    provider,
+                    currency,
+                    System.currentTimeMillis(),
+                    no.equals(string(resp, "out_refund_no")) ? string(resp, "out_trade_no") : null,
+                    no.equals(string(resp, "out_refund_no"))
+                            ? string(resp, "transaction_id")
+                            : null,
+                    resp.get("amount") instanceof Map<?, ?> details
+                                    && details.get("total") instanceof Number total
+                            ? exactMinor(total)
+                            : null,
+                    paidAt(resp.get("success_time")),
+                    no.equals(string(resp, "out_refund_no")) ? mchId : null);
         } catch (RuntimeException uncertain) {
-            log.warn("[wechat-direct] 退款查询未知 no={} exception={}", no, uncertain.getClass().getSimpleName());
+            log.warn(
+                    "[wechat-direct] 退款查询未知 no={} exception={}",
+                    no,
+                    uncertain.getClass().getSimpleName());
             return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
         }
     }
@@ -348,6 +397,22 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
 
     // ---------------------------------------------------------------- 五个资金动作
 
+    /**
+     * Provider description only; the host ledger retains the complete immutable review evidence.
+     */
+    private static String refundDescription(String evidence) {
+        if (evidence == null) return "";
+        int end = 0, bytes = 0;
+        while (end < evidence.length()) {
+            int cp = evidence.codePointAt(end);
+            int width = cp <= 0x7f ? 1 : cp <= 0x7ff ? 2 : cp <= 0xffff ? 3 : 4;
+            if (bytes + width > REASON_MAX) break;
+            bytes += width;
+            end += Character.charCount(cp);
+        }
+        return evidence.substring(0, end);
+    }
+
     @Override
     protected Call buildRefund(TxContext ctx, long amountMinor, String requestNo, String reason) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -361,7 +426,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             body.put("out_trade_no", ctx.outTradeNo());
         }
         body.put("out_refund_no", requestNo);
-        body.put("reason", trim(reason, REASON_MAX));
+        body.put("reason", refundDescription(reason));
         /*
          * **退款也要带 notify_url。** 不带的话微信会退回用「商户平台上配的那个」——
          * 而那是个我方代码控制不了的地址：谁在后台改一下，退款结果就再也回不来，

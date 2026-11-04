@@ -582,18 +582,48 @@ class MallUpgradeRefundMysqlTest {
                     preview.refundNo(), preview.cashLimit(), "buyer reason"));
             var command = new RefundRejectionCommand(STORE, f.order().orderNo(),
                     preview.refundNo(), preview.approvalDigest(), "policy evidence");
-            String orderBefore = db.jdbc.queryForObject("SELECT CONCAT(pay_status,':',fulfillment_status,':',refund_status) FROM mall_order", String.class);
-            var sourcesBefore = db.jdbc.queryForList("SELECT period_no,state,version FROM mch_subscription_period ORDER BY period_no");
+            String orderBefore =
+                    db.jdbc.queryForObject(
+                            "SELECT CONCAT(pay_status,':',fulfillment_status,':',refund_status)"
+                                + " FROM mall_order",
+                            String.class);
+            var sourcesBefore =
+                    db.jdbc.queryForList(
+                            "SELECT period_no,state,version FROM mch_subscription_period ORDER BY"
+                                + " period_no");
             assertThrows(MallException.class, () -> api.reject(BUYER, command));
             assertEquals("DECLINED", api.reject(f.mall().c.ops, command).reviewStatus());
             assertEquals(api.reject(f.mall().c.ops, command), api.reject(f.mall().c.ops, command));
-            assertEquals(orderBefore, db.jdbc.queryForObject("SELECT CONCAT(pay_status,':',fulfillment_status,':',refund_status) FROM mall_order", String.class));
-            assertEquals(sourcesBefore, db.jdbc.queryForList("SELECT period_no,state,version FROM mch_subscription_period ORDER BY period_no"));
-            assertNull(db.jdbc.queryForObject("SELECT verified_fact_snapshot FROM mall_refund WHERE refund_no='decline-1'", String.class));
+            assertEquals(
+                    orderBefore,
+                    db.jdbc.queryForObject(
+                            "SELECT CONCAT(pay_status,':',fulfillment_status,':',refund_status)"
+                                + " FROM mall_order",
+                            String.class));
+            assertEquals(
+                    sourcesBefore,
+                    db.jdbc.queryForList(
+                            "SELECT period_no,state,version FROM mch_subscription_period ORDER BY"
+                                + " period_no"));
+            assertNull(
+                    db.jdbc.queryForObject(
+                            "SELECT verified_fact_snapshot FROM mall_refund WHERE"
+                                + " refund_no='decline-1'",
+                            String.class));
             assertEquals(0, bridge.refunds);
-            assertThrows(MallException.class, () -> api.approve(f.mall().c.ops,
-                    new RefundApprovalCommand(STORE, f.order().orderNo(), preview.refundNo(),
-                            preview.approvalDigest(), preview.cashLimit(), preview.creditLimit(), "policy evidence")));
+            assertThrows(
+                    MallException.class,
+                    () ->
+                            api.approve(
+                                    f.mall().c.ops,
+                                    new RefundApprovalCommand(
+                                            STORE,
+                                            f.order().orderNo(),
+                                            preview.refundNo(),
+                                            preview.approvalDigest(),
+                                            preview.cashLimit(),
+                                            preview.creditLimit(),
+                                            "policy evidence")));
         }
     }
 
@@ -611,7 +641,11 @@ class MallUpgradeRefundMysqlTest {
                     f.order().orderNo(), "delayed-review", List.of()));
             api.request(BUYER, new RefundCommand(STORE, f.order().orderNo(),
                     preview.refundNo(), preview.cashLimit(), "buyer reason"));
-            String original = db.jdbc.queryForObject("SELECT policy_snapshot FROM mall_refund WHERE refund_no='delayed-review'", String.class);
+            String original =
+                    db.jdbc.queryForObject(
+                            "SELECT policy_snapshot FROM mall_refund WHERE"
+                                + " refund_no='delayed-review'",
+                            String.class);
             var later = refundService(db, f, bridge,
                     Clock.offset(MallFulfillmentMysqlTest.CLOCK, Duration.ofHours(1)));
             var refresh = new RefundReviewQuoteCommand(STORE, f.order().orderNo(), preview.refundNo(),
@@ -622,15 +656,28 @@ class MallUpgradeRefundMysqlTest {
             assertTrue(current.preview().cashLimit().minor() <= preview.cashLimit().minor());
             assertEquals(preview.approvalDigest(), current.requestDigest());
             assertNotEquals(preview.approvalDigest(), current.preview().approvalDigest());
-            var approved = later.approve(f.mall().c.ops,
-                    new RefundApprovalCommand(STORE, f.order().orderNo(), preview.refundNo(),
-                            current.preview().approvalDigest(), current.preview().cashLimit(),
-                            current.preview().creditLimit(), "delayed reviewed evidence", current.reviewQuoteNo()));
+            var approved =
+                    later.approve(
+                            f.mall().c.ops,
+                            new RefundApprovalCommand(
+                                    STORE,
+                                    f.order().orderNo(),
+                                    preview.refundNo(),
+                                    current.preview().approvalDigest(),
+                                    current.preview().cashLimit(),
+                                    current.preview().creditLimit(),
+                                    "delayed reviewed evidence",
+                                    current.reviewQuoteNo()));
             assertEquals("APPROVED", approved.reviewStatus());
             assertEquals(preview, later.preview(BUYER, new RefundPreviewCommand(STORE,
                     f.order().orderNo(), preview.refundNo(), List.of())));
             assertEquals(preview.approvalDigest(), approved.requestDigest());
-            assertEquals(original, db.jdbc.queryForObject("SELECT policy_snapshot FROM mall_refund WHERE refund_no='delayed-review'", String.class));
+            assertEquals(
+                    original,
+                    db.jdbc.queryForObject(
+                            "SELECT policy_snapshot FROM mall_refund WHERE"
+                                + " refund_no='delayed-review'",
+                            String.class));
             assertThrows(MallException.class, () -> later.reject(f.mall().c.ops,
                     new RefundRejectionCommand(STORE, f.order().orderNo(), preview.refundNo(),
                             preview.approvalDigest(), "cannot override approved")));
@@ -640,10 +687,75 @@ class MallUpgradeRefundMysqlTest {
                     new RefundRejectionCommand(STORE, f.order().orderNo(), preview.refundNo(),
                             preview.approvalDigest(), "cannot override unknown")));
             bridge.finalResult(AsyncStatus.SUCCEEDED);
-            var result = later.recover(new RefundQuery("tenant-a", f.order().orderNo(), preview.refundNo()));
+            var result =
+                    later.recover(
+                            new RefundQuery("tenant-a", f.order().orderNo(), preview.refundNo()));
             assertEquals(AsyncStatus.SUCCEEDED, result.status());
             assertEquals(preview.approvalDigest(), result.requestDigest());
             assertEquals(current.reviewQuoteNo(), result.reviewQuoteNo());
+        }
+    }
+
+    @Test
+    void fullReviewEvidenceBoundariesRemainImmutableThroughRecovery() {
+        for (int size : List.of(1000, 1001, 1024)) {
+            try (var db = new MysqlDatabase()) {
+                var helper = new MallFulfillmentMysqlTest();
+                var f = helper.setup(db, false);
+                helper.start(f);
+                f.svc().confirmPayment(helper.paid(f, 8800));
+                f.svc().fulfill(new FulfillmentQuery("tenant-a", f.order().orderNo()));
+                var bridge = new RefundBridge();
+                var refunds = refundService(db, f, bridge);
+                var preview =
+                        refunds.preview(
+                                BUYER,
+                                new RefundPreviewCommand(
+                                        STORE, f.order().orderNo(), "evidence", List.of()));
+                refunds.request(
+                        BUYER,
+                        new RefundCommand(
+                                STORE,
+                                f.order().orderNo(),
+                                "evidence",
+                                preview.cashLimit(),
+                                "request"));
+                String evidence = "核".repeat(size);
+                var approval =
+                        new RefundApprovalCommand(
+                                STORE,
+                                f.order().orderNo(),
+                                "evidence",
+                                preview.approvalDigest(),
+                                preview.cashLimit(),
+                                preview.creditLimit(),
+                                evidence);
+                refunds.approve(f.mall().c.ops, approval);
+                refunds.recover(new RefundQuery("tenant-a", f.order().orderNo(), "evidence"));
+                assertEquals(evidence, bridge.command.reason());
+                assertEquals(
+                        evidence,
+                        db.jdbc.queryForObject(
+                                "SELECT review_evidence FROM mall_refund WHERE"
+                                    + " refund_no='evidence'",
+                                String.class));
+                refunds.approve(f.mall().c.ops, approval);
+                assertThrows(
+                        MallException.class,
+                        () ->
+                                refunds.approve(
+                                        f.mall().c.ops,
+                                        new RefundApprovalCommand(
+                                                STORE,
+                                                f.order().orderNo(),
+                                                "evidence",
+                                                preview.approvalDigest(),
+                                                preview.cashLimit(),
+                                                preview.creditLimit(),
+                                                "changed")));
+                refunds.recover(new RefundQuery("tenant-a", f.order().orderNo(), "evidence"));
+                assertEquals(1, bridge.refunds);
+            }
         }
     }
 
@@ -1171,15 +1283,29 @@ class MallUpgradeRefundMysqlTest {
                         return null;
                     });
             var quote = f.quote();
-            assertTrue(java.util.Arrays.stream(QuoteView.class.getRecordComponents()).anyMatch(c -> c.getName().equals("creditBreakdown")));
+            assertTrue(
+                    java.util.Arrays.stream(QuoteView.class.getRecordComponents())
+                            .anyMatch(c -> c.getName().equals("creditBreakdown")));
             try {
                 var breakdown = QuoteView.class.getMethod("creditBreakdown").invoke(quote);
                 assertNotNull(breakdown);
-                var values = Map.of("newConversion", 0L, "historicalAvailable", 80000L, "applied", 69900L,
-                        "reservedHistorical", 69900L, "balanceAfter", 10100L);
+                var values =
+                        Map.of(
+                                "newConversion",
+                                0L,
+                                "historicalAvailable",
+                                80000L,
+                                "applied",
+                                69900L,
+                                "reservedHistorical",
+                                69900L,
+                                "balanceAfter",
+                                10100L);
                 for (var value : values.entrySet())
                     assertEquals(value.getValue().longValue(), ((Money) breakdown.getClass().getMethod(value.getKey()).invoke(breakdown)).minor());
-                assertEquals(Instant.ofEpochMilli(2000), breakdown.getClass().getMethod("valuationAt").invoke(breakdown));
+                assertEquals(
+                        Instant.ofEpochMilli(2000),
+                        breakdown.getClass().getMethod("valuationAt").invoke(breakdown));
             } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
             var order = f.place(quote, "balance-purchase");
             assertEquals(0, order.payable().minor());

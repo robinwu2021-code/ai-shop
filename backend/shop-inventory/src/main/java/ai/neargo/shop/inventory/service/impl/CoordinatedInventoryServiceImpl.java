@@ -243,10 +243,15 @@ public class CoordinatedInventoryServiceImpl implements CoordinatedInventoryServ
     }
 
     private Line line(Head h) {
-        jdbc.queryForObject(
-                "SELECT reservation_id FROM inv_reservation WHERE reservation_id=? FOR UPDATE",
-                String.class,
-                h.reservationId);
+        var heads =
+                jdbc.queryForList(
+                        "SELECT lifecycle_version,status,owner_id FROM inv_reservation WHERE"
+                            + " reservation_id=? FOR UPDATE",
+                        h.reservationId);
+        if (heads.size() != 1
+                || !Integer.valueOf(3).equals(heads.getFirst().get("lifecycle_version"))
+                || !h.binding.ownerId().equals(heads.getFirst().get("owner_id")))
+            throw BizException.of(ErrorCode.CONFLICT);
         var lines =
                 jdbc.query(
                         "SELECT qty,issued_qty,released_qty FROM inv_reservation_line WHERE"
@@ -254,7 +259,25 @@ public class CoordinatedInventoryServiceImpl implements CoordinatedInventoryServ
                         (rs, n) -> new Line(rs.getInt(1), rs.getInt(2), rs.getInt(3)),
                         h.reservationId);
         if (lines.size() != 1) throw BizException.of(ErrorCode.CONFLICT);
-        return lines.getFirst();
+        Line l = lines.getFirst();
+        if (l.quantity != h.quantity
+                || l.issued < 0
+                || l.released < 0
+                || (long) l.issued + l.released > l.quantity)
+            throw BizException.of(ErrorCode.CONFLICT);
+        String expected =
+                h.released
+                        ? (l.issued == 0 ? "RELEASED" : "PARTIAL_RELEASED")
+                        : l.issued == l.quantity
+                                ? "COMMITTED"
+                                : l.issued > 0
+                                        ? ai.neargo.shop.inventory.support.InvEnums
+                                                .ReservationStatus.PARTIALLY_COMMITTED
+                                        : "HELD";
+        if (!expected.equals(heads.getFirst().get("status"))
+                || (h.released ? l.issued + l.released != l.quantity : l.released != 0))
+            throw BizException.of(ErrorCode.CONFLICT);
+        return l;
     }
 
     private Ship shipment(Head h, String op) {

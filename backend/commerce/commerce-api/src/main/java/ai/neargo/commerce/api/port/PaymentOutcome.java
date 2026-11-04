@@ -19,9 +19,38 @@ public record PaymentOutcome(
         Optional<String> errorCode,
         Map<String, String> checkoutParameters,
         boolean definitivelyClosed,
-        Optional<String> closureReference) {
+        Optional<String> closureReference,
+        Long paidAtPrecisionMs) {
     public PaymentOutcome {
         checkoutParameters = Map.copyOf(checkoutParameters);
+        paidAtPrecisionMs = PaymentTimePrecision.normalize(paidAtPrecisionMs);
+        if (paidAt != null && paidAt.isPresent())
+            PaymentTimePrecision.latestMillis(paidAt.get(), paidAtPrecisionMs);
+    }
+
+    public PaymentOutcome(
+            String orderNo,
+            Optional<String> paymentNo,
+            String platformMerchantNo,
+            Money amount,
+            AsyncStatus status,
+            Optional<Instant> paidAt,
+            Optional<String> errorCode,
+            Map<String, String> checkoutParameters,
+            boolean definitivelyClosed,
+            Optional<String> closureReference) {
+        this(
+                orderNo,
+                paymentNo,
+                platformMerchantNo,
+                amount,
+                status,
+                paidAt,
+                errorCode,
+                checkoutParameters,
+                definitivelyClosed,
+                closureReference,
+                1L);
     }
 
     public PaymentOutcome(

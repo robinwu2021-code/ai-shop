@@ -18,16 +18,166 @@ import java.time.*;
 import java.util.*;
 
 class MallFulfillmentMysqlTest {
+    @Test
+    void providerBucketsRespectDeadlineAndLegacyFactReplay() {
+        for (long precision : List.of(1L, 1000L)) {
+            for (long offset : List.of(0L, -1000L)) {
+                try (var db = new MysqlDatabase()) {
+                    var f = setup(db, false);
+                    long deadline =
+                            db.jdbc.queryForObject("SELECT expires_at FROM mall_quote", Long.class)
+                                    + 250;
+                    // Fixture a valid subsecond cutoff before preparing the payment attempt.
+                    db.jdbc.update(
+                            "UPDATE mall_quote SET"
+                                + " expires_at=?,line_snapshot=JSON_SET(line_snapshot,'$.expiresAt',?)",
+                            deadline,
+                            deadline);
+                    db.jdbc.update("UPDATE mall_order SET pay_deadline=?", deadline);
+                    start(f);
+                    Instant actual =
+                            Instant.ofEpochMilli(
+                                    (precision == 1 ? deadline : deadline / 1000 * 1000) + offset);
+                    f.bridge.payment =
+                            new PaymentOutcome(
+                                    f.order.orderNo(),
+                                    Optional.of("pay"),
+                                    "platform",
+                                    f.order.payable(),
+                                    AsyncStatus.SUCCEEDED,
+                                    Optional.of(actual),
+                                    Optional.empty(),
+                                    Map.of(),
+                                    false,
+                                    Optional.empty(),
+                                    precision);
+                    f.svc.refresh(new FulfillmentQuery("tenant-a", f.order.orderNo()));
+                    assertEquals(
+                            "PAID",
+                            db.jdbc.queryForObject(
+                                    "SELECT pay_status FROM mall_order", String.class));
+                    assertEquals(
+                            precision == 1000 && offset == 0 ? "FAILED" : "COMPLETED",
+                            db.jdbc.queryForObject(
+                                    "SELECT fulfillment_status FROM mall_order", String.class));
+                    assertEquals(
+                            actual.toEpochMilli(),
+                            db.jdbc.queryForObject("SELECT paid_at FROM mall_order", Long.class));
+                    if (precision == 1000 && offset == 0) {
+                        assertEquals(
+                                "REFUNDING",
+                                db.jdbc.queryForObject(
+                                        "SELECT refund_status FROM mall_order", String.class));
+                        assertEquals(
+                                0L,
+                                count(
+                                        db,
+                                        "SELECT count(*) FROM mall_fulfillment_task WHERE"
+                                            + " task_type='DIGITAL'"));
+                    }
+                    f.svc.refresh(new FulfillmentQuery("tenant-a", f.order.orderNo()));
+                    assertEquals(
+                            1L,
+                            count(
+                                    db,
+                                    "SELECT count(*) FROM commerce_event_inbox WHERE"
+                                        + " source_system='MALL_PAYMENT'"));
+                }
+            }
+        }
+        try (var db = new MysqlDatabase()) {
+            var f = setup(db, false);
+            start(f);
+            var original = paid(f, 8800);
+            f.svc.confirmPayment(original);
+            assertEquals(
+                    ai.neargo.commerce.core.spi.FactDigest.of(
+                            List.of(
+                                    original.orderNo(),
+                                    original.paymentNo(),
+                                    original.platformMerchantNo(),
+                                    original.paid().currency(),
+                                    Long.toString(original.paid().minor()),
+                                    original.paidAt().toString())),
+                    db.jdbc.queryForObject(
+                            "SELECT payload_hash FROM commerce_event_inbox WHERE"
+                                + " source_system='MALL_PAYMENT'",
+                            String.class));
+            var json = tools.jackson.databind.json.JsonMapper.builder().build();
+            String oldJson =
+                    json.writeValueAsString(original).replace(",\"paidAtPrecisionMs\":1", "");
+            assertFalse(oldJson.contains("paidAtPrecisionMs"));
+            db.jdbc.update(
+                    "UPDATE mall_payment_ref SET"
+                        + " outcome_snapshot=JSON_REMOVE(outcome_snapshot,'$.paidAtPrecisionMs'),verified_fact_snapshot=JSON_REMOVE(verified_fact_snapshot,'$.paidAtPrecisionMs')");
+            var legacy = json.readValue(oldJson, VerifiedPaymentFact.class);
+            assertEquals(1L, legacy.paidAtPrecisionMs());
+            f.svc.confirmPayment(legacy);
+            assertThrows(
+                    InboundFactConflictException.class,
+                    () ->
+                            f.svc.confirmPayment(
+                                    new VerifiedPaymentFact(
+                                            original.tenantNo(),
+                                            original.eventNo(),
+                                            original.orderNo(),
+                                            original.paymentNo(),
+                                            original.platformMerchantNo(),
+                                            original.paid(),
+                                            original.paidAt(),
+                                            original.verificationReference(),
+                                            1000L)));
+            assertThrows(
+                    MallException.class,
+                    () ->
+                            f.svc.confirmPayment(
+                                    new VerifiedPaymentFact(
+                                            original.tenantNo(),
+                                            "different-event",
+                                            original.orderNo(),
+                                            original.paymentNo(),
+                                            original.platformMerchantNo(),
+                                            original.paid(),
+                                            original.paidAt(),
+                                            original.verificationReference(),
+                                            1000L)));
+        }
+        assertThrows(IllegalArgumentException.class, () -> PaymentTimePrecision.normalize(0L));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> PaymentTimePrecision.normalize(Long.MAX_VALUE));
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        PaymentTimePrecision.latestMillis(
+                                Instant.ofEpochMilli(Long.MAX_VALUE), 1000L));
+        assertEquals(
+                Long.MAX_VALUE,
+                PaymentTimePrecision.latestMillis(Instant.ofEpochMilli(Long.MAX_VALUE), 1L));
+    }
+
     @Test void boundedScheduledRecoveryUsesPersistedIdentifiersAndNeverHoldsTransactionAcrossProvider() throws Exception {
         try(var db=new MysqlDatabase()) {
             var f=setup(db,false);start(f);
-            f.bridge.payment=new PaymentOutcome(f.order.orderNo(),Optional.of("pay"),"platform",f.order.payable(),
-                    AsyncStatus.SUCCEEDED,Optional.of(Instant.ofEpochMilli(2000)),Optional.empty());
+            f.bridge.payment =
+                    new PaymentOutcome(
+                            f.order.orderNo(),
+                            Optional.of("pay"),
+                            "platform",
+                            f.order.payable(),
+                            AsyncStatus.SUCCEEDED,
+                            Optional.of(Instant.ofEpochMilli(2000)),
+                            Optional.empty());
             var recovery=new DefaultMallRecoveryFacade(new JdbcRecoveryRepository(db.ds),f.mall.c.uow,f.svc,null);
             var first=recovery.recover(new MallRecoveryFacade.Batch(0,1));
             assertEquals(1,first.visited());assertEquals(0,first.failed());assertTrue(first.nextOrderId()>0);
-            assertEquals("PAID",db.jdbc.queryForObject("SELECT pay_status FROM mall_order",String.class));
-            assertEquals("COMPLETED",db.jdbc.queryForObject("SELECT fulfillment_status FROM mall_order",String.class));
+            assertEquals(
+                    "PAID",
+                    db.jdbc.queryForObject("SELECT pay_status FROM mall_order", String.class));
+            assertEquals(
+                    "COMPLETED",
+                    db.jdbc.queryForObject(
+                            "SELECT fulfillment_status FROM mall_order", String.class));
             assertTrue(recovery.recover(new MallRecoveryFacade.Batch(first.nextOrderId(),1)).endOfScan());
             assertThrows(IllegalArgumentException.class,()->recovery.recover(new MallRecoveryFacade.Batch(0,501)));
             assertThrows(IllegalStateException.class,()->f.mall.c.uow.required(()->recovery.recover(new MallRecoveryFacade.Batch(0,1))));
@@ -627,16 +777,35 @@ class MallFulfillmentMysqlTest {
 
     @Test void canonicalInternalZeroRouteDoesNotDependOnExternalSdkRoutesAndRejectsPositiveCash() {
         try(var db=new MysqlDatabase()) {
-            var f=setup(db,false,null,m->{
-                db.jdbc.update("update mch_subscription_credit_account set balance_minor=9000");
-                db.jdbc.update("update mch_subscription_credit_lot set issued_minor=4500,remaining_minor=4500");
-            });
-            var paid=f.svc.startPayment(BUYER,new StartPaymentCommand(STORE,f.order.orderNo(),"INTERNAL","ZERO",null));
+            var f =
+                    setup(
+                            db,
+                            false,
+                            null,
+                            m -> {
+                                db.jdbc.update(
+                                        "update mch_subscription_credit_account set"
+                                            + " balance_minor=9000");
+                                db.jdbc.update(
+                                        "update mch_subscription_credit_lot set"
+                                            + " issued_minor=4500,remaining_minor=4500");
+                            });
+            var paid =
+                    f.svc.startPayment(
+                            BUYER,
+                            new StartPaymentCommand(
+                                    STORE, f.order.orderNo(), "INTERNAL", "ZERO", null));
             assertEquals(AsyncStatus.SUCCEEDED,paid.status());assertEquals(0,f.bridge.creates);
         }
         try(var db=new MysqlDatabase()) {
             var f=setup(db,false);
-            assertThrows(MallException.class,()->f.svc.startPayment(BUYER,new StartPaymentCommand(STORE,f.order.orderNo(),"INTERNAL","ZERO",null)));
+            assertThrows(
+                    MallException.class,
+                    () ->
+                            f.svc.startPayment(
+                                    BUYER,
+                                    new StartPaymentCommand(
+                                            STORE, f.order.orderNo(), "INTERNAL", "ZERO", null)));
             assertEquals(0,f.bridge.creates);
             assertEquals(0,count(db,"select count(*) from mall_payment_ref"));
         }
@@ -1166,13 +1335,26 @@ class MallFulfillmentMysqlTest {
     @Test void trustedRefreshRecordsLateCashAfterClosedOrderWithoutDeliveringRights() {
         try(var db=new MysqlDatabase()) {
             var f=setup(db,false);start(f);f.bridge.closed=true;
-            f.mall.api.cancelOrder(BUYER,new CancelOrderCommand(STORE,f.order.orderNo(),"cancel-refresh","cancel"));
+            f.mall.api.cancelOrder(
+                    BUYER,
+                    new CancelOrderCommand(STORE, f.order.orderNo(), "cancel-refresh", "cancel"));
             f.svc.recover(new FulfillmentQuery(STORE.tenantNo(),f.order.orderNo()));
-            f.bridge.payment=new PaymentOutcome(f.order.orderNo(),Optional.of("pay"),"platform",f.order.payable(),AsyncStatus.SUCCEEDED,
-                    Optional.of(Instant.ofEpochMilli(2100)),Optional.empty());
+            f.bridge.payment =
+                    new PaymentOutcome(
+                            f.order.orderNo(),
+                            Optional.of("pay"),
+                            "platform",
+                            f.order.payable(),
+                            AsyncStatus.SUCCEEDED,
+                            Optional.of(Instant.ofEpochMilli(2100)),
+                            Optional.empty());
             f.svc.refresh(new FulfillmentQuery(STORE.tenantNo(),f.order.orderNo()));
-            assertEquals("PAID",db.jdbc.queryForObject("SELECT pay_status FROM mall_order",String.class));
-            assertEquals("REFUNDING",db.jdbc.queryForObject("SELECT refund_status FROM mall_order",String.class));
+            assertEquals(
+                    "PAID",
+                    db.jdbc.queryForObject("SELECT pay_status FROM mall_order", String.class));
+            assertEquals(
+                    "REFUNDING",
+                    db.jdbc.queryForObject("SELECT refund_status FROM mall_order", String.class));
             assertEquals(1,count(db,"SELECT count(*) FROM mch_subscription_period"));
         }
     }
@@ -1182,8 +1364,12 @@ class MallFulfillmentMysqlTest {
             var f=setup(db,false);start(f);
             f.svc.recover(new FulfillmentQuery(STORE.tenantNo(),f.order.orderNo()));
             var tree=tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(f.bridge.lastPaymentQuery);
-            assertNotNull(tree.get("original"),"recovery must carry the frozen intent, never client-supplied close metadata");
-            assertEquals(f.bridge.intent.paymentAttemptNo(),tree.get("original").get("paymentAttemptNo").asString());
+            assertNotNull(
+                    tree.get("original"),
+                    "recovery must carry the frozen intent, never client-supplied close metadata");
+            assertEquals(
+                    f.bridge.intent.paymentAttemptNo(),
+                    tree.get("original").get("paymentAttemptNo").asString());
         }
     }
 

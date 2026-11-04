@@ -1,18 +1,19 @@
 package ai.neargo.shop.pay.channel;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 微信<b>直连商户号</b>网关（小程序 JSAPI）。
@@ -34,43 +35,145 @@ class WechatDirectPayGatewayTest {
     private static final String NOTIFY = "https://example.test/callback/pay/channel/WECHAT";
     private static final String OPENID = "oABCDEFGHIJKLMN";
 
+    @Test
+    void refundDescriptionIsUtf8BoundedWithoutSplittingCodePoints() throws Exception {
+        for (String evidence :
+                List.of(
+                        "核".repeat(27),
+                        "a".repeat(77) + "核",
+                        "a".repeat(78) + "核",
+                        "a".repeat(73) + "核😀尾",
+                        "😀".repeat(21))) {
+            var client = new RecordingClient();
+            client.reply = Map.of("refund_id", "WR1");
+            gateway(client)
+                    .refund(new PayGateway.TxContext(null, "WX1", "O1", 100), 60, "R1", evidence);
+            String description = (String) client.body.get("reason");
+            assertThat(description.getBytes(java.nio.charset.StandardCharsets.UTF_8).length)
+                    .isLessThanOrEqualTo(80);
+            assertThat(evidence).startsWith(description);
+            assertThat(description).doesNotContain("\uFFFD");
+            assertThat(
+                            description.isEmpty()
+                                    || !Character.isHighSurrogate(
+                                            description.charAt(description.length() - 1)))
+                    .isTrue();
+            if (description.length() < evidence.length()) {
+                int next = evidence.codePointAt(description.length());
+                assertThat(
+                                (description + new String(Character.toChars(next)))
+                                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                                        .length)
+                        .isGreaterThan(80);
+            }
+        }
+    }
+
     @Test void queryRetainsActualProviderTimeReceiverAndClosedEvidence() throws Exception {
         var client=new RecordingClient();
-        client.reply=Map.of("trade_state","SUCCESS","out_trade_no","M1","mchid",MCH_ID,
-                "success_time","2026-11-01T12:34:56+08:00","transaction_id","WX1","amount",Map.of("total",100,"currency","CNY"));
+        client.reply =
+                Map.of(
+                        "trade_state",
+                        "SUCCESS",
+                        "out_trade_no",
+                        "M1",
+                        "mchid",
+                        MCH_ID,
+                        "success_time",
+                        "2026-11-01T12:34:56+08:00",
+                        "transaction_id",
+                        "WX1",
+                        "amount",
+                        Map.of("total", 100, "currency", "CNY"));
         var result=gateway(client).query("M1");
-        assertThat(result.actualPaidAt()).isEqualTo(java.time.Instant.parse("2026-11-01T04:34:56Z").toEpochMilli());
-        assertThat(result.receiverNo()).isEqualTo(MCH_ID);assertThat(result.outTradeNo()).isEqualTo("M1");
+        assertThat(result.actualPaidAt())
+                .isEqualTo(java.time.Instant.parse("2026-11-01T04:34:56Z").toEpochMilli());
+        assertThat(result.paidAtPrecisionMs()).isEqualTo(1000L);
+        assertThat(result.receiverNo()).isEqualTo(MCH_ID);
+        assertThat(result.outTradeNo()).isEqualTo("M1");
         client.reply=Map.of("trade_state","CLOSED","out_trade_no","M1","mchid",MCH_ID);
         var closed=gateway(client).close("M1");
-        assertThat(closed.providerState()).isEqualTo("CLOSED");assertThat(closed.receiverNo()).isEqualTo(MCH_ID);
+        assertThat(closed.providerState()).isEqualTo("CLOSED");
+        assertThat(closed.receiverNo()).isEqualTo(MCH_ID);
         assertThat(client.api).isEqualTo("/v3/pay/transactions/out-trade-no/M1/close");
         assertThat(client.body).containsExactlyEntriesOf(Map.of("mchid",MCH_ID));
-        client.reply=Map.of("trade_state","SUCCESS","transaction_id","WX1","amount",Map.of("total",100,"currency","CNY"));
+        client.reply =
+                Map.of(
+                        "trade_state",
+                        "SUCCESS",
+                        "transaction_id",
+                        "WX1",
+                        "amount",
+                        Map.of("total", 100, "currency", "CNY"));
         var unproven=gateway(client).query("M1");
         assertThat(unproven.actualPaidAt()).isNull();assertThat(unproven.receiverNo()).isNull();
     }
 
     @Test void refundQueryRetainsOriginalPaymentAndActualRefundTime() throws Exception {
-        var client=new RecordingClient();client.reply=Map.of("status","SUCCESS","out_refund_no","R1","refund_id","WR1",
-                "out_trade_no","M1","transaction_id","WX1","success_time","2026-11-01T13:00:00+08:00",
-                "amount",Map.of("refund",60,"total",100,"currency","CNY"));
+        var client=new RecordingClient();
+        client.reply =
+                Map.of(
+                        "status",
+                        "SUCCESS",
+                        "out_refund_no",
+                        "R1",
+                        "refund_id",
+                        "WR1",
+                        "out_trade_no",
+                        "M1",
+                        "transaction_id",
+                        "WX1",
+                        "success_time",
+                        "2026-11-01T13:00:00+08:00",
+                        "amount",
+                        Map.of("refund", 60, "total", 100, "currency", "CNY"));
         var proof=gateway(client).queryRefundOutcome("R1");
-        assertThat(proof.originalOutTradeNo()).isEqualTo("M1");assertThat(proof.originalTradeNo()).isEqualTo("WX1");
+        assertThat(proof.originalOutTradeNo()).isEqualTo("M1");
+        assertThat(proof.originalTradeNo()).isEqualTo("WX1");
         assertThat(proof.originalTotalMinor()).isEqualTo(100);assertThat(proof.receiverNo()).isEqualTo(MCH_ID);
-        assertThat(proof.actualRefundAt()).isEqualTo(java.time.Instant.parse("2026-11-01T05:00:00Z").toEpochMilli());
+        assertThat(proof.actualRefundAt())
+                .isEqualTo(java.time.Instant.parse("2026-11-01T05:00:00Z").toEpochMilli());
     }
 
     @Test void fractionalAndOverflowProviderMoneyNeverBecomeVerifiedIntegerCash() throws Exception {
         var client=new RecordingClient();
-        for(var invalid:List.of(new java.math.BigDecimal("100.5"),new java.math.BigInteger("9223372036854775808"))) {
-            client.reply=Map.of("trade_state","SUCCESS","out_trade_no","M1","mchid",MCH_ID,
-                    "success_time","2026-11-01T12:34:56+08:00","transaction_id","WX1","amount",Map.of("total",invalid,"currency","CNY"));
+        for (var invalid :
+                List.of(
+                        new java.math.BigDecimal("100.5"),
+                        new java.math.BigInteger("9223372036854775808"))) {
+            client.reply =
+                    Map.of(
+                            "trade_state",
+                            "SUCCESS",
+                            "out_trade_no",
+                            "M1",
+                            "mchid",
+                            MCH_ID,
+                            "success_time",
+                            "2026-11-01T12:34:56+08:00",
+                            "transaction_id",
+                            "WX1",
+                            "amount",
+                            Map.of("total", invalid, "currency", "CNY"));
             assertThat(gateway(client).query("M1").paid()).isFalse();
-            client.reply=Map.of("status","SUCCESS","out_refund_no","R1","refund_id","WR1",
-                    "out_trade_no","M1","transaction_id","WX1","success_time","2026-11-01T13:00:00+08:00",
-                    "amount",Map.of("refund",60,"total",invalid,"currency","CNY"));
-            assertThat(gateway(client).queryRefundOutcome("R1").status()).isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.UNKNOWN);
+            client.reply =
+                    Map.of(
+                            "status",
+                            "SUCCESS",
+                            "out_refund_no",
+                            "R1",
+                            "refund_id",
+                            "WR1",
+                            "out_trade_no",
+                            "M1",
+                            "transaction_id",
+                            "WX1",
+                            "success_time",
+                            "2026-11-01T13:00:00+08:00",
+                            "amount",
+                            Map.of("refund", 60, "total", invalid, "currency", "CNY"));
+            assertThat(gateway(client).queryRefundOutcome("R1").status())
+                    .isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.UNKNOWN);
         }
     }
 
@@ -317,7 +420,9 @@ class WechatDirectPayGatewayTest {
     void acceptedResponseWithoutProviderIsUnknownNotARejectionProof() throws Exception {
         RecordingClient client = new RecordingClient();
         client.reply = Map.of("status", "PROCESSING");
-        var result = gateway(client).refund(new PayGateway.TxContext(null,"T","O",100),30,"R","refund");
+        var result =
+                gateway(client)
+                        .refund(new PayGateway.TxContext(null, "T", "O", 100), 30, "R", "refund");
         assertThat(client.calls).isGreaterThan(0);
         assertThat(result.success()).isFalse();
         assertThat(result.retryable()).isTrue();

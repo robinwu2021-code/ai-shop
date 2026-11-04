@@ -232,7 +232,7 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         text(request.originalAttemptNo(), 64);
         text(request.originalPaymentNo(), 64);
         text(request.merchantNo(), 64);
-        text(request.reason(), 1000);
+        text(request.reason(), 1024);
         require(
                 request.refundMinor() > 0 && request.originalPaidMinor() >= request.refundMinor(),
                 "REFUND_AMOUNT_INVALID");

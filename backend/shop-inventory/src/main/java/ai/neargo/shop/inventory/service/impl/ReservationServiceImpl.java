@@ -1,8 +1,8 @@
 package ai.neargo.shop.inventory.service.impl;
 
-import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvReservation;
 import ai.neargo.shop.inventory.entity.InvReservationLine;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
@@ -13,7 +13,9 @@ import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -206,8 +208,12 @@ public class ReservationServiceImpl implements ReservationService {
             int issuedQty = line.getIssuedQty() == null ? 0 : line.getIssuedQty();
             int releasedQty = line.getReleasedQty() == null ? 0 : line.getReleasedQty();
             if (issuedQty + releasedQty >= line.getQty()) continue;
-            InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
-                    .eq(InvReservation::getReservationId, line.getReservationId()).last("FOR UPDATE"));
+            InvReservation head =
+                    resMapper.selectOne(
+                            Wrappers.<InvReservation>lambdaQuery()
+                                    .eq(InvReservation::getReservationId, line.getReservationId())
+                                    .last("FOR UPDATE"));
+            if (head != null) requireLegacyOwner(head);
             if (head == null || !(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
                     || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) continue;
             int remaining = line.getQty() - issuedQty - releasedQty;
@@ -258,6 +264,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private void releaseAllocatedLines(InvReservation head, List<InvReservationLine> requested) {
+        requireLegacyOwner(head);
         if (!(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
                 || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) return;
         for (InvReservationLine line : requested) {
@@ -289,6 +296,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public void release(String ownerId, String externalRef) {
         InvReservation head = find(ownerId, externalRef);
+        if (head != null) requireLegacyOwner(head);
         // 只作用于 HELD：重复释放不会把预留减两次（超时任务与用户取消会撞车）
         if (head == null || !InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
             return;
@@ -308,6 +316,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public void cancelByRef(String ownerId, String externalRef) {
         InvReservation head = find(ownerId, externalRef);
+        if (head != null) requireLegacyOwner(head);
         if (head != null) {
             if (InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
                 throw BizException.of(ErrorCode.CONFLICT);
@@ -368,8 +377,13 @@ public class ReservationServiceImpl implements ReservationService {
         for (InvReservation candidate : candidates) {
             // The initial query is only a candidate scan. Re-read under the reservation row
             // lock because payment may have changed HELD to ALLOCATED in the meantime.
-            InvReservation current = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
-                    .eq(InvReservation::getReservationId, candidate.getReservationId()).last("FOR UPDATE"));
+            InvReservation current =
+                    resMapper.selectOne(
+                            Wrappers.<InvReservation>lambdaQuery()
+                                    .eq(
+                                            InvReservation::getReservationId,
+                                            candidate.getReservationId())
+                                    .last("FOR UPDATE"));
             if (current == null || Integer.valueOf(3).equals(current.getLifecycleVersion())
                     || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
                     || current.getExpiresAt() == null || !current.getExpiresAt().isBefore(now)) continue;
@@ -389,7 +403,13 @@ public class ReservationServiceImpl implements ReservationService {
 
     // ────────────────────────────────────────────────────────────────────
 
+    private static void requireLegacyOwner(InvReservation head) {
+        if (Integer.valueOf(3).equals(head.getLifecycleVersion()))
+            throw BizException.of(ErrorCode.CONFLICT);
+    }
+
     private void unholdAll(InvReservation head, String toStatus) {
+        requireLegacyOwner(head);
         if (!InvEnums.ReservationStatus.HELD.equals(head.getStatus())) return;
         for (InvReservationLine r : linesOf(head.getReservationId())) {
             balanceMapper.unhold(head.getOwnerId(), r.getItemId(), r.getLocationId(), r.getQty());
@@ -420,6 +440,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     private InvReservation require(String ownerId, String externalRef) {
         InvReservation head = find(ownerId, externalRef);
+        if (head != null) requireLegacyOwner(head);
         if (head == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

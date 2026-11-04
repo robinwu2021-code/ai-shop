@@ -179,7 +179,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 c.orderNo(),
                 o -> {
                     buyer(a, c, o);
-                    if (internalZero && o.view().payable().minor() != 0) throw fail("INVALID_REQUEST");
+                    if (internalZero && o.view().payable().minor() != 0)
+                        throw fail("INVALID_REQUEST");
                     if (o.axes().payment() == Payment.CLOSED
                             || o.axes().payment() == Payment.CANCEL_PENDING
                             || clock.millis() >= o.quote().expiresAt()) throw fail("INVALID_STATE");
@@ -382,7 +383,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                         r.errorCode(),
                                         r.checkoutParameters(),
                                         r.definitivelyClosed(),
-                                        r.closureReference());
+                                        r.closureReference(),
+                                        r.paidAtPrecisionMs());
                     if (r.status() == AsyncStatus.SUCCEEDED) {
                         // Bind the provider number from this matched query/create before entering
                         // the fact boundary.
@@ -414,7 +416,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                         (op.payment().amount().minor() == 0
                                                         ? "INTERNAL_ZERO_PAYMENT:"
                                                         : "PORT_QUERY:")
-                                                + op.operationNo()));
+                                                + op.operationNo(),
+                                        r.paidAtPrecisionMs()));
                         return r;
                     }
                     if (o.axes().payment() == Payment.PAID
@@ -460,8 +463,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 || !op.paymentResult().paymentNo().get().equals(f.paymentNo())
                 || !op.payment().platformMerchantNo().equals(f.platformMerchantNo())
                 || !op.payment().amount().equals(f.paid())) throw fail("PAYMENT_FACT_MISMATCH");
-        String hash =
-                FactDigest.of(
+        var factCoordinates =
+                new java.util.ArrayList<>(
                         List.of(
                                 f.orderNo(),
                                 f.paymentNo(),
@@ -469,6 +472,10 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                 f.paid().currency(),
                                 Long.toString(f.paid().minor()),
                                 f.paidAt().toString()));
+        // Existing exact-millisecond facts retain their canonical digest across upgrades.
+        if (f.paidAtPrecisionMs() != 1)
+            factCoordinates.add("paidAtPrecisionMs=" + f.paidAtPrecisionMs());
+        String hash = FactDigest.of(factCoordinates);
         events.recordInbound(
                 new InboundFact(
                         f.tenantNo(),
@@ -480,12 +487,14 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         clock.instant()));
         // A second event cannot alter already accepted payment economics/time.
         if (op.paymentResult().status() == AsyncStatus.SUCCEEDED
-                && !op.paymentResult().paidAt().equals(Optional.of(f.paidAt())))
+                && (!op.paymentResult().paidAt().equals(Optional.of(f.paidAt()))
+                        || !op.paymentResult().paidAtPrecisionMs().equals(f.paidAtPrecisionMs())))
             throw fail("PAYMENT_FACT_MISMATCH");
         if (o.axes().payment() == Payment.PAID) return;
         boolean late =
                 o.axes().payment() == Payment.CLOSED
-                        || f.paidAt().toEpochMilli() > o.quote().expiresAt()
+                        || PaymentTimePrecision.latestMillis(f.paidAt(), f.paidAtPrecisionMs())
+                                > o.quote().expiresAt()
                         || op.paymentResult().definitivelyClosed();
         var paid =
                 new PaymentOutcome(
@@ -495,7 +504,11 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         f.paid(),
                         AsyncStatus.SUCCEEDED,
                         Optional.of(f.paidAt()),
-                        Optional.empty());
+                        Optional.empty(),
+                        Map.of(),
+                        false,
+                        Optional.empty(),
+                        f.paidAtPrecisionMs());
         repo.save(f.tenantNo(), op.paymentResult(paid));
         repo.paid(o, f, op.operationNo());
         if (!late) repo.prepareDigital(o);

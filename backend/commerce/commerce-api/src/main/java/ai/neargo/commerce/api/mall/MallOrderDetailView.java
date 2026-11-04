@@ -24,7 +24,29 @@ public record MallOrderDetailView(
             AsyncStatus status,
             String paymentNo,
             Instant paidAt,
-            String errorCode) {}
+            String errorCode,
+            Long paidAtPrecisionMs) {
+        public PaymentAttempt(
+                String attemptNo,
+                String channel,
+                String payMethod,
+                Money amount,
+                AsyncStatus status,
+                String paymentNo,
+                Instant paidAt,
+                String errorCode) {
+            this(
+                    attemptNo,
+                    channel,
+                    payMethod,
+                    amount,
+                    status,
+                    paymentNo,
+                    paidAt,
+                    errorCode,
+                    paidAt == null ? null : 1L);
+        }
+    }
 
     public record Shipment(
             String operationNo,

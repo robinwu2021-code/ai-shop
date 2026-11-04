@@ -118,9 +118,10 @@ public final class DefaultMallQueryFacade implements MallQueryFacade {
                                             result == null ? AsyncStatus.PENDING : result.status(),
                                             result == null ? null : result.paymentNo().orElse(null),
                                             result == null ? null : result.paidAt().orElse(null),
-                                            result == null
+                                            result == null ? null : result.errorCode().orElse(null),
+                                            result == null || result.paidAt().isEmpty()
                                                     ? null
-                                                    : result.errorCode().orElse(null)));
+                                                    : result.paidAtPrecisionMs()));
                         } else if ("SHIP".equals(operation.kind())) {
                             var s = operation.shipment();
                             var result = operation.inventoryResult();
