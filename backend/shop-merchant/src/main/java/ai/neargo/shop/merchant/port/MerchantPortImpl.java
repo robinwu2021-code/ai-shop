@@ -1296,6 +1296,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         var actor = commerce.actor(ownerUserNo);
         var shell = pendingLicenseEntityOf(ownerUserNo, actor != null);
         if (shell.isPresent()) {
+            // 同一待补证壳的重试必须是同一市场；换了市场不能复用旧壳（它的免费期币种已冻结）
+            if (cmd.market() != null) {
+                MchEntity existing = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                        Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get()).last("limit 1")));
+                if (existing != null && !cmd.market().equals(existing.getMarket()))
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             var row = defaultStoreOf(shell.get(), actor != null);
             commerce.checkReplay(row, cmd.businessTypeCode());
             return new QuickStartResult(shell.get(), row == null ? null : row.getStoreNo());
@@ -1330,6 +1337,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         m.setJoinedAt(System.currentTimeMillis());
         m.setStatus(MchEntity.PENDING_LICENSE);
         m.setServiceScope(AREA_COMMUNITY);
+        if (cmd.market() != null) m.setMarket(cmd.market());
         merchantMapper.insert(m);
 
         /*

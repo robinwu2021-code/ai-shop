@@ -53,6 +53,7 @@ public final class CommerceRoutePolicy {
                     "POST /biz/auth/password",
                     "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
+                    "GET /biz/merchant/store-setup",
                     "GET /biz/business-types");
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
     private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/([^/]+)/(.+)");

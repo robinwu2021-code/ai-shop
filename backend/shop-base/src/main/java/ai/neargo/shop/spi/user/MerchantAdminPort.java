@@ -75,9 +75,17 @@ public interface MerchantAdminPort {
      * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖
      * @param address     门店地址，可空（之后在店铺资料里补）
      */
-    record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
+    /**
+     * @param market 经营市场（已由调用方按部署配置校验）；null = 不写，沿用库默认（旧 CN 行为）
+     */
+    record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                             String market) {
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
+            this(ownerUserNo, storeName, address, businessTypeCode, null);
+        }
+
         public QuickStartCommand(String ownerUserNo, String storeName, String address) {
-            this(ownerUserNo, storeName, address, null);
+            this(ownerUserNo, storeName, address, null, null);
         }
     }
 

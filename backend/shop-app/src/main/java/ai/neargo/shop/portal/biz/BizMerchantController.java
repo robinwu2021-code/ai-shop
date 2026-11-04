@@ -25,7 +25,11 @@ import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
+import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
+import org.springframework.beans.factory.ObjectProvider;
+import java.util.Locale;
+import java.util.Objects;
 import ai.neargo.shop.spi.user.CommunityQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.user.service.UserService;
@@ -86,8 +90,13 @@ public class BizMerchantController {
     /** 「N 人收藏本店」（§8.2 批 2）。现算，内部绕数据域 —— B 端会话是 SELF 维度，不绕会恒 0 */
     private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
 
+    private final String defaultMarket;
+    private final ObjectProvider<MarketPort> markets;
+
     public BizMerchantController(
                                  @Value("${commerce.store-creation.enabled:false}") boolean typedCreation,
+                                 @Value("${shop.merchant.default-market:CN}") String defaultMarket,
+                                 ObjectProvider<MarketPort> markets,
                                  ai.neargo.shop.merchant.service.DebtService debtService,
                                  MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
@@ -104,6 +113,8 @@ public class BizMerchantController {
                                  ai.neargo.shop.merchant.service.MerchantEntityService entityService,
                                  ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService) {
         this.typedCreation = typedCreation;
+        this.defaultMarket = defaultMarket.trim().toUpperCase(Locale.ROOT);
+        this.markets = markets;
         this.storeFavoriteService = storeFavoriteService;
         this.entityService = entityService;
         this.categoryService = categoryService;
@@ -318,7 +329,7 @@ public class BizMerchantController {
         var user = BizAuthController.personalUser();
         String userNo = user.userNo();
         var created = merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
-                userNo, req.storeName(), req.address(), req.businessTypeCode()));
+                userNo, req.storeName(), req.address(), req.businessTypeCode(), marketFor(req)));
         /*
          * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
          * 解析的：那时这个人还没有任何主体，merchantNo 是空的。主体是刚刚在这个请求里
@@ -338,7 +349,33 @@ public class BizMerchantController {
     /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */
     public record Target(String entityNo, String storeNo) {}
 
-    public record QuickStartReq(String storeName, String address, String businessTypeCode) {
+    /**
+     * @param market          经营市场；省略 = 本部署的默认市场（{@code shop.merchant.default-market}）
+     * @param industryCode    平台经营行业；默认映射下必须等于 businessTypeCode（见 store-setup）
+     * @param subIndustryCode 子业态；同上
+     */
+    public record QuickStartReq(String storeName, String address, String businessTypeCode,
+                                String market, String industryCode, String subIndustryCode) {
+    }
+
+    /**
+     * 本部署只有一个经营市场（TDD-B端建店默认经营市场）。请求只能显式确认它，不能换成别的；
+     * 行业/子业态按默认映射必须等于经营类型。市场未启用时不建壳。
+     */
+    private String marketFor(QuickStartReq req) {
+        return resolveMarket(defaultMarket, markets.getIfAvailable(), req);
+    }
+
+    static String resolveMarket(String defaultMarket, MarketPort markets, QuickStartReq req) {
+        String requested = req.market() == null || req.market().isBlank() ? defaultMarket : req.market();
+        if (!defaultMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
+        boolean mapped = req.industryCode() != null || req.subIndustryCode() != null;
+        if (mapped && (!Objects.equals(req.industryCode(), req.businessTypeCode())
+                || !Objects.equals(req.subIndustryCode(), req.businessTypeCode())))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (markets != null && markets.find(requested).filter(MarketPort.MarketBrief::enabled).isEmpty())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        return requested;
     }
 
     // ---------------------------------------------------------------- 店铺资料

@@ -191,6 +191,10 @@ shop:
       # 三道防线：① 默认空；② 开着时每次启动打一条 ERROR 级横幅；
       # ③ prod profile 下直接拒绝启动（见 FixedOtpGuard）。
       fixed: ${SHOP_OTP_FIXED:}
+  merchant:
+    # 本部署的唯一经营市场（TDD-B端建店默认经营市场）。决定新主体的 market 与 FREE 期币种；
+    # 该市场须在 sys_market 中启用。台湾实例设 TW。
+    default-market: ${SHOP_DEFAULT_MARKET:CN}
   period:
     # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
     # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）
