@@ -795,6 +795,37 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "而 ops-web 这个 Onboarding 在本仓库另有含义——入驻审核链路也叫进件）。"
       + "记 MERGE 不记 OK：写 OK 等于说「两个名字指同一个概念没问题」，"
       + "而那正是这张表要挡住的那件事" },
+/*
+   * ── 2026-11-04 套餐商城（commerce Task 5）──
+   *
+   * 全部是 docs/api/commerce-mall-openapi.json（task8-v1，已冻结）的逐字镜像，
+   * 真源是 commerce-api / commerce-core 的 Java 枚举，端上不改名不合并。
+   * 订单刻意分成「总状态」与资金/权益/退款三条轴：轴与总状态里出现同名词（PAID、COMPLETED…）
+   * 是后端的设计，不是同名不同义 —— 总状态只作概览，判断看轴。
+   */
+  { decl: "ops-web:MallEndScope", dom: "commerce", shape: "CLASS", verdict: "OK", note: "业务端作用域 STORE/SYSTEM，对应 commerce-api EndScope" },
+  { decl: "ops-web:MallReleaseStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["PLANNED", "VERIFIED", "RETIRED"],
+    note: "业务端验收状态，对应 commerce-api ReleaseStatus；VERIFIED 必须绑定部署验收清单" },
+  { decl: "ops-web:MallPlanTier", dom: "commerce", shape: "CLASS", verdict: "OK", note: "三档 FREE/PRO/CHAIN，对应 commerce-api PlanTier；与旧主体额度档位不是一回事" },
+  { decl: "ops-web:MallProductKind", dom: "commerce", shape: "CLASS", verdict: "OK", note: "商城商品种类，对应 commerce-api ProductKind" },
+  { decl: "ops-web:MallComponentKind", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU/订单组件种类 PLAN/END_PACKAGE/HARDWARE，对应 commerce-api ComponentKind" },
+  { decl: "ops-web:MallOrderStatus", dom: "commerce", shape: "STATUS", verdict: "OK",
+    words: ["PENDING_INVENTORY", "AWAITING_PAYMENT", "PAYMENT_UNKNOWN", "PAID", "FULFILLING", "COMPLETED", "CANCEL_PENDING", "REFUNDING", "PARTIALLY_REFUNDED", "REFUNDED"],
+    note: "商城订单总状态（概览），对应 commerce-api OrderStatus；资金/权益/退款另有三条独立轴" },
+  { decl: "ops-web:MallAsyncStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["SUCCEEDED", "UNKNOWN"],
+    note: "外部异步动作（付款尝试/发货/退款）结果，对应 commerce-api AsyncStatus；UNKNOWN 不能当失败释放" },
+  { decl: "ops-web:MallPaymentAxis", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["UNPAID", "PAYING", "PAYMENT_UNKNOWN", "CANCEL_PENDING", "PAID"],
+    note: "订单资金轴，对应 commerce-core OrderState.Payment" },
+  { decl: "ops-web:MallFulfillmentAxis", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["WAIT_INVENTORY", "PARTIAL", "COMPLETED"],
+    note: "订单权益/履约轴，对应 commerce-core OrderState.Fulfillment" },
+  { decl: "ops-web:MallRefundAxis", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["NONE", "REFUNDING", "PARTIAL", "REFUNDED"],
+    note: "订单退款轴，对应 commerce-core OrderState.Refund" },
+  { decl: "ops-web:MallOfflineClaimStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["SUBMITTED", "REVIEWING", "CONFIRMED", "MISMATCHED", "DECLINED"],
+    note: "买家线下付款申报状态；申报不是到账，CONFIRMED 也只说明这份申报对上了某笔实收" },
+  { decl: "ops-web:MallOfflineActionStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["ACCEPTED", "APPLIED", "UNMATCHED"],
+    note: "核款/作废动作结果；ACCEPTED 只是受理、资金端未确认，UNMATCHED 记为 MALL_UNMATCHED 不发权益" },
+  { decl: "ops-web:MallEvidencePurpose", dom: "commerce", shape: "CLASS", verdict: "OK", note: "运营凭证用途 PLATFORM_RECEIPT/RECONCILIATION/REFUND_PROOF" },
+  { decl: "ops-web:MallUnusedRefundPolicy", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU 未使用数字权益的退款口径；已使用部分固定 MANUAL_ONLY" },
 // 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-hxkey，登记在那边；
   // 这里只留运营端（ops-web:Elec*）的那几条 —— 运营端仍在 ai-shop。
 ];

@@ -39,6 +39,29 @@
 export const UNIMPLEMENTED = Symbol("backend-unimplemented");
 
 export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
+  /*
+   * 套餐商城（commerce，Task 5）。**恒等映射**，后端码由可移植 starter 现判
+   * （`context.operator("commerce:…")`），种子在 V556/V558 的 sys_function_point，
+   * 不在 Perms.java —— perm-map.test.ts 因此也读这两份迁移。
+   * 编辑与发布分两个码；线下核款的审核 / 核款 / 作废 / 出款 / 凭证各一个码。
+   */
+  "commerce:catalog:read": "commerce:catalog:read",
+  "commerce:catalog:edit": "commerce:catalog:edit",
+  "commerce:catalog:publish": "commerce:catalog:publish",
+  "commerce:mall:order:read": "commerce:mall:order:read",
+  "commerce:mall:shipment:write": "commerce:mall:shipment:write",
+  "commerce:refund:review": "commerce:refund:review",
+  "commerce:subscription:read": "commerce:subscription:read",
+  "commerce:subscription:grant": "commerce:subscription:grant",
+  "commerce:subscription:revoke": "commerce:subscription:revoke",
+  "commerce:mall:assisted:purchase": "commerce:mall:assisted:purchase",
+  "commerce:mall:offline:evidence": "commerce:mall:offline:evidence",
+  "commerce:mall:offline:review": "commerce:mall:offline:review",
+  "commerce:mall:offline:confirm": "commerce:mall:offline:confirm",
+  "commerce:mall:offline:void": "commerce:mall:offline:void",
+  "commerce:mall:offline:refund:confirm": "commerce:mall:offline:refund:confirm",
+  "commerce:collection:profile:read": "commerce:collection:profile:read",
+  "commerce:collection:profile:write": "commerce:collection:profile:write",
   "ops:print:read": "ops:print:read",
   "ops:print:resolve": "ops:print:resolve",
   "merchant:apply:audit": "merchant:apply:audit",

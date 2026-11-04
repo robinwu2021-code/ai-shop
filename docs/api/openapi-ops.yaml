@@ -12364,6 +12364,1835 @@ components:
         - "RETRY"
         - "BACKFILL"
       description: "这一轮是被什么触发的。**排障时第一个要看的就是它** —— 同一个任务，定时跑失败和人手动补跑失败，要找的人不是同一个。"
+    MallMoney:
+      type: "object"
+      properties:
+        currency:
+          type: "string"
+          description: "ISO 4217 三位大写币种"
+        minor:
+          type: "string"
+          description: "最小货币单位的十进制整数文本；**不是** number，避免超过 2^53 时失真"
+      required:
+        - "currency"
+        - "minor"
+      additionalProperties: false
+      description: "金额：币种 + 最小单位整数字符串（`^(0|[1-9][0-9]{0,18})$`）"
+    MallStoreRef:
+      type: "object"
+      properties:
+        tenantNo:
+          type: "string"
+          description: "租户号（固定 MAIN）"
+        storeNo:
+          type: "string"
+          description: "门店号"
+      additionalProperties: false
+      description: "门店引用；tenant 由后端可信上下文决定，页面只读"
+    MallDraftSaveResult:
+      type: "object"
+      properties:
+        entityNo:
+          type: "string"
+          description: "被保存的实体号（typeCode / planNo / productNo / skuNo）"
+        draftVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "新建或修改的草稿版本号；不涉及版本的实体为 null"
+        version:
+          type: "number"
+          description: "保存后的乐观锁版本 —— 下一次写要带它"
+      additionalProperties: false
+      description: "写目录的回执"
+    MallPublicationResult:
+      type: "object"
+      properties:
+        publicationNo:
+          type: "string"
+          description: "发布单号（审计用）"
+        catalogVersion:
+          type: "number"
+          description: "发布后的行业目录版本。**运营目录接口不回读它**，只在这里出现一次"
+        publishedVersionNos:
+          type: "array"
+          items:
+            type: "string"
+          description: "本次被冻结为已发布的版本号"
+      additionalProperties: false
+      description: "发布回执"
+    MallBusinessTypeDraft:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "类型编码，新建后不可改"
+        name:
+          type: "string"
+          description: "显示名"
+        sortOrder:
+          type: "number"
+          description: "排序"
+        enabled:
+          type: "boolean"
+          description: "是否对门店开放（启用属于发布权）"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+          description: "审计原因"
+      additionalProperties: false
+      description: "经营类型草稿（新建时 enabled 必须为 false，发布过行业目录才能启用）"
+    MallBusinessTypeView:
+      type: "object"
+      properties:
+        draft:
+          "$ref": "#/components/schemas/MallBusinessTypeDraft"
+          description: "当前草稿"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "经营类型行"
+    MallTypeUpdate:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "显示名"
+        sortOrder:
+          type: "number"
+          description: "排序"
+        enabled:
+          type: "boolean"
+          description: "是否启用（属于发布权）"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "name"
+        - "sortOrder"
+        - "enabled"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+      description: "修改经营类型"
+    MallEndScope:
+      type: "string"
+      enum:
+        - "STORE"
+        - "SYSTEM"
+      description: "业务端作用域"
+    MallReleaseStatus:
+      type: "string"
+      enum:
+        - "PLANNED"
+        - "VERIFIED"
+        - "RETIRED"
+      description: "业务端验收状态；VERIFIED 必须绑定部署验收清单里的一项"
+    MallDeploymentOption:
+      type: "object"
+      properties:
+        deploymentNo:
+          type: "string"
+          description: "部署号"
+        name:
+          type: "string"
+          description: "显示名"
+        code:
+          type: "string"
+          description: "业务端编码"
+        entitlementCode:
+          type: "string"
+          description: "对应的权益编码"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        clientId:
+          type: "string"
+          description: "客户端 id（只读展示）"
+        routePolicyRef:
+          type: "string"
+          description: "路由策略引用（只读展示）"
+        acceptanceRef:
+          type: "string"
+          description: "验收证明引用（只读展示）"
+      additionalProperties: false
+      description: "部署所有者提供的已验收端（运营只能从这里选，不手填 client/route/acceptance）"
+    MallBusinessEndDraft:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+          description: "业务端编码"
+        entitlementCode:
+          type: "string"
+          description: "权益编码"
+        name:
+          type: "string"
+          description: "显示名"
+        scope:
+          "$ref": "#/components/schemas/MallEndScope"
+          description: "作用域"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        releaseStatus:
+          "$ref": "#/components/schemas/MallReleaseStatus"
+          description: "验收状态"
+        saleEnabled:
+          type: "boolean"
+          description: "是否可单独售卖"
+        bootstrapRequired:
+          type: "boolean"
+          description: "门店初始化必需（FREE 必须包含）"
+        enabled:
+          type: "boolean"
+          description: "是否启用"
+        clientId:
+          type:
+            - "string"
+            - "null"
+          description: "绑定后的客户端 id"
+        routePolicyRef:
+          type:
+            - "string"
+            - "null"
+          description: "绑定后的路由策略"
+        acceptanceRef:
+          type:
+            - "string"
+            - "null"
+          description: "绑定后的验收引用"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁"
+        reason:
+          type: "string"
+          description: "审计原因"
+      additionalProperties: false
+      description: "业务端草稿（后端保存的形态，含绑定后的 client/route/acceptance）"
+    MallBusinessEndView:
+      type: "object"
+      properties:
+        draft:
+          "$ref": "#/components/schemas/MallBusinessEndDraft"
+          description: "当前草稿"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "业务端行"
+    MallEndRequest:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+          description: "业务端编码"
+        entitlementCode:
+          type: "string"
+          description: "权益编码"
+        name:
+          type: "string"
+          description: "显示名"
+        scope:
+          "$ref": "#/components/schemas/MallEndScope"
+          description: "作用域"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        releaseStatus:
+          "$ref": "#/components/schemas/MallReleaseStatus"
+          description: "验收状态"
+        saleEnabled:
+          type: "boolean"
+          description: "是否可单独售卖"
+        bootstrapRequired:
+          type: "boolean"
+          description: "门店初始化必需"
+        enabled:
+          type: "boolean"
+          description: "是否启用"
+        deploymentNo:
+          type:
+            - "string"
+            - "null"
+          description: "选中的部署号；PLANNED 可为 null"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "code"
+        - "entitlementCode"
+        - "name"
+        - "scope"
+        - "allowedBusinessTypes"
+        - "releaseStatus"
+        - "saleEnabled"
+        - "bootstrapRequired"
+        - "enabled"
+        - "deploymentNo"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+      description: "保存业务端：client/route/acceptance 由 deploymentNo 在后端解析"
+    MallPlanTier:
+      type: "string"
+      enum:
+        - "FREE"
+        - "PRO"
+        - "CHAIN"
+      description: "三档"
+    MallPlanDefinitionView:
+      type: "object"
+      properties:
+        planNo:
+          type: "string"
+          description: "Plan 号（形如 `RETAIL:PRO`）"
+        typeCode:
+          type: "string"
+          description: "所属经营类型"
+        tier:
+          "$ref": "#/components/schemas/MallPlanTier"
+          description: "档位"
+        currentVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "当前在售版本；未发布为 null"
+        saleStatus:
+          type: "string"
+          description: "售卖状态（DRAFT / ON_SALE / OFF_SALE）"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "Plan 定义（每个经营类型固定三条，新建类型时由后端生成）"
+    MallPlanDraft:
+      type: "object"
+      properties:
+        planNo:
+          type: "string"
+          description: "Plan 号"
+        planVersionNo:
+          type: "string"
+          description: "版本号"
+        typeCode:
+          type: "string"
+          description: "经营类型"
+        tier:
+          "$ref": "#/components/schemas/MallPlanTier"
+          description: "档位"
+        displayName:
+          type: "string"
+          description: "显示名"
+        summary:
+          type:
+            - "string"
+            - "null"
+          description: "摘要"
+        entitlementCodes:
+          type: "array"
+          items:
+            type: "string"
+          description: "包含的权益编码（高档必须是低档的超集）"
+        policyVersion:
+          type: "string"
+          description: "政策版本"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁"
+        reason:
+          type: "string"
+          description: "审计原因"
+      additionalProperties: false
+      description: "Plan 版本内容"
+    MallPlanVersionView:
+      type: "object"
+      properties:
+        draft:
+          "$ref": "#/components/schemas/MallPlanDraft"
+          description: "内容"
+        status:
+          type: "string"
+          description: "DRAFT / PUBLISHED"
+        revision:
+          type: "number"
+          description: "同一 Plan 下的修订序号"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "Plan 版本行；status=PUBLISHED 之后只读"
+    MallPlanRequest:
+      type: "object"
+      properties:
+        planVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "编辑既有草稿时传版本号；新建传 null"
+        typeCode:
+          type: "string"
+          description: "经营类型（必须与 Plan 定义一致）"
+        tier:
+          "$ref": "#/components/schemas/MallPlanTier"
+          description: "档位（必须与 Plan 定义一致）"
+        displayName:
+          type: "string"
+          description: "显示名"
+        summary:
+          type:
+            - "string"
+            - "null"
+          description: "摘要"
+        entitlementCodes:
+          type: "array"
+          items:
+            type: "string"
+          description: "权益编码"
+        policyVersion:
+          type: "string"
+          description: "政策版本"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "planVersionNo"
+        - "typeCode"
+        - "tier"
+        - "displayName"
+        - "summary"
+        - "entitlementCodes"
+        - "policyVersion"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+      description: "保存 Plan 版本：planVersionNo 为 null 表示新建"
+    MallIndustryPublish:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "幂等操作号"
+        freePlanVersionNo:
+          type: "string"
+          description: "FREE 版本号"
+        proPlanVersionNo:
+          type: "string"
+          description: "PRO 版本号"
+        chainPlanVersionNo:
+          type: "string"
+          description: "CHAIN 版本号"
+        candidateSkuVersionNos:
+          type: "array"
+          items:
+            type: "string"
+          description: "同时发布的套餐 SKU 版本"
+        expectedCatalogVersion:
+          type: "number"
+          description: "行业目录当前版本（首次发布为 0）"
+        expectedPlanVersions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "选中 Plan 版本号 → 行版本"
+        expectedSkuVersions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "选中 SKU 版本号 → 行版本"
+        expectedPlanDefinitionVersions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "该类型三条 Plan 定义 → 行版本"
+        expectedSkuDefinitionVersions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "候选 SKU 定义 → 行版本"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "operationNo"
+        - "freePlanVersionNo"
+        - "proPlanVersionNo"
+        - "chainPlanVersionNo"
+        - "candidateSkuVersionNos"
+        - "expectedCatalogVersion"
+        - "expectedPlanVersions"
+        - "expectedSkuVersions"
+        - "expectedPlanDefinitionVersions"
+        - "expectedSkuDefinitionVersions"
+        - "reason"
+      additionalProperties: false
+      description: "行业发布：三档版本 + 候选 SKU 版本 + 全部相关行的乐观锁"
+    MallProductKind:
+      type: "string"
+      enum:
+        - "PLAN"
+        - "END_ACCESS"
+        - "HARDWARE"
+        - "BUNDLE"
+      description: "商品种类"
+    MallComponentKind:
+      type: "string"
+      enum:
+        - "PLAN"
+        - "END_PACKAGE"
+        - "HARDWARE"
+      description: "组件种类"
+    MallProductDraft:
+      type: "object"
+      properties:
+        productNo:
+          type: "string"
+          description: "商品号"
+        categoryCode:
+          type: "string"
+          description: "类目编码"
+        kind:
+          "$ref": "#/components/schemas/MallProductKind"
+          description: "种类"
+        name:
+          type: "string"
+          description: "名称"
+        description:
+          type:
+            - "string"
+            - "null"
+          description: "描述"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        sortOrder:
+          type: "number"
+          description: "排序"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+          description: "审计原因"
+      additionalProperties: false
+      description: "商品草稿"
+    MallProductView:
+      type: "object"
+      properties:
+        draft:
+          "$ref": "#/components/schemas/MallProductDraft"
+          description: "当前草稿"
+        saleStatus:
+          type: "string"
+          description: "售卖状态"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "商品行"
+    MallProductUpdate:
+      "$ref": "#/components/schemas/Omit%3CMallProductDraft%2C%22productNo%22%3E"
+      description: "修改商品"
+    "Omit<MallProductDraft,\"productNo\">":
+      "$ref": "#/components/schemas/Pick%3CMallProductDraft%2CExclude%3C(%22productNo%22%7C%22categoryCode%22%7C%22kind%22%7C%22name%22%7C%22description%22%7C%22allowedBusinessTypes%22%7C%22sortOrder%22%7C%22expectedVersion%22%7C%22reason%22)%2C%22productNo%22%3E%3E"
+    "Pick<MallProductDraft,Exclude<(\"productNo\"|\"categoryCode\"|\"kind\"|\"name\"|\"description\"|\"allowedBusinessTypes\"|\"sortOrder\"|\"expectedVersion\"|\"reason\"),\"productNo\">>":
+      type: "object"
+      properties:
+        categoryCode:
+          type: "string"
+          description: "类目编码"
+        kind:
+          "$ref": "#/components/schemas/MallProductKind"
+          description: "种类"
+        name:
+          type: "string"
+          description: "名称"
+        description:
+          type:
+            - "string"
+            - "null"
+          description: "描述"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        sortOrder:
+          type: "number"
+          description: "排序"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+          description: "审计原因"
+      additionalProperties: false
+    MallSkuComponent:
+      type: "object"
+      properties:
+        componentNo:
+          type:
+            - "string"
+            - "null"
+          description: "组件号（保存后由后端给）"
+        kind:
+          "$ref": "#/components/schemas/MallComponentKind"
+          description: "种类"
+        planVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "PLAN 组件的 Plan 版本"
+        entitlementCode:
+          type:
+            - "string"
+            - "null"
+          description: "END_PACKAGE 组件的权益编码"
+        hardwareSkuNo:
+          type:
+            - "string"
+            - "null"
+          description: "HARDWARE 组件的硬件 SKU 号"
+        periodDays:
+          type:
+            - "number"
+            - "null"
+          description: "周期天数（数字组件）"
+        unitCount:
+          type: "number"
+          description: "数量"
+        allocationWeight:
+          type: "number"
+          description: "分摊权重"
+        gift:
+          type: "boolean"
+          description: "赠送（分摊基数为 0）"
+        activationPolicy:
+          type: "string"
+          description: "生效策略"
+      additionalProperties: false
+      description: "SKU 组件：PLAN 引用 Plan 版本，END_PACKAGE 引用权益编码，HARDWARE 引用硬件 SKU"
+    MallSkuDefinitionView:
+      type: "object"
+      properties:
+        skuNo:
+          type: "string"
+          description: "SKU 号"
+        productNo:
+          type: "string"
+          description: "所属商品"
+        title:
+          type: "string"
+          description: "标题"
+        maxPerOrder:
+          type: "number"
+          description: "每单上限"
+        currentVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "当前在售版本"
+        saleStatus:
+          type: "string"
+          description: "售卖状态"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "SKU 定义行"
+    MallSkuDraft:
+      type: "object"
+      properties:
+        productNo:
+          type: "string"
+          description: "商品号"
+        skuNo:
+          type: "string"
+          description: "SKU 号"
+        skuVersionNo:
+          type: "string"
+          description: "版本号"
+        title:
+          type: "string"
+          description: "标题"
+        listPrice:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "划线价"
+        price:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "售价"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        refundPolicySnapshot:
+          type: "string"
+          description: "退款政策快照（后端生成的 JSON 文本）"
+        components:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallSkuComponent"
+          description: "组件"
+        maxPerOrder:
+          type: "number"
+          description: "每单上限"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁"
+        reason:
+          type: "string"
+          description: "审计原因"
+      additionalProperties: false
+      description: "SKU 版本内容"
+    MallSkuVersionView:
+      type: "object"
+      properties:
+        draft:
+          "$ref": "#/components/schemas/MallSkuDraft"
+          description: "内容"
+        status:
+          type: "string"
+          description: "DRAFT / PUBLISHED"
+        revision:
+          type: "number"
+          description: "修订序号"
+        version:
+          type: "number"
+          description: "乐观锁版本"
+      additionalProperties: false
+      description: "SKU 版本行；PUBLISHED 之后只读"
+    MallRefundPolicyInput:
+      type: "object"
+      properties:
+        unusedDigital:
+          type: "string"
+          enum:
+            - "FULL_ORIGINAL_ALLOCATION"
+            - "MANUAL_ONLY"
+          description: "未使用数字权益：FULL_ORIGINAL_ALLOCATION / MANUAL_ONLY"
+        usedDigital:
+          type: "string"
+          const: "MANUAL_ONLY"
+          description: "已使用数字权益：只能人工"
+      required:
+        - "unusedDigital"
+        - "usedDigital"
+      additionalProperties: false
+      description: "退款政策输入：unusedDigital 二选一，usedDigital 只能 MANUAL_ONLY"
+    MallSkuRequest:
+      type: "object"
+      properties:
+        skuNo:
+          type: "string"
+          description: "SKU 号（新 SKU 由运营给定）"
+        skuVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "编辑草稿时传版本号；新建传 null"
+        title:
+          type: "string"
+          description: "标题"
+        listPrice:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "划线价"
+        price:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "售价"
+        allowedBusinessTypes:
+          type: "array"
+          items:
+            type: "string"
+          description: "允许的经营类型"
+        refundPolicy:
+          "$ref": "#/components/schemas/MallRefundPolicyInput"
+          description: "退款政策"
+        components:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallSkuComponent"
+          description: "组件"
+        maxPerOrder:
+          type: "number"
+          description: "每单上限"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新 SKU 传 0；否则带 SKU 定义的 version"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "skuNo"
+        - "skuVersionNo"
+        - "title"
+        - "listPrice"
+        - "price"
+        - "allowedBusinessTypes"
+        - "refundPolicy"
+        - "components"
+        - "maxPerOrder"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+      description: "保存 SKU 版本"
+    MallPublishSku:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "幂等操作号"
+        expectedVersion:
+          type: "number"
+          description: "SKU 定义行版本"
+        expectedSkuVersion:
+          type: "number"
+          description: "SKU 版本行版本"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "operationNo"
+        - "expectedVersion"
+        - "expectedSkuVersion"
+        - "reason"
+      additionalProperties: false
+      description: "发布 SKU 版本"
+    MallStop:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "幂等操作号"
+        expectedVersion:
+          type: "number"
+          description: "被停售对象（Plan 定义 / SKU 定义）的行版本"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "operationNo"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+      description: "停售"
+    MallCatalogOverview:
+      type: "object"
+      properties:
+        businessTypes:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallBusinessTypeView"
+          description: "经营类型"
+        businessEnds:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallBusinessEndView"
+          description: "业务端"
+        planDefinitions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallPlanDefinitionView"
+          description: "Plan 定义"
+        planVersions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallPlanVersionView"
+          description: "Plan 版本"
+        products:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallProductView"
+          description: "商品"
+        skuDefinitions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallSkuDefinitionView"
+          description: "SKU 定义"
+        skuVersions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallSkuVersionView"
+          description: "SKU 版本"
+      additionalProperties: false
+      description: "目录总览（运营端一次读全量）"
+    MallOrderStatus:
+      type: "string"
+      enum:
+        - "PENDING_INVENTORY"
+        - "AWAITING_PAYMENT"
+        - "PAYMENT_UNKNOWN"
+        - "PAID"
+        - "FULFILLING"
+        - "COMPLETED"
+        - "CANCEL_PENDING"
+        - "CLOSED"
+        - "REFUNDING"
+        - "PARTIALLY_REFUNDED"
+        - "REFUNDED"
+      description: "订单总状态（**只作概览**：付款/履约/退款三个维度各看各的）"
+    MallAsyncStatus:
+      type: "string"
+      enum:
+        - "PENDING"
+        - "SUCCEEDED"
+        - "FAILED"
+        - "UNKNOWN"
+      description: "外部异步动作状态"
+    MallQuoteComponent:
+      type: "object"
+      properties:
+        componentNo:
+          type: "string"
+          description: "组件号"
+        kind:
+          "$ref": "#/components/schemas/MallComponentKind"
+          description: "种类"
+        listAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "原价"
+        dealAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "成交价"
+        creditAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "抵扣部分"
+        cashAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "现金部分"
+        cycleDays:
+          type: "number"
+          description: "周期天数"
+        quantity:
+          type: "number"
+          description: "数量"
+      additionalProperties: false
+      description: "报价/订单组件（冻结）"
+    MallQuoteCreditView:
+      type: "object"
+      properties:
+        newConversion:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "本次旧 Plan 转换出的价值"
+        historicalAvailable:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "历史可用余额"
+        applied:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "本单实际抵扣"
+        reservedHistorical:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "预留的历史余额"
+        balanceAfter:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "抵扣后余额"
+        valuationAt:
+          type: "string"
+          description: "估值时间"
+      additionalProperties: false
+      description: "升级抵扣明细"
+    MallQuoteView:
+      type: "object"
+      properties:
+        quoteNo:
+          type: "string"
+          description: "报价号"
+        store:
+          "$ref": "#/components/schemas/MallStoreRef"
+          description: "门店"
+        total:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "总额"
+        credit:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "抵扣"
+        payable:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "应付"
+        components:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallQuoteComponent"
+          description: "组件"
+        entitlementVersion:
+          type: "number"
+          description: "权益版本"
+        balanceVersion:
+          type: "number"
+          description: "余额版本"
+        expiresAt:
+          type: "string"
+          description: "过期时间（默认 15 分钟）"
+        creditBreakdown:
+          anyOf:
+            - "$ref": "#/components/schemas/MallQuoteCreditView"
+            - type: "null"
+          description: "升级抵扣明细；普通报价为 null"
+      additionalProperties: false
+      description: "报价（服务器冻结）"
+    MallQuoteLine:
+      type: "object"
+      properties:
+        skuVersionNo:
+          type: "string"
+          description: "SKU 版本号"
+        quantity:
+          type: "number"
+          description: "数量"
+      required:
+        - "skuVersionNo"
+        - "quantity"
+      additionalProperties: false
+      description: "报价行"
+    MallQuoteRequest:
+      type: "object"
+      properties:
+        lines:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallQuoteLine"
+          description: "行"
+        currency:
+          type: "string"
+          description: "币种"
+      required:
+        - "lines"
+        - "currency"
+      additionalProperties: false
+      description: "报价请求"
+    MallShippingAddress:
+      type: "object"
+      properties:
+        recipient:
+          type: "string"
+          description: "收件人"
+        phone:
+          type: "string"
+          description: "电话"
+        countryCode:
+          type: "string"
+          description: "国家/地区码"
+        region:
+          type:
+            - "string"
+            - "null"
+          description: "省/州"
+        city:
+          type:
+            - "string"
+            - "null"
+          description: "城市"
+        addressLine:
+          type: "string"
+          description: "地址"
+        postalCode:
+          type:
+            - "string"
+            - "null"
+          description: "邮编"
+      additionalProperties: false
+      description: "收货地址（含硬件时必填）"
+    MallPlaceRequest:
+      type: "object"
+      properties:
+        quoteNo:
+          type: "string"
+          description: "报价号"
+        idempotencyKey:
+          type: "string"
+          description: "幂等键"
+        shippingAddress:
+          anyOf:
+            - "$ref": "#/components/schemas/MallShippingAddress"
+            - type: "null"
+          description: "收货地址；纯数字订单为 null"
+      required:
+        - "quoteNo"
+        - "idempotencyKey"
+        - "shippingAddress"
+      additionalProperties: false
+      description: "下单请求"
+    MallOrderView:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+          description: "订单号"
+        store:
+          "$ref": "#/components/schemas/MallStoreRef"
+          description: "门店"
+        status:
+          "$ref": "#/components/schemas/MallOrderStatus"
+          description: "总状态（概览用）"
+        payable:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "应付"
+        components:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallQuoteComponent"
+          description: "组件"
+        createdAt:
+          type: "string"
+          description: "创建时间"
+      additionalProperties: false
+      description: "订单"
+    MallPaymentAttempt:
+      type: "object"
+      properties:
+        attemptNo:
+          type: "string"
+          description: "尝试号"
+        channel:
+          type: "string"
+          description: "通道"
+        payMethod:
+          type: "string"
+          description: "方式"
+        amount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "金额"
+        status:
+          "$ref": "#/components/schemas/MallAsyncStatus"
+          description: "状态"
+        paymentNo:
+          type:
+            - "string"
+            - "null"
+          description: "支付号"
+        paidAt:
+          type:
+            - "string"
+            - "null"
+          description: "付款时间"
+        errorCode:
+          type:
+            - "string"
+            - "null"
+          description: "错误码"
+        paidAtPrecisionMs:
+          type:
+            - "number"
+            - "null"
+          enum:
+            - 1
+            - 1000
+            - null
+          description: "付款时间精度（毫秒）"
+      additionalProperties: false
+      description: "付款尝试"
+    MallShipment:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "操作号"
+        orderComponentNo:
+          type: "string"
+          description: "订单组件号"
+        carrierCode:
+          type: "string"
+          description: "承运商"
+        trackingNo:
+          type: "string"
+          description: "运单号"
+        quantity:
+          type: "number"
+          description: "数量"
+        status:
+          "$ref": "#/components/schemas/MallAsyncStatus"
+          description: "状态"
+        errorCode:
+          type:
+            - "string"
+            - "null"
+          description: "错误码"
+      additionalProperties: false
+      description: "发货"
+    MallRefundView:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+          description: "退款号"
+        orderNo:
+          type: "string"
+          description: "订单号"
+        status:
+          "$ref": "#/components/schemas/MallAsyncStatus"
+          description: "资金动作状态"
+        cashAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "现金退款"
+        restoredCredit:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "恢复的抵扣余额"
+        reviewStatus:
+          type:
+            - "string"
+            - "null"
+          description: "审核状态（REQUESTED / APPROVED / DECLINED）"
+        requestDigest:
+          type:
+            - "string"
+            - "null"
+          description: "买家原始请求摘要"
+        reviewQuoteNo:
+          type:
+            - "string"
+            - "null"
+          description: "绑定的审核报价"
+      additionalProperties: false
+      description: "退款"
+    MallPaymentAxis:
+      type: "string"
+      enum:
+        - "UNPAID"
+        - "PAYING"
+        - "PAYMENT_UNKNOWN"
+        - "CANCEL_PENDING"
+        - "PAID"
+        - "CLOSED"
+      description: "资金维度（后端 OrderState.Payment）"
+    MallFulfillmentAxis:
+      type: "string"
+      enum:
+        - "WAIT_INVENTORY"
+        - "PENDING"
+        - "PROCESSING"
+        - "PARTIAL"
+        - "COMPLETED"
+        - "FAILED"
+      description: "权益/履约维度（后端 OrderState.Fulfillment）"
+    MallRefundAxis:
+      type: "string"
+      enum:
+        - "NONE"
+        - "REFUNDING"
+        - "PARTIAL"
+        - "REFUNDED"
+      description: "退款维度（后端 OrderState.Refund）"
+    MallOrderSummary:
+      type: "object"
+      properties:
+        order:
+          "$ref": "#/components/schemas/MallOrderView"
+          description: "订单"
+        paymentStatus:
+          type: "string"
+          description: "资金维度"
+        fulfillmentStatus:
+          type: "string"
+          description: "权益/履约维度"
+        refundStatus:
+          type: "string"
+          description: "退款维度"
+      additionalProperties: false
+      description: "订单概览：总状态 + 三个独立维度（列表返回的就是它）"
+    MallOrderDetailView:
+      type: "object"
+      properties:
+        summary:
+          "$ref": "#/components/schemas/MallOrderSummary"
+          description: "概览与三维状态"
+        quote:
+          "$ref": "#/components/schemas/MallQuoteView"
+          description: "冻结报价"
+        shippingAddress:
+          anyOf:
+            - "$ref": "#/components/schemas/MallShippingAddress"
+            - type: "null"
+          description: "收货地址"
+        paymentAttempts:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallPaymentAttempt"
+          description: "付款尝试"
+        shipments:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallShipment"
+          description: "发货"
+        refunds:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallRefundView"
+          description: "退款"
+      additionalProperties: false
+      description: "订单详情：三个独立维度 + 冻结报价 + 实际动作"
+    MallShipmentRequest:
+      type: "object"
+      properties:
+        orderComponentNo:
+          type: "string"
+          description: "订单组件号（HARDWARE）"
+        operationNo:
+          type: "string"
+          description: "幂等操作号"
+        carrierCode:
+          type: "string"
+          description: "承运商"
+        trackingNo:
+          type: "string"
+          description: "运单号"
+        quantity:
+          type: "number"
+          description: "数量"
+      required:
+        - "orderComponentNo"
+        - "operationNo"
+        - "carrierCode"
+        - "trackingNo"
+        - "quantity"
+      additionalProperties: false
+      description: "硬件发货"
+    MallRefundPreviewView:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+          description: "退款号"
+        orderNo:
+          type: "string"
+          description: "订单号"
+        cashLimit:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "现金上限"
+        creditLimit:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "抵扣恢复上限"
+        requiresManualReview:
+          type: "boolean"
+          description: "需要人工审核"
+        sourcePeriodNos:
+          type: "array"
+          items:
+            type: "string"
+          description: "涉及的权益周期"
+        expiresAt:
+          type: "string"
+          description: "过期时间"
+        approvalDigest:
+          type: "string"
+          description: "批准摘要"
+      additionalProperties: false
+      description: "退款预览"
+    MallRefundReviewQuoteView:
+      type: "object"
+      properties:
+        reviewQuoteNo:
+          type: "string"
+          description: "审核报价号"
+        requestDigest:
+          type: "string"
+          description: "原请求摘要"
+        preview:
+          "$ref": "#/components/schemas/MallRefundPreviewView"
+          description: "预览"
+      additionalProperties: false
+      description: "退款审核报价"
+    MallApproveRequest:
+      type: "object"
+      properties:
+        approvalDigest:
+          type: "string"
+          description: "预览给出的批准摘要"
+        reviewQuoteNo:
+          type:
+            - "string"
+            - "null"
+          description: "审核报价号"
+        cashAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "现金退款"
+        restoreCredit:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "恢复抵扣"
+        reviewEvidence:
+          type: "string"
+          description: "审核证据（≤1024 字符）"
+      required:
+        - "approvalDigest"
+        - "reviewQuoteNo"
+        - "cashAmount"
+        - "restoreCredit"
+        - "reviewEvidence"
+      additionalProperties: false
+      description: "批准退款"
+    MallRejectRequest:
+      type: "object"
+      properties:
+        requestDigest:
+          type: "string"
+          description: "原请求摘要"
+        reviewEvidence:
+          type: "string"
+          description: "审核证据"
+      required:
+        - "requestDigest"
+        - "reviewEvidence"
+      additionalProperties: false
+      description: "拒绝退款"
+    MallEntitlementSource:
+      type: "object"
+      properties:
+        sourceNo:
+          type: "string"
+          description: "来源号"
+        entitlementCode:
+          type: "string"
+          description: "权益编码"
+        planVersionNo:
+          type:
+            - "string"
+            - "null"
+          description: "来自的 Plan 版本"
+        originNo:
+          type: "string"
+          description: "来源单号（订单/赠送操作号）"
+        durationMillis:
+          type: "number"
+          description: "总时长（毫秒）"
+        consumedMillis:
+          type: "number"
+          description: "已消耗（毫秒）"
+        valuationBasis:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "估值基数（赠送为 0）"
+        permanent:
+          type: "boolean"
+          description: "永久"
+        lifecycle:
+          type: "string"
+          description: "生命周期（PURCHASE / GRANT / FREE / REVOKED …）"
+        revokedDurationMillis:
+          type: "number"
+          description: "撤销截断的时长"
+      additionalProperties: false
+      description: "权益来源"
+    MallAccessSegment:
+      type: "object"
+      properties:
+        sourceNo:
+          type: "string"
+          description: "来源号"
+        entitlementCode:
+          type: "string"
+          description: "权益编码"
+        startsAt:
+          type: "string"
+          description: "起"
+        endsAt:
+          type: "string"
+          description: "止"
+      additionalProperties: false
+      description: "可访问时段"
+    MallSubscriptionView:
+      type: "object"
+      properties:
+        store:
+          "$ref": "#/components/schemas/MallStoreRef"
+          description: "门店"
+        entitlementVersion:
+          type: "number"
+          description: "权益版本（撤销时作乐观锁）"
+        sources:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallEntitlementSource"
+          description: "来源"
+        segments:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallAccessSegment"
+          description: "时段"
+      additionalProperties: false
+      description: "门店订阅视图"
+    MallGrantRequest:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "幂等操作号"
+        entitlementCode:
+          type: "string"
+          description: "独立端权益编码"
+        durationDays:
+          type: "number"
+          description: "天数"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "operationNo"
+        - "entitlementCode"
+        - "durationDays"
+        - "reason"
+      additionalProperties: false
+      description: "零金额独立端赠送"
+    MallRevokeRequest:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "幂等操作号"
+        reason:
+          type: "string"
+          description: "审计原因"
+        expectedVersion:
+          type: "number"
+          description: "门店权益版本"
+      required:
+        - "operationNo"
+        - "reason"
+        - "expectedVersion"
+      additionalProperties: false
+      description: "撤销零金额来源"
+    MallOfflineCollectionTerms:
+      type: "object"
+      properties:
+        profileNo:
+          type: "string"
+          description: "档案号"
+        profileVersion:
+          type: "number"
+          description: "档案版本"
+        platformMerchantNo:
+          type: "string"
+          description: "平台收款主体"
+        currency:
+          type: "string"
+          description: "币种"
+        receivingAccountKey:
+          type: "string"
+          description: "收款账户指纹（后端哈希，不是账号本身）"
+        paymentWindowVersion:
+          type: "string"
+          description: "付款窗口版本"
+        paymentWindowMs:
+          type: "number"
+          description: "付款窗口（毫秒）"
+        instructions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
+          description: "指引内容（bankCode / bankAccount / accountName）"
+      required:
+        - "profileNo"
+        - "profileVersion"
+        - "platformMerchantNo"
+        - "currency"
+        - "receivingAccountKey"
+        - "paymentWindowVersion"
+        - "paymentWindowMs"
+        - "instructions"
+      additionalProperties: false
+      description: "收款档案（按币种；每次修改生成新版本）"
+    MallOfflineProfileCommand:
+      type: "object"
+      properties:
+        profileNo:
+          type: "string"
+          description: "档案号"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：首次传 0，之后传当前 profileVersion"
+        platformMerchantNo:
+          type: "string"
+          description: "平台收款主体"
+        currency:
+          type: "string"
+          description: "币种"
+        bankCode:
+          type: "string"
+          description: "银行代码"
+        bankAccount:
+          type: "string"
+          description: "账号"
+        accountName:
+          type: "string"
+          description: "户名"
+        paymentWindowVersion:
+          type: "string"
+          description: "付款窗口版本"
+        paymentWindowMs:
+          type: "number"
+          description: "付款窗口（毫秒，1000 ~ 90 天）"
+        enabled:
+          type: "boolean"
+          description: "是否启用"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "profileNo"
+        - "expectedVersion"
+        - "platformMerchantNo"
+        - "currency"
+        - "bankCode"
+        - "bankAccount"
+        - "accountName"
+        - "paymentWindowVersion"
+        - "paymentWindowMs"
+        - "enabled"
+        - "reason"
+      additionalProperties: false
+      description: "配置收款档案"
+    MallOfflineClaimStatus:
+      type: "string"
+      enum:
+        - "SUBMITTED"
+        - "REVIEWING"
+        - "CONFIRMED"
+        - "MISMATCHED"
+        - "DECLINED"
+      description: "申报状态（申报 ≠ 到账）"
+    MallOfflineClaimView:
+      type: "object"
+      properties:
+        claimNo:
+          type: "string"
+          description: "申报号"
+        status:
+          "$ref": "#/components/schemas/MallOfflineClaimStatus"
+          description: "申报状态"
+        declaredAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "申报金额"
+        declaredPaidAt:
+          type: "string"
+          description: "申报的付款时间"
+        submittedAt:
+          type: "string"
+          description: "提交时间"
+      required:
+        - "claimNo"
+        - "status"
+        - "declaredAmount"
+        - "declaredPaidAt"
+        - "submittedAt"
+      additionalProperties: false
+      description: "买家付款申报"
+    MallOfflinePendingClaim:
+      type: "object"
+      properties:
+        store:
+          "$ref": "#/components/schemas/MallStoreRef"
+          description: "门店"
+        orderNo:
+          type: "string"
+          description: "订单号"
+        claim:
+          "$ref": "#/components/schemas/MallOfflineClaimView"
+          description: "申报"
+      required:
+        - "store"
+        - "orderNo"
+        - "claim"
+      additionalProperties: false
+      description: "待审申报队列行"
+    MallOfflineInstructionsView:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+          description: "订单号"
+        payable:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "应付"
+        paymentDueAt:
+          type: "string"
+          description: "付款截止"
+        profileNo:
+          type: "string"
+          description: "档案号"
+        profileVersion:
+          type: "number"
+          description: "档案版本"
+        instructions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
+          description: "指引内容"
+      required:
+        - "orderNo"
+        - "payable"
+        - "paymentDueAt"
+        - "profileNo"
+        - "profileVersion"
+        - "instructions"
+      additionalProperties: false
+      description: "已发出的付款指引（冻结档案版本）"
+    MallEvidencePurpose:
+      type: "string"
+      enum:
+        - "PLATFORM_RECEIPT"
+        - "RECONCILIATION"
+        - "REFUND_PROOF"
+      description: "运营凭证用途"
+    MallOfflineEvidenceTicket:
+      type: "object"
+      properties:
+        assetKey:
+          type: "string"
+          description: "资产键"
+        purpose:
+          type: "string"
+          description: "用途"
+      required:
+        - "assetKey"
+        - "purpose"
+      additionalProperties: false
+      description: "凭证预留回执"
+    MallOfflineEvidenceUploaded:
+      type: "object"
+      properties:
+        assetKey:
+          type: "string"
+          description: "资产键"
+      required:
+        - "assetKey"
+      additionalProperties: false
+      description: "凭证上传回执"
+    MallOfflineSignedRead:
+      type: "object"
+      properties:
+        url:
+          type: "string"
+          description: "地址"
+      required:
+        - "url"
+      additionalProperties: false
+      description: "凭证签名读地址（5 分钟）"
+    MallOfflineConfirmRequest:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+          description: "幂等动作号"
+        claimNo:
+          type:
+            - "string"
+            - "null"
+          description: "对应的申报；运营直接录款为 null"
+        actualAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "实际到账金额"
+        actualPaidAt:
+          type: "string"
+          description: "实际到账时间"
+        actualReceiver:
+          type: "string"
+          description: "实际收款主体（必须是档案里的平台主体）"
+        bankReference:
+          type: "string"
+          description: "银行流水号（全局唯一）"
+        evidenceKey:
+          type: "string"
+          description: "凭证资产键"
+        historical:
+          type: "boolean"
+          description: "补录早于下单的历史到账"
+        reason:
+          type: "string"
+          description: "审计原因"
+      required:
+        - "actionNo"
+        - "claimNo"
+        - "actualAmount"
+        - "actualPaidAt"
+        - "actualReceiver"
+        - "bankReference"
+        - "evidenceKey"
+        - "historical"
+        - "reason"
+      additionalProperties: false
+      description: "核款：录入实际到账"
+    MallOfflineVoidRequest:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+          description: "幂等动作号"
+        reconciliationReference:
+          type: "string"
+          description: "对账参考号"
+        reason:
+          type: "string"
+          description: "审计原因"
+        evidenceKey:
+          type: "string"
+          description: "凭证资产键"
+        unmatchedDispositions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
+          description: "每一笔 MALL_UNMATCHED 实收的处置说明：paymentNo → 说明（必须一笔不漏）"
+      required:
+        - "actionNo"
+        - "reconciliationReference"
+        - "reason"
+        - "evidenceKey"
+        - "unmatchedDispositions"
+      additionalProperties: false
+      description: "对账作废"
+    MallOfflineActionView:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+          description: "动作号"
+        status:
+          type: "string"
+          enum:
+            - "ACCEPTED"
+            - "APPLIED"
+            - "UNMATCHED"
+            - "REJECTED"
+          description: "ACCEPTED / APPLIED / UNMATCHED / REJECTED"
+        paymentNo:
+          type:
+            - "string"
+            - "null"
+          description: "产生的支付号"
+      required:
+        - "actionNo"
+        - "status"
+        - "paymentNo"
+      additionalProperties: false
+      description: "线下动作结果：ACCEPTED 只是受理，**不等于到账**"
+    MallOfflinePayoutRequest:
+      type: "object"
+      properties:
+        actualAmount:
+          "$ref": "#/components/schemas/MallMoney"
+          description: "实际出款金额（必须等于退款意图）"
+        paidOutAt:
+          type: "string"
+          description: "出款时间"
+        payeeReference:
+          type: "string"
+          description: "收款方参考"
+        bankReference:
+          type: "string"
+          description: "银行流水号"
+        evidenceKey:
+          type: "string"
+          description: "出款凭证资产键"
+      required:
+        - "actualAmount"
+        - "paidOutAt"
+        - "payeeReference"
+        - "bankReference"
+        - "evidenceKey"
+      additionalProperties: false
+      description: "线下退款出款确认"
     OpsMember:
       type: "object"
       properties:
@@ -13127,6 +14956,1463 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/catalog":
+    get:
+      operationId: "mallCatalog"
+      summary: "目录总览"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallCatalogOverview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/business-types":
+    get:
+      operationId: "mallBusinessTypes"
+      summary: "经营类型列表 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallBusinessTypeView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "createMallBusinessType"
+      summary: "新建经营类型：expectedVersion=0、enabled=false"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/business-types/{typeCode}":
+    put:
+      operationId: "updateMallBusinessType"
+      summary: "改经营类型"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "typeCode"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/business-ends":
+    get:
+      operationId: "mallBusinessEnds"
+      summary: "业务端列表 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallBusinessEndView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "saveMallBusinessEnd"
+      summary: "保存业务端"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/business-ends/deployment-options":
+    get:
+      operationId: "mallDeploymentOptions"
+      summary: "部署验收清单（运营从这里选端，**不手填** client/route/acceptance） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallDeploymentOption"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/industry-plans":
+    get:
+      operationId: "mallPlanDefinitions"
+      summary: "Plan 定义（每个经营类型三条） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallPlanDefinitionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/industry-plans/{planNo}/versions":
+    post:
+      operationId: "saveMallPlanVersion"
+      summary: "新建/编辑 Plan 草稿版本"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "planNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/business-types/{typeCode}/plan-publications":
+    post:
+      operationId: "publishMallIndustry"
+      summary: "行业发布：三档 + 候选 SKU 一起冻结 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallPublicationResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "typeCode"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/products":
+    get:
+      operationId: "mallProducts"
+      summary: "商品列表 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallProductView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "createMallProduct"
+      summary: "新建商品（expectedVersion=0） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/products/{productNo}":
+    put:
+      operationId: "updateMallProduct"
+      summary: "改商品 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "productNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/products/{productNo}/skus":
+    post:
+      operationId: "saveMallSkuVersion"
+      summary: "新建/编辑 SKU 草稿版本 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "productNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/sku-versions/{versionNo}":
+    get:
+      operationId: "mallSkuVersion"
+      summary: "读一个 SKU 版本 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallSkuVersionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "versionNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/sku-versions/{versionNo}/publish":
+    post:
+      operationId: "publishMallSkuVersion"
+      summary: "发布单个 SKU 版本 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallPublicationResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "versionNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/industry-plans/{planNo}/off-sale":
+    post:
+      operationId: "stopMallPlanSale"
+      summary: "Plan 停售（不改写已落单的快照） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "planNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/skus/{skuNo}/off-sale":
+    post:
+      operationId: "stopMallSkuSale"
+      summary: "SKU 停售（不改写已落单的快照） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "skuNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/orders":
+    get:
+      operationId: "mallOrders"
+      summary: "某门店的订单，按 orderNo 游标翻页 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallOrderSummary"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/orders/{orderNo}":
+    get:
+      operationId: "mallOrder"
+      summary: "订单详情：paymentStatus / fulfillmentStatus / refundStatus 三维独立 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOrderDetailView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/orders/{orderNo}/shipments":
+    post:
+      operationId: "shipMallOrder"
+      summary: "硬件发货（operationNo 幂等，组件/数量/承运/单号不可变） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOrderDetailView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/review-quotes":
+    post:
+      operationId: "reviewMallRefund"
+      summary: "退款审核报价：基于买家原请求摘要生成独立的 reviewQuoteNo */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallRefundReviewQuoteView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refundNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/approve":
+    post:
+      operationId: "approveMallRefund"
+      summary: "批准退款：绑定 reviewQuoteNo + approvalDigest，金额不超预览上限 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallRefundView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refundNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/reject":
+    post:
+      operationId: "rejectMallRefund"
+      summary: "拒绝退款：只改变审核请求"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallRefundView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refundNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores/{storeNo}/subscription":
+    get:
+      operationId: "mallSubscription"
+      summary: "门店权益来源与可访问时段 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallSubscriptionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{storeNo}/subscription/grants":
+    post:
+      operationId: "grantMallEnd"
+      summary: "零金额独立端赠送（有期限"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallSubscriptionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores/{storeNo}/subscription/sources/{sourceNo}/revoke":
+    post:
+      operationId: "revokeMallSource"
+      summary: "撤销零金额来源（付费来源必须走退款） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallSubscriptionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "sourceNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/profile":
+    get:
+      operationId: "offlineProfile"
+      summary: "收款档案（按币种）"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    put:
+      operationId: "configureOfflineProfile"
+      summary: "配置收款档案：每次修改生成新版本，已发出的指引按原版本 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineCollectionTerms"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/claims":
+    get:
+      operationId: "offlinePendingClaims"
+      summary: "待审申报队列 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallOfflinePendingClaim"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/offline/quotes":
+    post:
+      operationId: "offlineAssistedQuote"
+      summary: "代客报价：买方为 STORE，发起人为真实运营 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallQuoteView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders":
+    post:
+      operationId: "offlineAssistedPlace"
+      summary: "代客下单 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOrderView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/instructions":
+    post:
+      operationId: "issueOfflineInstructions"
+      summary: "代客发出付款指引（幂等） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineInstructionsView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+    get:
+      operationId: "offlineInstructions"
+      summary: "读已发出的指引"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineInstructionsView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/offline/orders/{orderNo}/claims":
+    get:
+      operationId: "offlineClaims"
+      summary: "某订单的买家申报 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallOfflineClaimView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/offline/orders/{orderNo}/evidence":
+    post:
+      operationId: "reserveOfflineEvidence"
+      summary: "预留一个运营凭证资产键 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineEvidenceTicket"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/evidence/content":
+    post:
+      operationId: "uploadOfflineEvidence"
+      summary: "上传凭证字节（image/jpeg 或 image/png，≤10MB"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineEvidenceUploaded"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/evidence/url":
+    get:
+      operationId: "offlineEvidenceUrl"
+      summary: "读凭证（5 分钟签名地址） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineSignedRead"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline":
+    post:
+      operationId: "declineOfflineClaim"
+      summary: "拒绝申报：不等于无款，不释放占用 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineClaimView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "claimNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/confirmations":
+    post:
+      operationId: "confirmOfflinePayment"
+      summary: "核款：录入实际到账"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineActionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/voids":
+    post:
+      operationId: "voidOfflineOrder"
+      summary: "对账作废：之后来款仍入账并走退款 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallOfflineActionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts":
+    post:
+      operationId: "confirmOfflineRefundPayout"
+      summary: "线下退款实际出款确认 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallRefundView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refundNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       requestBody:
         required: true
         content:

@@ -18,12 +18,24 @@ import { BACKEND_ROLE_PERMS, can } from "./permissions";
 const ROOT = join(import.meta.dirname, "../..");
 const PERMS_JAVA = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java");
 
+/*
+ * 商城（commerce）的权限码**不在 Perms.java**：可移植 starter 用 `context.operator("commerce:…")`
+ * 现判，码由宿主迁移种进 sys_function_point。只读这两份迁移、只认 `commerce:` 前缀 ——
+ * 放宽成「迁移里出现过的任何码」会把别的域漏登记的码也放过去。
+ */
+const COMMERCE_SEEDS = ["V556__commerce_mall_permissions.sql", "V558__commerce_offline_permissions.sql"]
+  .map((f) => join(ROOT, "backend/shop-app/src/main/resources/db/migration", f));
+
 /** 从 Java 源码抽后端权限码常量 —— 与 BizEndpointPermTest 同一手法 */
 function backendCodes(): Set<string> {
   if (!existsSync(PERMS_JAVA)) return new Set();
   const src = readFileSync(PERMS_JAVA, "utf8");
   const out = new Set<string>();
   for (const m of src.matchAll(/String\s+[A-Z_]+\s*=\s*"([a-z][a-z:_-]*)"/g)) out.add(m[1]!);
+  for (const f of COMMERCE_SEEDS) {
+    if (!existsSync(f)) continue;
+    for (const m of readFileSync(f, "utf8").matchAll(/'(commerce:[a-z:]+)'/g)) out.add(m[1]!);
+  }
   return out;
 }
 
