@@ -191,6 +191,14 @@ public final class SubscriptionService {
     }
 
     public void deliverOrder(StoreRef store, String orderNo, List<FrozenDelivery> batch) {
+        deliverOrder(store, orderNo, batch, List.of());
+    }
+
+    public void deliverOrder(
+            StoreRef store,
+            String orderNo,
+            List<FrozenDelivery> batch,
+            List<ConversionSource> conversions) {
         key(orderNo);
         var frozen = new LinkedHashMap<String, FrozenDelivery>();
         for (var d : batch)
@@ -201,11 +209,12 @@ public final class SubscriptionService {
                 orderNo,
                 batch.stream().map(FrozenDelivery::delivery).toList(),
                 orderNo,
-                frozen);
+                frozen,
+                conversions);
     }
 
     public void deliver(StoreRef store, String operationNo, List<Delivery> batch) {
-        deliver(store, operationNo, batch, null, Map.of());
+        deliver(store, operationNo, batch, null, Map.of(), List.of());
     }
 
     private void deliver(
@@ -213,7 +222,8 @@ public final class SubscriptionService {
             String operationNo,
             List<Delivery> batch,
             String owningOrder,
-            Map<String, FrozenDelivery> frozen) {
+            Map<String, FrozenDelivery> frozen,
+            List<ConversionSource> conversions) {
         var deliveries = List.copyOf(batch);
         if (deliveries.isEmpty()
                 || deliveries.stream().map(Delivery::ref).distinct().count() != deliveries.size())
@@ -224,7 +234,7 @@ public final class SubscriptionService {
                     var at = Instant.ofEpochMilli(clock.millis());
                     var prior = new ArrayList<>(repo.periods(store));
                     var previousCodes = new TreeSet<String>();
-                    prior.forEach(p -> previousCodes.addAll(p.ends().keySet()));
+                    for (var p : prior) previousCodes.addAll(p.ends().keySet());
                     var history = schedule.history(store, prior, previousCodes);
                     if (!claim(
                             events,
@@ -242,6 +252,36 @@ public final class SubscriptionService {
                             throw new IllegalStateException("order does not own digital occupancy");
                         if (at.toEpochMilli() < repo.lastChange(store))
                             throw new IllegalArgumentException("backdated schedule change");
+                    }
+                    var calculationHistory = new HashMap<String, List<AccessSegment>>();
+                    if (!conversions.isEmpty()) {
+                        repo.cutSources(store, owningOrder, conversions, at.toEpochMilli());
+                        prior = new ArrayList<>(repo.periods(store));
+                        var changed =
+                                conversions.stream()
+                                        .map(ConversionSource::periodNo)
+                                        .collect(java.util.stream.Collectors.toSet());
+                        for (var entry : history.entrySet()) {
+                            var slices =
+                                    new ArrayList<>(
+                                            entry.getValue().stream()
+                                                    .filter(v -> !changed.contains(v.sourceNo()))
+                                                    .toList());
+                            for (var p : prior)
+                                if (changed.contains(p.no())
+                                        && p.ends().containsKey(entry.getKey())
+                                        && p.usableDuration() > 0)
+                                    slices.add(
+                                            new AccessSegment(
+                                                    p.no(),
+                                                    entry.getKey(),
+                                                    Instant.ofEpochMilli(p.start()),
+                                                    Instant.ofEpochMilli(p.end())));
+                            slices.sort(
+                                    Comparator.comparing(AccessSegment::startsAt)
+                                            .thenComparing(AccessSegment::sourceNo));
+                            calculationHistory.put(entry.getKey(), List.copyOf(slices));
+                        }
                     }
                     var free =
                             prior.stream()
@@ -299,8 +339,18 @@ public final class SubscriptionService {
                         codes.addAll(p.ends().keySet());
                         inserted.add(p.no());
                     }
-                    if (!inserted.isEmpty())
-                        schedule.persist(account, codes, operationNo, at, inserted, history, null);
+                    if (!inserted.isEmpty()) {
+                        codes.addAll(previousCodes);
+                        schedule.persistTransition(
+                                account,
+                                codes,
+                                operationNo,
+                                at,
+                                inserted,
+                                history,
+                                calculationHistory,
+                                null);
+                    }
                     return null;
                 });
     }
@@ -346,7 +396,10 @@ public final class SubscriptionService {
             tier = draft.tier().name();
             policy = draft.policyVersion();
             for (var previous : prior) {
-                if (previous.fixed() && previous.duration() != null && previous.end() > at) {
+                if (previous.fixed()
+                        && previous.duration() != null
+                        && previous.usableDuration() > 0
+                        && previous.end() > at) {
                     if (!plan.equals(previous.planNo()) || !tier.equals(previous.tier()))
                         throw new IllegalStateException("upgrade required");
                     start = Math.max(start, previous.end());
@@ -435,7 +488,9 @@ public final class SubscriptionService {
                             p.duration() == null ? 0 : p.duration(),
                             consumed,
                             new Money(p.currency(), p.basis()),
-                            p.duration() == null));
+                            p.duration() == null,
+                            p.lifecycle(),
+                            p.revokedDuration()));
         }
         return new SubscriptionView(
                 store, account.entitlementVersion(), List.copyOf(sources), segments);

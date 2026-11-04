@@ -7,6 +7,7 @@ import ai.neargo.commerce.api.mall.*;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.mall.*;
 import ai.neargo.commerce.core.spi.AccountSnapshot;
+import ai.neargo.commerce.core.spi.ConversionSource;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -98,14 +99,17 @@ public final class JdbcMallRepository implements MallRepository {
     public Sources lockSources(StoreRef s, long at) {
         guard(s.tenantNo());
         var plans = new ArrayList<BasePlan>();
+        var conversions = new ArrayList<ConversionSource>();
         var currencies = new HashSet<String>();
         var permanent = new HashSet<String>();
         jdbc.query(
-                "SELECT * FROM mch_subscription_period WHERE tenant_no=? AND store_no=? AND"
-                        + " state='NORMAL' ORDER BY delivery_seq,id FOR UPDATE",
+                "SELECT * FROM mch_subscription_period WHERE tenant_no=? AND store_no=? AND state"
+                    + " IN ('NORMAL','CONVERTED','FROZEN','REFUNDED') ORDER BY delivery_seq,id FOR"
+                    + " UPDATE",
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r -> {
                             currencies.add(r.getString("currency"));
+                            if (!"NORMAL".equals(r.getString("state"))) return;
                             if ("FREE".equals(r.getString("tier_code"))
                                     && r.getObject("granted_duration_ms") == null) {
                                 var policy =
@@ -117,6 +121,40 @@ public final class JdbcMallRepository implements MallRepository {
                             Long end = r.getObject("effective_end_at", Long.class);
                             if (r.getString("plan_no") != null
                                     && !"FREE".equals(r.getString("tier_code"))
+                                    && end != null
+                                    && end > at
+                                    && r.getString("converted_by_no") == null) {
+                                long duration = r.getLong("granted_duration_ms");
+                                long used =
+                                        Math.max(
+                                                0,
+                                                Math.min(
+                                                        duration,
+                                                        at - r.getLong("original_start_at")));
+                                var policy =
+                                        decode(
+                                                r.getString("source_policy_snapshot"),
+                                                SourcePolicy.class);
+                                long basis = r.getLong("eligible_basis_minor");
+                                conversions.add(
+                                        new ConversionSource(
+                                                r.getString("period_no"),
+                                                r.getLong("version"),
+                                                r.getString("plan_no"),
+                                                PlanTier.valueOf(r.getString("tier_code")),
+                                                r.getString("business_type_code"),
+                                                basis,
+                                                duration,
+                                                duration - used,
+                                                UpgradeValue.remaining(
+                                                        basis, duration, used, policy.gift()),
+                                                r.getString("source_ref_no"),
+                                                r.getLong("cash_basis_minor"),
+                                                r.getLong("credit_basis_minor"),
+                                                List.of()));
+                            }
+                            if (r.getString("plan_no") != null
+                                    && !"FREE".equals(r.getString("tier_code"))
                                     && (end == null || end > at))
                                 plans.add(
                                         new BasePlan(
@@ -126,25 +164,49 @@ public final class JdbcMallRepository implements MallRepository {
                 s.tenantNo(),
                 s.storeNo());
         if (currencies.size() != 1) throw new MallException("STORE_CURRENCY_UNAVAILABLE");
-        return new Sources(currencies.iterator().next(), plans, permanent);
+        return new Sources(currencies.iterator().next(), plans, permanent, conversions);
+    }
+
+    public List<ConversionSource> conversionSources(StoreRef store, Sources sources) {
+        guard(store.tenantNo());
+        var lineage = new JdbcCreditProvenance(ds);
+        return sources.conversions().stream()
+                .map(
+                        s ->
+                                new ConversionSource(
+                                        s.periodNo(),
+                                        s.version(),
+                                        s.planNo(),
+                                        s.tier(),
+                                        s.businessType(),
+                                        s.basis(),
+                                        s.originalDuration(),
+                                        s.remainingDuration(),
+                                        s.value(),
+                                        s.sourceRefNo(),
+                                        s.cashBasis(),
+                                        s.creditBasis(),
+                                        lineage.source(store, s.periodNo(), s.creditBasis())))
+                .toList();
     }
 
     public List<CreditLot> lockLots(StoreRef s, String currency, long at) {
         guard(s.tenantNo());
         return jdbc.query(
-                "SELECT credit_lot_no,version,remaining_minor-reserved_minor available,expires_at"
-                    + " FROM mch_subscription_credit_lot WHERE tenant_no=? AND store_no=? AND"
-                    + " currency=? AND (expires_at IS NULL OR expires_at>?) ORDER BY id FOR UPDATE",
+                "SELECT credit_lot_no,version,CASE WHEN expires_at IS NULL OR expires_at>? THEN"
+                    + " remaining_minor-reserved_minor ELSE 0 END available,expires_at FROM"
+                    + " mch_subscription_credit_lot WHERE tenant_no=? AND store_no=? AND currency=?"
+                    + " ORDER BY id FOR UPDATE",
                 (r, n) ->
                         new CreditLot(
                                 r.getString(1),
                                 r.getLong(2),
                                 r.getLong(3),
                                 r.getObject(4, Long.class)),
+                at,
                 s.tenantNo(),
                 s.storeNo(),
-                currency,
-                at);
+                currency);
     }
 
     private record QuoteRequest(
@@ -196,10 +258,10 @@ public final class JdbcMallRepository implements MallRepository {
                                                                 l.quantity()))
                                         .toList())));
         r.put("line_snapshot", encode(q));
-        r.put("conversion_snapshot", encode(q.creditUses()));
+        r.put("conversion_snapshot", encode(q.conversions()));
         r.put("schedule_preview_snapshot", "{}");
         r.put("price_minor", q.deal());
-        r.put("new_conversion_minor", 0);
+        r.put("new_conversion_minor", q.convertedValue());
         r.put("credit_used_minor", q.credit());
         r.put("cash_due_minor", q.deal() - q.credit());
         r.put("status", "VALID");
@@ -448,25 +510,25 @@ public final class JdbcMallRepository implements MallRepository {
             hold.put("valuation_at", q.valuationAt());
             hold.put("pay_deadline", q.expiresAt());
             hold.put("status", "RESERVED");
-            hold.put("source_periods_snapshot", encode(q.creditUses()));
-            hold.put("reserved_credit_minor", q.credit());
+            hold.put("source_periods_snapshot", encode(q.conversions()));
+            hold.put("reserved_credit_minor", q.historicalCredit());
             insert("mch_subscription_reservation", hold);
         }
-        if (q.credit() > 0) {
+        if (q.historicalCredit() > 0) {
             changed(
                     jdbc.update(
                             "UPDATE mch_subscription_credit_account SET"
                                 + " reserved_minor=reserved_minor+?,version=version+1,updated_by=?,updated_at=?"
                                 + " WHERE tenant_no=? AND store_no=? AND currency=? AND version=?"
                                 + " AND balance_minor-reserved_minor>=?",
-                            q.credit(),
+                            q.historicalCredit(),
                             actor,
                             r.get("updated_at"),
                             s.tenantNo(),
                             s.storeNo(),
                             q.currency(),
                             balance.version(),
-                            q.credit()));
+                            q.historicalCredit()));
             for (var use : q.creditUses()) {
                 changed(
                         jdbc.update(

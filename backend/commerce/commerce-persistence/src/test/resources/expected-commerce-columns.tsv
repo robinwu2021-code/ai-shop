@@ -618,3 +618,6 @@ commerce_expiry_notice	lease_until	bigint	YES
 commerce_expiry_notice	provider_message_no	varchar(128)	YES
 commerce_expiry_notice	last_error_code	varchar(64)	YES
 commerce_expiry_notice	sent_at	bigint	YES
+mall_refund	command_snapshot	json	YES
+mall_refund	verified_fact_snapshot	json	YES
+mall_refund	review_evidence	varchar(1024)	YES

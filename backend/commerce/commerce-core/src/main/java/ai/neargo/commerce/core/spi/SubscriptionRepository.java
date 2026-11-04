@@ -34,4 +34,13 @@ public interface SubscriptionRepository {
             String actor);
 
     void updateVersion(AccountSnapshot account, long revision, String actor);
+
+    /** Immutable original economics remain unchanged; only effective boundaries/status are cut. */
+    default void cutSources(
+            StoreRef store,
+            String owningOrder,
+            java.util.List<ConversionSource> sources,
+            long effectiveAt) {
+        throw new UnsupportedOperationException("conversion unavailable");
+    }
 }

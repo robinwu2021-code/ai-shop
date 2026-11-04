@@ -62,11 +62,11 @@ VALUES (?,?,?,?,0,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0) ON DUPLICATE KEY UP
         var ends = new HashMap<String, Map<String, String>>();
         jdbc.query(
                 """
-                SELECT p.period_no,e.ec,e.bc FROM mch_subscription_period p
-                JOIN JSON_TABLE(p.source_policy_snapshot,'$.ends[*]' COLUMNS(
-                    ec VARCHAR(64) PATH '$.code',bc VARCHAR(64) PATH '$.end')) e ON TRUE
-                WHERE p.tenant_no=? AND p.store_no=? AND p.state='NORMAL' FOR SHARE OF p
-                """,
+SELECT p.period_no,e.ec,e.bc FROM mch_subscription_period p
+JOIN JSON_TABLE(p.source_policy_snapshot,'$.ends[*]' COLUMNS(
+    ec VARCHAR(64) PATH '$.code',bc VARCHAR(64) PATH '$.end')) e ON TRUE
+WHERE p.tenant_no=? AND p.store_no=? AND p.state IN ('NORMAL','CONVERTED','FROZEN','REFUNDED') FOR SHARE OF p
+""",
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r ->
                                 ends.computeIfAbsent(r.getString(1), k -> new TreeMap<>())
@@ -75,7 +75,7 @@ VALUES (?,?,?,?,0,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0) ON DUPLICATE KEY UP
                 s.storeNo());
         return jdbc.query(
                 """
-SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot->>'$.gift' gift FROM mch_subscription_period p WHERE tenant_no=? AND store_no=? AND state='NORMAL' ORDER BY delivery_seq,id FOR SHARE
+SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot->>'$.gift' gift FROM mch_subscription_period p WHERE tenant_no=? AND store_no=? AND state IN ('NORMAL','CONVERTED','FROZEN','REFUNDED') ORDER BY delivery_seq,id FOR SHARE
 """,
                 (r, i) ->
                         new Period(
@@ -93,9 +93,43 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
                                 r.getLong("credit_basis_minor"),
                                 r.getString("currency"),
                                 r.getString("policy"),
-                                Boolean.parseBoolean(r.getString("gift"))),
+                                Boolean.parseBoolean(r.getString("gift")),
+                                "NORMAL".equals(r.getString("state"))
+                                        ? null
+                                        : r.getObject("effective_end_at", Long.class),
+                                r.getLong("revoked_duration_ms"),
+                                r.getString("state")),
                 s.tenantNo(),
                 s.storeNo());
+    }
+
+    public void cutSources(
+            StoreRef store,
+            String owningOrder,
+            List<ai.neargo.commerce.core.spi.ConversionSource> sources,
+            long effectiveAt) {
+        requireOuterTransaction(store);
+        if (!owningOrder.equals(lock(store).pendingChangeOrderNo()))
+            throw new IllegalStateException("conversion does not own occupancy");
+        for (var source : sources) {
+            int changed =
+                    jdbc.update(
+                            "UPDATE mch_subscription_period SET"
+                                + " state='CONVERTED',converted_by_no=?,"
+                                + " effective_end_at=GREATEST(original_start_at,LEAST(original_end_at,?)),revoked_duration_ms=granted_duration_ms-"
+                                + " LEAST(granted_duration_ms,GREATEST(0,?-original_start_at)),version=version+1,updated_at=UTC_TIMESTAMP(3)"
+                                + " WHERE tenant_no=? AND store_no=? AND period_no=? AND version=?"
+                                + " AND state='NORMAL' AND converted_by_no IS NULL",
+                            owningOrder,
+                            effectiveAt,
+                            effectiveAt,
+                            store.tenantNo(),
+                            store.storeNo(),
+                            source.periodNo(),
+                            source.version());
+            if (changed != 1)
+                throw new ai.neargo.commerce.api.mall.MallException("VERSION_CONFLICT");
+        }
     }
 
     public Map<String, GrantState> grantStates(StoreRef s) {
@@ -104,17 +138,17 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
         jdbc.query(
                 """
 SELECT g.entitlement_code,g.end_code,g.state,
-       (p.id IS NULL OR p.state<>'NORMAL' OR p.deleted=1 OR g.deleted=1) invalid_parent
+       (p.id IS NULL OR (p.state<>'NORMAL' AND (p.state NOT IN ('CONVERTED','FROZEN','REFUNDED') OR g.end_at IS NULL OR g.end_at>p.effective_end_at)) OR p.deleted=1 OR g.deleted=1) invalid_parent
 FROM mch_store_end_grant g LEFT JOIN mch_subscription_period p
   ON p.tenant_no=g.tenant_no AND p.store_no=g.store_no AND p.period_no=g.period_no
-WHERE g.tenant_no=? AND g.store_no=? AND g.state IN ('NORMAL','REVOKED','FROZEN')
+WHERE g.tenant_no=? AND g.store_no=? AND (g.state IN ('NORMAL','REVOKED','FROZEN') OR (g.state='SUPERSEDED' AND p.state IN ('CONVERTED','FROZEN','REFUNDED')))
 ORDER BY g.entitlement_code,g.id FOR SHARE
 """,
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r -> {
                             String code = r.getString(1), end = r.getString(2);
-                            boolean revoked = !"NORMAL".equals(r.getString(3));
-                            if (!revoked && r.getBoolean(4))
+                            boolean revoked = Set.of("REVOKED", "FROZEN").contains(r.getString(3));
+                            if ("NORMAL".equals(r.getString(3)) && r.getBoolean(4))
                                 throw new IllegalStateException("invalid grant parent");
                             var previous = result.get(code);
                             if (previous != null && !previous.endCode().equals(end))
@@ -277,7 +311,7 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,'NORMAL',?,?,?,UTC_TIM
                     if (at > start)
                         used = Math.addExact(used, Math.subtractExact(Math.min(end, at), start));
                 }
-            if (total != p.duration())
+            if (total != p.usableDuration())
                 throw new IllegalStateException("source duration not conserved");
             checks.add(
                     "{\"period\":"
@@ -370,6 +404,7 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,'NORMAL',?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0
         for (var p : periods)
             if (!p.fixed() && p.ends().containsKey(code)) {
                 var slices = after.stream().filter(g -> g.sourceNo().equals(p.no())).toList();
+                if (slices.isEmpty()) continue;
                 long start = slices.getFirst().startsAt().toEpochMilli(),
                         end = slices.getLast().endsAt().toEpochMilli();
                 boolean first = before.stream().noneMatch(g -> g.sourceNo().equals(p.no()));

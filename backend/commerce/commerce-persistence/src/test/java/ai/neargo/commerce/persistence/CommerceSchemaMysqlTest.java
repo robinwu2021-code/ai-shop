@@ -191,7 +191,7 @@ class CommerceSchemaMysqlTest {
                             db.name,
                             "mall_shipment"));
             assertEquals(
-                    21,
+                    24,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
                                     + " AND table_name=?",
@@ -333,7 +333,7 @@ class CommerceSchemaMysqlTest {
                                     java.nio.charset.StandardCharsets.UTF_8)
                             .lines()
                             .toList();
-            assertEquals(620, lines.size());
+            assertEquals(623, lines.size());
             for (var line : lines) {
                 var parts = line.split("\t");
                 var actual =

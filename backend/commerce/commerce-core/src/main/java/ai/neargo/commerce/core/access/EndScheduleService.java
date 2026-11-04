@@ -58,6 +58,22 @@ public final class EndScheduleService {
             Set<String> inserted,
             Map<String, List<AccessSegment>> history,
             String actor) {
+        persistTransition(account, codes, op, cut, inserted, history, Map.of(), actor);
+    }
+
+    /**
+     * History has already been verified before source mutation; replacements describe explicit
+     * cuts.
+     */
+    public void persistTransition(
+            AccountSnapshot account,
+            Set<String> codes,
+            String op,
+            Instant cut,
+            Set<String> inserted,
+            Map<String, List<AccessSegment>> history,
+            Map<String, List<AccessSegment>> calculationHistory,
+            String actor) {
         var store = account.store();
         var periods = repo.periods(store);
         long revision = Math.incrementExact(account.entitlementVersion());
@@ -66,7 +82,13 @@ public final class EndScheduleService {
         for (String code : new TreeSet<>(codes)) {
             var before = history.get(code);
             if (before == null) before = repo.segments(store, code);
-            var after = calculate(code, periods, before, cut.toEpochMilli(), inserted);
+            var after =
+                    calculate(
+                            code,
+                            periods,
+                            calculationHistory.getOrDefault(code, before),
+                            cut.toEpochMilli(),
+                            inserted);
             if (!after.equals(before)) changes.add(new Change(code, before, after));
         }
         for (var change : changes)
@@ -134,6 +156,11 @@ public final class EndScheduleService {
                     throw new IllegalStateException("new source already has a schedule");
                 continue;
             }
+            if (period.usableDuration() == 0 && period.duration() != null) {
+                if (slices != null && !slices.isEmpty())
+                    throw new IllegalStateException("closed source has rights");
+                continue;
+            }
             if (slices == null) throw new IllegalStateException("missing accepted source schedule");
             if (period.fixed()) {
                 if (!slices.equals(List.of(segment(period, code, period.start(), period.end()))))
@@ -151,7 +178,7 @@ public final class EndScheduleService {
                                     total,
                                     Math.subtractExact(slice.endsAt().toEpochMilli(), start));
                 }
-                if (total != period.duration())
+                if (total != period.usableDuration())
                     throw new IllegalStateException("incomplete accepted source duration");
             }
         }
@@ -185,7 +212,9 @@ public final class EndScheduleService {
         var result = new ArrayList<AccessSegment>();
         var fixed = new ArrayList<AccessSegment>();
         for (var p : periods) {
-            if (!p.ends().containsKey(code) || !p.fixed()) continue;
+            if (!p.ends().containsKey(code)
+                    || !p.fixed()
+                    || p.duration() != null && p.usableDuration() == 0) continue;
             var block = segment(p, code, p.start(), p.end());
             result.add(block);
             if (p.duration() != null) fixed.add(block);
@@ -198,7 +227,7 @@ public final class EndScheduleService {
         long cursor = cut;
         for (var p : periods) {
             if (p.fixed() || !p.ends().containsKey(code)) continue;
-            long remaining = p.duration();
+            long remaining = p.usableDuration();
             var slices = new ArrayList<AccessSegment>();
             for (var s : old) {
                 if (!s.sourceNo().equals(p.no()) || s.startsAt().toEpochMilli() >= cut) continue;

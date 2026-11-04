@@ -29,6 +29,7 @@ public final class DefaultMallFacade implements MallFacade {
     private final ActorAuthorizationPort auth;
     private final Clock clock;
     private final CommerceIdGenerator ids;
+    private final RefundFacade refunds;
 
     public DefaultMallFacade(
             MallRepository repo,
@@ -39,6 +40,20 @@ public final class DefaultMallFacade implements MallFacade {
             ActorAuthorizationPort auth,
             Clock clock,
             CommerceIdGenerator ids) {
+        this(repo, catalogs, accounts, uow, stores, auth, clock, ids, null);
+    }
+
+    public DefaultMallFacade(
+            MallRepository repo,
+            CatalogRepository catalogs,
+            SubscriptionAccountRepository accounts,
+            CommerceUnitOfWork uow,
+            StoreDirectoryPort stores,
+            ActorAuthorizationPort auth,
+            Clock clock,
+            CommerceIdGenerator ids,
+            RefundFacade refunds) {
+        this.refunds = refunds;
         this.repo = Objects.requireNonNull(repo);
         this.catalogs = Objects.requireNonNull(catalogs);
         this.accounts = Objects.requireNonNull(accounts);
@@ -87,6 +102,10 @@ public final class DefaultMallFacade implements MallFacade {
     }
 
     public QuoteView quote(ActorContext actor, QuoteCommand command) {
+        return quote(actor, command, null);
+    }
+
+    private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade) {
         if (command == null
                 || command.lines() == null
                 || command.lines().isEmpty()
@@ -117,12 +136,25 @@ public final class DefaultMallFacade implements MallFacade {
                     } catch (ArithmeticException e) {
                         throw fail("INVALID_REQUEST");
                     }
-                    long creditLeft =
+                    if (upgrade != null
+                            && account.entitlementVersion() != upgrade.expectedEntitlementVersion())
+                        throw fail("VERSION_CONFLICT");
+                    var conversions =
+                            upgrade == null
+                                    ? List.<ConversionSource>of()
+                                    : repo.conversionSources(store.store(), sources);
+                    if (upgrade != null && conversions.isEmpty()) throw fail("NO_UPGRADE_SOURCE");
+                    long convertedValue =
+                            conversions.stream()
+                                    .mapToLong(ConversionSource::value)
+                                    .reduce(0, Math::addExact);
+                    long historicalAvailable =
                             Math.min(
                                     balance.available(),
                                     lots.stream()
                                             .mapToLong(CreditLot::available)
                                             .reduce(0, Math::addExact));
+                    long creditLeft = Math.addExact(historicalAvailable, convertedValue);
                     var lines = new ArrayList<Line>();
                     int planComponents = 0;
                     String intent = "BUY";
@@ -178,7 +210,24 @@ public final class DefaultMallFacade implements MallFacade {
                                             || !plan.planVersionNo()
                                                     .equals(planMaster.currentVersionNo()))
                                         throw fail("NOT_SELLABLE");
-                                    for (var existing : sources.basePlans())
+                                    if (upgrade != null) {
+                                        if (!plan.planVersionNo()
+                                                        .equals(upgrade.targetPlanVersionNo())
+                                                || quantity != 1
+                                                || allocation.cycles().size() != 1
+                                                || c.gift()) throw fail("INVALID_UPGRADE_TARGET");
+                                        for (var source : conversions)
+                                            if (!source.businessType()
+                                                            .equals(store.businessTypeCode())
+                                                    || source.tier().ordinal()
+                                                            >= plan.tier().ordinal())
+                                                throw fail("INVALID_UPGRADE_TARGET");
+                                        intent = "UPGRADE";
+                                    }
+                                    for (var existing :
+                                            upgrade == null
+                                                    ? sources.basePlans()
+                                                    : List.<BasePlan>of())
                                         if (existing.tier() != PlanTier.FREE) {
                                             if (!existing.planNo().equals(plan.planNo())
                                                     || existing.tier() != plan.tier())
@@ -214,6 +263,10 @@ public final class DefaultMallFacade implements MallFacade {
                                     .flatMap(l -> l.components().stream())
                                     .mapToLong(c -> c.allocation().credit())
                                     .reduce(0, Math::addExact);
+                    if (upgrade != null && planComponents != 1)
+                        throw fail("INVALID_UPGRADE_TARGET");
+                    long convertedUsed = Math.max(0, used - historicalAvailable);
+                    used -= convertedUsed;
                     var uses = new ArrayList<CreditUse>();
                     for (var lot : lots) {
                         long n = Math.min(used, lot.available());
@@ -237,10 +290,14 @@ public final class DefaultMallFacade implements MallFacade {
                                     balance.version(),
                                     type.catalogVersion(),
                                     type.version(),
-                                    "mall-allocation-v1",
+                                    upgrade == null
+                                            ? "mall-allocation-v1"
+                                            : "mall-upgrade-exact-duration-v1",
                                     "historical-fifo-v1",
                                     lines,
-                                    uses);
+                                    uses,
+                                    conversions,
+                                    convertedUsed);
                     try {
                         q.deal();
                         q.gross();
@@ -305,6 +362,13 @@ public final class DefaultMallFacade implements MallFacade {
                 || balance.version() != q.balanceVersion()
                 || !q.currency().equals(sources.currency())) throw fail("VERSION_CONFLICT");
         if (q.digital() && account.pendingChangeOrderNo() != null) throw fail("ACCOUNT_BUSY");
+        for (var source : q.conversions())
+            if (sources.conversions().stream()
+                    .noneMatch(
+                            current ->
+                                    current.periodNo().equals(source.periodNo())
+                                            && current.version() == source.version()))
+                throw fail("VERSION_CONFLICT");
         for (var use : q.creditUses())
             if (lots.stream()
                     .noneMatch(
@@ -445,10 +509,65 @@ public final class DefaultMallFacade implements MallFacade {
     }
 
     public QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand c) {
-        throw fail("UNSUPPORTED");
+        if (c == null
+                || c.targetPlanVersionNo() == null
+                || c.operationNo() == null
+                || c.operationNo().isBlank()) throw fail("INVALID_REQUEST");
+        return uow.required(
+                () -> {
+                    authorize(actor, c.store(), "commerce:mall:purchase");
+                    var catalog = catalogs.load(actor.tenantNo(), CatalogLockMode.NONE);
+                    var candidates =
+                            catalog.skuVersions.values().stream()
+                                    .filter(v -> "PUBLISHED".equals(v.status()))
+                                    .map(CatalogState.SkuVersion::draft)
+                                    .filter(
+                                            d ->
+                                                    c.targetSkuVersionNo() == null
+                                                            || c.targetSkuVersionNo()
+                                                                    .equals(d.skuVersionNo()))
+                                    .filter(
+                                            d -> {
+                                                var master = catalog.skus.get(d.skuNo());
+                                                var product = catalog.products.get(d.productNo());
+                                                return master != null
+                                                        && product != null
+                                                        && "ON_SALE".equals(master.saleStatus())
+                                                        && "ON_SALE".equals(product.saleStatus())
+                                                        && d.skuVersionNo()
+                                                                .equals(master.currentVersionNo());
+                                            })
+                                    .filter(
+                                            d ->
+                                                    d.components().stream()
+                                                            .anyMatch(
+                                                                    part ->
+                                                                            part.kind()
+                                                                                            == ComponentKind
+                                                                                                    .PLAN
+                                                                                    && c.targetPlanVersionNo()
+                                                                                            .equals(
+                                                                                                    part
+                                                                                                            .planVersionNo())))
+                                    .toList();
+                    if (candidates.size() != 1)
+                        throw fail(
+                                candidates.isEmpty()
+                                        ? "INVALID_UPGRADE_TARGET"
+                                        : "AMBIGUOUS_UPGRADE_TARGET");
+                    var target = candidates.getFirst();
+                    return quote(
+                            actor,
+                            new QuoteCommand(
+                                    c.store(),
+                                    List.of(new QuoteLine(target.skuVersionNo(), 1)),
+                                    target.price().currency()),
+                            c);
+                });
     }
 
     public RefundView refund(ActorContext actor, RefundCommand c) {
-        throw fail("UNSUPPORTED");
+        if (refunds == null) throw fail("REFUND_UNAVAILABLE");
+        return refunds.request(actor, c);
     }
 }

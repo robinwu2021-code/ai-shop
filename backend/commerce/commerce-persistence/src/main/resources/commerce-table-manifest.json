@@ -52,6 +52,26 @@
         "nullable": true,
         "mapping": "SkuDraft.maxPerOrder immutable version snapshot; null legacy cannot be newly sold"
       }
+    ],
+    "mall_refund": [
+      {
+        "name": "command_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Frozen verified original payment binding and approved cash request; null legacy is unproven"
+      },
+      {
+        "name": "verified_fact_snapshot",
+        "sql_type": "JSON",
+        "nullable": true,
+        "mapping": "Full independently verified terminal refund fact; null is not completed cash"
+      },
+      {
+        "name": "review_evidence",
+        "sql_type": "VARCHAR(1024)",
+        "nullable": true,
+        "mapping": "Independent operations approval evidence; original buyer reason remains in reason"
+      }
     ]
   },
   "tables": [

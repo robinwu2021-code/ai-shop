@@ -27,6 +27,7 @@ class CommerceQuoteTest {
     String storeCurrency = "CNY";
     String storeMerchant = "merchant";
     List<BasePlan> plans = new ArrayList<>();
+    List<ConversionSource> conversions = List.of();
     final Map<String, Quote> quotes = new HashMap<>();
     final Map<String, Order> orders = new HashMap<>();
     final MallRepository repo =
@@ -36,7 +37,7 @@ class CommerceQuoteTest {
                 }
 
                 public Sources lockSources(StoreRef s, long at) {
-                    return new Sources(storeCurrency, plans, Set.of("BASE"));
+                    return new Sources(storeCurrency, plans, Set.of("BASE"), conversions);
                 }
 
                 public List<CreditLot> lockLots(StoreRef s, String c, long at) {
@@ -418,12 +419,12 @@ class CommerceQuoteTest {
     }
 
     @Test
-    void upgradeAndRefundExplicitlyUnavailableAndCrossStoreOrderReadDenied() {
+    void missingUpgradeSourcesAndDisabledRefundsFailClosedAndCrossStoreReadDenied() {
         error(
-                "UNSUPPORTED",
+                "NO_UPGRADE_SOURCE",
                 () -> facade.quoteUpgrade(buyer, new UpgradeCommand(store, "pv", "op", 1)));
         error(
-                "UNSUPPORTED",
+                "REFUND_UNAVAILABLE",
                 () ->
                         facade.refund(
                                 buyer,
@@ -617,5 +618,248 @@ class CommerceQuoteTest {
                                 buyer,
                                 new PlaceOrderCommand(
                                         another.quoteNo(), "adapter-key", Optional.empty())));
+    }
+
+    void oneCycle(String version) {
+        var v = catalog.skuVersions.get(version);
+        var d = v.draft();
+        var c = d.components().getFirst();
+        var one =
+                new SkuComponent(
+                        c.componentNo(),
+                        c.kind(),
+                        c.planVersionNo(),
+                        c.entitlementCode(),
+                        c.hardwareSkuNo(),
+                        c.periodDays(),
+                        1,
+                        c.allocationWeight(),
+                        c.gift(),
+                        c.activationPolicy());
+        var draft =
+                new SkuDraft(
+                        d.productNo(),
+                        d.skuNo(),
+                        d.skuVersionNo(),
+                        d.title(),
+                        d.listPrice(),
+                        d.price(),
+                        d.allowedBusinessTypes(),
+                        d.refundPolicySnapshot(),
+                        List.of(one),
+                        d.maxPerOrder(),
+                        d.expectedVersion(),
+                        d.reason());
+        catalog.skuVersions.put(
+                version,
+                new CatalogState.SkuVersion(
+                        draft, v.revision(), v.status(), v.version(), v.publishedAt()));
+    }
+
+    @Test
+    void upgradeBindsOneTargetAndRejectsAmbiguousSkuOrWrongTier() {
+        sku("upgrade", ComponentKind.PLAN, "chain", PlanTier.CHAIN, 69900);
+        oneCycle("upgrade");
+        available = 0;
+        conversions =
+                List.of(
+                        new ConversionSource(
+                                "old",
+                                1,
+                                "pro",
+                                PlanTier.PRO,
+                                "RETAIL",
+                                36500,
+                                365L * 86400000,
+                                200L * 86400000,
+                                20000,
+                                "old-pay",
+                                36500,
+                                0));
+        var quote =
+                facade.quoteUpgrade(buyer, new UpgradeCommand(store, "chainv", "up", entitlement));
+        assertEquals(49900, quote.payable().minor());
+        assertEquals(20000, quote.credit().minor());
+        sku("other", ComponentKind.PLAN, "chain", PlanTier.CHAIN, 70000);
+        oneCycle("other");
+        assertEquals(
+                "AMBIGUOUS_UPGRADE_TARGET",
+                assertThrows(
+                                MallException.class,
+                                () ->
+                                        facade.quoteUpgrade(
+                                                buyer,
+                                                new UpgradeCommand(
+                                                        store, "chainv", "up", entitlement)))
+                        .code());
+        assertEquals(
+                49900,
+                facade.quoteUpgrade(
+                                buyer,
+                                new UpgradeCommand(store, "chainv", "up", entitlement, "upgrade"))
+                        .payable()
+                        .minor());
+        assertThrows(
+                MallException.class,
+                () ->
+                        facade.quoteUpgrade(
+                                buyer,
+                                new UpgradeCommand(store, "pv", "wrong", entitlement, "upgrade")));
+        oneCycle("v");
+        assertThrows(
+                MallException.class,
+                () ->
+                        facade.quoteUpgrade(
+                                buyer,
+                                new UpgradeCommand(store, "pv", "same-tier", entitlement, "v")));
+    }
+
+    @Test
+    void upgradesRejectMultiplePaidCyclesAndHardwareCannotUsePlanBalance() {
+        sku("upgrade", ComponentKind.PLAN, "chain", PlanTier.CHAIN, 69900);
+        available = 80000;
+        conversions =
+                List.of(
+                        new ConversionSource(
+                                "gift",
+                                1,
+                                "pro",
+                                PlanTier.PRO,
+                                "RETAIL",
+                                0,
+                                100,
+                                100,
+                                0,
+                                "gift",
+                                0,
+                                0));
+        assertThrows(
+                MallException.class,
+                () ->
+                        facade.quoteUpgrade(
+                                buyer,
+                                new UpgradeCommand(store, "chainv", "up", entitlement, "upgrade")));
+        oneCycle("upgrade");
+        var q =
+                facade.quoteUpgrade(
+                        buyer, new UpgradeCommand(store, "chainv", "up", entitlement, "upgrade"));
+        assertEquals(69900, q.credit().minor());
+        assertEquals(10100, available - quotes.get(q.quoteNo()).historicalCredit());
+        var hardware =
+                facade.quote(
+                        buyer, new QuoteCommand(store, List.of(new QuoteLine("hw", 1)), "CNY"));
+        assertEquals(0, hardware.credit().minor());
+        assertEquals(80, hardware.payable().minor());
+    }
+
+    @Test
+    void futureCyclesRetainFullValueAndMixedSkuOnlySpendsCreditOnItsOnePaidPlan() {
+        sku("upgrade", ComponentKind.PLAN, "chain", PlanTier.CHAIN, 69900);
+        oneCycle("upgrade");
+        available = 0;
+        conversions =
+                List.of(
+                        new ConversionSource(
+                                "current",
+                                1,
+                                "pro",
+                                PlanTier.PRO,
+                                "RETAIL",
+                                36500,
+                                365L * 86400000,
+                                200L * 86400000,
+                                20000,
+                                "old",
+                                36500,
+                                0),
+                        new ConversionSource(
+                                "future",
+                                1,
+                                "pro",
+                                PlanTier.PRO,
+                                "RETAIL",
+                                36500,
+                                365L * 86400000,
+                                365L * 86400000,
+                                36500,
+                                "renew",
+                                36500,
+                                0),
+                        new ConversionSource(
+                                "gift",
+                                1,
+                                "pro",
+                                PlanTier.PRO,
+                                "RETAIL",
+                                0,
+                                30L * 86400000,
+                                30L * 86400000,
+                                0,
+                                "gift",
+                                0,
+                                0));
+        var q =
+                facade.quoteUpgrade(
+                        buyer,
+                        new UpgradeCommand(store, "chainv", "future", entitlement, "upgrade"));
+        assertEquals(56500, q.credit().minor());
+        assertEquals(13400, q.payable().minor());
+        var version = catalog.skuVersions.get("upgrade");
+        var draft = version.draft();
+        var mixed =
+                new SkuDraft(
+                        draft.productNo(),
+                        draft.skuNo(),
+                        draft.skuVersionNo(),
+                        draft.title(),
+                        draft.listPrice(),
+                        draft.price(),
+                        draft.allowedBusinessTypes(),
+                        draft.refundPolicySnapshot(),
+                        List.of(
+                                draft.components().getFirst(),
+                                new SkuComponent(
+                                        "hardware",
+                                        ComponentKind.HARDWARE,
+                                        null,
+                                        null,
+                                        "device",
+                                        null,
+                                        1,
+                                        1,
+                                        false,
+                                        "ON_FULFILLMENT"),
+                                new SkuComponent(
+                                        "pack",
+                                        ComponentKind.END_PACKAGE,
+                                        null,
+                                        "POS",
+                                        null,
+                                        30,
+                                        1,
+                                        1,
+                                        false,
+                                        "ON_FULFILLMENT")),
+                        draft.maxPerOrder(),
+                        draft.expectedVersion(),
+                        draft.reason());
+        catalog.skuVersions.put(
+                "upgrade",
+                new CatalogState.SkuVersion(
+                        mixed,
+                        version.revision(),
+                        version.status(),
+                        version.version(),
+                        version.publishedAt()));
+        var bundle =
+                facade.quoteUpgrade(
+                        buyer,
+                        new UpgradeCommand(store, "chainv", "mixed", entitlement, "upgrade"));
+        assertEquals(23300, bundle.credit().minor());
+        assertEquals(46600, bundle.payable().minor());
+        assertTrue(
+                bundle.components().stream()
+                        .filter(c -> c.kind() != ComponentKind.PLAN)
+                        .allMatch(c -> c.creditAmount().minor() == 0));
     }
 }

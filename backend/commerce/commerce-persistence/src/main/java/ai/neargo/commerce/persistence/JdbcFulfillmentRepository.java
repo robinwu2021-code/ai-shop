@@ -6,6 +6,7 @@ import ai.neargo.commerce.api.mall.*;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.fulfillment.FulfillmentRepository;
 import ai.neargo.commerce.core.mall.MallSnapshot.*;
+import ai.neargo.commerce.core.spi.CreditSlice;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -72,11 +73,11 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                 no);
         jdbc.query(
                 "SELECT t.request_snapshot,t.outcome_snapshot FROM mall_fulfillment_task t JOIN"
-                    + " mall_order_component c ON c.tenant_no=t.tenant_no AND"
-                    + " c.order_component_no=t.order_component_no JOIN mall_order_item i ON"
-                    + " i.tenant_no=c.tenant_no AND i.order_item_no=c.order_item_no WHERE"
-                    + " t.tenant_no=? AND i.order_no=? AND (t.task_type<>'DIGITAL' OR"
-                    + " t.dispatch_state='LEGACY_UNKNOWN') ORDER BY t.id FOR UPDATE",
+                        + " mall_order_component c ON c.tenant_no=t.tenant_no AND"
+                        + " c.order_component_no=t.order_component_no JOIN mall_order_item i ON"
+                        + " i.tenant_no=c.tenant_no AND i.order_item_no=c.order_item_no WHERE"
+                        + " t.tenant_no=? AND i.order_no=? AND (t.task_type<>'DIGITAL' OR"
+                        + " t.dispatch_state='LEGACY_UNKNOWN') ORDER BY t.id FOR UPDATE",
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r -> {
                             if (r.getString(1) == null)
@@ -222,20 +223,20 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                         consume ? "CONSUMED" : "RELEASED",
                         s.tenantNo(),
                         o.orderNo()));
-        if (q.credit() > 0) {
+        if (q.historicalCredit() > 0) {
             changed(
                     jdbc.update(
                             "UPDATE mch_subscription_credit_account SET"
                                 + " reserved_minor=reserved_minor-?,balance_minor=balance_minor-?,version=version+1,updated_at=UTC_TIMESTAMP(3)"
                                 + " WHERE tenant_no=? AND store_no=? AND currency=? AND"
                                 + " reserved_minor>=? AND balance_minor>=?",
-                            q.credit(),
-                            consume ? q.credit() : 0,
+                            q.historicalCredit(),
+                            consume ? q.historicalCredit() : 0,
                             s.tenantNo(),
                             s.storeNo(),
                             q.currency(),
-                            q.credit(),
-                            q.credit()));
+                            q.historicalCredit(),
+                            q.historicalCredit()));
             for (var use : q.creditUses()) {
                 changed(
                         jdbc.update(
@@ -276,6 +277,120 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                         s.tenantNo(),
                         s.storeNo(),
                         o.orderNo()));
+    }
+
+    public void settleConversion(Order o) {
+        var q = o.quote();
+        var s = q.store();
+        guard(s.tenantNo());
+        if (q.conversions().isEmpty()) return;
+        String conversion = o.orderNo();
+        String lot =
+                "conv-"
+                        + ai.neargo.commerce.core.spi.FactDigest.of(
+                                        List.of(s.tenantNo(), o.orderNo()))
+                                .substring(0, 48);
+        var newPeriods =
+                jdbc.queryForList(
+                        "SELECT p.period_no FROM mch_subscription_period p JOIN"
+                                + " mall_order_component c ON c.tenant_no=p.tenant_no AND"
+                                + " p.source_ref_no=CONCAT(c.order_component_no,':1') JOIN"
+                                + " mall_order_item i ON i.tenant_no=c.tenant_no AND"
+                                + " i.order_item_no=c.order_item_no WHERE p.tenant_no=? AND"
+                                + " i.order_no=? AND c.component_type='PLAN' AND p.state='NORMAL'",
+                        String.class,
+                        s.tenantNo(),
+                        o.orderNo());
+        if (newPeriods.size() != 1) throw new MallException("INVALID_UPGRADE_TARGET");
+        Long effective =
+                jdbc.queryForObject(
+                        "SELECT delivered_at FROM mch_subscription_period WHERE tenant_no=? AND"
+                                + " period_no=?",
+                        Long.class,
+                        s.tenantNo(),
+                        newPeriods.getFirst());
+        jdbc.update(
+                "INSERT INTO"
+                    + " mch_subscription_conversion(tenant_no,created_at,updated_at,version,deleted,conversion_no,store_no,order_no,valuation_at,effective_at,new_period_no,currency,converted_minor,credit_consumed_minor,cash_paid_minor,policy_version,status)"
+                    + " VALUES"
+                    + " (?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,?,?,?,?,?,?,?,?,?,?,'exact-duration-v1','COMPLETED')",
+                s.tenantNo(),
+                conversion,
+                s.storeNo(),
+                o.orderNo(),
+                q.valuationAt(),
+                effective,
+                newPeriods.getFirst(),
+                q.currency(),
+                q.convertedValue(),
+                q.convertedCredit(),
+                q.deal() - q.credit());
+        var provenance = new ArrayList<Object>();
+        for (var source : q.conversions()) {
+            jdbc.update(
+                    "INSERT INTO"
+                        + " mch_subscription_conversion_item(tenant_no,created_at,updated_at,version,deleted,conversion_no,source_period_no,basis_minor,original_duration_ms,remaining_duration_ms,converted_minor)"
+                        + " VALUES (?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,?,?,?,?,?,?)",
+                    s.tenantNo(),
+                    conversion,
+                    source.periodNo(),
+                    source.basis(),
+                    source.originalDuration(),
+                    source.remainingDuration(),
+                    source.value());
+            if (source.creditBasis() > 0
+                    && source.creditSlices().stream()
+                                    .mapToLong(CreditSlice::amount)
+                                    .reduce(0, Math::addExact)
+                            != source.creditBasis())
+                throw new MallException("CREDIT_PROVENANCE_MISSING");
+            provenance.add(source);
+        }
+        long remainder = Math.subtractExact(q.convertedValue(), q.convertedCredit());
+        jdbc.update(
+                "INSERT INTO"
+                    + " mch_subscription_credit_account(tenant_no,store_no,currency,balance_minor,reserved_minor,created_at,updated_at,version,deleted)"
+                    + " VALUES (?,?,?, ?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0) ON DUPLICATE KEY"
+                    + " UPDATE"
+                    + " balance_minor=balance_minor+?,version=version+1,updated_at=UTC_TIMESTAMP(3)",
+                s.tenantNo(),
+                s.storeNo(),
+                q.currency(),
+                remainder,
+                remainder);
+        jdbc.update(
+                "INSERT INTO"
+                    + " mch_subscription_credit_lot(tenant_no,created_at,updated_at,version,deleted,credit_lot_no,store_no,currency,source_type,source_ref_no,issued_minor,remaining_minor,reserved_minor,parent_provenance)"
+                    + " VALUES"
+                    + " (?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,?,?,?,'CONVERSION',?,?,?,0,?)",
+                s.tenantNo(),
+                lot,
+                s.storeNo(),
+                q.currency(),
+                conversion,
+                q.convertedValue(),
+                remainder,
+                encode(provenance));
+        for (int seq = 1; seq <= 2; seq++) {
+            long amount = seq == 1 ? q.convertedValue() : q.convertedCredit();
+            if (amount == 0) continue;
+            jdbc.update(
+                    "INSERT INTO"
+                        + " mch_subscription_credit_ledger(tenant_no,created_at,updated_at,version,deleted,ledger_no,store_no,currency,credit_lot_no,event_type,biz_ref_no,event_seq,amount_minor,balance_delta_minor,reserved_delta_minor,reason)"
+                        + " VALUES"
+                        + " (?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,?,?,?,?,?,?,?,?,?,0,'frozen"
+                        + " source conversion')",
+                    s.tenantNo(),
+                    UUID.randomUUID().toString(),
+                    s.storeNo(),
+                    q.currency(),
+                    lot,
+                    seq == 1 ? "ISSUE" : "CONSUME",
+                    o.orderNo(),
+                    seq,
+                    amount,
+                    seq == 1 ? amount : -amount);
+        }
     }
 
     public void prepareDigital(Order o) {
@@ -359,6 +474,45 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                 encode(f),
                 f.tenantNo(),
                 attempt);
+    }
+
+    public boolean digitalOnlyRefund(Order o) {
+        guard(o.quote().store().tenantNo());
+        var scopes =
+                jdbc.queryForList(
+                        "SELECT policy_snapshot FROM mall_refund WHERE tenant_no=? AND order_no=?"
+                                + " AND reviewed_by IS NOT NULL AND status IN"
+                                + " ('APPROVED','DISPATCHING','UNKNOWN','SUCCEEDED') FOR SHARE",
+                        String.class,
+                        o.quote().store().tenantNo(),
+                        o.orderNo());
+        return !scopes.isEmpty()
+                && scopes.stream()
+                        .map(
+                                raw ->
+                                        decode(
+                                                raw,
+                                                ai.neargo.commerce.core.mall.RefundSnapshot.Preview
+                                                        .class))
+                        .allMatch(
+                                p ->
+                                        !p.late()
+                                                && (!p.sources().isEmpty()
+                                                        || !p.pendingTasks().isEmpty()));
+    }
+
+    public boolean lateWholeOrderRefund(Order o) {
+        guard(o.quote().store().tenantNo());
+        return jdbc
+                .queryForList(
+                        "SELECT policy_snapshot FROM mall_refund WHERE tenant_no=? AND order_no=?"
+                                + " AND status='SUCCEEDED' FOR SHARE",
+                        String.class,
+                        o.quote().store().tenantNo(),
+                        o.orderNo())
+                .stream()
+                .map(raw -> decode(raw, ai.neargo.commerce.core.mall.RefundSnapshot.Preview.class))
+                .anyMatch(p -> p.late());
     }
 
     public void shipment(Order o, Operation op) {

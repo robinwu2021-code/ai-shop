@@ -3,6 +3,7 @@ package ai.neargo.commerce.core.mall;
 import ai.neargo.commerce.api.catalog.*;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.mall.*;
+import ai.neargo.commerce.core.spi.ConversionSource;
 
 import java.time.Instant;
 import java.util.*;
@@ -19,8 +20,17 @@ public final class MallSnapshot {
 
     public record BasePlan(String planNo, PlanTier tier) {}
 
-    public record Sources(String currency, List<BasePlan> basePlans, Set<String> permanentCodes) {
+    public record Sources(
+            String currency,
+            List<BasePlan> basePlans,
+            Set<String> permanentCodes,
+            List<ConversionSource> conversions) {
+        public Sources(String currency, List<BasePlan> basePlans, Set<String> permanentCodes) {
+            this(currency, basePlans, permanentCodes, List.of());
+        }
+
         public Sources {
+            conversions = conversions == null ? List.of() : List.copyOf(conversions);
             basePlans = List.copyOf(basePlans);
             permanentCodes = Set.copyOf(permanentCodes);
         }
@@ -72,8 +82,58 @@ public final class MallSnapshot {
             String pricingPolicyVersion,
             String stackingPolicyVersion,
             List<Line> lines,
-            List<CreditUse> creditUses) {
+            List<CreditUse> creditUses,
+            List<ConversionSource> conversions,
+            Long convertedCredit) {
+        public Quote(
+                String quoteNo,
+                StoreRef store,
+                String entityNo,
+                String buyerNo,
+                String businessType,
+                String intent,
+                String currency,
+                long valuationAt,
+                long expiresAt,
+                long entitlementVersion,
+                long accountVersion,
+                long balanceVersion,
+                long catalogVersion,
+                long businessTypeVersion,
+                String pricingPolicyVersion,
+                String stackingPolicyVersion,
+                List<Line> lines,
+                List<CreditUse> creditUses) {
+            this(
+                    quoteNo,
+                    store,
+                    entityNo,
+                    buyerNo,
+                    businessType,
+                    intent,
+                    currency,
+                    valuationAt,
+                    expiresAt,
+                    entitlementVersion,
+                    accountVersion,
+                    balanceVersion,
+                    catalogVersion,
+                    businessTypeVersion,
+                    pricingPolicyVersion,
+                    stackingPolicyVersion,
+                    lines,
+                    creditUses,
+                    List.of(),
+                    0L);
+        }
+
         public Quote {
+            if (convertedCredit == null) {
+                if ("UPGRADE".equals(intent))
+                    throw new IllegalArgumentException("missing upgrade credit evidence");
+                convertedCredit = 0L;
+            }
+            conversions = conversions == null ? List.of() : List.copyOf(conversions);
             lines = List.copyOf(lines);
             creditUses = List.copyOf(creditUses);
         }
@@ -90,7 +150,17 @@ public final class MallSnapshot {
                     .reduce(0, Math::addExact);
         }
 
+        public long convertedValue() {
+            return conversions.stream()
+                    .mapToLong(ConversionSource::value)
+                    .reduce(0, Math::addExact);
+        }
+
         public long credit() {
+            return Math.addExact(historicalCredit(), convertedCredit);
+        }
+
+        public long historicalCredit() {
             return creditUses.stream().mapToLong(CreditUse::amount).reduce(0, Math::addExact);
         }
 

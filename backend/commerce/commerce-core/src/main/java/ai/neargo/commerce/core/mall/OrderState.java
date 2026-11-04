@@ -27,6 +27,7 @@ public final class OrderState {
     public enum Refund {
         NONE,
         REFUNDING,
+        PARTIAL,
         REFUNDED
     }
 
@@ -45,6 +46,7 @@ public final class OrderState {
 
         public OrderStatus status() {
             if (refund == Refund.REFUNDING) return OrderStatus.REFUNDING;
+            if (refund == Refund.PARTIAL) return OrderStatus.PARTIALLY_REFUNDED;
             if (refund == Refund.REFUNDED) return OrderStatus.REFUNDED;
             return switch (payment) {
                 case CANCEL_PENDING -> OrderStatus.CANCEL_PENDING;

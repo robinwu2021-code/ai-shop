@@ -52,8 +52,19 @@ public class CommerceMallAutoConfiguration {
             CommerceUnitOfWork uow,
             StoreDirectoryPort stores,
             ActorAuthorizationPort authorization,
-            CommerceIdGenerator ids) {
+            CommerceIdGenerator ids,
+            org.springframework.beans.factory.ObjectProvider<
+                            ai.neargo.commerce.api.mall.RefundFacade>
+                    refunds) {
         return new DefaultMallFacade(
-                orders, catalog, accounts, uow, stores, authorization, Clock.systemUTC(), ids);
+                orders,
+                catalog,
+                accounts,
+                uow,
+                stores,
+                authorization,
+                Clock.systemUTC(),
+                ids,
+                refunds.getIfAvailable());
     }
 }

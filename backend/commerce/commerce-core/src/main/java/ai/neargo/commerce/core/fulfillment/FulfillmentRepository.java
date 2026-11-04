@@ -60,11 +60,28 @@ public interface FulfillmentRepository {
      */
     void settleHolds(Order order, boolean consume);
 
+    /**
+     * Records conversion and its provenance credit inside the grouped source delivery transaction.
+     */
+    default void settleConversion(Order order) {
+        if (!order.quote().conversions().isEmpty())
+            throw new UnsupportedOperationException("conversion unavailable");
+    }
+
     void prepareDigital(Order order);
 
     void digitalCompleted(Order order);
 
     void paid(Order order, VerifiedPaymentFact fact, String attemptNo);
+
+    /** Persisted approved ordinary digital-only refund scope; never late whole-order refunds. */
+    default boolean digitalOnlyRefund(Order order) {
+        return false;
+    }
+
+    default boolean lateWholeOrderRefund(Order order) {
+        return false;
+    }
 
     void shipment(Order order, Operation operation);
 }

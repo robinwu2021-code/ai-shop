@@ -23,6 +23,15 @@ public interface MallRepository {
 
     List<CreditLot> lockLots(StoreRef store, String currency, long at);
 
+    /**
+     * Called after account, balance, sources and lots are locked; financial ancestry uses current
+     * reads.
+     */
+    default List<ai.neargo.commerce.core.spi.ConversionSource> conversionSources(
+            StoreRef store, Sources sources) {
+        return sources.conversions();
+    }
+
     void saveQuote(Quote quote, String actor);
 
     Optional<Quote> quote(String tenant, String quoteNo);

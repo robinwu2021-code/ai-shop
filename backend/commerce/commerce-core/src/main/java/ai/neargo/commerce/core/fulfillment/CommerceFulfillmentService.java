@@ -135,7 +135,12 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                                 == c.snapshot().allocation().cycles().size());
         return new FulfillmentResult(
                 o.orderNo(),
-                digitalDone(components) ? AsyncStatus.SUCCEEDED : AsyncStatus.PENDING,
+                digitalDone(components)
+                        ? AsyncStatus.SUCCEEDED
+                        : components.stream()
+                                        .anyMatch(c -> c.fulfillmentStatus().equals("CANCELLED"))
+                                ? AsyncStatus.FAILED
+                                : AsyncStatus.PENDING,
                 hardwareDone ? AsyncStatus.SUCCEEDED : AsyncStatus.PENDING,
                 accounts.readEntitlementVersion(o.quote().store()));
     }
@@ -534,7 +539,9 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                                 d, snapshot.plan(), snapshot.ends()));
                             }
                         }
-                        subscriptions.deliverOrder(o.quote().store(), o.orderNo(), batch);
+                        subscriptions.deliverOrder(
+                                o.quote().store(), o.orderNo(), batch, o.quote().conversions());
+                        repo.settleConversion(o);
                         repo.digitalCompleted(o);
                         repo.settleHolds(o, true);
                     }
@@ -717,7 +724,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         c.orderNo(),
                         o -> {
                             if (o.axes().payment() != Payment.PAID
-                                    || o.axes().refund() != Refund.NONE)
+                                    || o.axes().refund() != Refund.NONE
+                                            && !repo.digitalOnlyRefund(o))
                                 throw fail("INVALID_STATE");
                             var component =
                                     orders.components(o.quote().store(), o.orderNo()).stream()
@@ -877,6 +885,10 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
             } catch (RuntimeException ignored) {
             }
         var current = locked(q.tenantNo(), q.orderNo(), Function.identity());
+        if (current.axes().payment() == Payment.PAID
+                && current.axes().refund() == Refund.REFUNDED
+                && locked(q.tenantNo(), q.orderNo(), repo::lateWholeOrderRefund))
+            return releaseInventory(q, true);
         if (current.axes().payment() == Payment.PAID && current.axes().refund() == Refund.NONE)
             return fulfill(q);
         return locked(q.tenantNo(), q.orderNo(), this::result);
@@ -906,14 +918,27 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
             if (!response.definitivelyClosed())
                 return locked(q.tenantNo(), q.orderNo(), this::result);
         }
+        return releaseInventory(q, false);
+    }
+
+    private FulfillmentResult releaseInventory(FulfillmentQuery q, boolean lateRefund) {
         var releases =
                 locked(
                         q.tenantNo(),
                         q.orderNo(),
                         o -> {
-                            if (o.axes().payment() != Payment.CANCEL_PENDING)
+                            if (lateRefund
+                                    ? o.axes().payment() != Payment.PAID
+                                            || o.axes().refund() != Refund.REFUNDED
+                                            || !repo.lateWholeOrderRefund(o)
+                                    : o.axes().payment() != Payment.CANCEL_PENDING)
                                 return List.<Operation>of();
                             var all = ops(o);
+                            // A late whole-order cash refund never authorizes a return of shipped
+                            // stock.
+                            // Any dispatched shipment is unresolved ownership and must fail closed.
+                            if (lateRefund && all.stream().anyMatch(x -> x.kind().equals("SHIP")))
+                                throw fail("SHIPMENT_CONFLICT");
                             var pending = new ArrayList<Operation>();
                             for (var reserve : all)
                                 if (reserve.kind().equals("RESERVE")) {
@@ -961,7 +986,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 q.tenantNo(),
                 q.orderNo(),
                 o -> {
-                    if (o.axes().payment() != Payment.CANCEL_PENDING) return result(o);
+                    if (lateRefund || o.axes().payment() != Payment.CANCEL_PENDING)
+                        return result(o);
                     var all = ops(o);
                     boolean closed =
                             payment(o).isEmpty()

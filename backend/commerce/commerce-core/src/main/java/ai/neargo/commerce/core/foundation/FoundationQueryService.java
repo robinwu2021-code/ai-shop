@@ -162,6 +162,24 @@ public final class FoundationQueryService implements FoundationQueryFacade {
                         throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
                     long now = checkExpiry(member.sessionExpiry());
                     var sub = subscription(account, periods, state, now);
+                    var activeSources =
+                            periods.stream()
+                                    .filter(p -> "NORMAL".equals(p.lifecycle()))
+                                    .map(Period::no)
+                                    .collect(java.util.stream.Collectors.toSet());
+                    // Retired slices may explain historical expiry, but never grant current/future
+                    // access.
+                    schedules.replaceAll(
+                            (code, rows) ->
+                                    rows.stream()
+                                            .filter(
+                                                    row ->
+                                                            activeSources.contains(row.sourceNo())
+                                                                    || row.endsAt() != null
+                                                                            && row.endsAt()
+                                                                                            .toEpochMilli()
+                                                                                    <= now)
+                                            .toList());
                     var items = new ArrayList<Right>();
                     for (var e : ends.entrySet()) {
                         var g = grants.get(e.getKey());
@@ -259,9 +277,11 @@ public final class FoundationQueryService implements FoundationQueryFacade {
                             p.fixed() ? p.start() : null,
                             p.fixed() ? p.end() : null,
                             p.duration(),
-                            p.ends().keySet().stream().sorted().toList());
+                            p.ends().keySet().stream().sorted().toList(),
+                            p.lifecycle(),
+                            p.revokedDuration());
             sources.add(src);
-            if (!p.fixed()) continue;
+            if (!p.fixed() || !"NORMAL".equals(p.lifecycle())) continue;
             if ("FREE".equals(p.sourceType())
                     && "FREE".equals(p.tier())
                     && p.duration() == null

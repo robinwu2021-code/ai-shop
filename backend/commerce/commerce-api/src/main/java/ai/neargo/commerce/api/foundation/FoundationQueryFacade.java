@@ -70,7 +70,37 @@ public interface FoundationQueryFacade {
             Long planStartsAt,
             Long planEndsAt,
             Long grantedDurationMs,
-            List<String> entitlementCodes) {}
+            List<String> entitlementCodes,
+            String lifecycle,
+            long revokedDurationMs) {
+        public Source(
+                String sourceNo,
+                String sourceType,
+                String planNo,
+                String planVersionNo,
+                String tier,
+                String displayName,
+                boolean gift,
+                Long planStartsAt,
+                Long planEndsAt,
+                Long grantedDurationMs,
+                List<String> entitlementCodes) {
+            this(
+                    sourceNo,
+                    sourceType,
+                    planNo,
+                    planVersionNo,
+                    tier,
+                    displayName,
+                    gift,
+                    planStartsAt,
+                    planEndsAt,
+                    grantedDurationMs,
+                    entitlementCodes,
+                    "NORMAL",
+                    0);
+        }
+    }
 
     record Subscription(
             String storeNo,

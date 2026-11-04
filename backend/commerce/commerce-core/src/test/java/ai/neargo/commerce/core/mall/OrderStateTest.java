@@ -29,6 +29,9 @@ class OrderStateTest {
                 OrderStatus.REFUNDING, OrderState.parse("PAID", "COMPLETED", "REFUNDING").status());
         assertEquals(
                 OrderStatus.REFUNDED, OrderState.parse("PAID", "COMPLETED", "REFUNDED").status());
+        assertEquals(
+                OrderStatus.PARTIALLY_REFUNDED,
+                OrderState.parse("PAID", "PENDING", "PARTIAL").status());
         assertEquals(OrderStatus.CLOSED, OrderState.parse("CLOSED", "PENDING", "NONE").status());
     }
 
@@ -40,6 +43,7 @@ class OrderStateTest {
                     {"PAID", "WAIT_INVENTORY", "NONE"},
                     {"CLOSED", "COMPLETED", "NONE"},
                     {"UNPAID", "PENDING", "REFUNDED"},
+                    {"CLOSED", "PENDING", "PARTIAL"},
                     {"invented", "PENDING", "NONE"},
                     {"UNPAID", "AWAITING_PAYMENT", "NONE"}
                 })
