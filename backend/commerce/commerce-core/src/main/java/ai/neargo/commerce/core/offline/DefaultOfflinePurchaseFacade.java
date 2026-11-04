@@ -28,6 +28,23 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     private final PrivateEvidencePort media;
     private final Clock clock;
     private final CommerceIdGenerator ids;
+    private String profileNo;
+    public DefaultOfflinePurchaseFacade(MallRepository orders,FulfillmentRepository operations,OfflineRepository offline,
+            SubscriptionAccountRepository accounts,CommerceUnitOfWork uow,StoreDirectoryPort stores,ActorAuthorizationPort auth,
+            DefaultMallFacade mall,PaymentFacade payments,RefundFacade refunds,OfflineCollectionPort collection,
+            PrivateEvidencePort media,Clock clock,CommerceIdGenerator ids,String profileNo) {
+        this(orders,operations,offline,accounts,uow,stores,auth,mall,payments,refunds,collection,media,clock,ids);
+        if(profileNo==null || profileNo.isBlank() || profileNo.length()>64)throw new IllegalArgumentException("OFFLINE_PROFILE_REQUIRED");
+        this.profileNo=profileNo;
+    }
+    public QuoteView quote(ActorContext actor,QuoteCommand command) {
+        uow.requireOutsideTransaction();
+        if(profileNo==null)throw fail("OFFLINE_UNAVAILABLE");
+        if(actor==null || command==null || command.store()==null || command.currency()==null)throw fail("INVALID_REQUEST");
+        // Pay-domain read happens before any commerce transaction; the quote re-verifies currency and freezes terms.
+        var terms=collection.terms(actor.tenantNo(),profileNo,command.currency()).orElseThrow(()->fail("OFFLINE_UNAVAILABLE"));
+        return mall.quoteOffline(actor,command,terms);
+    }
     public DefaultOfflinePurchaseFacade(MallRepository orders,FulfillmentRepository operations,OfflineRepository offline,
             SubscriptionAccountRepository accounts,CommerceUnitOfWork uow,StoreDirectoryPort stores,ActorAuthorizationPort auth,
             DefaultMallFacade mall,PaymentFacade payments,RefundFacade refunds,OfflineCollectionPort collection,
@@ -181,6 +198,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         uow.requireOutsideTransaction();
         if(!"ACCEPTED".equals(a.status()))return a;
         String status="APPLIED",moneyNo=null;
+        try {
         if("CONFIRM".equals(a.kind())) {
             var c=a.review();
             var observed=collection.confirm(new OfflineCollectionPort.ManualPayment(a.payment(),a.operatorNo(),c.actualAmount(),
@@ -194,6 +212,18 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             collection.reconcile(new OfflineCollectionPort.Reconciliation(a.payment(),a.operatorNo(),c.reconciliationReference(),c.reason(),
                     c.evidenceKey(),java.time.Instant.ofEpochMilli(a.acceptedAt()),c.unmatchedDispositions()));
         } else throw fail("INVALID_STATE");
+        } catch(IllegalArgumentException refused) {
+            // The money authority validated and definitively refused this request (no row written).
+            // Persist a terminal outcome; transport/unknown failures stay ACCEPTED for recovery.
+            String reason=refused.getMessage()==null || refused.getMessage().isBlank()?"OFFLINE_REJECTED":refused.getMessage();
+            var query=new FulfillmentQuery(a.order().store().tenantNo(),a.order().orderNo());
+            trusted(query,o->{
+                var current=offline.action(query.tenantNo(),query.orderNo(),a.actionNo()).orElseThrow(()->fail("NOT_FOUND"));
+                if("ACCEPTED".equals(current.status()))offline.saveAction(current.rejected(reason));
+                return null;
+            });
+            throw fail(reason.length()>64?"OFFLINE_REJECTED":reason);
+        }
         var query=new FulfillmentQuery(a.order().store().tenantNo(),a.order().orderNo());
         if(!"UNMATCHED".equals(status))payments.refresh(query);
         var finished=a.completed(status,moneyNo);
@@ -207,7 +237,12 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         uow.requireOutsideTransaction();
         if(query==null)throw fail("INVALID_REQUEST");
         var pending=trusted(query,o->offline.pending(query.tenantNo(),query.orderNo()));
-        for(var action:pending)advance(action);
+        RuntimeException first=null;
+        for(var action:pending) {
+            try { advance(action); }
+            catch(RuntimeException failure) { if(first==null)first=failure; else first.addSuppressed(failure); }
+        }
+        if(first!=null)throw first;
     }
 
 }

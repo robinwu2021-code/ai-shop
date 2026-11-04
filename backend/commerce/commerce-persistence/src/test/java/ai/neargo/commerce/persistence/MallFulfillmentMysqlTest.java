@@ -1407,6 +1407,7 @@ class MallFulfillmentMysqlTest {
             var tree = mapper.valueToTree(original);
             ((tools.jackson.databind.node.ObjectNode) tree.get("payment")).remove("preparedAt");
             ((tools.jackson.databind.node.ObjectNode) tree.get("payment")).remove("buyerIdentity");
+            ((tools.jackson.databind.node.ObjectNode) tree.get("payment")).remove("offline");
             String request = mapper.writeValueAsString(tree);
             String hash = ai.neargo.commerce.core.spi.FactDigest.of(List.of(request));
             db.jdbc.update(

@@ -12,9 +12,16 @@ public interface OfflineRepository {
     }
     record Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,
             ReviewCommand review,VoidCommand reconciliation,ai.neargo.commerce.api.port.PaymentIntentCommand payment,
-            String status,String paymentNo) {
+            String status,String paymentNo,String rejection) {
+        public Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,
+                ReviewCommand review,VoidCommand reconciliation,ai.neargo.commerce.api.port.PaymentIntentCommand payment,
+                String status,String paymentNo) {
+            this(actionNo,kind,order,operatorNo,acceptedAt,review,reconciliation,payment,status,paymentNo,null);
+        }
         public ActionView view() { return new ActionView(actionNo,status,paymentNo); }
-        public Action completed(String status,String paymentNo) { return new Action(actionNo,kind,order,operatorNo,acceptedAt,review,reconciliation,payment,status,paymentNo); }
+        public Action completed(String status,String paymentNo) { return new Action(actionNo,kind,order,operatorNo,acceptedAt,review,reconciliation,payment,status,paymentNo,null); }
+        /** Definite pay-domain refusal: terminal, so it never blocks later actions or recovery. */
+        public Action rejected(String reason) { return new Action(actionNo,kind,order,operatorNo,acceptedAt,review,reconciliation,payment,"REJECTED",null,reason); }
     }
     Optional<Action> action(String tenant,String orderNo,String actionNo);
     List<Action> pending(String tenant,String orderNo);

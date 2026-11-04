@@ -7,11 +7,11 @@ import org.springframework.dao.DuplicateKeyException;
 
 class CommerceSchemaMysqlTest {
     @Test
-    void ownsThirtyTwoTablesAndIndependentHistory() {
+    void ownsThirtySixTablesAndIndependentHistory() {
         try (var db = new MysqlDatabase()) {
             db.migrate();
             assertEquals(
-                    33,
+                    36,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=?",
                             Integer.class,

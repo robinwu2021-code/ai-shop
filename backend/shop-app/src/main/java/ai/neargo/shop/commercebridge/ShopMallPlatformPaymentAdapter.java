@@ -26,6 +26,7 @@ public final class ShopMallPlatformPaymentAdapter implements PlatformPaymentPort
     }
 
     private PlatformCollectionService.Request original(PaymentIntentCommand c) {
+        if (c != null && "OFFLINE".equals(c.channel())) return offline(c);
         if (c == null || c.buyerIdentity() == null || c.preparedAt() == null) return null;
         var raw = c.buyerIdentity();
         if (!"MERCHANT".equals(raw.realm())
@@ -59,9 +60,37 @@ public final class ShopMallPlatformPaymentAdapter implements PlatformPaymentPort
                         proof.providerIdentity()));
     }
 
+    /**
+     * Bank transfer has no payer binding: the frozen pay-domain terms are the only route evidence,
+     * and the ledger re-verifies them against the current immutable profile version on issuance.
+     */
+    private static PlatformCollectionService.Request offline(PaymentIntentCommand c) {
+        if (c.offline() == null
+                || c.preparedAt() == null
+                || !"BANK_TRANSFER".equals(c.payMethod())
+                || !c.offline().platformMerchantNo().equals(c.platformMerchantNo())
+                || !c.offline().currency().equals(c.amount().currency())) return null;
+        return new PlatformCollectionService.Request(
+                new PlatformCollectionService.Key(c.tenantNo(), c.orderNo(), c.paymentAttemptNo()),
+                c.buyerNo(),
+                c.platformMerchantNo(),
+                c.channel(),
+                c.payMethod(),
+                c.amount().minor(),
+                c.amount().currency(),
+                c.expiresAt().toEpochMilli(),
+                c.preparedAt().toEpochMilli(),
+                null,
+                ShopMallOfflineCollectionAdapter.instructions(c.offline()));
+    }
+
     public PaymentOutcome create(PaymentIntentCommand c) {
         var request = original(c);
-        if (request == null) return unavailable(c.orderNo(), c, "PAYER_BINDING_UNPROVEN");
+        if (request == null)
+            return unavailable(
+                    c.orderNo(),
+                    c,
+                    "OFFLINE".equals(c.channel()) ? "OFFLINE_INTENT_INVALID" : "PAYER_BINDING_UNPROVEN");
         return payment(collection.create(request), c);
     }
 

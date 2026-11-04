@@ -91,8 +91,10 @@ class ShopMallConfiguration {
             ObjectProvider<PayGateway> gateways,
             @Value("${commerce.mall.payment.enabled:false}") boolean enabled,
             @Value("${commerce.mall.payment.platform-merchant-no:}") String recipient,
-            @Value("${commerce.mall.payment.routes:}") String routes) {
-        Set<String> allowed = new HashSet<>(Arrays.asList(routes.split(",")));
+            @Value("${commerce.mall.payment.routes:}") String routes,
+            @Value("${commerce.mall.offline.enabled:false}") boolean offlineEnabled) {
+        Set<String> allowed = new HashSet<>();
+        for (String route : routes.split(",")) allowed.add(route.trim());
         // Capabilities read local configuration/certificate availability only, never provider IO.
         var options =
                 gateways.orderedStream()
@@ -116,7 +118,9 @@ class ShopMallConfiguration {
                                                                         c.currency(),
                                                                         c.maximumMinor())))
                         .toList();
-        return new ShopMallCheckoutReadiness(enabled, inventory, () -> options, bindings);
+        boolean offline = enabled && offlineEnabled && allowed.contains("OFFLINE:BANK_TRANSFER");
+        return new ShopMallCheckoutReadiness(
+                enabled, inventory, () -> options, bindings, offline, recipient);
     }
 
     @Bean
@@ -126,6 +130,16 @@ class ShopMallConfiguration {
             ObjectProvider<PlatformRefundService> refunds,
             ShopMallPayerBindings bindings) {
         return new ShopMallPlatformPaymentAdapter(collection, refunds.getIfAvailable(), bindings);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "commerce.mall",
+            name = {"payment.enabled", "offline.enabled"},
+            havingValue = "true")
+    ai.neargo.commerce.api.port.OfflineCollectionPort mallOfflineCollection(
+            PlatformCollectionService collection) {
+        return new ShopMallOfflineCollectionAdapter(collection);
     }
 
     @Bean

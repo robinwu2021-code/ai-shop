@@ -34,7 +34,7 @@ class CommerceMigrationIsolationTest {
             migrate(runner(db));
             migrate(runner(db));
             assertEquals(
-                    "9",
+                    "10",
                     db.jdbc.queryForObject(
                             "SELECT version FROM commerce_schema_history WHERE success=1 ORDER BY"
                                     + " installed_rank DESC LIMIT 1",

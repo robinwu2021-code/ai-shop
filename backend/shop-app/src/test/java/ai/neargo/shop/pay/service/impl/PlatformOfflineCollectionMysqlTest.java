@@ -10,10 +10,11 @@ import java.util.regex.Pattern;
 
 class PlatformOfflineCollectionMysqlTest {
     @Test
-    void unfinishedOfflineEntryPointsAreDisabledByDefault() throws Exception {
+    void offlineEntryPointsRejectMissingInputWithoutWritingMoney() throws Exception {
         try(var f=new PlatformCollectionMysqlTest.Fixture()) {
-            assertThrows(IllegalStateException.class,()->f.service.configureOffline(null));
-            assertThrows(IllegalStateException.class,()->f.service.confirmOffline(null));
+            assertThrows(IllegalArgumentException.class,()->f.service.configureOffline(null));
+            assertThrows(IllegalArgumentException.class,()->f.service.confirmOffline(null));
+            assertThrows(IllegalArgumentException.class,()->f.service.reconcileOffline(null));
             assertEquals(0,f.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment",Integer.class));
         }
     }
@@ -36,6 +37,21 @@ class PlatformOfflineCollectionMysqlTest {
             f.base.service.create(b);
             assertThrows(IllegalArgumentException.class, () -> f.base.service.confirmOffline(f.proof(b, "bank-1", 10000, "TWD", "NORMAL")));
             assertEquals(1, f.base.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS' AND direction='PAY'", Integer.class));
+        }
+    }
+
+    @Test
+    void secondRealDepositAfterPaymentIsRecordedAsUnmatchedNotLost() throws Exception {
+        try (var f = new Fixture()) {
+            var a = f.request("A", f.profile(1, "TWD"));
+            f.base.service.create(a);
+            assertEquals("MATCHED", f.base.service.confirmOffline(f.proof(a, "first", 10000, "TWD", "NORMAL")).disposition());
+            var again = f.base.service.confirmOffline(f.proof(a, "second", 10000, "TWD", "NORMAL"));
+            assertEquals("UNMATCHED", again.disposition());
+            assertEquals("MALL_UNMATCHED", f.base.jdbc.queryForObject("SELECT pay_scene FROM stl_payment WHERE payment_no=?", String.class, again.receipt().paymentNo()));
+            assertEquals(2, f.base.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS' AND direction='PAY'", Integer.class));
+            assertEquals("SUCCESS", f.base.service.query(a.key()).state());
+            assertEquals(again, f.base.service.confirmOffline(f.proof(a, "second", 10000, "TWD", "NORMAL")));
         }
     }
 

@@ -20,6 +20,11 @@ public interface OfflinePurchaseFacade {
     record VoidCommand(OrderQuery order,String actionNo,String reconciliationReference,String reason,String evidenceKey,
             Map<String,String> unmatchedDispositions) { public VoidCommand { unmatchedDispositions=Map.copyOf(unmatchedDispositions); } }
     record ActionView(String actionNo,String status,String paymentNo) {}
+    /**
+     * Offline quote: collection terms come only from the trusted pay-domain profile configured for this deployment,
+     * never from the caller. A merchant ACCOUNT quotes for itself; an OPERATOR quotes as assisted STORE purchase.
+     */
+    QuoteView quote(ActorContext actor, QuoteCommand command);
     ActionView confirm(ActorContext actor,ReviewCommand command);
     ActionView voidOrder(ActorContext actor,VoidCommand command);
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */

@@ -91,8 +91,10 @@ final class PlatformOfflineLedger {
                     require(p.equals(json.readValue((String)prior.getFirst().get("platform_manual_proof"),OfflineProof.class)),"OFFLINE_BANK_REFERENCE_CONFLICT");
                     return jdbc.query("SELECT payment_request_json FROM stl_payment WHERE payment_no=?",(rs,n)->json.readValue(rs.getString(1),PlatformCollectionServiceImpl.Frozen.class).request().key(),prior.getFirst().get("payment_no")).getFirst();
                 }
-                require(!"SUCCESS".equals(original.state()),"OFFLINE_FIRST_PROOF_CONFLICT");
-                boolean matches = r.currency().equals(p.currency()) && r.amountMinor()==p.actualMinor();
+                // A further real deposit against an already-paid intent is still money: keep it as an
+                // unmatched row awaiting disposition instead of rejecting and losing the fact.
+                boolean matches = !"SUCCESS".equals(original.state())
+                        && r.currency().equals(p.currency()) && r.amountMinor()==p.actualMinor();
                 if (matches) {
                     jdbc.update("UPDATE stl_payment SET status='SUCCESS',trade_no=?,succeeded_at=?,platform_bank_ref_key=?,platform_manual_proof=?,platform_handoff_state='PENDING',err_code=NULL,version=version+1 WHERE payment_no=?",
                             p.bankReference(),p.actualPaidAt(),referenceKey,json.writeValueAsString(p),original.paymentNo());
