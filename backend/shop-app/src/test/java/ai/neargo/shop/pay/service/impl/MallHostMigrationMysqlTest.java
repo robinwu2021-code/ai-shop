@@ -47,6 +47,11 @@ class MallHostMigrationMysqlTest {
                 ScriptUtils.executeSqlScript(
                         connection,
                         new ClassPathResource("db/migration/V556__commerce_mall_permissions.sql"));
+                for (int replay = 0; replay < 2; replay++)
+                    ScriptUtils.executeSqlScript(
+                            connection,
+                            new ClassPathResource(
+                                    "db/migration/V558__commerce_offline_permissions.sql"));
             }
             // V555 adds 5 platform_* columns; the fixture schema already carries V557's
             // platform_bank_ref_key / platform_manual_proof / platform_reconciliation_proof.
@@ -64,14 +69,21 @@ class MallHostMigrationMysqlTest {
                                 + " table_schema=DATABASE() AND table_name='stl_payment' AND"
                                 + " index_name='idx_platform_handoff'",
                             Integer.class));
+            // V556 nine mall points + V558 eight offline points, each granted once to SUPER_ADMIN.
             assertEquals(
-                    9,
+                    17,
                     f.jdbc.queryForObject(
                             "SELECT count(*) FROM sys_function_point WHERE point_code LIKE"
                                 + " 'ACT__COMMERCE_%'",
                             Integer.class));
             assertEquals(
-                    9, f.jdbc.queryForObject("SELECT count(*) FROM sys_role_point", Integer.class));
+                    17, f.jdbc.queryForObject("SELECT count(*) FROM sys_role_point", Integer.class));
+            assertEquals(
+                    1,
+                    f.jdbc.queryForObject(
+                            "SELECT count(*) FROM sys_function_point WHERE"
+                                + " perm_code='commerce:mall:offline:confirm'",
+                            Integer.class));
             assertEquals("PENDING", f.service.create(f.request("after-migration")).state());
         }
     }
