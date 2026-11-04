@@ -360,4 +360,21 @@ class SkuPublicationTest {
                         null, saved.draftVersionNo(), saved.version(), 1, "base stays permanent"));
         assertEquals(1, f.facade.catalog(f.ops, "RETAIL").skus().size());
     }
+    @Test
+    void newTwdPublicationRejectsFractionalPreviouslySavedDraft() {
+        var f = new CatalogFixture();
+        f.setup(); f.plans(); f.product();
+        f.facade.publishIndustry(f.ops, f.publication(List.of(), 0));
+        var d = f.sku();
+        f.facade.saveSku(f.ops, new SkuDraft(d.productNo(), d.skuNo(), d.skuVersionNo(), d.title(),
+                new Money("TWD", 69901), new Money("TWD", 69901), d.allowedBusinessTypes(),
+                d.refundPolicySnapshot(), d.components(), d.maxPerOrder(), d.expectedVersion(), d.reason()));
+        var current = new DefaultCatalogFacade(f.repo, f.uow, (a, cap) -> true, f.readiness, f.events,
+                java.time.Clock.systemUTC(), f.ids,
+                (t, c) -> Optional.of(new MoneyPolicy("twd-v1", "TWD", 2, 100, 100)));
+        assertThrows(CatalogException.class, () -> current.publishSku(f.ops,
+                new SkuPublicationCommand("grid", "sku-1", 1, 1, "publish")));
+        assertEquals("DRAFT", f.repo.load("tenant-a", CatalogLockMode.NONE).skuVersions.get("sku-1").status());
+    }
+
 }

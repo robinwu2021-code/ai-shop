@@ -1102,6 +1102,10 @@ CREATE TABLE IF NOT EXISTS stl_payment
     platform_receipt_json MEDIUMTEXT DEFAULT NULL,
     platform_checkout_json MEDIUMTEXT DEFAULT NULL,
     platform_handoff_state VARCHAR(16) DEFAULT NULL,
+    platform_bank_ref_key VARCHAR(64) DEFAULT NULL,
+    platform_manual_proof MEDIUMTEXT DEFAULT NULL,
+    platform_reconciliation_proof MEDIUMTEXT DEFAULT NULL,
+    CONSTRAINT uk_platform_bank_reference UNIQUE (platform_bank_ref_key),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
@@ -8941,6 +8945,27 @@ CREATE TABLE IF NOT EXISTS ord_print_fact
     CONSTRAINT uk_ord_print_fact_no UNIQUE (tenant_no, print_fact_no),
     CONSTRAINT uk_ord_print_fact_source UNIQUE (tenant_no, entity_no, store_no, source_fact_key),
     CONSTRAINT uk_ord_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
+);
+
+CREATE TABLE IF NOT EXISTS pay_platform_collection_head
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    profile_no VARCHAR(64) NOT NULL,
+    current_version BIGINT NOT NULL,
+    enabled TINYINT NOT NULL,
+    PRIMARY KEY (tenant_no, profile_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_platform_collection_profile
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    profile_no VARCHAR(64) NOT NULL,
+    profile_version BIGINT NOT NULL,
+    instructions_json MEDIUMTEXT NOT NULL,
+    configured_by VARCHAR(64) NOT NULL,
+    reason VARCHAR(1024) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (tenant_no, profile_no, profile_version)
 );
 
 -- 种子数据

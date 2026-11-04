@@ -64,7 +64,7 @@ public class CommerceMallAutoConfiguration {
             CommerceIdGenerator ids,
             org.springframework.beans.factory.ObjectProvider<
                             ai.neargo.commerce.api.mall.RefundFacade>
-                    refunds) {
+                    refunds, org.springframework.beans.factory.ObjectProvider<MoneyPolicyPort> policies) {
         return new DefaultMallFacade(
                 orders,
                 catalog,
@@ -74,6 +74,6 @@ public class CommerceMallAutoConfiguration {
                 authorization,
                 Clock.systemUTC(),
                 ids,
-                refunds.getIfAvailable(), readiness);
+                refunds.getIfAvailable(), readiness, policies.getIfAvailable(() -> MoneyPolicyPort.CNY_COMPATIBILITY));
     }
 }

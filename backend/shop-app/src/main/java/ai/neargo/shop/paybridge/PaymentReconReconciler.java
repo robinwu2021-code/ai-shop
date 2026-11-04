@@ -110,6 +110,7 @@ public class PaymentReconReconciler {
                 continue;
             }
             try {
+                if("MALL_UNMATCHED".equals(paymentLedger.paymentBusiness(d.paymentNo()))) { still++; continue; }
                 if("PLATFORM_MALL".equals(paymentLedger.paymentBusiness(d.paymentNo()))) {
                     if(platformRecovery==null||!platformRecovery.recover(d.paymentNo())) {still++;continue;}
                 } else orderRepair.markPaid(d.orderNo(), d.payChannel(), d.channelTxnNo());
@@ -157,6 +158,7 @@ public class PaymentReconReconciler {
             int[] c = byChannel.computeIfAbsent(
                     f.payChannel() == null ? "?" : f.payChannel(), k -> new int[4]);
             c[0]++;
+            if("MALL_UNMATCHED".equals(paymentLedger.paymentBusiness(f.paymentNo()))) { deferred++; c[3]++; continue; }
             if("PLATFORM_MALL".equals(paymentLedger.paymentBusiness(f.paymentNo()))) {
                 boolean applied=false;
                 try { applied=platformRecovery!=null&&platformRecovery.recover(f.paymentNo()); }

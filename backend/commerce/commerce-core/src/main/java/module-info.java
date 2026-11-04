@@ -1,5 +1,6 @@
 module ai.neargo.commerce.core {
     exports ai.neargo.commerce.core.spi;
+    exports ai.neargo.commerce.core.offline;
     exports ai.neargo.commerce.core.mall;
     exports ai.neargo.commerce.core.fulfillment;
     exports ai.neargo.commerce.core.access;

@@ -402,7 +402,7 @@ class MallFulfillmentMysqlTest {
                         CLOCK,
                         m.c.ids,
                         "platform",
-                        Set.of("APP:WECHAT"),
+                        Set.of("APP:WECHAT", "OFFLINE:BANK_TRANSFER"),
                         (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()));
         return new Fixture(m, svc, bridge, m.place(m.quote(), "place"));
     }
@@ -1015,7 +1015,7 @@ class MallFulfillmentMysqlTest {
                 clock,
                 f.mall.c.ids,
                 "platform",
-                Set.of("APP:WECHAT"),
+                Set.of("APP:WECHAT", "OFFLINE:BANK_TRANSFER"),
                 (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()));
     }
 

@@ -394,6 +394,7 @@ public final class CommerceRefundService implements RefundFacade {
                         s = s.withReview(review);
                     } else if (s.reviewQuoteNo() != null) throw fail("IDEMPOTENCY_CONFLICT");
                     var p = s.preview();
+                    if (!o.quote().moneyPolicy().onGrid(c.cashAmount())) throw fail("MONEY_GRID_INVALID");
                     if (actor.principalNo().equals(p.buyerNo())) throw fail("FORBIDDEN");
                     if (!p.digest().equals(c.approvalDigest())
                             || !p.currency().equals(c.cashAmount().currency())

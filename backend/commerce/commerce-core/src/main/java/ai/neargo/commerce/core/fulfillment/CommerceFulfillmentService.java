@@ -167,38 +167,57 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
     }
 
     public PaymentOutcome startPayment(ActorContext a, StartPaymentCommand c) {
+        if (a == null) throw fail("INVALID_REQUEST");
+        return preparePayment(a.tenantNo(), c, o -> buyer(a,c,o));
+    }
+
+    public PaymentOutcome prepareOffline(FulfillmentQuery q) {
+        uow.requireOutsideTransaction();
+        if (q == null) throw fail("INVALID_REQUEST");
+        var command = locked(q.tenantNo(),q.orderNo(),o -> {
+            if (o.quote().purchase().offline()==null) throw fail("OFFLINE_INTENT_REQUIRED");
+            return new StartPaymentCommand(o.quote().store(),o.orderNo(),o.view().payable().minor()==0?"INTERNAL":"OFFLINE",
+                    o.view().payable().minor()==0?"ZERO":"BANK_TRANSFER",null);
+        });
+        return preparePayment(q.tenantNo(),command,o -> {
+            if (o.quote().purchase().offline()==null) throw fail("OFFLINE_INTENT_REQUIRED");
+        });
+    }
+
+    private PaymentOutcome preparePayment(String tenant, StartPaymentCommand c, java.util.function.Consumer<Order> authorized) {
         uow.requireOutsideTransaction();
         boolean internalZero = c != null && "INTERNAL".equals(c.channel()) && "ZERO".equals(c.payMethod());
         if (c == null
-                || a == null
                 || c.store() == null
                 || !internalZero && !routes.contains(c.channel() + ":" + c.payMethod()))
             throw fail("INVALID_REQUEST");
         locked(
-                a.tenantNo(),
+                tenant,
                 c.orderNo(),
                 o -> {
-                    buyer(a, c, o);
+                    authorized.accept(o);
+                    if (!internalZero && (o.quote().purchase().offline() != null) != "OFFLINE".equals(c.channel()))
+                        throw fail("PAYMENT_ROUTE_MISMATCH");
                     if (internalZero && o.view().payable().minor() != 0)
                         throw fail("INVALID_REQUEST");
                     if (o.axes().payment() == Payment.CLOSED
                             || o.axes().payment() == Payment.CANCEL_PENDING
-                            || clock.millis() >= o.quote().expiresAt()) throw fail("INVALID_STATE");
+                            || clock.millis() >= o.paymentDueAt()) throw fail("INVALID_STATE");
                     return null;
                 });
-        reserve(a.tenantNo(), c.orderNo());
+        reserve(tenant, c.orderNo());
         record Prepared(Operation op, boolean fresh) {}
         var prepared =
                 locked(
-                        a.tenantNo(),
+                        tenant,
                         c.orderNo(),
                         o -> {
-                            buyer(a, c, o);
+                            authorized.accept(o);
                             var preparedAt = clock.instant();
                             if (o.axes().payment() == Payment.CANCEL_PENDING
                                     || o.axes().payment() == Payment.CLOSED
                                     || !preparedAt.isBefore(
-                                            Instant.ofEpochMilli(o.quote().expiresAt())))
+                                            Instant.ofEpochMilli(o.paymentDueAt())))
                                 throw fail("INVALID_STATE");
                             if (!reserved(o)) throw fail("INVENTORY_PENDING");
                             var prior = payment(o);
@@ -214,17 +233,17 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                             String attempt = ids.nextBusinessNo("mall-payment");
                             var command =
                                     new PaymentIntentCommand(
-                                            a.tenantNo(),
+                                            tenant,
                                             o.orderNo(),
-                                            recipient,
+                                            o.quote().purchase().offline() == null ? recipient : o.quote().purchase().offline().platformMerchantNo(),
                                             o.view().payable(),
-                                            Instant.ofEpochMilli(o.quote().expiresAt()),
+                                            Instant.ofEpochMilli(o.paymentDueAt()),
                                             attempt,
                                             o.quote().buyerNo(),
                                             c.channel(),
                                             c.payMethod(),
                                             c.payerReference(),
-                                            preparedAt,o.quote().buyerIdentity());
+                                            preparedAt,o.quote().buyerIdentity(),o.quote().purchase().offline());
                             var op =
                                     new Operation(
                                             attempt,
@@ -236,7 +255,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                             null,
                                             null,
                                             null);
-                            repo.save(a.tenantNo(), op);
+                            repo.save(tenant, op);
                             transition(o, Payment.PAYING, Fulfillment.PENDING, Refund.NONE);
                             return new Prepared(op, true);
                         });
@@ -254,7 +273,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
             } catch (RuntimeException e) {
                 outcome = unknown(op);
             }
-        return applyPayment(a.tenantNo(), op, outcome);
+        return applyPayment(tenant, op, outcome);
     }
 
     private Instant zeroPreparedAt(Operation op) {
@@ -307,7 +326,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                     o.axes().payment() != Payment.CLOSED
                                             && o.axes().payment() != Payment.CANCEL_PENDING
                                             && o.axes().payment() != Payment.PAID
-                                            && clock.millis() < o.quote().expiresAt());
+                                            && clock.millis() < o.paymentDueAt());
             if (maySend)
                 return payments.create(
                         op.payment()); // Same original idempotent intent, never a replacement.
@@ -417,7 +436,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                                         ? "INTERNAL_ZERO_PAYMENT:"
                                                         : "PORT_QUERY:")
                                                 + op.operationNo(),
-                                        r.paidAtPrecisionMs()));
+                                        r.paidAtPrecisionMs(), r.closureReference().orElse(null)));
                         return r;
                     }
                     if (o.axes().payment() == Payment.PAID
@@ -429,7 +448,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                     if (o.axes().payment() != Payment.CANCEL_PENDING)
                         transition(
                                 o,
-                                r.status() == AsyncStatus.UNKNOWN
+                                r.definitivelyClosed() ? Payment.CANCEL_PENDING : r.status() == AsyncStatus.UNKNOWN
                                         ? Payment.PAYMENT_UNKNOWN
                                         : Payment.PAYING,
                                 Fulfillment.PENDING,
@@ -475,6 +494,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         // Existing exact-millisecond facts retain their canonical digest across upgrades.
         if (f.paidAtPrecisionMs() != 1)
             factCoordinates.add("paidAtPrecisionMs=" + f.paidAtPrecisionMs());
+        if (f.acceptanceFence() != null) factCoordinates.add("acceptanceFence=" + f.acceptanceFence());
         String hash = FactDigest.of(factCoordinates);
         events.recordInbound(
                 new InboundFact(
@@ -494,8 +514,9 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         boolean late =
                 o.axes().payment() == Payment.CLOSED
                         || PaymentTimePrecision.latestMillis(f.paidAt(), f.paidAtPrecisionMs())
-                                > o.quote().expiresAt()
-                        || op.paymentResult().definitivelyClosed();
+                                > o.paymentDueAt()
+                        || op.paymentResult().definitivelyClosed()
+                        || f.acceptanceFence() != null;
         var paid =
                 new PaymentOutcome(
                         o.orderNo(),
@@ -507,7 +528,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         Optional.empty(),
                         Map.of(),
                         false,
-                        Optional.empty(),
+                        Optional.ofNullable(f.acceptanceFence()),
                         f.paidAtPrecisionMs());
         repo.save(f.tenantNo(), op.paymentResult(paid));
         repo.paid(o, f, op.operationNo());
@@ -876,7 +897,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                 }
                             }
 
-                            if (clock.millis() >= o.quote().expiresAt()
+                            if (clock.millis() >= o.paymentDueAt()
                                     && o.axes().payment() != Payment.PAID
                                     && o.axes().payment() != Payment.CLOSED)
                                 o =

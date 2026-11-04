@@ -28,6 +28,19 @@ import java.util.*;
 @EnableConfigurationProperties(ShopMallProperties.class)
 class ShopMallConfiguration {
     @Bean
+    @ConditionalOnMissingBean(ai.neargo.commerce.api.port.MoneyPolicyPort.class)
+    ai.neargo.commerce.api.port.MoneyPolicyPort mallMoneyPolicy() {
+        return (tenant, currency) -> {
+            if (!"MAIN".equals(tenant)) return Optional.empty();
+            return switch (currency) {
+                case "TWD" -> Optional.of(new ai.neargo.commerce.api.common.MoneyPolicy("twd-whole-v1", "TWD", 2, 100, 100));
+                case "CNY" -> Optional.of(ai.neargo.commerce.api.common.MoneyPolicy.legacy("CNY"));
+                default -> Optional.empty();
+            };
+        };
+    }
+
+    @Bean
     @ConditionalOnMissingBean(ShopMallPayerBindings.class)
     ShopMallPayerBindings mallPayerBindings() {
         return ShopMallPayerBindings.UNAVAILABLE;

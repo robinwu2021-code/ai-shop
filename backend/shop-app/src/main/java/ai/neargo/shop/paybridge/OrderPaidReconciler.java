@@ -99,11 +99,12 @@ public class OrderPaidReconciler {
          * 逐笔一个 SELECT 的话这个任务自己会变成数据库上的一次小型压测。
          */
         Set<String> notPaid = Set.copyOf(
-                tradeSource.notPaidOrders(paid.stream().filter(p->!"PLATFORM_MALL".equals(p.paymentBusiness())).map(SuccessPayment::orderNo).toList()));
+                tradeSource.notPaidOrders(paid.stream().filter(p->!"PLATFORM_MALL".equals(p.paymentBusiness()) && !"MALL_UNMATCHED".equals(p.paymentBusiness())).map(SuccessPayment::orderNo).toList()));
 
         int repaired = 0;
         int failed = 0;
         for (SuccessPayment p : paid) {
+            if("MALL_UNMATCHED".equals(p.paymentBusiness())) { failed++; continue; }
             if("PLATFORM_MALL".equals(p.paymentBusiness())) {
                 try { if(platformRecovery!=null&&platformRecovery.recover(p.paymentNo()))repaired++;else failed++; }
                 catch(RuntimeException unavailable){failed++;}

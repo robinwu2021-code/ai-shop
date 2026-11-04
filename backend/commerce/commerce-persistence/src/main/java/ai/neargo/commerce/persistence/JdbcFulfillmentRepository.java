@@ -113,6 +113,8 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
         // Old V6 commands omitted preparedAt. Preserve their canonical immutable request/hash.
         if (immutable.payment() != null && immutable.payment().preparedAt() == null)
             ((ObjectNode) requestTree.get("payment")).remove("preparedAt");
+        if (immutable.payment() != null && immutable.payment().offline() == null)
+            ((ObjectNode) requestTree.get("payment")).remove("offline");
         if (immutable.payment() != null && immutable.payment().buyerIdentity() == null)
             ((ObjectNode) requestTree.get("payment")).remove("buyerIdentity");
         if (immutable.inventory() != null && immutable.inventory().operatorNo() == null)

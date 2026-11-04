@@ -84,4 +84,18 @@ class MallPaymentRoutingTest {
         assertEquals(1, paid.reconcile(0, 20).repaired());
         verifyNoInteractions(repair);
     }
+    @Test
+    void unmatchedManualCashNeverRepairsConsumerOrderOrNormalMallOrder() {
+        var ledger=mock(PaymentLedgerService.class);when(ledger.paymentBusiness("unmatched")).thenReturn("MALL_UNMATCHED");
+        var recon=mock(ReconService.class);var repair=mock(OrderRepairPort.class);var recovery=mock(PlatformPaymentRecoveryPort.class);
+        when(recon.checkStalePayments(anyLong())).thenReturn(List.of(new ReconService.Finding("unmatched","mall","OFFLINE","external","PAY",9900L,false,true,false,0,null,"2026-11-04","TWD")));
+        var scan=new PaymentReconReconciler(recon,repair,ledger);scan.setPlatformRecovery(recovery);scan.scan(1000);
+        var invariant=mock(FundInvariantService.class);var source=mock(SettleSourcePort.class);
+        when(invariant.successPaymentsSince(0,20)).thenReturn(List.of(new FundInvariantService.SuccessPayment("unmatched","mall",1000,"MALL_UNMATCHED")));
+        when(source.notPaidOrders(any())).thenReturn(List.of("mall"));
+        var paid=new OrderPaidReconciler(invariant,source,repair);paid.setPlatformRecovery(recovery);
+        assertEquals(0,paid.reconcile(0,20).repaired());
+        verifyNoInteractions(repair,recovery);
+    }
+
 }

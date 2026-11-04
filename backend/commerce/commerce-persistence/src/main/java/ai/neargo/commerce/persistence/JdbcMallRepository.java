@@ -458,7 +458,7 @@ public final class JdbcMallRepository implements MallRepository {
         r.put("pay_status", o.axes().payment().name());
         r.put("fulfillment_status", o.axes().fulfillment().name());
         r.put("refund_status", o.axes().refund().name());
-        r.put("pay_deadline", q.expiresAt());
+        r.put("pay_deadline", o.paymentDueAt());
         r.put("idempotency_key", o.idempotencyKey());
         r.put("request_hash", o.requestHash());
         insert("mall_order", r);

@@ -122,6 +122,7 @@ public class ChannelPayCallbackController {
          * 查到已支付就走原本的支付成功链路（幂等键 outTradeNo 保证不重复入账），
          * 而不是另写一段「补一下状态」—— 那段会漏掉发券、积分、通知里的某一个。
          */
+        if("MALL_UNMATCHED".equals(settlePort.paymentBusiness(String.valueOf(outTradeNo)))) return v.ackFail();
         if("PLATFORM_MALL".equals(settlePort.paymentBusiness(String.valueOf(outTradeNo))))
             return platform(v,msgNo,String.valueOf(outTradeNo),payload);
         PayQueryPort.Result r = payQuery.query(channel, String.valueOf(outTradeNo));
@@ -219,6 +220,7 @@ public class ChannelPayCallbackController {
             return v.ackFail();
         }
 
+        if("MALL_UNMATCHED".equals(settlePort.paymentBusiness(String.valueOf(outRefundNo)))) return v.ackFail();
         if("PLATFORM_MALL".equals(settlePort.paymentBusiness(String.valueOf(outRefundNo))))
             return platform(v,msgNo,String.valueOf(outRefundNo),payload);
         PayQueryPort.Result r = payQuery.queryRefund(channel, String.valueOf(outRefundNo));

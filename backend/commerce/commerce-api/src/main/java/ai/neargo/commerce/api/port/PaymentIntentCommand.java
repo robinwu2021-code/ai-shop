@@ -22,7 +22,14 @@ public record PaymentIntentCommand(
         String payMethod,
         String payerReference,
         Instant preparedAt,
-        ai.neargo.commerce.api.common.RawPrincipalIdentity buyerIdentity) {
+        ai.neargo.commerce.api.common.RawPrincipalIdentity buyerIdentity,
+        ai.neargo.commerce.api.offline.OfflineCollectionTerms offline) {
+    public PaymentIntentCommand(String tenantNo,String orderNo,String platformMerchantNo,Money amount,Instant expiresAt,
+            String paymentAttemptNo,String buyerNo,String channel,String payMethod,String payerReference,Instant preparedAt,
+            ai.neargo.commerce.api.common.RawPrincipalIdentity buyerIdentity) {
+        this(tenantNo,orderNo,platformMerchantNo,amount,expiresAt,paymentAttemptNo,buyerNo,channel,payMethod,payerReference,preparedAt,buyerIdentity,null);
+    }
+
     public PaymentIntentCommand(String tenantNo,String orderNo,String platformMerchantNo,Money amount,Instant expiresAt,
             String paymentAttemptNo,String buyerNo,String channel,String payMethod,String payerReference,Instant preparedAt) {
         this(tenantNo,orderNo,platformMerchantNo,amount,expiresAt,paymentAttemptNo,buyerNo,channel,payMethod,payerReference,preparedAt,null);

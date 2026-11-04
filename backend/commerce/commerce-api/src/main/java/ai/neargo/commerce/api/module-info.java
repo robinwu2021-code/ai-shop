@@ -1,4 +1,5 @@
 module ai.neargo.commerce.api {
+    exports ai.neargo.commerce.api.offline;
  exports ai.neargo.commerce.api.common;
  exports ai.neargo.commerce.api.catalog;
  exports ai.neargo.commerce.api.foundation;

@@ -218,6 +218,12 @@ public final class SkuPublicationService {
                         && d.price().currency().matches("[A-Z]{3}")
                         && d.price().currency().equals(d.listPrice().currency()),
                 "invalid currency");
+        if (!allowDraftPlanReferences) {
+            var policy = s.moneyPolicies.policy(tenant, d.price().currency())
+                    .filter(p -> p.currency().equals(d.price().currency()))
+                    .orElseThrow(() -> new CatalogException(CatalogErrorCode.INVALID_ARGUMENT, "MONEY_POLICY_UNAVAILABLE"));
+            check(policy.onGrid(d.price()) && policy.onGrid(d.listPrice()), "MONEY_GRID_INVALID");
+        }
         check(d.maxPerOrder() > 0 && !d.components().isEmpty(), "quantity/components required");
         text(d.refundPolicySnapshot(), 65535, "refund policy JSON");
         JsonObject.validate(d.refundPolicySnapshot());

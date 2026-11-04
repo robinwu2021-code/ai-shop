@@ -31,6 +31,7 @@ public final class DefaultMallFacade implements MallFacade {
     private final CommerceIdGenerator ids;
     private final RefundFacade refunds;
     private CheckoutReadinessPort readiness;
+    private MoneyPolicyPort moneyPolicies = MoneyPolicyPort.LEGACY;
 
     public DefaultMallFacade(
             MallRepository repo,
@@ -73,10 +74,20 @@ public final class DefaultMallFacade implements MallFacade {
         this.readiness = Objects.requireNonNull(readiness);
     }
 
+    public DefaultMallFacade(MallRepository repo, CatalogRepository catalogs,
+            SubscriptionAccountRepository accounts, CommerceUnitOfWork uow, StoreDirectoryPort stores,
+            ActorAuthorizationPort auth, Clock clock, CommerceIdGenerator ids, RefundFacade refunds,
+            CheckoutReadinessPort readiness, MoneyPolicyPort moneyPolicies) {
+        this(repo, catalogs, accounts, uow, stores, auth, clock, ids, refunds, readiness);
+        this.moneyPolicies = Objects.requireNonNull(moneyPolicies);
+    }
+
     private void requireReady(StoreSnapshot store, Quote quote) {
         if (readiness == null) return; // Existing embedded API constructor; starter always requires the port.
-        var result = readiness.evaluate(store, new Money(quote.currency(), quote.deal()-quote.credit()),
-                quote.lines().stream().map(Line::sku).toList());
+        var payable = new Money(quote.currency(), quote.deal()-quote.credit());
+        var skus = quote.lines().stream().map(Line::sku).toList();
+        var result = quote.purchase().offline() == null ? readiness.evaluate(store, payable, skus)
+                : readiness.evaluateOffline(store, payable, skus, quote.purchase().offline());
         if (result == null || !result.available()) throw fail("CHECKOUT_UNAVAILABLE");
     }
 
@@ -93,6 +104,7 @@ public final class DefaultMallFacade implements MallFacade {
                 || s.storeNo().isBlank()
                 || !a.tenantNo().equals(s.tenantNo())
                 || a.subjectKind() != SubjectKind.ACCOUNT
+                        && !(a.subjectKind() == SubjectKind.OPERATOR && "commerce:mall:assisted:purchase".equals(cap))
                 || a.principalNo() == null
                 || a.principalNo().isBlank()
                 || a.accountSessionFingerprint() == null
@@ -118,10 +130,22 @@ public final class DefaultMallFacade implements MallFacade {
     }
 
     public QuoteView quote(ActorContext actor, QuoteCommand command) {
-        return quote(actor, command, null);
+        return quote(actor, command, null, null);
+    }
+
+    public QuoteView quoteOffline(ActorContext actor, QuoteCommand command,
+            ai.neargo.commerce.api.offline.OfflineCollectionTerms terms) {
+        Objects.requireNonNull(terms);
+        if (command == null || !terms.currency().equals(command.currency())) throw fail("CURRENCY_MISMATCH");
+        return quote(actor, command, null, terms);
     }
 
     private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade) {
+        return quote(actor, command, upgrade, null);
+    }
+
+    private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade,
+            ai.neargo.commerce.api.offline.OfflineCollectionTerms terms) {
         if (command == null
                 || command.lines() == null
                 || command.lines().isEmpty()
@@ -130,7 +154,8 @@ public final class DefaultMallFacade implements MallFacade {
                 || !command.currency().matches("[A-Z]{3}")) throw fail("INVALID_REQUEST");
         return uow.required(
                 () -> {
-                    var store = authorize(actor, command.store(), "commerce:mall:purchase");
+                    boolean assisted = terms != null && actor != null && actor.subjectKind() == SubjectKind.OPERATOR;
+                    var store = authorize(actor, command.store(), assisted ? "commerce:mall:assisted:purchase" : "commerce:mall:purchase");
                     var account = account(store);
                     long at = clock.millis();
                     var balance = repo.lockBalance(store.store(), command.currency());
@@ -170,7 +195,11 @@ public final class DefaultMallFacade implements MallFacade {
                                     lots.stream()
                                             .mapToLong(CreditLot::available)
                                             .reduce(0, Math::addExact));
+                    var policy = moneyPolicies.policy(actor.tenantNo(), command.currency())
+                            .filter(p -> command.currency().equals(p.currency()))
+                            .orElseThrow(() -> fail("MONEY_POLICY_UNAVAILABLE"));
                     long creditLeft = Math.addExact(historicalAvailable, convertedValue);
+                    creditLeft -= creditLeft % policy.cashQuantum();
                     var lines = new ArrayList<Line>();
                     int planComponents = 0;
                     String intent = "BUY";
@@ -199,11 +228,13 @@ public final class DefaultMallFacade implements MallFacade {
                                             .allowedBusinessTypes()
                                             .contains(store.businessTypeCode()))
                                 throw fail("TYPE_MISMATCH");
+                            if (!policy.onGrid(d.price()) || !policy.onGrid(d.listPrice()))
+                                throw fail("MONEY_GRID_INVALID");
                             long amount = Math.multiplyExact(d.price().minor(), quantity);
                             long gross = Math.multiplyExact(d.listPrice().minor(), quantity);
                             var allocations =
                                     ComponentAllocation.allocate(
-                                            gross, amount, creditLeft, quantity, d.components());
+                                            gross, amount, creditLeft, quantity, d.components(), policy.allocationQuantum());
                             var components = new ArrayList<Component>();
                             for (var allocation : allocations) {
                                 var c = allocation.component();
@@ -295,7 +326,7 @@ public final class DefaultMallFacade implements MallFacade {
                                     ids.nextBusinessNo("mall-quote"),
                                     store.store(),
                                     account.entityNo(),
-                                    actor.principalNo(),
+                                    assisted ? FactDigest.of(List.of("mall-store-buyer:v1", actor.tenantNo(), account.entityNo(), store.store().storeNo())) : actor.principalNo(),
                                     store.businessTypeCode(),
                                     intent,
                                     command.currency(),
@@ -315,7 +346,8 @@ public final class DefaultMallFacade implements MallFacade {
                                     conversions,
                                     convertedUsed,
                                     historicalAvailable,
-                                    actor.rawIdentity());
+                                    assisted ? null : actor.rawIdentity(), policy,
+                                    new Purchase(assisted ? "STORE" : "ACCOUNT", actor.principalNo(), actor.rawIdentity(), terms));
                     try {
                         q.deal();
                         q.gross();
@@ -352,15 +384,18 @@ public final class DefaultMallFacade implements MallFacade {
     private OrderView place(ActorContext actor, PlaceOrderCommand command) {
         var q =
                 repo.quote(actor.tenantNo(), command.quoteNo())
-                        .filter(v -> v.buyerNo().equals(actor.principalNo()))
+                        .filter(v -> v.purchase().initiatedBy().equals(actor.principalNo())
+                                && ("STORE".equals(v.purchase().buyerKind()) ? actor.subjectKind() == SubjectKind.OPERATOR : actor.subjectKind() == SubjectKind.ACCOUNT))
                         .filter(v -> command.expectedStore() == null || command.expectedStore().equals(v.store()))
                         .orElseThrow(() -> fail("NOT_FOUND"));
-        var store = authorize(actor, q.store(), "commerce:mall:purchase");
+        var store = authorize(actor, q.store(), "STORE".equals(q.purchase().buyerKind())
+                ? "commerce:mall:assisted:purchase" : "commerce:mall:purchase");
+        if (!store.merchantNo().equals(q.entityNo())) throw fail("VERSION_CONFLICT");
         long at = clock.millis();
         String hash = requestHash(command);
         boolean freshClaim =
                 repo.claimOrder(
-                        actor.tenantNo(), actor.principalNo(), command.idempotencyKey(), hash, at);
+                        actor.tenantNo(), q.buyerNo(), command.idempotencyKey(), hash, at);
         var account = account(store);
         var balance = repo.lockBalance(q.store(), q.currency());
         var sources = repo.lockSources(q.store(), at);
@@ -369,7 +404,7 @@ public final class DefaultMallFacade implements MallFacade {
         if (!freshClaim) {
             var existing =
                     repo.byIdempotency(
-                                    actor.tenantNo(), actor.principalNo(), command.idempotencyKey())
+                                    actor.tenantNo(), q.buyerNo(), command.idempotencyKey())
                             .orElseThrow(() -> fail("ORDER_CLAIM_INCOMPLETE"));
             if (!hash.equals(existing.requestHash())) throw fail("IDEMPOTENCY_CONFLICT");
             return existing.view();

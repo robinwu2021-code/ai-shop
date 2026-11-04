@@ -27,7 +27,13 @@ public final class DefaultCatalogFacade implements CatalogFacade {
             CommerceEventPersistencePort events,
             Clock clock,
             CommerceIdGenerator ids) {
-        var support = new CatalogSupport(r, u, a, readiness, events, clock, ids);
+        this(r, u, a, readiness, events, clock, ids, MoneyPolicyPort.LEGACY);
+    }
+
+    public DefaultCatalogFacade(CatalogRepository r, CommerceUnitOfWork u, CatalogAuthorizationPort a,
+            BusinessEndReadinessPort readiness, CommerceEventPersistencePort events, Clock clock,
+            CommerceIdGenerator ids, MoneyPolicyPort moneyPolicies) {
+        var support = new CatalogSupport(r, u, a, readiness, events, clock, ids, moneyPolicies);
         queries = new CatalogQueryService(support);
         types = new BusinessTypeService(support);
         ends = new BusinessEndService(support);

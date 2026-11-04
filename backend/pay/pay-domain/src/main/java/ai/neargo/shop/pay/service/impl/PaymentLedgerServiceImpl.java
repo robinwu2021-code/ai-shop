@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.service.PlatformCollectionService;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.BizException;
@@ -41,7 +43,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if(id==null||id.isBlank())return "CONSUMER";
         var row=DataScopeContext.executeWithoutScope(()->paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
                 .and(q->q.eq(StlPayment::getPaymentNo,id).or().eq(StlPayment::getOutTradeNo,id)).last("LIMIT 1")));
-        return row!=null&&"PLATFORM_MALL".equals(row.getPayScene())?"PLATFORM_MALL":"CONSUMER";
+        return row!=null&&PlatformCollectionService.ownsScene(row.getPayScene())?row.getPayScene():"CONSUMER";
     }
 
     @Override
@@ -110,7 +112,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     public Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
         StlPayment row = byOutTradeNo(outTradeNo);
-        if (row == null || "PLATFORM_MALL".equals(row.getPayScene()) || row.getPaymentRequestJson() == null) {
+        if (row == null || PlatformCollectionService.ownsScene(row.getPayScene()) || row.getPaymentRequestJson() == null) {
             return Optional.empty();
         }
         var request = json.readValue(row.getPaymentRequestJson(), SettlePort.PaymentOpen.class);
@@ -200,7 +202,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     private static void requireConsumer(StlPayment row) {
-        if (row != null && "PLATFORM_MALL".equals(row.getPayScene()))
+        if (row != null && PlatformCollectionService.ownsScene(row.getPayScene()))
             throw new IllegalStateException("Platform cash requires its original intent and proof owner");
     }
 
@@ -296,7 +298,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     public java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo) {
         StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null || "PLATFORM_MALL".equals(r.getPayScene()) || !StlPayment.REFUND.equals(r.getDirection())) {
+        if (r == null || PlatformCollectionService.ownsScene(r.getPayScene()) || !StlPayment.REFUND.equals(r.getDirection())) {
             return java.util.Optional.empty();
         }
         if (r.getRefundRequestJson() == null) {
@@ -471,7 +473,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             isolation = Isolation.READ_COMMITTED)
     public void close(String outTradeNo, String reason) {
         StlPayment p = lockPayment(outTradeNo);
-        if(p!=null&&"PLATFORM_MALL".equals(p.getPayScene()))throw new IllegalStateException("PLATFORM_PAYMENT_OWNER_REQUIRED");
+        if(p!=null&&PlatformCollectionService.ownsScene(p.getPayScene()))throw new IllegalStateException("PLATFORM_PAYMENT_OWNER_REQUIRED");
         if (p == null || StlPayment.SUCCESS.equals(p.getStatus())
                 || StlPayment.CLOSED.equals(p.getStatus())) {
             /*
@@ -494,7 +496,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public String settle(SettlePort.PaymentSettled cmd) {
         StlPayment existing = lockPayment(cmd.outTradeNo());
-        if (existing == null || "PLATFORM_MALL".equals(existing.getPayScene()) || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
+        if (existing == null || PlatformCollectionService.ownsScene(existing.getPayScene()) || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
                 || cmd.tradeNo() == null || cmd.tradeNo().isBlank() || cmd.amountMinor() < 0
                 || cmd.currency() == null || cmd.currency().isBlank()) {
             return null;

@@ -97,6 +97,21 @@ public final class ComponentAllocation {
         return List.copyOf(result);
     }
 
+    /** Allocate cash and all nested allocations on the frozen settlement grid. */
+    public static List<Allocation> allocate(long gross, long deal, long availableCredit,
+            int quantity, List<SkuComponent> components, long quantum) {
+        if (quantum < 1 || gross % quantum != 0 || deal % quantum != 0 || availableCredit < 0)
+            throw new IllegalArgumentException("invalid money grid");
+        return allocate(gross / quantum, deal / quantum, availableCredit / quantum, quantity, components)
+                .stream().map(a -> new Allocation(a.component(), Math.multiplyExact(a.gross(), quantum),
+                        Math.multiplyExact(a.deal(), quantum), Math.multiplyExact(a.credit(), quantum),
+                        Math.multiplyExact(a.cash(), quantum), a.cycles().stream().map(c -> new Cycle(
+                                c.sequence(), Math.multiplyExact(c.gross(), quantum),
+                                Math.multiplyExact(c.deal(), quantum), Math.multiplyExact(c.credit(), quantum),
+                                Math.multiplyExact(c.cash(), quantum), Math.multiplyExact(c.eligibleBasis(), quantum)))
+                                .toList())).toList();
+    }
+
     private static long[] weighted(long total, List<SkuComponent> sorted, BigInteger weight) {
         long[] amounts = new long[sorted.size()];
         long assigned = 0;

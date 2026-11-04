@@ -8,15 +8,17 @@ import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
 import ai.neargo.shop.pay.service.impl.*;
 import ai.neargo.shop.spi.settle.SettlePort;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MallLegacyLedgerFenceTest {
-    @Test
-    void genericConsumerSettlementAndCloseCannotMutatePlatformIntent() {
+    @ParameterizedTest
+    @ValueSource(strings={"PLATFORM_MALL","MALL_UNMATCHED"})
+    void genericConsumerSettlementAndCloseCannotMutatePlatformIntent(String scene) {
         var mapper = mock(PaymentMapper.class);
         var row = new StlPayment();
         row.setId(1L);
-        row.setPayScene("PLATFORM_MALL");
+        row.setPayScene(scene);
         row.setPayChannel("WECHAT");
         row.setStatus("PENDING");
         row.setOrderNo("mall");
@@ -31,13 +33,14 @@ class MallLegacyLedgerFenceTest {
         verify(mapper, never()).updateById(any(StlPayment.class));
     }
 
-    @Test
-    void genericRefundWritersCannotConsumeOrReleasePlatformCashCapacity() {
+    @ParameterizedTest
+    @ValueSource(strings={"PLATFORM_MALL","MALL_UNMATCHED"})
+    void genericRefundWritersCannotConsumeOrReleasePlatformCashCapacity(String scene) {
         var mapper = mock(PaymentMapper.class);
         var capacity = mock(RefundCapacityLedger.class);
         var row = new StlPayment();
         row.setId(1L);
-        row.setPayScene("PLATFORM_MALL");
+        row.setPayScene(scene);
         row.setDirection("REFUND");
         row.setStatus("PENDING");
         row.setAmountMinor(100L);
@@ -57,12 +60,13 @@ class MallLegacyLedgerFenceTest {
         verify(mapper, never()).updateById(any(StlPayment.class));
     }
 
-    @Test
-    void platformRefundReconciliationCannotApplyLegacyTerminalFailurePolicy() {
+    @ParameterizedTest
+    @ValueSource(strings={"PLATFORM_MALL","MALL_UNMATCHED"})
+    void platformRefundReconciliationCannotApplyLegacyTerminalFailurePolicy(String scene) {
         var mapper = mock(PaymentMapper.class);
         var row = new StlPayment();
         row.setPaymentNo("mall-refund");
-        row.setPayScene("PLATFORM_MALL");
+        row.setPayScene(scene);
         row.setDirection("REFUND");
         row.setPayChannel("WECHAT");
         row.setOutTradeNo("refund-external");

@@ -14,6 +14,7 @@ public final class CatalogSupport {
     public final CatalogRepository repository;
     public final BusinessEndReadinessPort readiness;
     public final Clock clock;
+    public final MoneyPolicyPort moneyPolicies;
     private final CommerceUnitOfWork uow;
     private final CatalogAuthorizationPort auth;
     private final CommerceEventPersistencePort events;
@@ -27,6 +28,13 @@ public final class CatalogSupport {
             CommerceEventPersistencePort e,
             Clock c,
             CommerceIdGenerator ids) {
+        this(r, u, a, readiness, e, c, ids, MoneyPolicyPort.LEGACY);
+    }
+
+    public CatalogSupport(CatalogRepository r, CommerceUnitOfWork u, CatalogAuthorizationPort a,
+            BusinessEndReadinessPort readiness, CommerceEventPersistencePort e, Clock c,
+            CommerceIdGenerator ids, MoneyPolicyPort moneyPolicies) {
+        this.moneyPolicies = Objects.requireNonNull(moneyPolicies);
         repository = Objects.requireNonNull(r);
         uow = Objects.requireNonNull(u);
         auth = Objects.requireNonNull(a);

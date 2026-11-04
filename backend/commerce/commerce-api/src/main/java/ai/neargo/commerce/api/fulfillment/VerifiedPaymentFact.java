@@ -14,7 +14,12 @@ public record VerifiedPaymentFact(
         Money paid,
         Instant paidAt,
         String verificationReference,
-        Long paidAtPrecisionMs) {
+        Long paidAtPrecisionMs, String acceptanceFence) {
+    public VerifiedPaymentFact(String tenantNo, String eventNo, String orderNo, String paymentNo,
+            String platformMerchantNo, Money paid, Instant paidAt, String verificationReference, Long paidAtPrecisionMs) {
+        this(tenantNo,eventNo,orderNo,paymentNo,platformMerchantNo,paid,paidAt,verificationReference,paidAtPrecisionMs,null);
+    }
+
     public VerifiedPaymentFact {
         paidAtPrecisionMs = PaymentTimePrecision.normalize(paidAtPrecisionMs);
         if (paidAt != null) PaymentTimePrecision.latestMillis(paidAt, paidAtPrecisionMs);

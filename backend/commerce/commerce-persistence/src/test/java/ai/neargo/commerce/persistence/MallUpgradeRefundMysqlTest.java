@@ -2217,4 +2217,31 @@ class MallUpgradeRefundMysqlTest {
                             .containsKey("BASE"));
         }
     }
+    @Test
+    void cashApprovalUsesOriginalFrozenQuantumWhileLegacyOrdersRetainMinorUnitRefunds() {
+        for (long quantum : List.of(1L, 100L)) {
+            try (var db = new MysqlDatabase()) {
+                var helper = new MallFulfillmentMysqlTest();
+                var f = helper.setup(db, false);
+                // Controlled fixture represents an order whose original trusted policy was frozen.
+                if (quantum == 100) db.jdbc.update("UPDATE mall_quote SET line_snapshot=JSON_SET(line_snapshot, '$.moneyPolicy', CAST(? AS JSON))",
+                        "{\"version\":\"original-v1\",\"currency\":\"CNY\",\"scale\":2,\"cashQuantum\":100,\"allocationQuantum\":100}");
+                helper.start(f);
+                f.svc().confirmPayment(helper.paid(f, 8800));
+                f.svc().fulfill(new FulfillmentQuery("tenant-a", f.order().orderNo()));
+                var bridge = new RefundBridge();
+                var refunds = refundService(db, f, bridge);
+                var p = refunds.preview(BUYER, new RefundPreviewCommand(STORE, f.order().orderNo(), "grid", List.of()));
+                refunds.request(BUYER, new RefundCommand(STORE, f.order().orderNo(), "grid", p.cashLimit(), "request"));
+                var approval = new RefundApprovalCommand(STORE, f.order().orderNo(), "grid", p.approvalDigest(),
+                        new Money("CNY", 8701), p.creditLimit(), "review original policy");
+                if (quantum == 100) {
+                    assertEquals("MONEY_GRID_INVALID", assertThrows(MallException.class,
+                            () -> refunds.approve(f.mall().c.ops, approval)).code());
+                    assertEquals(0, db.jdbc.queryForObject("SELECT COUNT(*) FROM mall_refund WHERE reviewed_by IS NOT NULL", Integer.class));
+                } else assertNotNull(refunds.approve(f.mall().c.ops, approval));
+            }
+        }
+    }
+
 }

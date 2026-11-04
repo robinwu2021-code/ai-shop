@@ -165,4 +165,47 @@ class ComponentAllocationTest {
                                 1,
                                 List.of(component("a", ComponentKind.PLAN, 1, 0, true))));
     }
+    @Test
+    void twdWholeDollarAllocationRetainsFractionalCreditAndConservesEveryCycle() {
+        var result = ComponentAllocation.allocate(69900, 69900, 19950, 1,
+                List.of(component("a", ComponentKind.PLAN, 3, 1, false)), 100);
+        var plan = result.getFirst();
+        assertEquals(19900, plan.credit());
+        assertEquals(50000, plan.cash());
+        assertEquals(List.of(23300L, 23300L, 23300L),
+                plan.cycles().stream().map(ComponentAllocation.Cycle::deal).toList());
+        assertEquals(List.of(6700L, 6600L, 6600L),
+                plan.cycles().stream().map(ComponentAllocation.Cycle::credit).toList());
+        assertEquals(List.of(16600L, 16700L, 16700L),
+                plan.cycles().stream().map(ComponentAllocation.Cycle::cash).toList());
+        assertEquals(50, 19950 - plan.credit());
+    }
+
+    @Test
+    void quantumAllocationRejectsFractionalPricesAndKeepsMixedComponentsOnGrid() {
+        var components = List.of(component("a", ComponentKind.PLAN, 3, 1, false),
+                component("b", ComponentKind.HARDWARE, 1, 1, false),
+                component("c", ComponentKind.END_PACKAGE, 2, 1, false),
+                component("d", ComponentKind.PLAN, 2, 0, true));
+        assertThrows(IllegalArgumentException.class,
+                () -> ComponentAllocation.allocate(69901, 69900, 0, 1, components, 100));
+        assertThrows(IllegalArgumentException.class,
+                () -> ComponentAllocation.allocate(69900, 69899, 0, 1, components, 100));
+        var result = ComponentAllocation.allocate(70100, 69900, 19950, 1, components, 100);
+        assertEquals(70100, result.stream().mapToLong(ComponentAllocation.Allocation::gross).sum());
+        assertEquals(69900, result.stream().mapToLong(ComponentAllocation.Allocation::deal).sum());
+        assertEquals(19900, result.stream().mapToLong(ComponentAllocation.Allocation::credit).sum());
+        for (var a : result) {
+            assertEquals(a.cash(), a.cycles().stream().mapToLong(ComponentAllocation.Cycle::cash).sum());
+            for (var c : a.cycles()) {
+                assertEquals(0, c.cash() % 100);
+                assertEquals(0, c.deal() % 100);
+                assertEquals(0, c.gross() % 100);
+                assertTrue(c.cash() >= 0);
+            }
+            if (a.component().kind() != ComponentKind.PLAN || a.component().gift())
+                assertEquals(0, a.credit());
+        }
+    }
+
 }

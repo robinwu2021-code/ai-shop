@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2080" height="1850" viewBox="0 0 2080 1850" role="img" aria-label="行业Plan商城：全部33张候选表与核心关系">
+<title>行业Plan商城：全部33张候选表与核心关系</title>
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#50657c"/></marker></defs>
+<rect width="2080" height="1850" fill="#f5f7fb"/>
+<text x="44" y="54" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="34" fill="#24364b" font-weight="bold" text-anchor="start">行业 Plan 商城 · 数据库全局关系与表导航</text>
+<text x="44" y="94" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="19" fill="#5b6d82" font-weight="normal" text-anchor="start">33张候选表 / 5个逻辑域；沿用现有MySQL，不要求新增物理数据库。候选模型不是全项目全库，也不是已实施DDL。</text>
+<text x="44" y="126" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#5b6d82" font-weight="normal" text-anchor="start">每个业务键、唯一键与引用都带 tenant_no；完整表间基数及键见同名分域SVG / Mermaid源文件。</text>
+<rect x="30" y="161" width="400" height="1100" rx="12" fill="#eaf0f7" stroke="#d9e1ec"/>
+<text x="45" y="198" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#146c94" font-weight="bold" text-anchor="start">经营类型、业务端与Plan</text>
+<text x="45" y="226" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#5b6d82" font-weight="normal" text-anchor="start">5张 · 全部为候选设计</text>
+<rect x="40" y="250" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="51" y="277" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">sys_business_type</text>
+<text x="51" y="302" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">门店经营类型</text>
+<rect x="40" y="347" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="51" y="374" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">sys_business_end</text>
+<text x="51" y="399" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">业务端与唯一访问权益 code</text>
+<rect x="40" y="444" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="51" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">sys_industry_plan</text>
+<text x="51" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">行业 Plan 稳定定义</text>
+<rect x="40" y="541" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="51" y="568" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">sys_industry_plan_version</text>
+<text x="51" y="593" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">Plan 不可变发布版本</text>
+<rect x="40" y="638" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="51" y="665" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">sys_plan_version_end</text>
+<text x="51" y="690" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">Plan 版本与业务端权益关系</text>
+<rect x="440" y="161" width="400" height="1100" rx="12" fill="#eaf0f7" stroke="#d9e1ec"/>
+<text x="455" y="198" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#6c4ab6" font-weight="bold" text-anchor="start">商城商品与平台库存</text>
+<text x="455" y="226" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#5b6d82" font-weight="normal" text-anchor="start">5张 · 全部为候选设计</text>
+<rect x="450" y="250" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="461" y="277" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_product</text>
+<text x="461" y="302" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">商品 SPU</text>
+<rect x="450" y="347" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="461" y="374" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku</text>
+<text x="461" y="399" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">商品规格稳定身份</text>
+<rect x="450" y="444" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="461" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku_version</text>
+<text x="461" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">可成交规格版本</text>
+<rect x="450" y="541" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="461" y="568" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku_component</text>
+<text x="461" y="593" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">SKU 版本交付清单</text>
+<rect x="450" y="638" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="461" y="665" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku_stock</text>
+<text x="461" y="690" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">平台硬件库存</text>
+<rect x="850" y="161" width="400" height="1100" rx="12" fill="#eaf0f7" stroke="#d9e1ec"/>
+<text x="865" y="198" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#b85c38" font-weight="bold" text-anchor="start">报价、订单、支付、履约与退款</text>
+<text x="865" y="226" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#5b6d82" font-weight="normal" text-anchor="start">10张 · 全部为候选设计</text>
+<rect x="860" y="250" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="277" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_quote</text>
+<text x="871" y="302" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">不可变报价</text>
+<rect x="860" y="347" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="374" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="871" y="399" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<rect x="860" y="444" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item</text>
+<text x="871" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">成交行</text>
+<rect x="860" y="541" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="568" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_component</text>
+<text x="871" y="593" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">实际交付与金额分摊叶子项</text>
+<rect x="860" y="638" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="665" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_payment_ref</text>
+<text x="871" y="690" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">平台支付关联与多次尝试</text>
+<rect x="860" y="735" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="762" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_fulfillment_task</text>
+<text x="871" y="787" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">数字／实物交付任务</text>
+<rect x="860" y="832" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="859" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_shipment</text>
+<text x="871" y="884" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">硬件包裹</text>
+<rect x="860" y="929" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="956" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund</text>
+<text x="871" y="981" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">退款协调单</text>
+<rect x="860" y="1026" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="1053" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund_item</text>
+<text x="871" y="1078" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">退款来源明细</text>
+<rect x="860" y="1123" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="871" y="1150" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">commerce_event_inbox</text>
+<text x="871" y="1175" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">外部事实处理去重</text>
+<rect x="1260" y="161" width="400" height="1100" rx="12" fill="#eaf0f7" stroke="#d9e1ec"/>
+<text x="1275" y="198" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#187a65" font-weight="bold" text-anchor="start">门店订阅、端权益、转换与抵扣</text>
+<text x="1275" y="226" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#5b6d82" font-weight="normal" text-anchor="start">9张 · 全部为候选设计</text>
+<rect x="1270" y="250" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="277" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_account</text>
+<text x="1281" y="302" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">门店订阅串行化账户</text>
+<rect x="1270" y="347" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="374" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_period</text>
+<text x="1281" y="399" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">有价值来源的订阅／端包周期</text>
+<rect x="1270" y="444" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_store_end_grant</text>
+<text x="1281" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">端访问来源时间片</text>
+<rect x="1270" y="541" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="568" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_reservation</text>
+<text x="1281" y="593" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">报价结算占用</text>
+<rect x="1270" y="638" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="665" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_conversion</text>
+<text x="1281" y="690" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">一次升级转换</text>
+<rect x="1270" y="735" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="762" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="12.5" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_conversion_item</text>
+<text x="1281" y="787" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">旧周期折价凭据</text>
+<rect x="1270" y="832" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="859" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_credit_account</text>
+<text x="1281" y="884" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">门店订阅抵扣账户</text>
+<rect x="1270" y="929" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="956" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_credit_lot</text>
+<text x="1281" y="981" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">抵扣余额来源批次</text>
+<rect x="1270" y="1026" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1281" y="1053" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_credit_ledger</text>
+<text x="1281" y="1078" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">抵扣账本及批次分配</text>
+<rect x="1670" y="161" width="400" height="1100" rx="12" fill="#eaf0f7" stroke="#d9e1ec"/>
+<text x="1685" y="198" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#8b5e16" font-weight="bold" text-anchor="start">事件、排期历史、迁移与到期提醒</text>
+<text x="1685" y="226" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#5b6d82" font-weight="normal" text-anchor="start">4张 · 全部为候选设计</text>
+<rect x="1680" y="250" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1691" y="277" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">commerce_outbox</text>
+<text x="1691" y="302" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">事务消息</text>
+<rect x="1680" y="347" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1691" y="374" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_migration_map</text>
+<text x="1691" y="399" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">旧合同门店分摊</text>
+<rect x="1680" y="444" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1691" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">mch_end_schedule_event</text>
+<text x="1691" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">同 code 排期变更历史</text>
+<rect x="1680" y="541" width="380" height="84" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="1691" y="568" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#24364b" font-weight="bold" text-anchor="start">commerce_expiry_notice</text>
+<text x="1691" y="593" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#24364b" font-weight="normal" text-anchor="start">门店业务端到期提醒与投递记录</text>
+<text x="44" y="1310" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#24364b" font-weight="bold" text-anchor="start">核心关系主链（箭头从被引用实体指向引用实体；1 → N 包含零到多）</text>
+<rect x="44" y="1330" width="700" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="1300" y="1330" width="736" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="62" y="1367" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="19" fill="#24364b" font-weight="bold" text-anchor="start">mch_store · 门店</text>
+<text x="1318" y="1367" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_account · 门店账户</text>
+<path d="M755 1364 L1290 1364" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1024" y="1350" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="middle">1 → 0..1</text>
+<text x="1024" y="1389" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#5b6d82" font-weight="normal" text-anchor="middle">tenant_no + store_no</text>
+<rect x="44" y="1407" width="700" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="1300" y="1407" width="736" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="62" y="1444" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="19" fill="#24364b" font-weight="bold" text-anchor="start">sys_industry_plan · 稳定Plan</text>
+<text x="1318" y="1444" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="bold" text-anchor="start">sys_industry_plan_version · 发布版本</text>
+<path d="M755 1441 L1290 1441" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1024" y="1427" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="middle">1 → 0..N</text>
+<text x="1024" y="1466" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#5b6d82" font-weight="normal" text-anchor="middle">tenant_no + plan_no</text>
+<rect x="44" y="1484" width="700" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="1300" y="1484" width="736" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="62" y="1521" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="19" fill="#24364b" font-weight="bold" text-anchor="start">mall_order · 商城订单</text>
+<text x="1318" y="1521" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item → component → task</text>
+<path d="M755 1518 L1290 1518" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1024" y="1504" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="middle">1 → 0..N</text>
+<text x="1024" y="1543" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#5b6d82" font-weight="normal" text-anchor="middle">订单 → 行 → 叶子组件 → 交付任务</text>
+<rect x="44" y="1561" width="700" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="1300" y="1561" width="736" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="62" y="1598" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="19" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_period · 来源周期</text>
+<text x="1318" y="1598" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="bold" text-anchor="start">mch_store_end_grant · 端时间片</text>
+<path d="M755 1595 L1290 1595" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1024" y="1581" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="middle">1 → 0..N</text>
+<text x="1024" y="1620" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#5b6d82" font-weight="normal" text-anchor="middle">tenant_no + period_no；grant无折价金额</text>
+<rect x="44" y="1638" width="700" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="1300" y="1638" width="736" height="62" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="62" y="1675" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="19" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_credit_account · 抵扣账户</text>
+<text x="1318" y="1675" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="bold" text-anchor="start">credit_lot → credit_ledger · 批次/账本</text>
+<path d="M755 1672 L1290 1672" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1024" y="1658" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="middle">1 → 0..N</text>
+<text x="1024" y="1697" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="14" fill="#5b6d82" font-weight="normal" text-anchor="middle">tenant_no + store_no + currency</text>
+<text x="44" y="1770" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#465b73" font-weight="normal" text-anchor="start">保留复用：mch_store / mch_entity / sys_industry / mch_entity_plan / sys_merchant_plan_def / sys_function_point / sys_role_point</text>
+<text x="44" y="1803" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#465b73" font-weight="normal" text-anchor="start">库存与outbox优先复用权威设施；支付事实来自支付域；JSON、多态业务号与快照不等于物理外键。</text>
+</svg>

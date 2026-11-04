@@ -1,0 +1,294 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="4127" viewBox="0 0 1540 4127" role="img" aria-label="报价、订单、支付、履约与退款 · ER关系与键">
+<title>报价、订单、支付、履约与退款 · ER关系与键</title>
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#50657c"/></marker></defs>
+<rect width="1540" height="4127" fill="#f5f7fb"/>
+<text x="44" y="51" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="29" fill="#24364b" font-weight="bold" text-anchor="start">报价、订单、支付、履约与退款 · ER关系与键</text>
+<text x="44" y="88" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#5b6d82" font-weight="normal" text-anchor="start">字段级候选设计 · 不是生产DDL · PK均为id；下列UK/FK关系均同时包含tenant_no</text>
+<text x="44" y="120" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#5b6d82" font-weight="normal" text-anchor="start">实线=确定逻辑键引用；虚线=组件/来源类型条件引用；JSON及多态引用不画外键。</text>
+<rect x="44" y="156" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="44" y="156" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="62" y="182" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_quote</text>
+<text x="62" y="207" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">不可变报价</text>
+<text x="62" y="232" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + quote_no</text>
+<rect x="790" y="156" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="790" y="156" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="808" y="182" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="808" y="207" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="808" y="232" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + order_no</text>
+<rect x="44" y="288" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="44" y="288" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="62" y="314" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item</text>
+<text x="62" y="339" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">成交行</text>
+<text x="62" y="364" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + order_item_no</text>
+<rect x="790" y="288" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="790" y="288" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="808" y="314" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_component</text>
+<text x="808" y="339" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">实际交付与金额分摊叶子项</text>
+<text x="808" y="364" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + order_component_no</text>
+<rect x="44" y="420" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="44" y="420" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="62" y="446" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_payment_ref</text>
+<text x="62" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">平台支付关联与多次尝试</text>
+<text x="62" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + payment_attempt_no</text>
+<rect x="790" y="420" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="790" y="420" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="808" y="446" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_fulfillment_task</text>
+<text x="808" y="471" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">数字／实物交付任务</text>
+<text x="808" y="496" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + task_no</text>
+<rect x="44" y="552" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="44" y="552" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="62" y="578" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_shipment</text>
+<text x="62" y="603" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">硬件包裹</text>
+<text x="62" y="628" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + shipment_no</text>
+<rect x="790" y="552" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="790" y="552" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="808" y="578" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund</text>
+<text x="808" y="603" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">退款协调单</text>
+<text x="808" y="628" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + refund_no</text>
+<rect x="44" y="684" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="44" y="684" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="62" y="710" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund_item</text>
+<text x="62" y="735" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">退款来源明细</text>
+<text x="62" y="760" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + refund_item_no</text>
+<rect x="790" y="684" width="706" height="112" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<rect x="790" y="684" width="5" height="112" rx="2" fill="#b85c38" stroke="#b85c38"/>
+<text x="808" y="710" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">commerce_event_inbox</text>
+<text x="808" y="735" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="18" fill="#24364b" font-weight="normal" text-anchor="start">外部事实处理去重</text>
+<text x="808" y="760" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">UK tenant_no + source_system, event_id</text>
+<text x="44" y="864" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="start">关联明细（每行独立展示一条关系，避免交叉线遮挡；矩形为实体，箭头由被引用方指向引用方）</text>
+<rect x="32" y="880" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="894" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="918" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">sys_business_type</text>
+<text x="60" y="942" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店经营类型</text>
+<text x="60" y="965" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + business_type_code</text>
+<rect x="880" y="894" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="918" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_quote</text>
+<text x="896" y="942" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">不可变报价</text>
+<text x="896" y="965" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + business_type_code</text>
+<path d="M668 951 L872 951" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="927" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="977" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="1024" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">01  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="1054" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="1068" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="1092" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">sys_business_type</text>
+<text x="60" y="1116" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店经营类型</text>
+<text x="60" y="1139" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + business_type_code</text>
+<rect x="880" y="1068" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="1092" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="896" y="1116" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="896" y="1139" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + business_type_code</text>
+<path d="M668 1125 L872 1125" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="1101" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="1151" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="1198" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">02  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="1228" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="1242" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="1266" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mch_store</text>
+<text x="60" y="1290" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店</text>
+<text x="60" y="1313" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + store_no</text>
+<rect x="880" y="1242" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="1266" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_quote</text>
+<text x="896" y="1290" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">不可变报价</text>
+<text x="896" y="1313" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + store_no</text>
+<path d="M668 1299 L872 1299" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="1275" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="1325" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="1372" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">03  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="1402" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="1416" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="1440" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mch_store</text>
+<text x="60" y="1464" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店</text>
+<text x="60" y="1487" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + store_no</text>
+<rect x="880" y="1416" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="1440" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="896" y="1464" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="896" y="1487" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + store_no</text>
+<path d="M668 1473 L872 1473" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="1449" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="1499" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="1546" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">04  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="1576" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="1590" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="1614" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mch_store</text>
+<text x="60" y="1638" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店</text>
+<text x="60" y="1661" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + store_no</text>
+<rect x="880" y="1590" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="1614" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund</text>
+<text x="896" y="1638" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">退款协调单</text>
+<text x="896" y="1661" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + store_no</text>
+<path d="M668 1647 L872 1647" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="1623" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="1673" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="1720" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">05  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="1750" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="1764" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="1788" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_quote</text>
+<text x="60" y="1812" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">不可变报价</text>
+<text x="60" y="1835" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + quote_no</text>
+<rect x="880" y="1764" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="1788" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="896" y="1812" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="896" y="1835" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + quote_no</text>
+<path d="M668 1821 L872 1821" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="1797" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..1</text>
+<text x="770" y="1847" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="1894" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">06  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="1924" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="1938" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="1962" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="60" y="1986" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="60" y="2009" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_no</text>
+<rect x="880" y="1938" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="1962" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item</text>
+<text x="896" y="1986" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">成交行</text>
+<text x="896" y="2009" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_no</text>
+<path d="M668 1995 L872 1995" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="1971" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="2021" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="2068" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">07  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="2098" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="2112" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="2136" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku</text>
+<text x="60" y="2160" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">商品规格稳定身份</text>
+<text x="60" y="2183" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + sku_no</text>
+<rect x="880" y="2112" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="2136" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item</text>
+<text x="896" y="2160" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">成交行</text>
+<text x="896" y="2183" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + sku_no</text>
+<path d="M668 2169 L872 2169" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="2145" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="2195" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="2242" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">08  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="2272" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="2286" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="2310" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku_version</text>
+<text x="60" y="2334" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">可成交规格版本</text>
+<text x="60" y="2357" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + sku_version_no</text>
+<rect x="880" y="2286" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="2310" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item</text>
+<text x="896" y="2334" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">成交行</text>
+<text x="896" y="2357" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + sku_version_no</text>
+<path d="M668 2343 L872 2343" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="2319" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="2369" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="2416" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">09  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="2446" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="2460" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="2484" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_item</text>
+<text x="60" y="2508" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">成交行</text>
+<text x="60" y="2531" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_item_no</text>
+<rect x="880" y="2460" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="2484" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_component</text>
+<text x="896" y="2508" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">实际交付与金额分摊叶子项</text>
+<text x="896" y="2531" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_item_no</text>
+<path d="M668 2517 L872 2517" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="2493" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="2543" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="2590" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">10  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="2620" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="2634" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="2658" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_sku_component</text>
+<text x="60" y="2682" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">SKU 版本交付清单</text>
+<text x="60" y="2705" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + component_no</text>
+<rect x="880" y="2634" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="2658" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_component</text>
+<text x="896" y="2682" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">实际交付与金额分摊叶子项</text>
+<text x="896" y="2705" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + component_no</text>
+<path d="M668 2691 L872 2691" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="2667" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="2717" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="2764" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">11  须属于原成交SKU版本</text>
+<rect x="32" y="2794" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="2808" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="2832" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="60" y="2856" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="60" y="2879" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_no</text>
+<rect x="880" y="2808" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="2832" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_payment_ref</text>
+<text x="896" y="2856" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">平台支付关联与多次尝试</text>
+<text x="896" y="2879" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_no</text>
+<path d="M668 2865 L872 2865" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="2841" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="2891" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="2938" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">12  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="2968" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="2982" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="3006" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="60" y="3030" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="60" y="3053" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_no</text>
+<rect x="880" y="2982" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="3006" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_shipment</text>
+<text x="896" y="3030" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">硬件包裹</text>
+<text x="896" y="3053" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_no</text>
+<path d="M668 3039 L872 3039" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="3015" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="3065" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="3112" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">13  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="3142" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="3156" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="3180" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order</text>
+<text x="60" y="3204" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">门店商城订单</text>
+<text x="60" y="3227" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_no</text>
+<rect x="880" y="3156" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="3180" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund</text>
+<text x="896" y="3204" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">退款协调单</text>
+<text x="896" y="3227" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_no</text>
+<path d="M668 3213 L872 3213" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="3189" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="3239" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="3286" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">14  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="3316" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="3330" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="3354" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_component</text>
+<text x="60" y="3378" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">实际交付与金额分摊叶子项</text>
+<text x="60" y="3401" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_component_no</text>
+<rect x="880" y="3330" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="3354" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_fulfillment_task</text>
+<text x="896" y="3378" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">数字／实物交付任务</text>
+<text x="896" y="3401" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_component_no</text>
+<path d="M668 3387 L872 3387" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="3363" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="3413" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="3460" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">15  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="3490" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="3504" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="3528" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund</text>
+<text x="60" y="3552" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">退款协调单</text>
+<text x="60" y="3575" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + refund_no</text>
+<rect x="880" y="3504" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="3528" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund_item</text>
+<text x="896" y="3552" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">退款来源明细</text>
+<text x="896" y="3575" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + refund_no</text>
+<path d="M668 3561 L872 3561" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="3537" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="3587" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="3634" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">16  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="3664" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="3678" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="3702" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_order_component</text>
+<text x="60" y="3726" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">实际交付与金额分摊叶子项</text>
+<text x="60" y="3749" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + order_component_no</text>
+<rect x="880" y="3678" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="3702" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund_item</text>
+<text x="896" y="3726" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">退款来源明细</text>
+<text x="896" y="3749" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + order_component_no</text>
+<path d="M668 3735 L872 3735" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="3711" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">1 → 0..N</text>
+<text x="770" y="3761" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="3808" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">17  同租户引用；服务端校验存在及业务归属，是否建物理外键沿现有迁移规范。</text>
+<rect x="32" y="3838" width="1476" height="158" rx="12" fill="#eef2f7" stroke="#eef2f7"/>
+<rect x="44" y="3852" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="60" y="3876" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mch_subscription_period</text>
+<text x="60" y="3900" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">有价值来源的订阅／端包周期</text>
+<text x="60" y="3923" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">被引用键: tenant_no + period_no</text>
+<rect x="880" y="3852" width="616" height="104" rx="12" fill="#fff" stroke="#d9e1ec"/>
+<text x="896" y="3876" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#24364b" font-weight="bold" text-anchor="start">mall_refund_item</text>
+<text x="896" y="3900" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="normal" text-anchor="start">退款来源明细</text>
+<text x="896" y="3923" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="start">引用键: tenant_no + period_no</text>
+<path d="M668 3909 L872 3909" fill="none" stroke="#50657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="770" y="3885" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#24364b" font-weight="bold" text-anchor="middle">0..1 → 0..N</text>
+<text x="770" y="3935" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="13" fill="#5b6d82" font-weight="normal" text-anchor="middle">逻辑引用</text>
+<text x="48" y="3982" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="15" fill="#465b73" font-weight="normal" text-anchor="start">18  数字退款按具体来源，硬件可空</text>
+<text x="44" y="4087" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="16" fill="#5b6d82" font-weight="normal" text-anchor="start">独立端包FIFO排在固定Plan区间之外；FREE永久不进入有限队列。跨行时长与金额守恒由事务和对账保证。</text>
+</svg>

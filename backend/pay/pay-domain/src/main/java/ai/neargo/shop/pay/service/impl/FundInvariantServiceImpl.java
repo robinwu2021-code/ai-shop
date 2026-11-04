@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.service.PlatformCollectionService;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlPayment;
@@ -60,7 +62,7 @@ public class FundInvariantServiceImpl implements FundInvariantService {
                                 new SuccessPayment(
                                         p.getPaymentNo(),
                                         p.getOrderNo(),
-                                        p.getSucceededAt() == null ? 0L : p.getSucceededAt(),"PLATFORM_MALL".equals(p.getPayScene())?"PLATFORM_MALL":"CONSUMER"))
+                                        p.getSucceededAt() == null ? 0L : p.getSucceededAt(),PlatformCollectionService.ownsScene(p.getPayScene())?p.getPayScene():"CONSUMER"))
                 .toList();
     }
 

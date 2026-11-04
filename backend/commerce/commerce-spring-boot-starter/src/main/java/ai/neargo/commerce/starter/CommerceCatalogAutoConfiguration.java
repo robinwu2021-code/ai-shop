@@ -28,8 +28,8 @@ public class CommerceCatalogAutoConfiguration {
             CatalogAuthorizationPort authorization,
             BusinessEndReadinessPort readiness,
             CommerceEventPersistencePort events,
-            CommerceIdGenerator ids) {
+            CommerceIdGenerator ids, org.springframework.beans.factory.ObjectProvider<MoneyPolicyPort> policies) {
         return new DefaultCatalogFacade(
-                repository, uow, authorization, readiness, events, Clock.systemUTC(), ids);
+                repository, uow, authorization, readiness, events, Clock.systemUTC(), ids, policies.getIfAvailable(() -> MoneyPolicyPort.CNY_COMPATIBILITY));
     }
 }

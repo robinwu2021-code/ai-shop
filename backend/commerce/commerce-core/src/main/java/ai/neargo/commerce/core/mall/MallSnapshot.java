@@ -64,6 +64,16 @@ public final class MallSnapshot {
         }
     }
 
+    public record Purchase(String buyerKind, String initiatedBy, RawPrincipalIdentity initiatorIdentity,
+            ai.neargo.commerce.api.offline.OfflineCollectionTerms offline) {
+        public Purchase {
+            if (!("ACCOUNT".equals(buyerKind) || "STORE".equals(buyerKind))
+                    || initiatedBy == null || initiatedBy.isBlank()
+                    || "STORE".equals(buyerKind) && offline == null)
+                throw new IllegalArgumentException("INVALID_PURCHASE_OWNERSHIP");
+        }
+    }
+
     public record Quote(
             String quoteNo,
             StoreRef store,
@@ -86,7 +96,31 @@ public final class MallSnapshot {
             List<ConversionSource> conversions,
             Long convertedCredit,
             Long historicalAvailableCredit,
-            RawPrincipalIdentity buyerIdentity) {
+            RawPrincipalIdentity buyerIdentity,
+            MoneyPolicy moneyPolicy, Purchase purchase) {
+        public Quote(String quoteNo, StoreRef store, String entityNo, String buyerNo, String businessType,
+                String intent, String currency, long valuationAt, long expiresAt, long entitlementVersion,
+                long accountVersion, long balanceVersion, long catalogVersion, long businessTypeVersion,
+                String pricingPolicyVersion, String stackingPolicyVersion, List<Line> lines,
+                List<CreditUse> creditUses, List<ConversionSource> conversions, Long convertedCredit,
+                Long historicalAvailableCredit, RawPrincipalIdentity buyerIdentity, MoneyPolicy moneyPolicy) {
+            this(quoteNo, store, entityNo, buyerNo, businessType, intent, currency, valuationAt, expiresAt,
+                    entitlementVersion, accountVersion, balanceVersion, catalogVersion, businessTypeVersion,
+                    pricingPolicyVersion, stackingPolicyVersion, lines, creditUses, conversions,
+                    convertedCredit, historicalAvailableCredit, buyerIdentity, moneyPolicy, null);
+        }
+
+        public Quote(String quoteNo, StoreRef store, String entityNo, String buyerNo, String businessType,
+                String intent, String currency, long valuationAt, long expiresAt, long entitlementVersion,
+                long accountVersion, long balanceVersion, long catalogVersion, long businessTypeVersion,
+                String pricingPolicyVersion, String stackingPolicyVersion, List<Line> lines,
+                List<CreditUse> creditUses, List<ConversionSource> conversions, Long convertedCredit,
+                Long historicalAvailableCredit, RawPrincipalIdentity buyerIdentity) {
+            this(quoteNo, store, entityNo, buyerNo, businessType, intent, currency, valuationAt, expiresAt,
+                    entitlementVersion, accountVersion, balanceVersion, catalogVersion, businessTypeVersion,
+                    pricingPolicyVersion, stackingPolicyVersion, lines, creditUses, conversions,
+                    convertedCredit, historicalAvailableCredit, buyerIdentity, null);
+        }
         public Quote(String quoteNo, StoreRef store, String entityNo, String buyerNo, String businessType,
                 String intent, String currency, long valuationAt, long expiresAt, long entitlementVersion,
                 long accountVersion, long balanceVersion, long catalogVersion, long businessTypeVersion,
@@ -148,6 +182,11 @@ public final class MallSnapshot {
         }
 
         public Quote {
+            purchase = purchase == null ? new Purchase("ACCOUNT", buyerNo, buyerIdentity, null) : purchase;
+            if (purchase.offline() != null && !currency.equals(purchase.offline().currency()))
+                throw new IllegalArgumentException("OFFLINE_CURRENCY_MISMATCH");
+            moneyPolicy = moneyPolicy == null ? MoneyPolicy.legacy(currency) : moneyPolicy;
+            if (!currency.equals(moneyPolicy.currency())) throw new IllegalArgumentException("MONEY_POLICY_CURRENCY");
             if (convertedCredit == null) {
                 if ("UPGRADE".equals(intent))
                     throw new IllegalArgumentException("missing upgrade credit evidence");
@@ -244,6 +283,11 @@ public final class MallSnapshot {
             OrderState.Axes axes,
             long createdAt,
             long version) {
+        public long paymentDueAt() {
+            return quote.purchase().offline() == null ? quote.expiresAt()
+                    : Math.addExact(createdAt, quote.purchase().offline().paymentWindowMs());
+        }
+
         public OrderView view() {
             return new OrderView(
                     orderNo,

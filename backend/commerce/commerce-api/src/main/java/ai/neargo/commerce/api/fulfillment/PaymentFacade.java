@@ -10,6 +10,9 @@ import ai.neargo.commerce.api.port.PaymentOutcome;
 public interface PaymentFacade {
     PaymentOutcome startPayment(ActorContext actor, StartPaymentCommand command);
 
+    /** Resume the frozen, already-authorized offline placement; trusted workflow/scheduler only. */
+    default PaymentOutcome prepareOffline(FulfillmentQuery query) { throw new UnsupportedOperationException(); }
+
     FulfillmentResult recover(FulfillmentQuery query);
 
     /** Trusted refresh also queries closed attempts for late cash; callers must authorize order ownership first. */

@@ -862,4 +862,78 @@ class CommerceQuoteTest {
                         .filter(c -> c.kind() != ComponentKind.PLAN)
                         .allMatch(c -> c.creditAmount().minor() == 0));
     }
+    DefaultMallFacade policyFacade(MoneyPolicyPort policies) {
+        return new DefaultMallFacade(repo, catalogs, accounts, uow,
+                s -> Optional.of(new StoreSnapshot(s, storeMerchant, "RETAIL", StoreStatus.ACTIVE, CommerceModel.STORE_V1)),
+                (a, s, c) -> new AuthorizationDecision(allowed, "OWNER", Optional.empty()), clock,
+                n -> UUID.randomUUID().toString(), null,
+                (s, amount, skus) -> new CheckoutReadinessPort.Readiness(true, List.of(), List.of()), policies);
+    }
+
+    void twdSku(long amount) {
+        storeCurrency = "TWD";
+        var old = catalog.skuVersions.get("v");
+        var d = old.draft();
+        var next = new SkuDraft(d.productNo(), d.skuNo(), d.skuVersionNo(), d.title(),
+                new Money("TWD", amount), new Money("TWD", amount), d.allowedBusinessTypes(),
+                d.refundPolicySnapshot(), d.components(), d.maxPerOrder(), d.expectedVersion(), d.reason());
+        catalog.skuVersions.put("v", new CatalogState.SkuVersion(next, old.revision(), old.status(), old.version(), old.publishedAt()));
+    }
+
+    @Test
+    void newPolicyRejectsOldPublishedFractionalSkuButPreservesPlacedHistoricalOrder() {
+        twdSku(101);
+        var legacy = policyFacade((t, c) -> Optional.of(MoneyPolicy.legacy(c)));
+        var command = new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "TWD");
+        var historical = legacy.quote(buyer, command);
+        var placed = legacy.placeOrder(buyer, place(historical, "historical"));
+        var current = policyFacade((t, c) -> Optional.of(new MoneyPolicy("twd-v1", "TWD", 2, 100, 100)));
+        error("MONEY_GRID_INVALID", () -> current.quote(buyer, command));
+        assertEquals(placed, current.placeOrder(buyer, place(historical, "historical")));
+        assertEquals(1, orders.get(placed.orderNo()).quote().moneyPolicy().cashQuantum());
+    }
+
+    @Test
+    void trustedTwdPolicyFreezesCashGridAndLeavesCreditRemainder() {
+        twdSku(69900);
+        available = 19950;
+        var current = policyFacade((t, c) -> Optional.of(new MoneyPolicy("twd-v1", "TWD", 2, 100, 100)));
+        var q = current.quote(buyer, new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "TWD"));
+        assertEquals(19900, q.credit().minor());
+        assertEquals(50000, q.payable().minor());
+        assertEquals(50, q.creditBreakdown().balanceAfter().minor());
+        assertEquals("twd-v1", quotes.get(q.quoteNo()).moneyPolicy().version());
+        var unavailable = policyFacade((t, c) -> Optional.empty());
+        error("MONEY_POLICY_UNAVAILABLE", () -> unavailable.quote(buyer,
+                new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "TWD")));
+    }
+
+    @Test
+    void assistedOfflineOrderKeepsRealOperatorAndStoreBuyerWithIndependentFrozenDeadline() {
+        var ops = new ActorContext("t", SubjectKind.OPERATOR, "ops", "trusted");
+        var terms = new ai.neargo.commerce.api.offline.OfflineCollectionTerms("profile", 1, "platform",
+                "CNY", "opaque-account", "window-v1", 86400000, Map.of("bank", "test-only"));
+        var q = facade.quoteOffline(ops, new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "CNY"), terms);
+        var snapshot = quotes.get(q.quoteNo());
+        assertNotEquals("ops", snapshot.buyerNo());
+        assertEquals("STORE", snapshot.purchase().buyerKind());
+        assertEquals("ops", snapshot.purchase().initiatedBy());
+        assertEquals(901000, q.expiresAt().toEpochMilli());
+        var o = facade.placeOrder(ops, place(q, "assisted"));
+        var frozen = orders.get(o.orderNo());
+        assertEquals(86401000, frozen.paymentDueAt());
+        assertEquals("window-v1", frozen.quote().purchase().offline().paymentWindowVersion());
+        error("NOT_FOUND", () -> facade.placeOrder(new ActorContext("t", SubjectKind.OPERATOR, "other", "trusted"),
+                place(q, "other")));
+    }
+
+    @Test
+    void offlineQuoteStillExpiresInFifteenMinutesAndCannotExtendPlacement() {
+        var terms = new ai.neargo.commerce.api.offline.OfflineCollectionTerms("profile", 1, "platform",
+                "CNY", "opaque-account", "window-v1", 86400000, Map.of("bank", "test-only"));
+        var q = facade.quoteOffline(buyer, new QuoteCommand(store, List.of(new QuoteLine("v", 1)), "CNY"), terms);
+        now = 901000;
+        error("QUOTE_EXPIRED", () -> facade.placeOrder(buyer, place(q, "expired-offline")));
+    }
+
 }

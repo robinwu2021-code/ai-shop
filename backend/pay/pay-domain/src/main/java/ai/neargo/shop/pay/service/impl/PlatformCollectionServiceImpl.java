@@ -30,6 +30,7 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
     private final TransactionTemplate tx;
     private final PayGatewayRouter gateways;
     private final JsonMapper json = JsonMapper.builder().build();
+    private final PlatformOfflineLedger offline;
 
     public PlatformCollectionServiceImpl(
             @Qualifier("payDataSource") DataSource ds,
@@ -38,9 +39,10 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
         jdbc = new JdbcTemplate(ds);
         tx = new TransactionTemplate(manager);
         this.gateways = gateways;
+        this.offline = new PlatformOfflineLedger(jdbc, tx, json, this);
     }
 
-    private record Frozen(String business, Request request) {}
+    record Frozen(String business, Request request) {}
 
     private record Row(Receipt receipt, String external, Long dispatched) {}
 
@@ -77,6 +79,11 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
         require(
                 r.amountMinor() > 0 && r.preparedAt() > 0 && r.expiresAt() > r.preparedAt(),
                 "PAYMENT_INTENT_INVALID");
+        if ("OFFLINE".equals(r.channel())) {
+            require("BANK_TRANSFER".equals(r.method()) && r.offline()!=null, "OFFLINE_INTENT_INVALID");
+            return;
+        }
+        require(r.offline()==null, "PAYMENT_ROUTE_MISMATCH");
         require(r.payer() != null, "PAYER_BINDING_UNPROVEN");
         text(r.payer().realm(), 32);
         text(r.payer().kind(), 16);
@@ -120,15 +127,15 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
         var rows =
                 jdbc.query(
                         "SELECT"
-                            + " payment_no,payment_request_json,status,trade_no,succeeded_at,platform_dispatch_at,platform_close_fence,platform_checkout_json,err_code,out_trade_no,platform_receipt_json"
-                            + " FROM stl_payment WHERE tenant_no=? AND payment_no=? AND pay_scene=?"
+                            + " payment_no,payment_request_json,status,trade_no,succeeded_at,platform_dispatch_at,platform_close_fence,platform_checkout_json,err_code,out_trade_no,platform_receipt_json,platform_manual_proof"
+                            + " FROM stl_payment WHERE tenant_no=? AND payment_no=? AND pay_scene IN (?, 'MALL_UNMATCHED')"
                             + " AND direction='PAY' FOR UPDATE",
                         (rs, n) -> {
                             Frozen frozen =
                                     json.readValue(
                                             rs.getString("payment_request_json"), Frozen.class);
                             require(
-                                    BUSINESS.equals(frozen.business)
+                                    (BUSINESS.equals(frozen.business) || PlatformOfflineLedger.UNMATCHED.equals(frozen.business))
                                             && k.equals(frozen.request.key()),
                                     "PAYMENT_SCOPE_MISMATCH");
                             String checkout = rs.getString("platform_checkout_json");
@@ -149,7 +156,7 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
                                             params,
                                             rs.getString("platform_close_fence"),
                                             rs.getString("err_code"),
-                                            rs.getString("platform_receipt_json") == null
+                                            rs.getString("platform_manual_proof") != null ? 1000L : rs.getString("platform_receipt_json") == null
                                                     ? 1L
                                                     : json.readValue(
                                                                     rs.getString(
@@ -210,7 +217,16 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
 
     public Receipt create(Request request) {
         outside();
-        Row row = tx.execute(s -> prepare(request));
+        Row row = tx.execute(s -> {
+            Row original = lock(request.key());
+            if ("OFFLINE".equals(request.channel()) && (original == null || original.dispatched == null))
+                offline.verifyIssuance(request);
+            Row prepared = prepare(request);
+            if ("OFFLINE".equals(request.channel()) && !terminal(prepared) && prepared.dispatched == null)
+                jdbc.update("UPDATE stl_payment SET platform_dispatch_at=?,version=version+1 WHERE payment_no=?", System.currentTimeMillis(), prepared.receipt.paymentNo());
+            return lock(request.key());
+        });
+        if ("OFFLINE".equals(request.channel())) return row.receipt;
         if (terminal(row)) return row.receipt;
         PayGateway gateway = gateway(request);
         boolean send =
@@ -277,6 +293,7 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
         key(key);
         Row row = tx.execute(s -> lock(key));
         if (row == null) return unknown(key, null, "PAYMENT_NOT_FOUND");
+        if (row.receipt.request().offline()!=null) return row.receipt;
         if ("SUCCESS".equals(row.receipt.state())
                 || "CLOSED".equals(row.receipt.state()) && row.dispatched == null)
             return row.receipt;
@@ -310,6 +327,7 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
                         });
         if (before == null) return unknown(key, original, "PAYMENT_NOT_FOUND");
         if (terminal(before)) return before.receipt;
+        if (before.receipt.request().offline()!=null) return unknown(key,before.receipt.request(),"OFFLINE_RECONCILIATION_REQUIRED");
         try {
             return observe(before, gateway(before.receipt.request()).close(before.external));
         } catch (RuntimeException uncertain) {
@@ -385,6 +403,15 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
                             reason);
                 });
     }
+
+    Receipt localReceipt(Key key) { var row=lock(key); return row==null?null:row.receipt; }
+
+    public OfflineInstructions configureOffline(OfflineProfile profile) { outside(); return offline.configure(profile); }
+    public Optional<OfflineInstructions> offlineInstructions(String tenant, String profile, String currency) {
+        outside(); return offline.current(tenant,profile,currency);
+    }
+    public ManualReceipt confirmOffline(OfflineProof proof) { outside(); return offline.confirm(proof); }
+    public Receipt reconcileOffline(OfflineVoid decision) { outside(); return offline.reconcile(decision); }
 
     public Optional<Key> paymentKey(String id) {
         if (id == null || id.isBlank()) return Optional.empty();
