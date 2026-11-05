@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.trade.dto.MerchantOrderFullVO;
 import ai.neargo.shop.trade.order.policy.FulfillStage;
 import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
 
@@ -66,6 +67,18 @@ public interface MerchantOrderService {
                            String status, java.util.List<String> fulfillments,
                            java.time.LocalDate from, java.time.LocalDate to,
                            long page, long size);
+
+    /**
+     * 同 {@link #list}，多一个行业条件（P2 · B1）：{@code caller} = RETAIL / FOOD / BEAUTY；
+     * RETAIL 连同 caller 为空的存量单一起算。{@code null} = 不按行业筛。
+     */
+    PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
+                           String status, java.util.List<String> fulfillments,
+                           java.time.LocalDate from, java.time.LocalDate to, String caller,
+                           long page, long size);
+
+    /** 完整详情（P2 · B2）。查不到 / 不是这家店的 → 10404，与 {@link #detail} 同一个判法 */
+    MerchantOrderFullVO full(String merchantNo, String storeNo, String subOrderNo);
 
     record WorkItem(OrderVO order, String actionKind, int priority,
                     String afterSaleNo, String afterSaleStatus) { }

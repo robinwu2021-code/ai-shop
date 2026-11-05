@@ -14,6 +14,11 @@ public final class AccessDenied extends RuntimeException {
         this(status, AccessDecision.nextActionFor(status));
     }
 
+    /** 拒绝原因相同、但下一步不同的场合（例如没选门店 → SELECT_STORE），由主机给出明确的下一步 */
+    public static AccessDenied withNextAction(AccessStatus status, String nextAction) {
+        return new AccessDenied(status, nextAction);
+    }
+
     private AccessDenied(AccessStatus status, String nextAction) {
         super(status.name());
         this.status = status;

@@ -65,13 +65,40 @@ export async function renderPay(ctx: Ctx, token: string): Promise<void> {
   });
 
   const until = new Intl.DateTimeFormat(ctx.lang, { hour: "2-digit", minute: "2-digit" }).format(new Date(s.expireAt));
+  const countdown = h("p", { class: "muted small", "data-testid": "countdown", role: "timer" });
   ctx.root.replaceChildren(h("section", { class: "card", "data-view": "pay" },
     header,
     h("div", { class: "amount", "data-testid": "amount" }, ltr(amount)),
+    ...(s.subject ? [h("p", { class: "muted", "data-testid": "subject" }, s.subject)] : []),
     list,
+    countdown,
     h("p", { class: "muted small" }, ctx.t("pay.validUntil", { time: until })),
     status),
   h("footer", { class: "dock" }, button, check));
+  tick(ctx, countdown, s.expireAt);
+}
+
+/** 倒计时（TDD-门店收银台与付款链接 L6）：每秒一跳；到点或离开本页就停，到点整页换成「链接已失效」 */
+function tick(ctx: Ctx, node: HTMLElement, expireAt: number): void {
+  const draw = () => {
+    const left = Math.max(0, Math.floor((expireAt - Date.now()) / 1000));
+    const hh = Math.floor(left / 3600);
+    const mm = String(Math.floor((left % 3600) / 60)).padStart(2, "0");
+    const ss = String(left % 60).padStart(2, "0");
+    node.textContent = ctx.t("pay.countdown", { time: (hh > 0 ? hh + ":" : "") + mm + ":" + ss });
+    return left;
+  };
+  if (draw() === 0) return;
+  const timer = ctx.win.setInterval(() => {
+    if (!node.isConnected) {
+      ctx.win.clearInterval(timer);
+      return;
+    }
+    if (draw() === 0) {
+      ctx.win.clearInterval(timer);
+      ctx.go(ctx.win.location.pathname + ctx.win.location.search, true);
+    }
+  }, 1000);
 }
 
 /** 收款方：商户名 · 门店名 —— 防换贴码（F34），放在金额上方 */

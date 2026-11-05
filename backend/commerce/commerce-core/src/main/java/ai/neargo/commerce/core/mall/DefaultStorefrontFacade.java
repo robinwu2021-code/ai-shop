@@ -19,6 +19,8 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
     private final StoreDirectoryPort stores;
     private final ActorAuthorizationPort auth;
     private final CheckoutReadinessPort readiness;
+    private final OfflineCollectionPort offline;
+    private final String offlineProfileNo;
 
     public DefaultStorefrontFacade(
             CatalogRepository catalog,
@@ -28,6 +30,27 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
             StoreDirectoryPort stores,
             ActorAuthorizationPort auth,
             CheckoutReadinessPort readiness) {
+        this(catalog, mall, accounts, uow, stores, auth, readiness, null, null);
+    }
+
+    /**
+     * @param offline with {@code offlineProfileNo}, enables per-SKU {@code offlineReadiness}; both
+     *     null when this deployment has no offline bank transfer.
+     */
+    public DefaultStorefrontFacade(
+            CatalogRepository catalog,
+            MallRepository mall,
+            SubscriptionAccountRepository accounts,
+            CommerceUnitOfWork uow,
+            StoreDirectoryPort stores,
+            ActorAuthorizationPort auth,
+            CheckoutReadinessPort readiness,
+            OfflineCollectionPort offline,
+            String offlineProfileNo) {
+        if ((offline == null) != (offlineProfileNo == null || offlineProfileNo.isBlank()))
+            throw new IllegalArgumentException("OFFLINE_PROFILE_REQUIRED");
+        this.offline = offline;
+        this.offlineProfileNo = offlineProfileNo;
         this.catalog = catalog;
         this.mall = mall;
         this.accounts = accounts;
@@ -47,7 +70,8 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
                 || actor.accountSessionFingerprint() == null
                 || actor.accountSessionFingerprint().isBlank())
             throw new MallException("FORBIDDEN");
-        return uow.required(
+        var view =
+                uow.required(
                 () -> {
                     var permission = auth.authorize(actor, ref, "commerce:mall:browse");
                     if (permission == null || !permission.allowed())
@@ -114,5 +138,46 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
                             canProcure,
                             List.copyOf(products));
                 });
+        return offline == null ? view : withOffline(ref, view);
+    }
+
+    /**
+     * Pay-domain terms are read after the commerce transaction (same rule as the offline quote);
+     * evaluateOffline is pure local metadata. Online {@code readiness} is left untouched.
+     */
+    private StorefrontView withOffline(StoreRef ref, StorefrontView view) {
+        if (view.products().isEmpty()) return view;
+        uow.requireOutsideTransaction();
+        var terms = offline.terms(ref.tenantNo(), offlineProfileNo, view.currency()).orElse(null);
+        var store =
+                stores.find(ref)
+                        .filter(v -> ref.equals(v.store()))
+                        .orElseThrow(() -> new MallException("NOT_FOUND"));
+        var products = new ArrayList<StorefrontView.Product>();
+        for (var product : view.products()) {
+            var skus = new ArrayList<StorefrontView.Sku>();
+            for (var sku : product.skus()) {
+                var status =
+                        readiness.evaluateOffline(
+                                store, sku.sku().price(), List.of(sku.sku()), terms);
+                if (status == null)
+                    status =
+                            new CheckoutReadinessPort.Readiness(
+                                    false, List.of("CHECK_UNAVAILABLE"), List.of());
+                if (!view.canProcure())
+                    status =
+                            new CheckoutReadinessPort.Readiness(
+                                    false, List.of("PROCUREMENT_REQUIRED"), status.paymentOptions());
+                skus.add(new StorefrontView.Sku(sku.sku(), sku.readiness(), status));
+            }
+            products.add(new StorefrontView.Product(product.product(), List.copyOf(skus)));
+        }
+        return new StorefrontView(
+                view.store(),
+                view.businessTypeCode(),
+                view.currency(),
+                view.catalogVersion(),
+                view.canProcure(),
+                List.copyOf(products));
     }
 }

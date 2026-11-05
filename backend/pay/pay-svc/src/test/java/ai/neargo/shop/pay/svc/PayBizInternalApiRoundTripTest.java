@@ -13,6 +13,9 @@ import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.CollectReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.GrantReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.RefundReq;
+import ai.neargo.shop.pay.client.PayBizInternalApi.VoidLinkReq;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
 import ai.neargo.shop.pay.client.PortResult;
 import ai.neargo.shop.svc.ConfigServiceLocator;
 import ai.neargo.shop.svc.InternalHttp;
@@ -52,7 +55,7 @@ class PayBizInternalApiRoundTripTest {
     @Test
     @DisplayName("★★★ 门店与操作人显式过边界（读也带 —— 门店范围按操作员圈）；结果原样回")
     void storeAndOperatorCrossTheBoundary() {
-        when(biz.collect("S-1", "MCH-A", 1200L, "桌 3", 15)).thenReturn(new CollectView("PYO-1", "tk-1", 9L, "/c/tk-1"));
+        when(biz.collect("S-1", "MCH-A", 1200L, "桌 3", 15)).thenReturn(new CollectView("PYO-1", "tk-1", 9L, "/c/tk-1", 1200L, "CNY", "桌 3", "一号店"));
         when(biz.refunds("S-1", "MCH-A")).thenReturn(List.of(refund("SUCCEEDED")));
 
         PortResult<CollectView> c = api().collect("S-1", new CollectReq("MCH-A", 1200L, "桌 3", 15));
@@ -68,6 +71,22 @@ class PayBizInternalApiRoundTripTest {
         verify(biz).disableQrCode("S-1", "MCH-A", "QR-1");
         verify(biz).revokeGrant("S-1", "MCH-A", 5L);
         verify(biz).grant("S-1", "MCH-A", "APP-X", Set.of("COLLECT"));
+    }
+
+    @Test
+    @DisplayName("★★★ 付款链接（TDD-门店收银台与付款链接 L3–L5）：列表条件、再次分享、作废原因与操作人都原样过边界")
+    void paymentLinksCrossTheBoundary() {
+        LinkRow row = new LinkRow("PYO-2", 300, "CNY", "订金", "VOIDED", 1L, 2L, null, null, "MCH-A", "MCH-A");
+        when(biz.paymentLinks("S-1", "MCH-A", "PENDING", "1_2", 5)).thenReturn(new LinkPage(List.of(row), null));
+        when(biz.reissueLink("S-1", "MCH-A", "PYO-2"))
+                .thenReturn(new CollectView("PYO-2", "tk-2", 9L, "/c/tk-2", 300L, "CNY", "订金", "一号店"));
+        when(biz.voidLink("S-1", "MCH-A", "PYO-2", "顾客改现金")).thenReturn(row);
+
+        assertThat(api().paymentLinks("S-1", "MCH-A", "PENDING", "1_2", 5).value().items()).singleElement()
+                .satisfies(x -> assertThat(x.subject()).isEqualTo("订金"));
+        assertThat(api().reissueLink("S-1", "PYO-2", "MCH-A").value().token()).isEqualTo("tk-2");
+        assertThat(api().voidLink("S-1", "PYO-2", new VoidLinkReq("MCH-A", "顾客改现金")).value().status())
+                .isEqualTo("VOIDED");
     }
 
     @Test

@@ -16,6 +16,9 @@ import ai.neargo.shop.pay.acquiring.statemachine.PayOrderStatus;
 import ai.neargo.shop.pay.checkout.entity.PayCheckoutSession;
 import ai.neargo.shop.pay.checkout.entity.PayQrCode;
 import ai.neargo.shop.pay.checkout.service.CheckoutService;
+import ai.neargo.shop.pay.entity.StlPayment;
+import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
+import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayOrderMapper;
 import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayCheckoutSessionMapper;
 import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayQrCodeMapper;
 import ai.neargo.shop.pay.mapper.openapp.OpenAppMappers.PayAppMapper;
@@ -57,11 +60,20 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final PayMerchantBindingService stores;
     private final Duration ttl;
     private final MarketService markets;
+    private final PayOrderMapper orders;
+    private final PaymentMapper attempts;
+    /** 付款链接最长有效期（分钟），{@code shop.pay.collect.max-expire-minutes}，默认 24 小时 */
+    private final int maxCollectMinutes;
 
     public CheckoutServiceImpl(PayCheckoutSessionMapper sessions, PayQrCodeMapper codes, PayAppMapper apps,
                                PaymentService payments, RouteSelectionPolicy routes, PayMerchantBindingService stores,
-                               @Value("${shop.pay.checkout.token-ttl:PT15M}") Duration ttl, MarketService markets) {
+                               @Value("${shop.pay.checkout.token-ttl:PT15M}") Duration ttl, MarketService markets,
+                               PayOrderMapper orders, PaymentMapper attempts,
+                               @Value("${shop.pay.collect.max-expire-minutes:1440}") int maxCollectMinutes) {
         this.markets = markets;
+        this.orders = orders;
+        this.attempts = attempts;
+        this.maxCollectMinutes = maxCollectMinutes;
         this.sessions = sessions;
         this.codes = codes;
         this.apps = apps;
@@ -73,11 +85,15 @@ public class CheckoutServiceImpl implements CheckoutService {
 
     @Override
     public Issued issue(PayOrder o) {
+        return issue(o, LocalDateTime.now(ZoneOffset.UTC).plus(ttl));
+    }
+
+    /** 令牌有效到 {@code wanted}，但不超过支付单截止 */
+    private Issued issue(PayOrder o, LocalDateTime wanted) {
         byte[] raw = new byte[32];
         RANDOM.nextBytes(raw);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        LocalDateTime until = now.plus(ttl);
+        LocalDateTime until = wanted;
         if (o.getExpireAt() != null && o.getExpireAt().isBefore(until)) {
             until = o.getExpireAt();
         }
@@ -99,7 +115,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .map(x -> x.product().getPayMethod()).distinct().toList();
         return new SessionView(o.getPayOrderNo(), o.getEntityNameSnapshot(), o.getStoreNameSnapshot(),
                 o.getAmountMinor(), o.getCurrency(), scaleOf(o.getMarket()), o.getMarket(), done ? "DONE" : s.getStatus(),
-                methods, epoch(s.getExpireAt()));
+                methods, epoch(s.getExpireAt()), o.getSubject());
     }
 
     @Override
@@ -125,7 +141,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     }
 
     @Override
-    public String result(String token) {
+    public ResultView resultView(String token) {
         PayCheckoutSession s = find(token);
         PayOrder o = orderOf(s);
         if (paid(o)) {
@@ -135,9 +151,22 @@ public class CheckoutServiceImpl implements CheckoutService {
                 patch.setStatus("DONE");
                 DataScopeContext.executeWithoutScope(() -> sessions.updateById(patch));
             }
-            return "SUCCEEDED";
+            return new ResultView("SUCCEEDED", tradeNoSuffix(o.getId()));
         }
-        return PayOrderStatus.CLOSED.name().equals(o.getStatus()) ? "FAILED" : "PROCESSING";
+        return new ResultView(PayOrderStatus.CLOSED.name().equals(o.getStatus()) ? "FAILED" : "PROCESSING", null);
+    }
+
+    /** 成功那次渠道尝试的交易号后 6 位；没有就 null */
+    private String tradeNoSuffix(Long payOrderId) {
+        StlPayment ok = DataScopeContext.executeWithoutScope(() -> attempts.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                .eq(StlPayment::getPayOrderId, payOrderId).eq(StlPayment::getDirection, StlPayment.PAY)
+                .eq(StlPayment::getStatus, StlPayment.SUCCESS).isNotNull(StlPayment::getTradeNo)
+                .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        String no = ok == null ? null : ok.getTradeNo();
+        if (no == null || no.isBlank()) {
+            return null;
+        }
+        return no.length() <= 6 ? no : no.substring(no.length() - 6);
     }
 
     @Override
@@ -182,7 +211,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Override
     public Issued collect(PayCaller caller, Long storeId, long amountMinor, String subject, Integer expireMinutes) {
         int minutes = expireMinutes == null ? 15 : expireMinutes;
-        if (amountMinor <= 0 || minutes < 1 || minutes > 1440) {
+        if (amountMinor <= 0 || minutes < 1 || minutes > maxCollectMinutes) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         StoreRef store = stores.storeById(storeId).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
@@ -192,8 +221,66 @@ public class CheckoutServiceImpl implements CheckoutService {
                 store.storeName(), store.entityName(), store.market(), amountMinor, currency,
                 subject == null || subject.isBlank() ? store.storeName() : subject, "ONLINE",
                 Instant.now().plus(Duration.ofMinutes(minutes)), store.fundsPath()));
-        return issue(o);
+        // 令牌跟着链接的有效期走，不被收银令牌默认时长截短（TDD-门店收银台与付款链接 L1）
+        return issue(o, LocalDateTime.now(ZoneOffset.UTC).plusMinutes(minutes));
     }
+
+    @Override
+    public Issued reissue(PayCaller caller, Long storeId, String payOrderNo) {
+        PayOrder o = collectOrder(caller, storeId, payOrderNo);
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (paid(o) || !PENDING.contains(o.getStatus()) || o.getExpireAt() == null || !o.getExpireAt().isAfter(now)
+                || voided(o.getId())) {
+            throw BizException.of(ErrorCode.PAY_CHECKOUT_EXPIRED);
+        }
+        long minutes = o.getCreatedAt() == null ? 15
+                // created_at 是审计列，按 JVM 本地时区写；expire_at 按 UTC 写 —— 先换成同一口径再相减，
+                // 否则 +04:00 下 60 分钟的链接算出负数、被压成 1 分钟（2026-11-05 联调实测）
+                : Math.max(1, Duration.between(o.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                        .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(), o.getExpireAt()).toMinutes());
+        LocalDateTime until = now.plusMinutes(Math.min(minutes, maxCollectMinutes));
+        if (until.isAfter(o.getExpireAt())) {
+            PayOrder patch = new PayOrder();
+            patch.setId(o.getId());
+            patch.setExpireAt(until);
+            DataScopeContext.executeWithoutScope(() -> orders.updateById(patch));
+            o.setExpireAt(until);
+        }
+        DataScopeContext.executeWithoutScope(() -> sessions.revokeAll(o.getId()));
+        return issue(o, until);
+    }
+
+    @Override
+    public PayOrder voidCollect(PayCaller caller, Long storeId, String payOrderNo, String reason) {
+        PayOrder o = collectOrder(caller, storeId, payOrderNo);
+        if (paid(o)) {
+            return o;
+        }
+        String why = reason == null || reason.isBlank() ? "作废付款链接" : "作废付款链接：" + reason;
+        PayOrder after = payments.close(caller, payOrderNo, why.length() > 120 ? why.substring(0, 120) : why);
+        if (PayOrderStatus.CLOSED.name().equals(after.getStatus())) {
+            DataScopeContext.executeWithoutScope(() -> sessions.markVoided(o.getId(), caller.operatorNo(),
+                    LocalDateTime.now(ZoneOffset.UTC)));
+        }
+        return after;
+    }
+
+    /** 本店的付款链接（biz_type = BIZ_COLLECT）；别家的、别的来源的一律「没有」 */
+    private PayOrder collectOrder(PayCaller caller, Long storeId, String payOrderNo) {
+        PayOrder o = payOrderNo == null ? null : payments.find(payOrderNo);
+        if (o == null || storeId == null || !storeId.equals(o.getStoreId()) || !COLLECT_BIZ_TYPE.equals(o.getBizType())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        payments.query(caller, payOrderNo);
+        return o;
+    }
+
+    private boolean voided(Long payOrderId) {
+        return DataScopeContext.executeWithoutScope(() -> sessions.selectCount(Wrappers.<PayCheckoutSession>lambdaQuery()
+                .eq(PayCheckoutSession::getPayOrderId, payOrderId).eq(PayCheckoutSession::getStatus, "VOIDED"))) > 0;
+    }
+
+    private static final List<String> PENDING = List.of("CREATED", "AWAITING_PAYMENT", "AWAITING_CONFIRM", "AUTHORIZED");
 
     private PayQrCode activeCode(String qrCode) {
         PayQrCode c = qrCode == null ? null : DataScopeContext.executeWithoutScope(() -> codes.selectOne(

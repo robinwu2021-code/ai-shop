@@ -7,9 +7,23 @@ import java.util.*;
 /** Business workflow only; every operation runs in the owning commerce UoW. */
 public interface OfflineRepository {
     record Evidence(String assetKey, PrivateEvidencePort.Scope scope, long createdAt) {}
-    record Claim(ClaimCommand command, String submitterNo, long submittedAt, String status, String reviewer, String reason) {
-        public Claim reviewed(String status,String reviewer,String reason) { return new Claim(command,submitterNo,submittedAt,status,reviewer,reason); }
-        public ClaimView view() { return new ClaimView(command.claimNo(),status,command.declaredAmount(),command.declaredPaidAt(),java.time.Instant.ofEpochMilli(submittedAt),command.bankReference(),command.evidenceKeys()); }
+    /** {@code received}: platform-recorded amount from the operator review; absent in older snapshots. */
+    record Claim(ClaimCommand command, String submitterNo, long submittedAt, String status, String reviewer, String reason,
+            ai.neargo.commerce.api.common.Money received) {
+        public Claim(ClaimCommand command, String submitterNo, long submittedAt, String status, String reviewer, String reason) {
+            this(command,submitterNo,submittedAt,status,reviewer,reason,null);
+        }
+        public Claim reviewed(String status,String reviewer,String reason) { return new Claim(command,submitterNo,submittedAt,status,reviewer,reason,received); }
+        public Claim reviewed(String status,String reviewer,String reason,ai.neargo.commerce.api.common.Money received) {
+            return new Claim(command,submitterNo,submittedAt,status,reviewer,reason,received);
+        }
+        /** Buyer-safe projection: the buyer's own reference and receipts; amount only once money was recorded, note only when it explains a refusal. */
+        public ClaimView view() {
+            boolean recorded="CONFIRMED".equals(status) || "MISMATCHED".equals(status);
+            boolean explained="DECLINED".equals(status) || "MISMATCHED".equals(status);
+            return new ClaimView(command.claimNo(),status,command.declaredAmount(),command.declaredPaidAt(),java.time.Instant.ofEpochMilli(submittedAt),
+                    command.bankReference(),command.evidenceKeys(),recorded?received:null,explained?reason:null);
+        }
     }
     record Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,
             ReviewCommand review,VoidCommand reconciliation,ai.neargo.commerce.api.port.PaymentIntentCommand payment,

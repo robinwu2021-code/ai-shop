@@ -2,7 +2,15 @@ package ai.neargo.shop.portal.biz.pay;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -40,6 +48,9 @@ public class BizPaymentController {
     }
 
     public record CollectReq(Long amountMinor, String subject, Integer expireMinutes) {
+    }
+
+    public record VoidLinkReq(String reason) {
     }
 
     public record QrReq(String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
@@ -119,5 +130,84 @@ public class BizPaymentController {
     @GetMapping("/biz/payment/statement")
     public DailyStatement statement(@RequestParam(required = false) String day) {
         return app.statement(BizContext.requireStoreNo(), day);
+    }
+
+    // ---- 「收款」Tab：本店支付订单（TDD-B端收款订单与商城接口对齐 P1）。日期是门店市场的 yyyy-MM-dd，不传 = 今天 ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders")
+    public PaymentPage paymentOrders(@RequestParam(required = false) String from,
+                                     @RequestParam(required = false) String to,
+                                     @RequestParam(required = false) List<String> source,
+                                     @RequestParam(required = false) List<String> channel,
+                                     @RequestParam(required = false) List<String> status,
+                                     @RequestParam(required = false) Long amountMin,
+                                     @RequestParam(required = false) Long amountMax,
+                                     @RequestParam(required = false) String q,
+                                     @RequestParam(required = false) String cursor,
+                                     @RequestParam(required = false) Integer size) {
+        return app.paymentOrders(BizContext.requireStoreNo(),
+                new PaymentQuery(from, to, source, channel, status, amountMin, amountMax, q, cursor, size));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
+    @GetMapping("/biz/payment/orders/summary")
+    public Summary paymentSummary(@RequestParam(required = false) String from,
+                                  @RequestParam(required = false) String to) {
+        return app.paymentSummary(BizContext.requireStoreNo(), from, to);
+    }
+
+    /** 顾客说「我付了」：传 tradeNoSuffix（≥6 位）按交易号找；否则按 amountMinor + within（10m / 1h / today） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders/lookup")
+    public Lookup paymentLookup(@RequestParam(required = false) Long amountMinor,
+                                @RequestParam(required = false) String within,
+                                @RequestParam(required = false) String tradeNoSuffix) {
+        return app.paymentLookup(BizContext.requireStoreNo(), amountMinor, within, tradeNoSuffix);
+    }
+
+    /** 本店是否已开通收款（有生效的收款商户绑定）及已开通的渠道：「收款」Tab 据此决定给列表还是给开通入口 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/collect-status")
+    public CollectStatus collectStatus() {
+        return app.collectStatus(BizContext.requireStoreNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders/{payOrderNo}")
+    public Detail paymentDetail(@PathVariable String payOrderNo) {
+        return app.paymentDetail(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    /** 待确认的单「立即查询结果」：向渠道查单补账，返回查后的详情 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @PostMapping("/biz/payment/orders/{payOrderNo}/query")
+    public Detail paymentRefresh(@PathVariable String payOrderNo) {
+        return app.paymentRefresh(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    // ---- 门店收银台：付款链接记录、再次分享、作废（TDD-门店收银台与付款链接 L3–L5） ----
+
+    /** 本店付款链接，按创建时间倒序；status = PENDING / PAID / EXPIRED / VOIDED，不传 = 全部 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/links")
+    public LinkPage paymentLinks(@RequestParam(required = false) String status,
+                                 @RequestParam(required = false) String cursor,
+                                 @RequestParam(required = false) Integer size) {
+        return app.paymentLinks(BizContext.requireStoreNo(), status, cursor, size);
+    }
+
+    /** 再次分享：同一张支付单换发新令牌，旧链接作废；只允许待付款 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/links/{payOrderNo}/reissue")
+    public CollectView reissueLink(@PathVariable String payOrderNo) {
+        return app.reissueLink(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    /** 作废：先查单再关单；关前查到已付返回 status=PAID（不作废，要退走退款） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/links/{payOrderNo}/void")
+    public LinkRow voidLink(@PathVariable String payOrderNo, @RequestBody(required = false) VoidLinkReq req) {
+        return app.voidLink(BizContext.requireStoreNo(), payOrderNo, req == null ? null : req.reason());
     }
 }

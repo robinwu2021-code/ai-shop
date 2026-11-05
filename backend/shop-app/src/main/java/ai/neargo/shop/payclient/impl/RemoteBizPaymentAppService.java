@@ -3,14 +3,24 @@ package ai.neargo.shop.payclient.impl;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
 import ai.neargo.shop.pay.client.PayBizInternalApi.CollectReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.GrantReq;
+import ai.neargo.shop.pay.client.PayBizInternalApi.PaymentSearchReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.QrReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.RefundReq;
+import ai.neargo.shop.pay.client.PayBizInternalApi.VoidLinkReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PortResult;
 import ai.neargo.shop.pay.openapp.service.AppGrantService.GrantView;
@@ -115,6 +125,62 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
     public DailyStatement statement(String storeNo, String day) {
         DailyStatement result = unwrap(() -> pay.statement(storeNo, operator(), day));
         auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款日流水 " + (day == null ? "今天" : day));
+        return result;
+    }
+
+    @Override
+    public PaymentPage paymentOrders(String storeNo, PaymentQuery query) {
+        return unwrap(() -> pay.paymentOrders(storeNo, new PaymentSearchReq(operator(), query)));
+    }
+
+    @Override
+    public Summary paymentSummary(String storeNo, String from, String to) {
+        Summary result = unwrap(() -> pay.paymentSummary(storeNo, operator(), from, to));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款汇总 " + from + "~" + to);
+        return result;
+    }
+
+    @Override
+    public Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix) {
+        return unwrap(() -> pay.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix));
+    }
+
+    @Override
+    public CollectStatus collectStatus(String storeNo) {
+        return unwrap(() -> pay.collectStatus(storeNo, operator()));
+    }
+
+    @Override
+    public Detail paymentDetail(String storeNo, String payOrderNo) {
+        Detail result = unwrap(() -> pay.paymentDetail(storeNo, payOrderNo, operator()));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo + "/" + payOrderNo, "收款详情");
+        return result;
+    }
+
+    @Override
+    public Detail paymentRefresh(String storeNo, String payOrderNo) {
+        Detail result = unwrap(() -> pay.paymentRefresh(storeNo, payOrderNo, operator()));
+        auditLogPort.record("BIZ_PAY_QUERY", storeNo + "/" + payOrderNo, "收款查单");
+        return result;
+    }
+
+    @Override
+    public LinkPage paymentLinks(String storeNo, String status, String cursor, Integer size) {
+        return unwrap(() -> pay.paymentLinks(storeNo, operator(), status, cursor, size));
+    }
+
+    @Override
+    public CollectView reissueLink(String storeNo, String payOrderNo) {
+        CollectView result = unwrap(() -> pay.reissueLink(storeNo, payOrderNo, operator()));
+        auditLogPort.record("BIZ_PAY_COLLECT", storeNo + "/" + payOrderNo, "再次分享付款链接");
+        return result;
+    }
+
+    @Override
+    public LinkRow voidLink(String storeNo, String payOrderNo, String reason) {
+        LinkRow result = unwrap(() -> pay.voidLink(storeNo, payOrderNo, new VoidLinkReq(operator(), reason)));
+        auditLogPort.record("BIZ_PAY_VOID", storeNo + "/" + payOrderNo, "作废付款链接 " + result.status()
+                + (reason == null ? "" : " " + reason));
         return result;
     }
 

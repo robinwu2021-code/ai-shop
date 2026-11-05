@@ -16,5 +16,14 @@ public record StorefrontView(
         List<Product> products) {
     public record Product(ProductDraft product, List<Sku> skus) {}
 
-    public record Sku(SkuDraft sku, Readiness readiness) {}
+    /**
+     * {@code readiness} is online payment only. {@code offlineReadiness} is null unless this
+     * deployment publishes offline bank transfer terms; then it says whether the SKU can be bought
+     * by transfer (same shape, OFFLINE/BANK_TRANSFER option).
+     */
+    public record Sku(SkuDraft sku, Readiness readiness, Readiness offlineReadiness) {
+        public Sku(SkuDraft sku, Readiness readiness) {
+            this(sku, readiness, null);
+        }
+    }
 }

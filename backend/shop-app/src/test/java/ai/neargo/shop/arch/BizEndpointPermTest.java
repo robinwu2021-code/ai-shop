@@ -51,6 +51,8 @@ class BizEndpointPermTest {
                     "/biz/geo/estates/counts",
                     "/biz/auth/login",
                     "/biz/auth/otp/send",
+                    // 邮箱验证码（ADR-051）：与短信验证码同性质 —— 登录前发码，作用对象是填的那个邮箱
+                    "/biz/auth/email-otp/send",
                     "/biz/auth/staff-login",
                     // 退出登录：作用对象是当前会话本身
                     "/biz/auth/logout",
@@ -358,6 +360,7 @@ class BizEndpointPermTest {
                     // ---- 订单与经营数据 ----
                     put("/biz/order", BizPerms.ORDER_VIEW);
                     put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
+                    put("/biz/order/{subOrderNo}/full", BizPerms.ORDER_VIEW);
                     // 物流轨迹（TDD-物流模块 B2）：看订单的人就能看物流
                     put("/biz/order/{subOrderNo}/trace", BizPerms.ORDER_VIEW);
                     put("/biz/order/{subOrderNo}/inventory-trace", BizPerms.ORDER_VIEW);
@@ -656,6 +659,17 @@ class BizEndpointPermTest {
                     put("/biz/payment/qr-code/{qrCode}/disabled", BizPerms.PAY_QR);
                     put("/biz/payment/app-grant", BizPerms.PAY_APP_GRANT);
                     put("/biz/payment/app-grant/{id}", BizPerms.PAY_APP_GRANT);
+                    // 「收款」Tab（TDD-B端收款订单与商城接口对齐 P1）：列表、查找、详情、查单只读；汇总仍归看账的码
+                    put("/biz/payment/orders", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/collect-status", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/orders/lookup", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/orders/{payOrderNo}", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/orders/{payOrderNo}/query", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/orders/summary", BizPerms.PAY_STATEMENT);
+                    // 门店收银台（TDD-门店收银台与付款链接 L3–L5）：记录只读跟「收款」Tab 同码；再次分享、作废与生成同码
+                    put("/biz/payment/links", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/links/{payOrderNo}/reissue", BizPerms.PAY_COLLECT);
+                    put("/biz/payment/links/{payOrderNo}/void", BizPerms.PAY_COLLECT);
                     put("/biz/settle/bills", BizPerms.FINANCE);
                     put("/biz/settle/income", BizPerms.FINANCE);
                     put("/biz/settle/daily-flow", BizPerms.FINANCE);

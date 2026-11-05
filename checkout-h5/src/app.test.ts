@@ -86,6 +86,20 @@ describe("收银台页面", () => {
     expect(JSON.parse(calls.find((c) => c.method === "POST")!.body!)).toMatchObject({ payMethod: "TEST_PAY" });
   });
 
+  it("★★ 付款链接：显示收款说明与倒计时；成功页带交易号后 6 位", async () => {
+    routes["GET /checkout/v1/sessions/tok"] = ok({ ...SESSION, subject: "订金", expireAt: Date.now() + 125_000 });
+    await open("/c/tok");
+    expect(document.querySelector("[data-testid=subject]")?.textContent).toBe("订金");
+    expect(document.querySelector("[data-testid=countdown]")?.textContent).toMatch(/剩余 02:0[45]/);
+
+    routes["POST /checkout/v1/sessions/tok/pay"] = ok({ payOrderNo: "PYO1", outTradeNo: "T1", payChannel: "TEST",
+      payParams: { prepayId: "test_1" } });
+    routes["GET /checkout/v1/sessions/tok/result"] = ok({ result: "SUCCEEDED", tradeNoSuffix: "123456" });
+    (document.querySelector("button.primary") as HTMLButtonElement).click();
+    for (let i = 0; i < 10 && !document.querySelector("[data-view=result]"); i++) await flush();
+    expect(document.querySelector("[data-testid=trade-no]")?.textContent).toContain("123456");
+  });
+
   it("★ ?lang= 压过浏览器语言", async () => {
     routes["GET /checkout/v1/sessions/tok"] = ok(SESSION);
     await open("/c/tok?lang=ar");

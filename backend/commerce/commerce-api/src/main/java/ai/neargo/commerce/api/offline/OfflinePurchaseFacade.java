@@ -18,10 +18,17 @@ public interface OfflinePurchaseFacade {
     /**
      * A buyer declaration as submitted. bankReference and evidenceKeys are the buyer's own words and receipts:
      * operators use them to find the transfer on the bank statement, never as proof of receipt.
+     * {@code receivedAmount}: what the platform actually recorded at review (CONFIRMED/MISMATCHED),
+     * else null. {@code reviewNote}: the reviewer's reason shown to the buyer (DECLINED/MISMATCHED),
+     * else null. Operator evidence and receiver are never exposed here.
      */
     record ClaimView(String claimNo, String status, Money declaredAmount, Instant declaredPaidAt, Instant submittedAt,
-            String bankReference, List<String> evidenceKeys) {
+            String bankReference, List<String> evidenceKeys, Money receivedAmount, String reviewNote) {
         public ClaimView { evidenceKeys = evidenceKeys == null ? List.of() : List.copyOf(evidenceKeys); }
+        public ClaimView(String claimNo, String status, Money declaredAmount, Instant declaredPaidAt, Instant submittedAt,
+                String bankReference, List<String> evidenceKeys) {
+            this(claimNo, status, declaredAmount, declaredPaidAt, submittedAt, bankReference, evidenceKeys, null, null);
+        }
     }
     record ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
             String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason) {}
@@ -43,7 +50,11 @@ public interface OfflinePurchaseFacade {
      * transfers money; the refund completes only after the ledger accepts this proof.
      */
     RefundView confirmRefundPayout(ActorContext actor, RefundPayoutCommand command);
-    /** Bank instructions frozen into this order; disclosed only after durable issuance. */
+    /**
+     * Bank instructions frozen into this order; disclosed only after durable issuance. When cash is
+     * payable they also carry {@code transferRemark}: the order number (letters and digits only) the
+     * buyer writes on the transfer so the operator can find the order when confirming receipt.
+     */
     record InstructionsView(String orderNo, Money payable, Instant paymentDueAt, String profileNo,
             long profileVersion, Map<String, String> instructions) {}
     /** Issues (idempotently) the frozen instructions for an offline order and returns them. */

@@ -1,6 +1,14 @@
 package ai.neargo.shop.pay.client;
 
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -36,6 +44,10 @@ public interface PayBizInternalApi {
     record RefundReq(String operatorNo, String payOrderNo, Long amountMinor, String reason, String outRefundNo) {
     }
 
+    /** 列表条件走请求体：多值条件原样带过去，不靠查询串的重复参数 */
+    record PaymentSearchReq(String operatorNo, PaymentQuery query) {
+    }
+
     @GetExchange(PREFIX + "/app-grants")
     PortResult<List<GrantView>> grants(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
 
@@ -68,4 +80,48 @@ public interface PayBizInternalApi {
     @GetExchange(PREFIX + "/statement")
     PortResult<DailyStatement> statement(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo,
                                          @RequestParam(value = "day", required = false) String day);
+
+    @PostExchange(PREFIX + "/payment-orders/search")
+    PortResult<PaymentPage> paymentOrders(@PathVariable("storeNo") String storeNo, @RequestBody PaymentSearchReq req);
+
+    @GetExchange(PREFIX + "/payment-orders/summary")
+    PortResult<Summary> paymentSummary(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo,
+                                       @RequestParam(value = "from", required = false) String from,
+                                       @RequestParam(value = "to", required = false) String to);
+
+    @GetExchange(PREFIX + "/payment-orders/lookup")
+    PortResult<Lookup> paymentLookup(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo,
+                                     @RequestParam(value = "amountMinor", required = false) Long amountMinor,
+                                     @RequestParam(value = "within", required = false) String within,
+                                     @RequestParam(value = "tradeNoSuffix", required = false) String tradeNoSuffix);
+
+    @GetExchange(PREFIX + "/payment-orders/{payOrderNo}")
+    PortResult<Detail> paymentDetail(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
+                                     @RequestParam("operatorNo") String operatorNo);
+
+    @PostExchange(PREFIX + "/payment-orders/{payOrderNo}/query")
+    PortResult<Detail> paymentRefresh(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
+                                      @RequestParam("operatorNo") String operatorNo);
+
+    @GetExchange(PREFIX + "/collect-status")
+    PortResult<CollectStatus> collectStatus(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
+
+    // ---- 门店收银台：付款链接（TDD-门店收银台与付款链接 L3–L5） ----
+
+    record VoidLinkReq(String operatorNo, String reason) {
+    }
+
+    @GetExchange(PREFIX + "/payment-links")
+    PortResult<LinkPage> paymentLinks(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo,
+                                      @RequestParam(value = "status", required = false) String status,
+                                      @RequestParam(value = "cursor", required = false) String cursor,
+                                      @RequestParam(value = "size", required = false) Integer size);
+
+    @PostExchange(PREFIX + "/payment-links/{payOrderNo}/reissue")
+    PortResult<CollectView> reissueLink(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
+                                        @RequestParam("operatorNo") String operatorNo);
+
+    @PostExchange(PREFIX + "/payment-links/{payOrderNo}/void")
+    PortResult<LinkRow> voidLink(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
+                                 @RequestBody VoidLinkReq req);
 }

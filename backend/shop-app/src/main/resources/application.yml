@@ -166,6 +166,15 @@ shop:
   geo:
     # 高德 Web 服务 key（后端代理，密钥不落端）。空 = 地图能力关闭：定位取地址按钮隐藏、地址校验跳过
     amap-key: ${AMAP_WEB_KEY:}
+    # 按门店地区选地图（TDD-双地图提供方与门店选点）：CN 高德、TW/AE Google；某地区的提供方没配密钥就没有地图选点，
+    # 不跨家兜底（高德在阿联酋没有底图，Google 在大陆不可达）
+    provider-by-market: ${SHOP_GEO_PROVIDER_BY_MARKET:CN:AMAP,TW:GOOGLE,AE:GOOGLE}
+    # Google 服务端 key（Places API (New) + Geocoding，后端代理，不下发）。空 = 台湾 / 阿联酋没有地图选点
+    google-key: ${GOOGLE_MAPS_SERVER_KEY:}
+    # 端上画地图用的浏览器 JS key（限定包名 / 域名，会经 store-setup 下发到端上），与上面的服务端 key 分开
+    amap-js-key: ${AMAP_JS_KEY:}
+    amap-js-security: ${AMAP_JS_SECURITY:}
+    google-js-key: ${GOOGLE_MAPS_JS_KEY:}
   cos:
     secret-id: ${COS_SECRET_ID:}
     secret-key: ${COS_SECRET_KEY:}

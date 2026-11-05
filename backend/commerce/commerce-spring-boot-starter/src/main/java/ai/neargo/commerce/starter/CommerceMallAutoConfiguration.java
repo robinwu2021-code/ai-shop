@@ -47,8 +47,19 @@ public class CommerceMallAutoConfiguration {
     @ConditionalOnMissingBean(ai.neargo.commerce.api.mall.StorefrontFacade.class)
     ai.neargo.commerce.api.mall.StorefrontFacade commerceStorefrontFacade(CatalogRepository catalog,
             MallRepository mall, SubscriptionAccountRepository accounts, CommerceUnitOfWork uow,
-            StoreDirectoryPort stores, ActorAuthorizationPort auth, CheckoutReadinessPort readiness) {
-        return new DefaultStorefrontFacade(catalog, mall, accounts, uow, stores, auth, readiness);
+            StoreDirectoryPort stores, ActorAuthorizationPort auth, CheckoutReadinessPort readiness,
+            org.springframework.beans.factory.ObjectProvider<ai.neargo.commerce.api.port.OfflineCollectionPort> offline,
+            org.springframework.core.env.Environment env) {
+        // Same opt-in as CommerceOfflineAutoConfiguration: offline readiness only when the offline
+        // workflow is enabled with a collection profile and a trusted host collection port.
+        boolean enabled = env.getProperty("commerce.mall.payment.enabled", Boolean.class, false)
+                && env.getProperty("commerce.mall.offline.enabled", Boolean.class, false);
+        String profileNo = env.getProperty("commerce.mall.offline.profile-no", "").trim();
+        var collection = enabled && !profileNo.isEmpty() ? offline.getIfAvailable() : null;
+        if (collection == null)
+            return new DefaultStorefrontFacade(catalog, mall, accounts, uow, stores, auth, readiness);
+        return new DefaultStorefrontFacade(
+                catalog, mall, accounts, uow, stores, auth, readiness, collection, profileNo);
     }
 
     @Bean

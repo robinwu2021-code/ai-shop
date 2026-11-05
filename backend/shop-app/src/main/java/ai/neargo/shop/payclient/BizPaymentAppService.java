@@ -1,6 +1,14 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -34,4 +42,26 @@ public interface BizPaymentAppService {
     List<RefundView> refunds(String storeNo);
 
     DailyStatement statement(String storeNo, String day);
+
+    // ---- 「收款」Tab：本店支付订单 ----
+
+    PaymentPage paymentOrders(String storeNo, PaymentQuery query);
+
+    Summary paymentSummary(String storeNo, String from, String to);
+
+    Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix);
+
+    CollectStatus collectStatus(String storeNo);
+
+    Detail paymentDetail(String storeNo, String payOrderNo);
+
+    Detail paymentRefresh(String storeNo, String payOrderNo);
+
+    // ---- 门店收银台：付款链接（TDD-门店收银台与付款链接 L3–L5） ----
+
+    LinkPage paymentLinks(String storeNo, String status, String cursor, Integer size);
+
+    CollectView reissueLink(String storeNo, String payOrderNo);
+
+    LinkRow voidLink(String storeNo, String payOrderNo, String reason);
 }

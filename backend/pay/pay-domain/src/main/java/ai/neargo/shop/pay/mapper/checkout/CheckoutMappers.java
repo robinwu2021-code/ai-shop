@@ -28,5 +28,14 @@ public final class CheckoutMappers {
         @Update("UPDATE pay_checkout_session SET status = 'REVOKED', version = version + 1 WHERE pay_order_id = #{payOrderId}"
                 + " AND status IN ('OPEN','PAYING') AND deleted = 0")
         int revokeAll(@Param("payOrderId") Long payOrderId);
+
+        /**
+         * 商家作废付款链接（TDD-门店收银台与付款链接 L5）：关单成功后把这张单的令牌记成 VOIDED，作废人记在 updated_by。
+         * 链接记录据此区分「已作废」与「已过期」（同是 CLOSED）。
+         */
+        @Update("UPDATE pay_checkout_session SET status = 'VOIDED', updated_by = #{operatorNo}, updated_at = #{now},"
+                + " version = version + 1 WHERE pay_order_id = #{payOrderId} AND deleted = 0")
+        int markVoided(@Param("payOrderId") Long payOrderId, @Param("operatorNo") String operatorNo,
+                       @Param("now") LocalDateTime now);
     }
 }

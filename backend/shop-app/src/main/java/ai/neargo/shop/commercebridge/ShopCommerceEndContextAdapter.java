@@ -23,7 +23,7 @@ public final class ShopCommerceEndContextAdapter
     private final AccountSessionVerifier sessions;
     private final java.time.Clock clock;
     private final CommerceAccessInterceptor interceptor;
-    private final CommerceRoutePolicy policy = new CommerceRoutePolicy();
+    private final CommerceRoutePolicy policy = new CommerceRoutePolicy(ShopStoreMemberRoutes.ALL);
 
     ShopCommerceEndContextAdapter(
             ShopCommerceStoreAdapter stores,
@@ -119,6 +119,9 @@ public final class ShopCommerceEndContextAdapter
             return;
         }
         if (!stores.affects(user, legacy, route, requested) && !route.newModelOnly()) return;
+        // 登录的是账户；进店操作必须先选门店。没选 → 让端上去选店，而不是「联系管理员」
+        if ((requested == null || requested.isBlank()) && route.lane() != CommerceRoutePolicy.Lane.DENY)
+            throw AccessDenied.withNextAction(AccessStatus.FORBIDDEN, "SELECT_STORE");
         if (requested == null
                 || requested.isBlank()
                 || route.lane() == CommerceRoutePolicy.Lane.DENY

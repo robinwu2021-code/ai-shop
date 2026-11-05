@@ -12,8 +12,11 @@ import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.dto.MerchantOrderFullVO;
+import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
+import ai.neargo.shop.trade.order.mapper.InvoiceRequestMapper;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.command.ShipCommand;
@@ -169,6 +172,59 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 .withLogisticsSync(syncOf(sub.getSubOrderNo()));
     }
 
+
+    /** 发票申请（P2 完整详情用）。setter 注入：存量手工构造本类的地方不用跟着改 */
+    private InvoiceRequestMapper invoiceRequests;
+
+    @Autowired(required = false)
+    public void setInvoiceRequests(InvoiceRequestMapper invoiceRequests) {
+        this.invoiceRequests = invoiceRequests;
+    }
+
+    @Override
+    public MerchantOrderFullVO full(String merchantNo, String storeNo, String subOrderNo) {
+        OrderVO order = detail(merchantNo, storeNo, subOrderNo);
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        OrdOrder main = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1")));
+        String currency = main == null || main.getCurrency() == null ? "CNY" : main.getCurrency();
+
+        MerchantOrderFullVO.Customer customer = new MerchantOrderFullVO.Customer(order.buyerNickname(),
+                order.receiver() == null ? null : order.receiver().name(),
+                order.receiver() == null ? null : order.receiver().phone(),
+                order.receiver() == null ? null : order.receiver().salutation());
+        MerchantOrderFullVO.Source source = new MerchantOrderFullVO.Source(sub.getCaller(), sub.getTrafficSource(),
+                main == null ? null : main.getAdmissionKind(), main == null ? null : main.getPayScene());
+
+        List<MerchantOrderFullVO.Payment> payments = new java.util.ArrayList<>();
+        if (main != null && main.getOfflineConfirmedAt() != null) {
+            payments.add(new MerchantOrderFullVO.Payment("OFFLINE", main.getPayChannel(), nz(sub.getPayAmount()),
+                    main.getOfflineConfirmedAt(), null, main.getOrderNo(), main.getOfflineConfirmedBy()));
+        } else if (main != null && main.getPaidAt() != null) {
+            payments.add(new MerchantOrderFullVO.Payment("ONLINE", main.getPayChannel(), nz(sub.getPayAmount()),
+                    main.getPaidAt(), main.getPayTradeNo(), main.getOrderNo(), null));
+        }
+
+        List<MerchantOrderFullVO.Operation> operations = DataScopeContext.executeWithoutScope(() ->
+                statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
+                        .eq(OrdStatusLog::getSubOrderNo, sub.getSubOrderNo())
+                        .orderByAsc(OrdStatusLog::getAt).orderByAsc(OrdStatusLog::getId))).stream()
+                .map(l -> new MerchantOrderFullVO.Operation(l.getAt() == null ? 0L : l.getAt(), l.getEvent(),
+                        l.getFromStatus(), l.getStatus(), l.getLabel(), l.getOperatorType(), l.getOperatorNo()))
+                .toList();
+
+        MerchantOrderFullVO.Invoice invoice = null;
+        if (invoiceRequests != null) {
+            OrdInvoiceRequest r = DataScopeContext.executeWithoutScope(() -> invoiceRequests.selectOne(
+                    Wrappers.<OrdInvoiceRequest>lambdaQuery().eq(OrdInvoiceRequest::getOrderNo, sub.getOrderNo())
+                            .orderByDesc(OrdInvoiceRequest::getId).last("limit 1")));
+            if (r != null) {
+                invoice = new MerchantOrderFullVO.Invoice(r.getRequestNo(), r.getStatus(), r.getTitleType(),
+                        r.getTitle(), r.getInvoiceNo(), r.getIssuedAt(), nz(r.getAmountMinor()));
+            }
+        }
+        return new MerchantOrderFullVO(order, currency, sub.getRemark(), customer, source, payments, operations, invoice);
+    }
 
     /** 物流页（TDD-物流模块 B2）。setter 注入：存量手工构造本类的地方不用跟着改 */
     private LogisticsPort logisticsPort;
@@ -518,7 +574,24 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                                   String status, List<String> fulfillments,
                                   java.time.LocalDate from, java.time.LocalDate to,
                                   long page, long size) {
+        return list(merchantNo, storeNos, status, fulfillments, from, to, null, page, size);
+    }
+
+    @Override
+    public PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
+                                  String status, List<String> fulfillments,
+                                  java.time.LocalDate from, java.time.LocalDate to, String caller,
+                                  long page, long size) {
         var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
+        /*
+         * 行业（P2 · B1）：「订单」Tab 只放本店行业的业务单，餐饮 / 美业在核心里落的单不能混进零售列表。
+         * RETAIL 连同 caller 为空的存量单一起算 —— 早于 V615 的单都是零售。
+         */
+        if ("RETAIL".equals(caller)) {
+            w.and(x -> x.eq(OrdSubOrder::getCaller, "RETAIL").or().isNull(OrdSubOrder::getCaller));
+        } else if (caller != null && !caller.isBlank()) {
+            w.eq(OrdSubOrder::getCaller, caller);
+        }
         /*
          * 门店过滤。**结算键 entity_no 仍然保留** —— 两个键各管各的：
          * entity_no 是「这单的钱算谁的」（历史快照，门店换主体也不改），
@@ -672,7 +745,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 OrderStatusView.toContract(s.getStatus(), main == null ? null : main.getStatus()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(), items,
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
-                        nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
+                        nz(s.getDiscountAmount()), nz(s.getPayAmount()),
+                        // 币种取主单（P2）：此前写死 CNY，台湾门店的单在商家端显示成人民币
+                        main == null || main.getCurrency() == null ? "CNY" : main.getCurrency()),
                 s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
                 null,
                 s.getCreatedAt() == null ? 0L

@@ -8,9 +8,9 @@ import ai.neargo.shop.pay.api.common.PortalResponse;
 import ai.neargo.shop.pay.checkout.service.CheckoutService;
 import ai.neargo.shop.pay.checkout.service.CheckoutService.CodeView;
 import ai.neargo.shop.pay.checkout.service.CheckoutService.Issued;
+import ai.neargo.shop.pay.checkout.service.CheckoutService.ResultView;
 import ai.neargo.shop.pay.checkout.service.CheckoutService.SessionView;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,9 +49,10 @@ public class CheckoutController {
         return ok(checkout.pay(token, req.payMethod(), req.payerOpenId(), req.payerAppId()), http);
     }
 
+    /** {@code {result, tradeNoSuffix}}：成功时带渠道交易号后 6 位（TDD-门店收银台与付款链接 L6） */
     @GetMapping("/sessions/{token}/result")
-    public PortalResponse<Map<String, String>> result(@PathVariable String token, HttpServletRequest http) {
-        return ok(Map.of("result", checkout.result(token)), http);
+    public PortalResponse<ResultView> result(@PathVariable String token, HttpServletRequest http) {
+        return ok(checkout.resultView(token), http);
     }
 
     @GetMapping("/codes/{qrCode}")

@@ -27,6 +27,7 @@ import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.platform.GeoPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import org.springframework.beans.factory.ObjectProvider;
 import java.util.Locale;
@@ -370,15 +371,28 @@ public class BizMerchantController {
      * @param industryText    行业选「其他」时自填（≤20 字）；其余情况忽略
      * @param subIndustryText 子业态选「其他」时自填（≤20 字）；其余情况忽略
      * @param addressDetail   楼层门牌（≤64 字），可空
+     * @param latE6           地图选点的纬度 ×1e6（TDD-双地图提供方与门店选点 AC5），可空；与 lngE6 要么都给要么都不给
+     * @param lngE6           经度 ×1e6，同上
+     * @param coordSys        坐标系：{@code gcj02}（高德）/ {@code wgs84}（Google）；给了坐标就必填，没给坐标时忽略
      */
     public record QuickStartReq(String storeName, String address, String businessTypeCode,
                                 String market, String industryCode, String subIndustryCode,
-                                String industryText, String subIndustryText, String addressDetail) {
+                                String industryText, String subIndustryText, String addressDetail,
+                                Integer latE6, Integer lngE6, String coordSys) {
+
+        /** 双地图之前（三步建店）的请求形状：没有坐标 */
+        public QuickStartReq(String storeName, String address, String businessTypeCode,
+                             String market, String industryCode, String subIndustryCode,
+                             String industryText, String subIndustryText, String addressDetail) {
+            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode,
+                    industryText, subIndustryText, addressDetail, null, null, null);
+        }
 
         /** 三步建店之前的旧请求形状 */
         public QuickStartReq(String storeName, String address, String businessTypeCode,
                              String market, String industryCode, String subIndustryCode) {
-            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode, null, null, null);
+            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode, null, null, null,
+                    null, null, null);
         }
     }
 
@@ -420,6 +434,7 @@ public class BizMerchantController {
         if (!accountMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
         requireIndustry(req, otherBusinessType);
         if (tooLong(req.addressDetail(), MAX_ADDRESS_DETAIL)) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireCoordinates(req);
         if (markets != null && markets.find(requested).filter(MarketPort.MarketBrief::enabled).isEmpty())
             throw BizException.of(ErrorCode.BAD_REQUEST);
         return requested;
@@ -455,14 +470,34 @@ public class BizMerchantController {
         if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
     }
 
+    static final int MAX_LAT_E6 = 90_000_000;
+    static final int MAX_LNG_E6 = 180_000_000;
+
+    /**
+     * 地图选点坐标（TDD-双地图提供方与门店选点 AC5）：经纬度要么都给要么都不给；给了就要在范围内，
+     * 且坐标系必须是两家之一 —— 不知道坐标系的点存下来只会让距离与导航静默偏几百米。
+     * 不做坐标系转换：高德 gcj02、Google wgs84 原样存，门店记 {@code coord_sys}。
+     */
+    private static void requireCoordinates(QuickStartReq req) {
+        Integer lat = req.latE6();
+        Integer lng = req.lngE6();
+        if (lat == null && lng == null) return;
+        boolean ok = lat != null && lng != null
+                && Math.abs((long) lat) <= MAX_LAT_E6 && Math.abs((long) lng) <= MAX_LNG_E6
+                && (GeoPort.GCJ02.equals(req.coordSys()) || GeoPort.WGS84.equals(req.coordSys()));
+        if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
     /** 已校验的请求 → 建店命令。自填文字只在对应那一级是「其他」时才带上，其余情况不存 */
     static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req) {
         String industryText = BizFoundationController.OTHER.equals(req.industryCode()) ? trimmed(req.industryText())
                 : null;
         String subText = BizFoundationController.OTHER.equals(req.subIndustryCode()) ? trimmed(req.subIndustryText())
                 : null;
+        boolean located = req.latE6() != null && req.lngE6() != null;
         return new MerchantAdminPort.QuickStartCommand(userNo, req.storeName(), req.address(),
-                req.businessTypeCode(), market, industryText, subText, trimmed(req.addressDetail()));
+                req.businessTypeCode(), market, industryText, subText, trimmed(req.addressDetail()),
+                located ? req.latE6() : null, located ? req.lngE6() : null, located ? req.coordSys() : null);
     }
 
     private static boolean filled(String text, int max) {

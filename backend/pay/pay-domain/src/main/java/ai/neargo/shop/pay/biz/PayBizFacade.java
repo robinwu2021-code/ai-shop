@@ -6,8 +6,20 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
 import ai.neargo.shop.pay.acquiring.entity.PayRefund;
+import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.port.InternalCallers;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentFilter;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService;
+import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.checkout.entity.PayQrCode;
@@ -47,11 +59,17 @@ public class PayBizFacade {
     private final QrCodeService codes;
     private final RefundService refunds;
     private final PayStatementService statements;
+    private final MerchantPaymentQueryService payments;
+    private final PaymentService paymentService;
+    private final MerchantCollectLinkQueryService links;
     private final String checkoutBase;
 
     public PayBizFacade(PayMerchantBindingService stores, InternalCallers callers, AppGrantService grants,
                         CheckoutService checkout, QrCodeService codes, RefundService refunds,
-                        PayStatementService statements, @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
+                        PayStatementService statements, MerchantPaymentQueryService payments,
+                        PaymentService paymentService, MerchantCollectLinkQueryService links,
+                        @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
+        this.links = links;
         this.stores = stores;
         this.callers = callers;
         this.grants = grants;
@@ -59,11 +77,17 @@ public class PayBizFacade {
         this.codes = codes;
         this.refunds = refunds;
         this.statements = statements;
+        this.payments = payments;
+        this.paymentService = paymentService;
         this.checkoutBase = checkoutBase;
     }
 
-    /** @param checkoutUrl 顾客扫的链接（前端据此出二维码）；令牌明文只在这一次响应里 */
-    public record CollectView(String payOrderNo, String token, long expireAt, String checkoutUrl) {
+    /**
+     * @param checkoutUrl 顾客扫的链接（前端据此出二维码）；令牌明文只在这一次响应里
+     * @param amountMinor / currency / subject / storeName 端上画付款卡片用，不必再查一次（TDD-门店收银台与付款链接 L1）
+     */
+    public record CollectView(String payOrderNo, String token, long expireAt, String checkoutUrl, Long amountMinor,
+                              String currency, String subject, String storeName) {
     }
 
     /** @param url 顾客扫的链接（前端据此出二维码） */
@@ -104,7 +128,35 @@ public class PayBizFacade {
         StoreRef s = store(storeNo);
         Issued i = checkout.collect(caller(s, operatorNo), s.storeId(), amountMinor == null ? 0 : amountMinor, subject,
                 expireMinutes);
-        return new CollectView(i.payOrderNo(), i.token(), i.expireAt(), checkoutBase + "/c/" + i.token());
+        return card(i);
+    }
+
+    private CollectView card(Issued i) {
+        PayOrder o = paymentService.find(i.payOrderNo());
+        return new CollectView(i.payOrderNo(), i.token(), i.expireAt(), checkoutBase + "/c/" + i.token(),
+                o == null ? null : o.getAmountMinor(), o == null ? null : o.getCurrency(),
+                o == null ? null : o.getSubject(), o == null ? null : o.getStoreNameSnapshot());
+    }
+
+    // ---- 门店收银台：付款链接记录、再次分享、作废（TDD-门店收银台与付款链接 L3–L5） ----
+
+    public LinkPage paymentLinks(String storeNo, String operatorNo, String status, String cursor, Integer size) {
+        StoreRef s = store(storeNo);
+        return links.list(caller(s, operatorNo), s.storeId(), status, cursor, size);
+    }
+
+    /** 换发新令牌、旧令牌作废，支付单号不变；只允许待付款 */
+    public CollectView reissueLink(String storeNo, String operatorNo, String payOrderNo) {
+        StoreRef s = store(storeNo);
+        return card(checkout.reissue(caller(s, operatorNo), s.storeId(), payOrderNo));
+    }
+
+    /** 先查单再关单；关前查到已付就不作废，返回的行是 PAID（这一笔要走退款） */
+    public LinkRow voidLink(String storeNo, String operatorNo, String payOrderNo, String reason) {
+        StoreRef s = store(storeNo);
+        PayCaller c = caller(s, operatorNo);
+        checkout.voidCollect(c, s.storeId(), payOrderNo, reason);
+        return links.row(c, s.storeId(), payOrderNo);
     }
 
     // ---- 静态收款码（F45） ----
@@ -158,6 +210,67 @@ public class PayBizFacade {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return statements.daily(caller(s, operatorNo), s.storeId(), d);
+    }
+
+    // ---- 「收款」Tab：本店支付订单（TDD-B端收款订单与商城接口对齐 P1） ----
+
+    /** 列表的查询条件（日期用 {@code yyyy-MM-dd} 字符串收，便于两种部署形态原样转发） */
+    public record PaymentQuery(String from, String to, List<String> sources, List<String> channels, List<String> statuses,
+                               Long amountMin, Long amountMax, String q, String cursor, Integer size) {
+    }
+
+    public PaymentPage paymentOrders(String storeNo, String operatorNo, PaymentQuery q) {
+        StoreRef s = store(storeNo);
+        PaymentQuery x = q == null ? new PaymentQuery(null, null, null, null, null, null, null, null, null, null) : q;
+        return payments.list(caller(s, operatorNo), s.storeId(), new PaymentFilter(date(x.from()), date(x.to()),
+                x.sources(), x.channels(), x.statuses(), x.amountMin(), x.amountMax(), x.q(), x.cursor(), x.size()));
+    }
+
+    public Summary paymentSummary(String storeNo, String operatorNo, String from, String to) {
+        StoreRef s = store(storeNo);
+        return payments.summary(caller(s, operatorNo), s.storeId(), date(from), date(to));
+    }
+
+    /** 两种查法二选一：{@code tradeNoSuffix} 有值按交易号找，否则按金额 + 窗口 */
+    public Lookup paymentLookup(String storeNo, String operatorNo, Long amountMinor, String within, String tradeNoSuffix) {
+        StoreRef s = store(storeNo);
+        if (tradeNoSuffix != null && !tradeNoSuffix.isBlank()) {
+            return payments.lookupByTradeNoSuffix(caller(s, operatorNo), s.storeId(), tradeNoSuffix);
+        }
+        if (amountMinor == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return payments.lookupByAmount(caller(s, operatorNo), s.storeId(), amountMinor, within);
+    }
+
+    public CollectStatus collectStatus(String storeNo, String operatorNo) {
+        StoreRef s = store(storeNo);
+        return payments.status(caller(s, operatorNo), s.storeId());
+    }
+
+    public Detail paymentDetail(String storeNo, String operatorNo, String payOrderNo) {
+        StoreRef s = store(storeNo);
+        return payments.detail(caller(s, operatorNo), s.storeId(), payOrderNo);
+    }
+
+    /** 「立即查询结果」：先确认是本店的单，再对未结束的渠道尝试查单补账，返回查后的详情 */
+    public Detail paymentRefresh(String storeNo, String operatorNo, String payOrderNo) {
+        StoreRef s = store(storeNo);
+        PayCaller c = caller(s, operatorNo);
+        payments.detail(c, s.storeId(), payOrderNo);
+        paymentService.refresh(c, payOrderNo);
+        return payments.detail(c, s.storeId(), payOrderNo);
+    }
+
+    private static LocalDate date(String d) {
+        if (d == null || d.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(d);
+        } catch (DateTimeParseException e) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 
     private StoreRef store(String storeNo) {
