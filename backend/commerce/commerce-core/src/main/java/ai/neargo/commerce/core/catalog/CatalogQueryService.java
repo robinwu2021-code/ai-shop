@@ -19,7 +19,7 @@ final class CatalogQueryService {
     CatalogOverview overview(ActorContext actor) {
         var s = support.read(actor);
         return new CatalogOverview(
-                s.types.values().stream().map(t -> new BusinessTypeView(t.draft(), t.version())).toList(),
+                s.types.values().stream().map(t -> new BusinessTypeView(t.draft(), t.version(), t.catalogVersion())).toList(),
                 s.ends.values().stream().map(e -> new BusinessEndView(e.draft(), e.version())).toList(),
                 s.plans.values().stream().map(p -> new PlanDefinitionView(p.planNo(),p.typeCode(),p.tier(),p.currentVersionNo(),p.saleStatus(),p.version())).toList(),
                 s.planVersions.values().stream().map(p -> new PlanVersionView(p.draft(),p.status(),p.revision(),p.version())).toList(),
@@ -115,7 +115,7 @@ final class CatalogQueryService {
                 businessType.draft().enabled(),
                 plans,
                 skus,
-                new BusinessTypeView(businessType.draft(), businessType.version()),
+                new BusinessTypeView(businessType.draft(), businessType.version(), businessType.catalogVersion()),
                 businessEnds,
                 planDefinitions,
                 planVersions,
