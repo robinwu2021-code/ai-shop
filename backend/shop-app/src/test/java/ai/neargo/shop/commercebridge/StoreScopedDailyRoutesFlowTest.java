@@ -112,9 +112,10 @@ class StoreScopedDailyRoutesFlowTest {
         String[] o = newModelOwner("15965020104");
         String body = mvc.perform(post("/biz/store/" + o[1] + "/categories")
                         .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"categoryNos\":[\"CAT210\"]}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"items\":[{\"categoryNo\":\"CAT210\",\"sort\":1}]}"))
                 .andReturn().getResponse().getContentAsString();
         assertEquals(0, json.readTree(body).path("code").asInt(), body);
+        assertEquals("CAT210", json.readTree(body).path("data").path(0).path("categoryNo").asText(), body);
     }
 
     @Test
