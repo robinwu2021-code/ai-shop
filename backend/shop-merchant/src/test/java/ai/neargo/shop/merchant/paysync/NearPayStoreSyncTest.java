@@ -97,4 +97,19 @@ class NearPayStoreSyncTest {
         assertThat(new NearPayStoreSyncConsumer(reader, PROPS, "tok", http(200, seen)).supports("MERCHANT_STORE_CHANGED")).isTrue();
         assertThatThrownBy(() -> new NearPayStoreSyncConsumer(reader, PROPS, "", http(200, seen))).hasMessageContaining("internal-token");
     }
+
+    @Test
+    void springCanCreateEnabledSyncBeans() {
+        try (var ctx = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+            ctx.getEnvironment().getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource("t", Map.of(
+                    "shop.nearpay.store-sync.enabled", "true", "shop.nearpay.store-sync.base-url", "http://127.0.0.1:18093",
+                    "shop.nearpay.store-sync.credential", "cred", "shop.services.internal-token", "tok")));
+            ctx.registerBean(javax.sql.DataSource.class, () -> mock(javax.sql.DataSource.class));
+            ctx.registerBean(ai.neargo.shop.event.OutboxEventBus.class, () -> mock(ai.neargo.shop.event.OutboxEventBus.class));
+            ctx.register(StoreSyncConfiguration.class, StoreSnapshotReader.class, NearPayStoreSyncConsumer.class);
+            ctx.refresh();
+            assertThat(ctx.getBean(NearPayStoreSyncConsumer.class).supports("MERCHANT_STORE_CHANGED")).isTrue();
+            assertThat(ctx.getBean(StoreSyncProperties.class).credential()).isEqualTo("cred");
+        }
+    }
 }

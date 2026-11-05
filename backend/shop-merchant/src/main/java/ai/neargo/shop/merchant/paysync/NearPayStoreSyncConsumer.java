@@ -32,6 +32,7 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
     private final String token;
     private final HttpClient http;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public NearPayStoreSyncConsumer(StoreSnapshotReader reader, StoreSyncProperties props,
                                     @Value("${shop.services.internal-token:}") String token) {
         this(reader, props, token, HttpClient.newBuilder().connectTimeout(props.timeout()).build());
