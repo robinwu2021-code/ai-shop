@@ -141,4 +141,8 @@ execution_retention / resource_occupation / service_execution）均为既有，�
 4. **Google 语言**：TW 与 AE 都用 `zh-TW`（按委托方给定）；阿联酋若要英文地名再按市场分语言。
 5. **未做**：`/biz/stores/mine` 等读取路径未回传 `coordSys`（当前也不回传坐标）；`/biz/geo/geocode`、`/biz/geo/estates` 未加 `market`；quick-start 不校验 coordSys 与市场提供方一致（如 CN 提交 wgs84 也收）；App 选点页（AC6/AC7）。
 
-实现提交：见 §7（本地提交，未推送）。
+## §7 确认与完成
+
+- 2026-11-05 用户确认 D1/D2/D3（均按建议）。
+- 后端实现提交 `c72089b46`（分支 `codex/commerce-into-ai-shop-codex`，本地，未推送）。
+- 待办：App 选点页（AC6/AC7）；四把 key 写入本机 env 由用户授权后另做。
