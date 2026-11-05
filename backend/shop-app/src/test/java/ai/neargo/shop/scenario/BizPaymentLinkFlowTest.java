@@ -245,6 +245,9 @@ class BizPaymentLinkFlowTest {
         assertThat(newToken).isNotEqualTo(oldToken);
         assertThat(again.get("amountMinor").asLong()).isEqualTo(880);
         assertThat(again.get("subject").asString()).isEqualTo("再分享");
+        // 「从现在起按原时长」：刚生成就换发，新截止时间不能比原来早出一截（曾因时区口径被压成 1 分钟）
+        assertThat(again.get("expireAt").asLong())
+                .as("reissue keeps the original duration").isGreaterThanOrEqualTo(first.get("expireAt").asLong() - 120_000);
 
         assertThat(mvc().perform(get("/checkout/v1/sessions/" + oldToken)).andReturn().getResponse().getStatus())
                 .isEqualTo(410);

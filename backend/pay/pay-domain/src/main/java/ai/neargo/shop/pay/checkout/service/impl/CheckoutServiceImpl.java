@@ -234,7 +234,10 @@ public class CheckoutServiceImpl implements CheckoutService {
             throw BizException.of(ErrorCode.PAY_CHECKOUT_EXPIRED);
         }
         long minutes = o.getCreatedAt() == null ? 15
-                : Math.max(1, Duration.between(o.getCreatedAt(), o.getExpireAt()).toMinutes());
+                // created_at 是审计列，按 JVM 本地时区写；expire_at 按 UTC 写 —— 先换成同一口径再相减，
+                // 否则 +04:00 下 60 分钟的链接算出负数、被压成 1 分钟（2026-11-05 联调实测）
+                : Math.max(1, Duration.between(o.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                        .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(), o.getExpireAt()).toMinutes());
         LocalDateTime until = now.plusMinutes(Math.min(minutes, maxCollectMinutes));
         if (until.isAfter(o.getExpireAt())) {
             PayOrder patch = new PayOrder();
