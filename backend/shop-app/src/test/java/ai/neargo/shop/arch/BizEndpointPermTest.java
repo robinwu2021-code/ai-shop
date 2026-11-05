@@ -666,6 +666,10 @@ class BizEndpointPermTest {
                     put("/biz/payment/orders/{payOrderNo}", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/orders/{payOrderNo}/query", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/orders/summary", BizPerms.PAY_STATEMENT);
+                    // 门店收银台（TDD-门店收银台与付款链接 L3–L5）：记录只读跟「收款」Tab 同码；再次分享、作废与生成同码
+                    put("/biz/payment/links", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/links/{payOrderNo}/reissue", BizPerms.PAY_COLLECT);
+                    put("/biz/payment/links/{payOrderNo}/void", BizPerms.PAY_COLLECT);
                     put("/biz/settle/bills", BizPerms.FINANCE);
                     put("/biz/settle/income", BizPerms.FINANCE);
                     put("/biz/settle/daily-flow", BizPerms.FINANCE);

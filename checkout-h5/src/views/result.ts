@@ -18,19 +18,21 @@ export async function renderResult(ctx: Ctx, payOrderNo: string, tokenFromUrl: s
     ctx.root.replaceChildren(card("unknown", ctx.t("result.unknown")));
     return;
   }
-  let outcome: Outcome = (await api.result(token)).result;
+  let r = await api.result(token);
+  let outcome: Outcome = r.result;
   // 收款方与金额只是给顾客对一眼：取不到（单已关、令牌已作废）就只显示结果，不报错
   const detail = await api.session(token).catch(() => null);
   for (let i = 0; outcome === "PROCESSING" && i < POLL_MAX; i++) {
-    show(ctx, outcome, token, detail);
+    show(ctx, outcome, token, detail, null);
     await sleep(POLL_MS);
     if (!ctx.root.isConnected) return;
-    outcome = (await api.result(token)).result;
+    r = await api.result(token);
+    outcome = r.result;
   }
-  show(ctx, outcome, token, detail);
+  show(ctx, outcome, token, detail, r.tradeNoSuffix ?? null);
 }
 
-function show(ctx: Ctx, outcome: Outcome, token: string, detail: SessionView | null) {
+function show(ctx: Ctx, outcome: Outcome, token: string, detail: SessionView | null, tradeNoSuffix: string | null) {
   const text = outcome === "SUCCEEDED" ? ctx.t("result.succeeded")
     : outcome === "FAILED" ? ctx.t("result.failed") : ctx.t("result.processing");
   const node = card(outcome.toLowerCase(), text);
@@ -38,6 +40,9 @@ function show(ctx: Ctx, outcome: Outcome, token: string, detail: SessionView | n
     const amount = formatMoney(detail.amountMinor, detail.currency, detail.currencyScale, ctx.lang);
     node.append(payeeBlock(ctx, detail));
     if (amount) node.append(h("div", { class: "amount small-amount" }, ltr(amount)));
+  }
+  if (outcome === "SUCCEEDED" && tradeNoSuffix) {
+    node.append(h("p", { class: "muted small", "data-testid": "trade-no" }, ctx.t("result.tradeNo", { suffix: tradeNoSuffix })));
   }
   if (outcome === "FAILED") {
     const retry = h("button", { class: "secondary", type: "button" }, ctx.t("result.retry"));

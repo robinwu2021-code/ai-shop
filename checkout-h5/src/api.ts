@@ -11,6 +11,8 @@ export interface SessionView {
   status: "OPEN" | "PAYING" | "DONE";
   payMethods: string[];
   expireAt: number;
+  /** 收款说明（付款链接上商家填的那句） */
+  subject?: string | null;
 }
 
 export interface CodeView {
@@ -38,6 +40,12 @@ export interface StartResult {
 }
 
 export type Outcome = "SUCCEEDED" | "PROCESSING" | "FAILED";
+
+/** tradeNoSuffix：成功时渠道交易号后 6 位，给顾客与店员对账 */
+export interface ResultView {
+  result: Outcome;
+  tradeNoSuffix?: string | null;
+}
 
 /** 失效（404 / 410）与其它错误分开：前者整页换成「链接已失效」，后者原地提示 */
 export class ApiError extends Error {
@@ -82,7 +90,7 @@ export const api = {
   session: (token: string) => call<SessionView>("GET", `/sessions/${seg(token)}`),
   pay: (token: string, payMethod: string, payerOpenId?: string, payerAppId?: string) =>
     call<StartResult>("POST", `/sessions/${seg(token)}/pay`, { payMethod, payerOpenId, payerAppId }),
-  result: (token: string) => call<{ result: Outcome }>("GET", `/sessions/${seg(token)}/result`),
+  result: (token: string) => call<ResultView>("GET", `/sessions/${seg(token)}/result`),
   code: (qrCode: string) => call<CodeView>("GET", `/codes/${seg(qrCode)}`),
   orderByCode: (qrCode: string, amountMinor: number) =>
     call<Issued>("POST", `/codes/${seg(qrCode)}/orders`, { amountMinor }),

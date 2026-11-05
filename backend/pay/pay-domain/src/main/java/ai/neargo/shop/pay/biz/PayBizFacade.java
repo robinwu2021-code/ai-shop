@@ -6,7 +6,11 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
 import ai.neargo.shop.pay.acquiring.entity.PayRefund;
+import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.port.InternalCallers;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
@@ -57,12 +61,15 @@ public class PayBizFacade {
     private final PayStatementService statements;
     private final MerchantPaymentQueryService payments;
     private final PaymentService paymentService;
+    private final MerchantCollectLinkQueryService links;
     private final String checkoutBase;
 
     public PayBizFacade(PayMerchantBindingService stores, InternalCallers callers, AppGrantService grants,
                         CheckoutService checkout, QrCodeService codes, RefundService refunds,
                         PayStatementService statements, MerchantPaymentQueryService payments,
-                        PaymentService paymentService, @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
+                        PaymentService paymentService, MerchantCollectLinkQueryService links,
+                        @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
+        this.links = links;
         this.stores = stores;
         this.callers = callers;
         this.grants = grants;
@@ -75,8 +82,12 @@ public class PayBizFacade {
         this.checkoutBase = checkoutBase;
     }
 
-    /** @param checkoutUrl 顾客扫的链接（前端据此出二维码）；令牌明文只在这一次响应里 */
-    public record CollectView(String payOrderNo, String token, long expireAt, String checkoutUrl) {
+    /**
+     * @param checkoutUrl 顾客扫的链接（前端据此出二维码）；令牌明文只在这一次响应里
+     * @param amountMinor / currency / subject / storeName 端上画付款卡片用，不必再查一次（TDD-门店收银台与付款链接 L1）
+     */
+    public record CollectView(String payOrderNo, String token, long expireAt, String checkoutUrl, Long amountMinor,
+                              String currency, String subject, String storeName) {
     }
 
     /** @param url 顾客扫的链接（前端据此出二维码） */
@@ -117,7 +128,35 @@ public class PayBizFacade {
         StoreRef s = store(storeNo);
         Issued i = checkout.collect(caller(s, operatorNo), s.storeId(), amountMinor == null ? 0 : amountMinor, subject,
                 expireMinutes);
-        return new CollectView(i.payOrderNo(), i.token(), i.expireAt(), checkoutBase + "/c/" + i.token());
+        return card(i);
+    }
+
+    private CollectView card(Issued i) {
+        PayOrder o = paymentService.find(i.payOrderNo());
+        return new CollectView(i.payOrderNo(), i.token(), i.expireAt(), checkoutBase + "/c/" + i.token(),
+                o == null ? null : o.getAmountMinor(), o == null ? null : o.getCurrency(),
+                o == null ? null : o.getSubject(), o == null ? null : o.getStoreNameSnapshot());
+    }
+
+    // ---- 门店收银台：付款链接记录、再次分享、作废（TDD-门店收银台与付款链接 L3–L5） ----
+
+    public LinkPage paymentLinks(String storeNo, String operatorNo, String status, String cursor, Integer size) {
+        StoreRef s = store(storeNo);
+        return links.list(caller(s, operatorNo), s.storeId(), status, cursor, size);
+    }
+
+    /** 换发新令牌、旧令牌作废，支付单号不变；只允许待付款 */
+    public CollectView reissueLink(String storeNo, String operatorNo, String payOrderNo) {
+        StoreRef s = store(storeNo);
+        return card(checkout.reissue(caller(s, operatorNo), s.storeId(), payOrderNo));
+    }
+
+    /** 先查单再关单；关前查到已付就不作废，返回的行是 PAID（这一笔要走退款） */
+    public LinkRow voidLink(String storeNo, String operatorNo, String payOrderNo, String reason) {
+        StoreRef s = store(storeNo);
+        PayCaller c = caller(s, operatorNo);
+        checkout.voidCollect(c, s.storeId(), payOrderNo, reason);
+        return links.row(c, s.storeId(), payOrderNo);
     }
 
     // ---- 静态收款码（F45） ----

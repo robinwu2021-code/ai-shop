@@ -165,6 +165,9 @@ public final class BizPerms {
      * 商家端支付（TDD-支付服务-I5接入层 S8，接口清单 §5）。默认只有主体属主（OWNER 的 *）有：
      * 店长也碰不了钱 —— 老板要让谁收款、退款，给他建一个勾了这些码的角色。
      */
+    /**
+     * 门店收银台：生成、再次分享、作废付款链接（TDD-门店收银台与付款链接 L7）。店长默认有；店员不默认，由店主在角色里勾选。
+     */
     public static final String PAY_COLLECT = "mch:pay:collect";
     public static final String PAY_REFUND = "mch:pay:refund";
     public static final String PAY_STATEMENT = "mch:pay:statement";
@@ -189,7 +192,7 @@ public final class BizPerms {
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             OWNER, List.of("*"),
             MANAGER, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
-                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PAY_ORDER_VIEW,
+                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PAY_ORDER_VIEW, PAY_COLLECT,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
                     PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
             CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW,

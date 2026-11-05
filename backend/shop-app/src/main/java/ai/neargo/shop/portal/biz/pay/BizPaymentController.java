@@ -2,6 +2,8 @@ package ai.neargo.shop.portal.biz.pay;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
@@ -46,6 +48,9 @@ public class BizPaymentController {
     }
 
     public record CollectReq(Long amountMinor, String subject, Integer expireMinutes) {
+    }
+
+    public record VoidLinkReq(String reason) {
     }
 
     public record QrReq(String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
@@ -179,5 +184,30 @@ public class BizPaymentController {
     @PostMapping("/biz/payment/orders/{payOrderNo}/query")
     public Detail paymentRefresh(@PathVariable String payOrderNo) {
         return app.paymentRefresh(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    // ---- 门店收银台：付款链接记录、再次分享、作废（TDD-门店收银台与付款链接 L3–L5） ----
+
+    /** 本店付款链接，按创建时间倒序；status = PENDING / PAID / EXPIRED / VOIDED，不传 = 全部 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/links")
+    public LinkPage paymentLinks(@RequestParam(required = false) String status,
+                                 @RequestParam(required = false) String cursor,
+                                 @RequestParam(required = false) Integer size) {
+        return app.paymentLinks(BizContext.requireStoreNo(), status, cursor, size);
+    }
+
+    /** 再次分享：同一张支付单换发新令牌，旧链接作废；只允许待付款 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/links/{payOrderNo}/reissue")
+    public CollectView reissueLink(@PathVariable String payOrderNo) {
+        return app.reissueLink(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    /** 作废：先查单再关单；关前查到已付返回 status=PAID（不作废，要退走退款） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
+    @PostMapping("/biz/payment/links/{payOrderNo}/void")
+    public LinkRow voidLink(@PathVariable String payOrderNo, @RequestBody(required = false) VoidLinkReq req) {
+        return app.voidLink(BizContext.requireStoreNo(), payOrderNo, req == null ? null : req.reason());
     }
 }

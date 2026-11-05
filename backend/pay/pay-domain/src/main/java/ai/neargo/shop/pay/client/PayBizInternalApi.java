@@ -1,6 +1,8 @@
 package ai.neargo.shop.pay.client;
 
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
@@ -103,4 +105,23 @@ public interface PayBizInternalApi {
 
     @GetExchange(PREFIX + "/collect-status")
     PortResult<CollectStatus> collectStatus(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
+
+    // ---- 门店收银台：付款链接（TDD-门店收银台与付款链接 L3–L5） ----
+
+    record VoidLinkReq(String operatorNo, String reason) {
+    }
+
+    @GetExchange(PREFIX + "/payment-links")
+    PortResult<LinkPage> paymentLinks(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo,
+                                      @RequestParam(value = "status", required = false) String status,
+                                      @RequestParam(value = "cursor", required = false) String cursor,
+                                      @RequestParam(value = "size", required = false) Integer size);
+
+    @PostExchange(PREFIX + "/payment-links/{payOrderNo}/reissue")
+    PortResult<CollectView> reissueLink(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
+                                        @RequestParam("operatorNo") String operatorNo);
+
+    @PostExchange(PREFIX + "/payment-links/{payOrderNo}/void")
+    PortResult<LinkRow> voidLink(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
+                                 @RequestBody VoidLinkReq req);
 }

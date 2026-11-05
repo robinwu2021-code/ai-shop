@@ -1,6 +1,8 @@
 package ai.neargo.shop.payclient;
 
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.LinkRow;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
@@ -54,4 +56,12 @@ public interface BizPaymentAppService {
     Detail paymentDetail(String storeNo, String payOrderNo);
 
     Detail paymentRefresh(String storeNo, String payOrderNo);
+
+    // ---- 门店收银台：付款链接（TDD-门店收银台与付款链接 L3–L5） ----
+
+    LinkPage paymentLinks(String storeNo, String status, String cursor, Integer size);
+
+    CollectView reissueLink(String storeNo, String payOrderNo);
+
+    LinkRow voidLink(String storeNo, String payOrderNo, String reason);
 }

@@ -8,6 +8,7 @@ import ai.neargo.shop.pay.client.PayBizInternalApi.GrantReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.PaymentSearchReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.QrReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.RefundReq;
+import ai.neargo.shop.pay.client.PayBizInternalApi.VoidLinkReq;
 import ai.neargo.shop.pay.client.PortResult;
 import java.util.Arrays;
 import java.util.function.Supplier;
@@ -130,6 +131,28 @@ public class InternalPayBizEndpoint {
     @GetMapping(PayBizInternalApi.PREFIX + "/collect-status")
     public PortResult<?> collectStatus(@PathVariable String storeNo, @RequestParam String operatorNo) {
         return run(() -> biz.collectStatus(storeNo, operatorNo));
+    }
+
+    // ---- 门店收银台：付款链接 ----
+
+    @GetMapping(PayBizInternalApi.PREFIX + "/payment-links")
+    public PortResult<?> paymentLinks(@PathVariable String storeNo, @RequestParam String operatorNo,
+                                      @RequestParam(required = false) String status,
+                                      @RequestParam(required = false) String cursor,
+                                      @RequestParam(required = false) Integer size) {
+        return run(() -> biz.paymentLinks(storeNo, operatorNo, status, cursor, size));
+    }
+
+    @PostMapping(PayBizInternalApi.PREFIX + "/payment-links/{payOrderNo}/reissue")
+    public PortResult<?> reissueLink(@PathVariable String storeNo, @PathVariable String payOrderNo,
+                                     @RequestParam String operatorNo) {
+        return run(() -> biz.reissueLink(storeNo, operatorNo, payOrderNo));
+    }
+
+    @PostMapping(PayBizInternalApi.PREFIX + "/payment-links/{payOrderNo}/void")
+    public PortResult<?> voidLink(@PathVariable String storeNo, @PathVariable String payOrderNo,
+                                  @RequestBody VoidLinkReq req) {
+        return run(() -> biz.voidLink(storeNo, req.operatorNo(), payOrderNo, req.reason()));
     }
 
     private static <T> PortResult<T> run(Supplier<T> call) {

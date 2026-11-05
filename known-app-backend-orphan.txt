@@ -55,6 +55,7 @@
 # 2026-11-05 加 8 条，**出口在 Flutter 商户端，不在本扫描面内**（TDD-B端收款订单与商城接口对齐 P1、ADR-051）：
 #   · /biz/payment/orders**  「收款」Tab 的列表、汇总、查找、详情、查单；/biz/payment/collect-status 开通状态；/biz/order/*/full 零售订单完整详情；
 #   · /biz/auth/email-otp/send  邮箱验证码登录。
+#   · /biz/payment/links**  门店收银台的链接记录、再次分享、作废（TDD-门店收银台与付款链接，同日再加 3 条）。
 #   使用方是 ai-shop-bapp-mall 的 apps/merchant_app（Flutter），本脚本只扫 uni-app 的 b-app。
 #   扫描面覆盖 merchant_app 之后连同本段一起删。
 b-app GET /biz/inventory/export
@@ -102,3 +103,6 @@ b-app POST /biz/payment/orders/*/query
 b-app POST /biz/auth/email-otp/send
 b-app GET /biz/payment/collect-status
 b-app GET /biz/order/*/full
+b-app GET /biz/payment/links
+b-app POST /biz/payment/links/*/reissue
+b-app POST /biz/payment/links/*/void
