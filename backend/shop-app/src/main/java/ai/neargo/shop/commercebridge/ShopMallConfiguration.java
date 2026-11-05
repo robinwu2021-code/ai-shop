@@ -89,6 +89,8 @@ class ShopMallConfiguration {
     @Bean
     ShopMallHardwareInventoryAdapter mallInventory(
             ObjectProvider<CoordinatedInventoryService> inventory, ShopMallProperties settings) {
+        if (settings.hardwareStock() == ShopMallProperties.HardwareStock.UNTRACKED)
+            return ShopMallHardwareInventoryAdapter.untracked();
         return new ShopMallHardwareInventoryAdapter(
                 inventory.getIfAvailable(), settings.inventoryMappings());
     }

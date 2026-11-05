@@ -29,6 +29,7 @@ shop:
     mall:
       accepted-deployments: []
       required-ends: {}
+      hardware-stock: untracked   # 默认；接进销存时改 coordinated 并配 inventory-mappings
       inventory-mappings: {}
 ```
 
@@ -38,11 +39,16 @@ shop:
 
 `accepted-deployments` 是部署所有者提供的验收清单。每项包含 deploymentNo、displayName、code、entitlementCode、allowedBusinessTypes、clientId、routePolicyRef、acceptanceRef。当前可验证的安装路由仅 `commerce-route-v1:BIZ`（END_BIZ_APP）及 `commerce-route-v1:POS`（END_APP_POS）。运营从 deployment-options 选择，不提交自造 client/route/acceptance 字符串。空清单允许草稿配置，不能发布假验收端。
 
-`inventory-mappings` 按硬件 SKU 号映射库存域的 ownerId、itemId、locationId、mappingVersion。必须是真实平台库存主体、商品与库位；`shop.inventory.enabled=true` 才安装库存端口。报价/落单只检查可信本地配置；实际预留在事务外由库存域重新校验。原操作冻结映射，后续查询、释放和发货使用原主体，不随配置重映射，也不使用买家仓库。
+`hardware-stock` 决定商城硬件是否接进销存（2026-11-05 起默认 `untracked`）：
+
+- `untracked`（默认）：商城不接进销存。含硬件的 SKU（单买硬件或套餐+硬件的组合）不因库存映射被挡，readiness 不再给 `INVENTORY_MAPPING_UNAVAILABLE`；预留 / 发货 / 释放直接成功，不占、不扣库存。操作身份与幂等仍由商城自己的履约操作记录保证；查询回 NOT_FOUND，商城据此重放原命令。是否有货由运营线下把关，`inventory-mappings` 被忽略。
+- `coordinated`：经进销存的协同库存操作预留与扣减，需要下面的 `inventory-mappings` 与库存端口；缺任何一个都 fail closed（`INVENTORY_MAPPING_UNAVAILABLE`）。
+
+`inventory-mappings`（仅 `coordinated`）按硬件 SKU 号映射库存域的 ownerId、itemId、locationId、mappingVersion。必须是真实平台库存主体、商品与库位；`shop.inventory.enabled=true` 才安装库存端口。报价/落单只检查可信本地配置；实际预留在事务外由库存域重新校验。原操作冻结映射，后续查询、释放和发货使用原主体，不随配置重映射，也不使用买家仓库。
 
 支付协调单独启用 `commerce.mall.payment.enabled=true`，并提供 `commerce.mall.payment.platform-merchant-no` 和逗号分隔的 `commerce.mall.payment.routes`（只开放零现金时可配置 `INTERNAL:ZERO`）。收款主体必须与真实网关本地能力一致。当前协议适配仅现有 CNY/WECHAT:JSAPI；并不支持 APP/H5/TWD。商城权威 appId 绑定的 payer 数据源尚不存在，默认 `ShopMallPayerBindings.UNAVAILABLE`，正金额购买返回 PAYER_BINDING_UNPROVEN，不能借用旧用户身份 fallback。测试中的证明绑定和网关均是受控夹具，未验证真实在线支付。台湾 NewebPay、LINE Pay、JKOPay 和线下付款在 Task8 接续，当前不能宣称台湾可付款。
 
-零现金使用内置 `channel=INTERNAL`、`payMethod=ZERO`，走 core 的持久内部结算（正金额禁止此路由）；仍需要协调开关和相应库存映射，客户端不能提交 paid 标记。正金额的 storefront/quote/place 可用性受币种、路由、金额上限及 payer 能力约束。既有 Plan 卡片 purchaseAvailable 通过已授权当前门店的 storefront 精确 SKU 版本与价格计算；无当前门店、无采购权、配置缺失或价格选项不唯一均为 false，价格选项仍明确提供 SKU 版本，不能猜选。
+零现金使用内置 `channel=INTERNAL`、`payMethod=ZERO`，走 core 的持久内部结算（正金额禁止此路由）；仍需要协调开关；`coordinated` 时还需要相应库存映射，客户端不能提交 paid 标记。正金额的 storefront/quote/place 可用性受币种、路由、金额上限及 payer 能力约束。既有 Plan 卡片 purchaseAvailable 通过已授权当前门店的 storefront 精确 SKU 版本与价格计算；无当前门店、无采购权、配置缺失或价格选项不唯一均为 false，价格选项仍明确提供 SKU 版本，不能猜选。
 
 ## 请求、身份与金额
 
