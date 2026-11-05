@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 class NearPayStoreSyncTest {
 
-    static final StoreSyncProperties PROPS = new StoreSyncProperties(true, "http://127.0.0.1:18093", null, null, null,
+    static final StoreSyncProperties PROPS = new StoreSyncProperties(true, "http://127.0.0.1:18093", null, "cred", null, null,
             "https://img.example", null, Duration.ofSeconds(2));
 
     static StoreSnapshotReader.Snapshot snap(String logo, String banner, String slug, String status, boolean deleted) {
@@ -55,7 +55,7 @@ class NearPayStoreSyncTest {
         assertThat(NearPayStoreProfile.status(snap(null, null, null, "ACTIVE", true))).isEqualTo("DELETED");
         assertThat(NearPayStoreProfile.logo(snap(null, "https://cdn.example/b.jpg", null, "ACTIVE", false), PROPS)).isEqualTo("https://cdn.example/b.jpg");
         assertThat(NearPayStoreProfile.logo(snap("http://insecure/x.png", null, null, "ACTIVE", false), PROPS)).isNull();
-        var noBase = new StoreSyncProperties(true, "http://x", null, null, null, null, null, null);
+        var noBase = new StoreSyncProperties(true, "http://x", null, "cred", null, null, null, null, null);
         assertThat(NearPayStoreProfile.logo(snap("/uploads/x.png", null, null, "ACTIVE", false), noBase)).isNull();
         assertThat(NearPayStoreProfile.storeCode("ab")).isNull();
         assertThat(NearPayStoreProfile.storeCode("a_b_c")).isNull();
@@ -88,6 +88,7 @@ class NearPayStoreSyncTest {
         assertThat(seen.get().uri().toString()).isEqualTo("http://127.0.0.1:18093/internal/pay/v2/store-projections/sync");
         assertThat(seen.get().headers().firstValue("X-Internal-Token")).contains("tok");
         assertThat(seen.get().headers().firstValue("X-Internal-Caller")).contains("AI_SHOP_UME");
+        assertThat(seen.get().headers().firstValue("X-Internal-Credential")).contains("cred");
         assertThatThrownBy(() -> new NearPayStoreSyncConsumer(reader, PROPS, "tok", http(503, seen)).consume(event()))
                 .hasMessageContaining("HTTP 503");
         new NearPayStoreSyncConsumer(reader, PROPS, "tok", http(409, seen)).consume(event()); // logged, not retried

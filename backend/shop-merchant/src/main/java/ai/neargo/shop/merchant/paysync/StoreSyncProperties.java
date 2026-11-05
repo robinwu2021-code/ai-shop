@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param enabled       总开关
  * @param baseUrl       near-pay 内部地址（同机部署为 http://127.0.0.1:18093）
  * @param caller        X-Internal-Caller，须在 near-pay {@code near-pay.platmch.source-callers} 登记
+ * @param credential    X-Internal-Credential（调用方专属凭据；near-pay 只存其 SHA-256：{@code shop.pay.internal-callers.<caller>}）
  * @param sourceScope   来源隔离域
  * @param defaultMarket 商户未设市场时使用
  * @param mediaBaseUrl  媒体为相对路径时拼接的公网 https 前缀；为空则不发送相对路径的 Logo
@@ -16,7 +17,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param timeout       单次调用超时
  */
 @ConfigurationProperties(prefix = "shop.nearpay.store-sync")
-public record StoreSyncProperties(boolean enabled, String baseUrl, String caller, String sourceScope, String defaultMarket,
+public record StoreSyncProperties(boolean enabled, String baseUrl, String caller, String credential, String sourceScope, String defaultMarket,
                                   String mediaBaseUrl, Duration scanInterval, Duration timeout) {
     public StoreSyncProperties {
         caller = blank(caller) ? "AI_SHOP_UME" : caller;
@@ -27,4 +28,9 @@ public record StoreSyncProperties(boolean enabled, String baseUrl, String caller
     }
 
     private static boolean blank(String s) { return s == null || s.isBlank(); }
+
+    @Override
+    public String toString() {
+        return "StoreSyncProperties[enabled=" + enabled + ", baseUrl=" + baseUrl + ", caller=" + caller + ", scope=" + sourceScope + "]";
+    }
 }

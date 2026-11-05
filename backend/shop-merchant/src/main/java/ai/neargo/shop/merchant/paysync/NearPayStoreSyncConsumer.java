@@ -38,8 +38,9 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
     }
 
     NearPayStoreSyncConsumer(StoreSnapshotReader reader, StoreSyncProperties props, String token, HttpClient http) {
-        if (props.baseUrl() == null || props.baseUrl().isBlank() || token == null || token.isBlank()) {
-            throw new IllegalStateException("shop.nearpay.store-sync requires base-url and shop.services.internal-token");
+        if (props.baseUrl() == null || props.baseUrl().isBlank() || token == null || token.isBlank()
+                || props.credential() == null || props.credential().isBlank()) {
+            throw new IllegalStateException("shop.nearpay.store-sync requires base-url, credential and shop.services.internal-token");
         }
         this.reader = reader;
         this.props = props;
@@ -69,6 +70,7 @@ public class NearPayStoreSyncConsumer implements OutboxConsumer {
                 .header("Content-Type", "application/json")
                 .header("X-Internal-Token", token)
                 .header("X-Internal-Caller", props.caller())
+                .header("X-Internal-Credential", props.credential())
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         HttpResponse<String> resp;
