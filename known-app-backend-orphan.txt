@@ -52,8 +52,8 @@
 #     **留着是给线上旧版小程序的**（与上面拼团同一个理由）。开发计划 M5a.6 过渡一个版本后
 #     删 pay-portal api.biz.* 与这 10 行。
 #
-# 2026-11-05 加 7 条，**出口在 Flutter 商户端，不在本扫描面内**（TDD-B端收款订单与商城接口对齐 P1、ADR-051）：
-#   · /biz/payment/orders**  「收款」Tab 的列表、汇总、查找、详情、查单；/biz/payment/collect-status 开通状态；
+# 2026-11-05 加 8 条，**出口在 Flutter 商户端，不在本扫描面内**（TDD-B端收款订单与商城接口对齐 P1、ADR-051）：
+#   · /biz/payment/orders**  「收款」Tab 的列表、汇总、查找、详情、查单；/biz/payment/collect-status 开通状态；/biz/order/*/full 零售订单完整详情；
 #   · /biz/auth/email-otp/send  邮箱验证码登录。
 #   使用方是 ai-shop-bapp-mall 的 apps/merchant_app（Flutter），本脚本只扫 uni-app 的 b-app。
 #   扫描面覆盖 merchant_app 之后连同本段一起删。
@@ -101,3 +101,4 @@ b-app GET /biz/payment/orders/summary
 b-app POST /biz/payment/orders/*/query
 b-app POST /biz/auth/email-otp/send
 b-app GET /biz/payment/collect-status
+b-app GET /biz/order/*/full

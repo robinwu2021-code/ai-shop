@@ -1,6 +1,6 @@
 # TDD-B端收款、业务订单与商城接口对齐
 
-状态：P1 已实现（2026-11-05）；P2–P4 草稿
+状态：P1、P2 已实现（2026-11-05）；P3、P4 草稿
 档位：2（跨端；新表族：门店用量余额；新权限码）
 关联需求与原型：
 - 门店订单原型 v6：`ai-shop-bapp-mall/docs/prototypes/core-pages/v6-store-orders.html`（发布版：https://claude.ai/artifact/TZaqctJv2df6VCVj3fcqeN）
@@ -37,7 +37,7 @@
 | AC | 需求 | 落点 |
 |---|---|---|
 | B1 | 零售商品订单列表：只列本店零售订单，按状态筛选，付款与履约两个标签（R01） | `GET /biz/order` 加 `caller=RETAIL` 过滤 |
-| B2 | 零售订单完整详情：顾客（会员、电话、地址、备注）、商品明细、金额明细（折扣、运费、应付、实付、币种）、付款列表（方式、金额、支付订单号，可跳收款详情）、履约时间线、发票、订单号与来源、操作记录（R02） | 扩展 `OrderVO`（§2 字段表） |
+| B2 | 零售订单完整详情：顾客（会员、电话、地址、备注）、商品明细、金额明细（折扣、运费、应付、实付、币种）、付款列表（方式、金额、支付订单号，可跳收款详情）、履约时间线、发票、订单号与来源、操作记录（R02） | 新 `GET /biz/order/{subOrderNo}/full` → `MerchantOrderFullVO{order: OrderVO, currency, remark, customer, source, payments[], operations[], invoice}`；`OrderVO.amount.currency` 改取主单币种 |
 | B3 | 发货、售后、同意退款（R03–R05） | 复用 `/biz/order/{no}/ship*`、`/biz/after-sale/*` |
 | B4 | 餐饮点餐列表与桌台订单完整详情（含逐道菜状态、退菜划线、服务费、分开付、操作记录）（F01–F07） | **分期**：插件有 check / batch / kitchen / settlement，但没有带金额的汇总视图，也没有 B 端结账、现金、分开付接口（§1） |
 | B5 | 美业预约列表与完整服务单（执行人、加项、储值抵扣、业绩）（B01–B05） | **分期**：插件声明 `OUT_OF_SERVICE`，业绩与储值抵扣未实现（§1） |
@@ -315,6 +315,23 @@ Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.pay.svc.Pa
 - `ArchitectureTest` 5 项：库存与餐饮合并带进来的 Port 包位置、全限定名、定时任务锁、Service 命名、portal 依赖 JsonMapper。
 - `BizEndpointPermTest#everyBizEndpointHasADecision` 剩 15 个端点：餐饮库存投影、美业排班与资源、服务单报价与手工收款、门店销售目录。本次只补了本会话早先加的 `/biz/auth/email-otp/send`。
 - `check-app-backend-orphan` 本来就有别人的新增，见下文闸门说明。
+
+### P2 测试（2026-11-05）
+
+测试类：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/BizRetailOrderDetailFlowTest.java`。夹具同 `BizOrderFulfillFlowTest`：开店 → 上货 → 买家快递下单 → 桩通道回调付款。
+
+| AC | 测试方法 | 跑过 | 消融验证 |
+|---|---|---|---|
+| B1 | `#listByCaller`（caller=RETAIL 列得出零售单，caller=FOOD 列不出） | ✅ | 去掉非 RETAIL 分支的 `eq(caller)` → 变红 ✅ |
+| B2 | `#fullDetail`（币种取主单 TWD，不再写死 CNY；备注；付款带渠道交易号；操作记录含发货） | ✅ | |
+| B2 | `#foreignIsNotFound`（别家的单回 10404） | ✅ | |
+| 回归 | `BizOrderFulfillFlowTest` 15/15 | ✅ | |
+
+**P2 偏差**
+1. **没有扩展 OrderVO**，改为新端点 `/full` 包住它。OrderVO 是 C 端与 B 端共用的形状，位置构造多，往里插字段风险大。
+2. **会员等级不给**：订单侧没有现成来源，Flutter 端先隐藏。
+3. **付款列表取自主单**（渠道、交易号、支付时间、线下确认人与确认时间），一单一条。要跳到「收款」里对应的支付订单，用 `q=channelTradeNo` 搜，不另开按业务单号的查询。
+4. **配送员调 `/full`** 时，与详情同一档次，只给裁剪档（`CourierOrderVO`），金额和付款一概不给。
 
 ## §6 对账二 · 设计 → 实现
 

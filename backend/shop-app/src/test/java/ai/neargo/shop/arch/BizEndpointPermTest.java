@@ -360,6 +360,7 @@ class BizEndpointPermTest {
                     // ---- 订单与经营数据 ----
                     put("/biz/order", BizPerms.ORDER_VIEW);
                     put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
+                    put("/biz/order/{subOrderNo}/full", BizPerms.ORDER_VIEW);
                     // 物流轨迹（TDD-物流模块 B2）：看订单的人就能看物流
                     put("/biz/order/{subOrderNo}/trace", BizPerms.ORDER_VIEW);
                     put("/biz/order/{subOrderNo}/inventory-trace", BizPerms.ORDER_VIEW);
