@@ -23,6 +23,8 @@ class IndustryPublicationTest {
         assertEquals(4, r.publishedVersionNos().size());
         assertEquals(3, f.facade.catalog(f.ops, "RETAIL").plans().size());
         assertEquals("sku-1", f.facade.catalog(f.ops, "RETAIL").skus().getFirst().skuVersionNo());
+        // 运营目录回读行业目录版本，再次发布才有 expectedCatalogVersion 可带
+        assertEquals(1, f.facade.overview(f.ops).businessTypes().getFirst().catalogVersion());
     }
 
     @Test
