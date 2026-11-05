@@ -1120,6 +1120,25 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<StoreProfile> storeProfileOf(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            MchStore store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().eq(MchStore::getStoreNo, storeNo));
+            if (store == null) {
+                return Optional.<StoreProfile>empty();
+            }
+            MchEntity entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, store.getEntityNo()));
+            String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
+                    ? null : entity.getMarket();
+            return Optional.of(new StoreProfile(store.getStoreNo(), store.getEntityNo(), store.getName(),
+                    store.getAddress(), market));
+        });
+    }
+
+    @Override
     public String marketOf(String merchantNo) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()

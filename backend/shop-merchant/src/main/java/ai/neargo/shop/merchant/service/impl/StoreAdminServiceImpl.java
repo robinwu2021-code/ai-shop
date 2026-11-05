@@ -397,7 +397,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                  */
                 storeLinkService.linkOf(
                         s.getSlug() != null && !s.getSlug().isBlank() ? s.getSlug() : s.getStoreCode(),
-                        null));
+                        null),
+                // 经营市场由调用方按主体补（StoreVO#withMarket）；这里只带门店自己的经营类型
+                null, null, null, null, null, null, s.getBusinessTypeCode());
     }
 
     /** 主体是不是平台自营（V329）。与 StoreCategoryServiceImpl 免资质同一个判据 */

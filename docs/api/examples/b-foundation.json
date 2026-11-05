@@ -262,7 +262,15 @@
         },
         "serverNow": 1793717808626,
         "entitlementVersion": 1,
-        "nextBoundaryAt": null
+        "nextBoundaryAt": null,
+        "storeName": "示例门店",
+        "address": "台北市信义路 1 号",
+        "market": "TW",
+        "currency": "TWD",
+        "currencyScale": 2,
+        "timeZone": "Asia/Taipei",
+        "industryCode": "RETAIL",
+        "subIndustryCode": "RETAIL"
       }
     }
   },

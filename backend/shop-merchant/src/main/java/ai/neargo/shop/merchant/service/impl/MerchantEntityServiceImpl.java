@@ -46,6 +46,13 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
     private final MchStoreRoleMapper roleMapper;
     /** 门店行的组装（收款状态、员工数、评分）只此一份，不在这里重抄一遍 */
     private final StoreAdminService storeAdminService;
+    /** sys_market 元数据（币种、小数位、时区）。没有这个端口的部署只给 market。 */
+    private ai.neargo.shop.spi.pay.MarketPort marketPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMarketPort(ai.neargo.shop.spi.pay.MarketPort marketPort) {
+        this.marketPort = marketPort;
+    }
 
     public MerchantEntityServiceImpl(MchAccountMapper accountMapper, MchEntityMapper entityMapper,
                                      MchStoreRoleMapper roleMapper, StoreAdminService storeAdminService) {
@@ -163,6 +170,7 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
                         .stream().map(MchStoreRole::getStoreNo).collect(Collectors.toSet());
                 stores = stores.stream().filter(s -> granted.contains(s.storeNo())).toList();
             }
+            stores = withMarket(stores, e.getMarket());
             out.put(m.getEntityNo(), new EntityStoresVO(
                     new EntityVO(e.getEntityNo(), e.getName(), e.getStatus(),
                             Boolean.TRUE.equals(e.getVerified()), e.getLegalForm(),
@@ -170,5 +178,16 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
                     stores));
         }
         return List.copyOf(out.values());
+    }
+
+    /** TDD-B端建店默认经营市场 AC5：门店带所属主体的经营市场；元数据取不到时不编造币种。 */
+    private List<StoreVO> withMarket(List<StoreVO> stores, String market) {
+        if (market == null || market.isBlank()) return stores;
+        var brief = marketPort == null ? java.util.Optional.<ai.neargo.shop.spi.pay.MarketPort.MarketBrief>empty()
+                : marketPort.find(market);
+        return stores.stream()
+                .map(s -> brief.map(b -> s.withMarket(market, b.currency(), b.currencyScale(), b.timeZone()))
+                        .orElseGet(() -> s.withMarket(market, null, null, null)))
+                .toList();
     }
 }

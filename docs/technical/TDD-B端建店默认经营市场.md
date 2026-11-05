@@ -12,6 +12,8 @@
 | AC2 Given 同上，When quick-start 不带或带 `market=TW`，Then 主体 `market=TW`，FREE 期币种 TWD | `BizMerchantController.quickStart` → `MerchantPortImpl.quickStart` |
 | AC3 When 带其它市场，或行业/子业态与经营类型不匹配，Then 拒绝，不建壳 | 同上校验 |
 | AC4 Given 未配置（默认 CN），Then 旧行为不变 | 配置默认值 `CN` |
+| AC5 Given 主体市场为 TW，When 读 `GET /biz/stores/mine`，Then 每家门店带 `market`/`currency`/`currencyScale`/`timeZone` 与 `businessTypeCode`/`industryCode`/`subIndustryCode`（按 §1 默认映射），App 建店后据此认出新店 | `MerchantEntityServiceImpl.assemble` |
+| AC6 Given 同上，When 读 `GET /biz/stores/{storeNo}/context`，Then 在原响应上平铺 `storeName`/`address`/`market`/`currency`/`currencyScale`/`timeZone`/`industryCode`/`subIndustryCode`（Flutter 契约 CurrentStoreCommercialContext 的可选字段），App 据此核验建店结果与 FREE | `BizFoundationController.context` + `HostStoreContext` |
 
 ## §1 方案
 
@@ -25,8 +27,12 @@
 2. `BizMerchantController.QuickStartReq` 增加 `market`、`industryCode`、`subIndustryCode` 并校验。
 3. `BizFoundationController` 新增 `GET /biz/merchant/store-setup`；`CommerceRoutePolicy` 引导白名单加入该路由。
 4. `application.yml` 增加配置项；本实例部署设 `TW`，且 `sys_market` 中 TW 须启用（运营在「市场货币」开启）。
+5. （2026-11-05 真机闭环发现）`StoreVO` 末尾增加 7 个可空字段（旧构造保留）：市场取门店所属主体 `mch_entity.market`，币种/小数位/时区取 `sys_market`（`MarketPort`，取不到则只给 market），经营类型取 `mch_store.business_type_code`，行业/子业态按 §1 等于经营类型。契约 `openapi-b-onboarding.json` 的 `Store` 同步加这 7 个可选字段（与 Flutter 仓 `.2-store-setup` 版一致）。
+6. 同日：门店经营上下文由宿主平铺 8 个字段（可移植 commerce 的 `StoreContext` 不变）。门店名/地址/主体市场经 `MerchantQueryPort.storeProfileOf` 读，币种等取 `MarketPort`；契约 `CurrentStoreCommercialContext` 同步加可选字段。
 
 ## §5 验证
 
 - `BizStoreSetupTest`（宿主）：AC1–AC4。
+- `MerchantEntityStoreMarketTest`（shop-merchant）：AC5。
+- `HostStoreContextTest`（宿主）：AC6。
 - 本地实例（TW）：模拟器上 App 登录 → 选 TW → 建店 → 商城页签看到 TWD 方案。

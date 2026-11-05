@@ -375,6 +375,19 @@ public interface MerchantQueryPort {
                     String fundsPath) {
     }
 
+    /**
+     * 门店资料（B 端建店核验，TDD-B端建店默认经营市场 AC6）：门店自己的名称与地址，以及所属主体的经营市场。
+     *
+     * @param market 主体 {@code mch_entity.market} 原值；未填为空，<b>不回落 CN</b> —— 核验要的是事实
+     */
+    record StoreProfile(String storeNo, String entityNo, String name, String address, String market) {
+    }
+
+    /** 门店号 → 门店资料；门店不存在为空。 */
+    default Optional<StoreProfile> storeProfileOf(String storeNo) {
+        return Optional.empty();
+    }
+
     /** 门店号 → 支付单要冻结的门店身份；门店不存在为空。不论营业状态（关单、退款时门店可能已停用） */
     default Optional<PayStore> payStoreOf(String storeNo) {
         return Optional.empty();

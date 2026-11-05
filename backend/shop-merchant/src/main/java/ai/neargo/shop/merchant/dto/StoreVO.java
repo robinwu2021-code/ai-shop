@@ -48,5 +48,35 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                        *
                        * <p><b>空 = 没配域名</b>，端上据此不显示链接（不是显示一个点不开的地址）。
                        */
-                      String shareUrl) {
+                      String shareUrl,
+                      /*
+                       * 以下 7 项是 B 端建店（TDD-B端建店默认经营市场 AC5）用的门店经营上下文，均可为空：
+                       * market 取门店所属主体（mch_entity.market），currency / currencyScale / timeZone 取 sys_market；
+                       * businessTypeCode 取 mch_store，industryCode / subIndustryCode 按默认映射等于经营类型。
+                       * App 建店后按「店号 + 主体号 + 市场」认出新店，缺 market 会被当成「没建成」。
+                       */
+                      String market,
+                      String currency,
+                      Integer currencyScale,
+                      String timeZone,
+                      String industryCode,
+                      String subIndustryCode,
+                      String businessTypeCode) {
+
+    /** 不带经营上下文的旧构造：其它门店列表照旧用它。 */
+    public StoreVO(String storeNo, String name, String address, boolean isDefault,
+                   String status, String payMerchantNo, boolean payReady, int staffCount,
+                   boolean planSuspended, int rating, int ratingCount, String businessMode,
+                   boolean selfOperated, String slug, String shareUrl) {
+        this(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
+                planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
+                null, null, null, null, null, null, null);
+    }
+
+    /** 补上门店所属主体的经营市场（元数据取不到时只给 market）；行业与子业态按默认映射等于经营类型。 */
+    public StoreVO withMarket(String market, String currency, Integer currencyScale, String timeZone) {
+        return new StoreVO(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
+                planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
+                market, currency, currencyScale, timeZone, businessTypeCode, businessTypeCode, businessTypeCode);
+    }
 }

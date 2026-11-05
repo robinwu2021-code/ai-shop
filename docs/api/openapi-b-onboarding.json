@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "B端注册至进件资料提交 API",
-    "version": "2026-11-04.3-end-access",
-    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。"
+    "version": "2026-11-04.4-store-market",
+    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。 2026-11-05 门店列表 Store 补经营上下文 7 个可选字段（与 Flutter .2-store-setup 一致）。 门店经营上下文 CurrentStoreCommercialContext 同步补 8 个可选字段。"
   },
   "servers": [
     {
@@ -6954,6 +6954,42 @@
               "null"
             ],
             "description": "这家店的对外链接（完整地址，V357）。**后端拼好发下来，端上不自己拼** —— 域名写在端上就会有两处真源，而它已经错过一次：此前后端写死 `shop.example.com`， 商家把那个链接印了贴纸才发现指向一个不存在的地方。"
+          },
+          "market": {
+            "type": "string",
+            "description": "持久化主体市场；不由登录电话推导。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "sys_market权威币种。"
+          },
+          "currencyScale": {
+            "type": "integer",
+            "description": "sys_market权威小数位。"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "sys_market权威IANA时区。"
+          },
+          "industryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "创建时持久化的经营行业；旧店可为空。"
+          },
+          "subIndustryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "创建时持久化的子业态；旧店可为空。"
+          },
+          "businessTypeCode": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -7506,6 +7542,46 @@
           },
           "entitlements": {
             "$ref": "#/components/schemas/CurrentStoreEntitlements"
+          },
+          "storeName": {
+            "type": "string",
+            "description": ""
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "market": {
+            "type": "string",
+            "description": "持久化主体市场；不由登录电话推导。"
+          },
+          "currency": {
+            "type": "string",
+            "description": "sys_market权威币种。"
+          },
+          "currencyScale": {
+            "type": "integer",
+            "description": "sys_market权威小数位。"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "sys_market权威IANA时区。"
+          },
+          "industryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "创建时持久化的经营行业；旧店可为空。"
+          },
+          "subIndustryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "创建时持久化的子业态；旧店可为空。"
           }
         },
         "required": [

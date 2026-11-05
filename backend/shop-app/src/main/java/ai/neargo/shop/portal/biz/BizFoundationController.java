@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.pay.MarketPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -86,9 +88,25 @@ public class BizFoundationController {
 
     @PreAuthorize("@perm.memberOfSelectedStore(#storeNo)")
     @GetMapping("/biz/stores/{storeNo}/context")
-    public StoreContext context(@PathVariable String storeNo) {
+    public HostStoreContext context(@PathVariable String storeNo) {
         var actor = ShopCommerceActorAdapter.current();
-        return queries.store(actor, new StoreRef(actor.tenantNo(), storeNo));
+        var context = queries.store(actor, new StoreRef(actor.tenantNo(), storeNo));
+        // 宿主字段（TDD-B端建店默认经营市场 AC6）：门店名/地址/主体市场与市场元数据，取不到为空
+        var port = merchants == null ? null : merchants.getIfAvailable();
+        var profile = port == null ? Optional.<MerchantQueryPort.StoreProfile>empty()
+                : port.storeProfileOf(context.storeNo());
+        var marketPort = markets.getIfAvailable();
+        var market = marketPort == null ? Optional.<MarketPort.MarketBrief>empty()
+                : profile.map(MerchantQueryPort.StoreProfile::market)
+                        .flatMap(marketPort::find);
+        return HostStoreContext.of(context, profile, market);
+    }
+
+    private ObjectProvider<MerchantQueryPort> merchants;
+
+    @Autowired
+    void setMerchants(ObjectProvider<MerchantQueryPort> merchants) {
+        this.merchants = merchants;
     }
 
     @PreAuthorize("@perm.memberOfSelectedStore(#storeNo)")

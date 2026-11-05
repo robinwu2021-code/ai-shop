@@ -22,7 +22,13 @@ final class FoundationHttpExamples {
         shape(response.get("data"), actual, name);
     }
 
+    /** 宿主平铺的可选字段（TDD-B端建店默认经营市场 AC6）：取不到为 null，与示例里的样例值类型不同是允许的。 */
+    private static final java.util.Set<String> OPTIONAL_HOST_CONTEXT = java.util.Set.of(
+            "context.storeName", "context.address", "context.market", "context.currency",
+            "context.currencyScale", "context.timeZone", "context.industryCode", "context.subIndustryCode");
+
     private static void shape(JsonNode expected, JsonNode actual, String path) {
+        if (OPTIONAL_HOST_CONTEXT.contains(path) && actual != null && actual.isNull()) return;
         assertNotNull(actual, path);
         assertEquals(expected.getNodeType(), actual.getNodeType(), path);
         if (expected.isObject()) {
