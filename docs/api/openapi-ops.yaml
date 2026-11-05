@@ -13074,15 +13074,18 @@ components:
           description: "乐观锁版本"
       additionalProperties: false
       description: "SKU 版本行；PUBLISHED 之后只读"
+    MallUnusedRefundPolicy:
+      type: "string"
+      enum:
+        - "FULL_ORIGINAL_ALLOCATION"
+        - "MANUAL_ONLY"
+      description: "未使用数字权益的退款口径：按原分摊全退 / 一律人工"
     MallRefundPolicyInput:
       type: "object"
       properties:
         unusedDigital:
-          type: "string"
-          enum:
-            - "FULL_ORIGINAL_ALLOCATION"
-            - "MANUAL_ONLY"
-          description: "未使用数字权益：FULL_ORIGINAL_ALLOCATION / MANUAL_ONLY"
+          "$ref": "#/components/schemas/MallUnusedRefundPolicy"
+          description: "未使用数字权益"
         usedDigital:
           type: "string"
           const: "MANUAL_ONLY"
@@ -14142,6 +14145,14 @@ components:
         - "unmatchedDispositions"
       additionalProperties: false
       description: "对账作废"
+    MallOfflineActionStatus:
+      type: "string"
+      enum:
+        - "ACCEPTED"
+        - "APPLIED"
+        - "UNMATCHED"
+        - "REJECTED"
+      description: "线下动作结果状态：ACCEPTED 只是受理，资金端未确认"
     MallOfflineActionView:
       type: "object"
       properties:
@@ -14149,13 +14160,8 @@ components:
           type: "string"
           description: "动作号"
         status:
-          type: "string"
-          enum:
-            - "ACCEPTED"
-            - "APPLIED"
-            - "UNMATCHED"
-            - "REJECTED"
-          description: "ACCEPTED / APPLIED / UNMATCHED / REJECTED"
+          "$ref": "#/components/schemas/MallOfflineActionStatus"
+          description: "结果"
         paymentNo:
           type:
             - "string"
@@ -18099,6 +18105,39 @@ paths:
     post:
       operationId: "resetPassword"
       summary: "用邮件里的重置码设新密码"
+      tags:
+        - "dashboard"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/staffs/me/password":
+    post:
+      operationId: "changeOwnPassword"
+      summary: "登录后改自己的密码（`POST /ops/staffs/me/password`）"
       tags:
         - "dashboard"
       responses:

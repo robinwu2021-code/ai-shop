@@ -16,6 +16,7 @@ import { NotifyBell } from "./notify-bell";
 import { CommandPalette, useCommandPalette } from "./command-palette";
 import { ChevronRight, LogOut, PanelLeft, Search } from "lucide-react";
 import { MobileNav } from "./mobile-nav";
+import { ChangePasswordButton } from "./change-password";
 
 // 面包屑：L1 › 分组 › 子功能（URL 反推，标签经 tNav 本地化）。
 // **整条不可点**：它是位置指示器不是导航 —— 每一级在 Rail / SecondaryNav / TabHeader
@@ -110,6 +111,8 @@ export function Header() {
         {/* 角色名不再单独占位：进用户名的 title。此前"运营管理员 admin"两段文本
             说的是同一个人，占了顶栏最大的一块。 */}
         <span className="font-medium" title={t(`role.${role}`)}>{username}</span>
+        {/* 改密码挨着用户名与退出：三者都是「这个账号」的事，不进菜单 */}
+        <ChangePasswordButton />
         <Button
           size="sm"
           variant="ghost"

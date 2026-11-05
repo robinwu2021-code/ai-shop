@@ -3,6 +3,8 @@ import { backendPermsOf } from "@/lib/permissions";
 import * as db from "@/lib/mock/db";
 import type { DashboardApi } from "../contracts/dashboard";
 import { fail } from "@/lib/biz-error";
+import { ApiError } from "../error";
+import { useLocaleStore } from "@/lib/stores/locale";
 import { wait } from "./_wait";
 import { currentAuth, type Role } from "@/lib/auth";
 import { NAV } from "@/lib/nav";
@@ -16,6 +18,16 @@ const MOCK_ROLE_OF: Record<string, Role> = {
   support: "CS",
 };
 
+/**
+ * mock 账号改过的密码（用户名 → 新密码）。**真落库**：改完之后旧密码登不进去、新密码登得进去。
+ * 没改过的账号沿用 mock 登录的口径（任意非空密码）。
+ */
+const changedPasswords = new Map<string, string>();
+/** 测试用：回到「谁都没改过密码」 */
+export const resetMockPasswords = () => changedPasswords.clear();
+
+const en = () => useLocaleStore.getState().locale === "en";
+
 export const dashboardMock: DashboardApi = {
   /*
    * mock 也按真实契约来：只收凭据，角色由「后端」给。
@@ -24,6 +36,8 @@ export const dashboardMock: DashboardApi = {
    */
   login: (username, password) => {
     if (!password) fail("请输入密码", "Enter your password");
+    const changed = changedPasswords.get(username);
+    if (changed !== undefined && changed !== password) fail("用户名或密码错误", "Wrong username or password");
     const role = MOCK_ROLE_OF[username] ?? "SUPER_ADMIN";
     return wait({ username, role, token: `mock-${role}`, perms: backendPermsOf(role) }, 350);
   },
@@ -42,6 +56,22 @@ export const dashboardMock: DashboardApi = {
    */
   // mock 下永远「成功」——与真实现同口径：不泄露账号是否存在
   forgotPassword: () => wait(undefined as unknown as void, 400),
+  /*
+   * 与后端同构：新密码 < 8 位 → 10400；旧密码不对 → 10401（业务码，不是会话失效）。
+   */
+  changeOwnPassword: async (oldPassword, newPassword) => {
+    const a = currentAuth();
+    if (!a?.token) fail("未登录", "Not signed in");
+    if (!newPassword || newPassword.length < 8) {
+      throw new ApiError(10400, en() ? "The new password must be at least 8 characters" : "新密码至少 8 位");
+    }
+    const current = changedPasswords.get(a.username);
+    if (!oldPassword || (current !== undefined && current !== oldPassword)) {
+      throw new ApiError(10401, en() ? "Not signed in or session expired" : "未登录或登录已失效");
+    }
+    changedPasswords.set(a.username, newPassword);
+    return wait(undefined as unknown as void, 400);
+  },
   resetPassword: (token) => {
     if (token !== "mock-token") fail("重置码无效或已过期，请重新申请",
       "Reset code is invalid or expired. Please request a new one");
