@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+  </defs>
+  <rect width="960" height="520" fill="#ffffff"/>
+  <text x="24" y="32" font-size="16" font-weight="600" fill="#0f172a">B 端邮箱验证码注册 / 登录 · 主链路</text>
+  <text x="24" y="52" fill="#64748b">实线 = 本期新增或改动；灰框 = 现有组件原样复用</text>
+
+  <!-- lanes -->
+  <g fill="#f8fafc" stroke="#cbd5e1">
+    <rect x="24" y="72" width="170" height="420" rx="8"/>
+    <rect x="214" y="72" width="230" height="420" rx="8"/>
+    <rect x="464" y="72" width="230" height="420" rx="8"/>
+    <rect x="714" y="72" width="222" height="420" rx="8"/>
+  </g>
+  <g font-weight="600" fill="#334155">
+    <text x="40" y="96">Flutter 商户 App</text>
+    <text x="230" y="96">BizAuthController</text>
+    <text x="480" y="96">EmailOtpService / AuthService</text>
+    <text x="730" y="96">现有基础设施</text>
+  </g>
+
+  <!-- app boxes -->
+  <rect x="38" y="120" width="142" height="54" rx="6" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="48" y="142" fill="#7f1d1d">邮箱页签</text>
+  <text x="48" y="160" fill="#7f1d1d" font-size="12">输入邮箱 + 勾协议</text>
+  <rect x="38" y="300" width="142" height="54" rx="6" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="48" y="322" fill="#7f1d1d">输入 6 位码</text>
+  <text x="48" y="340" fill="#7f1d1d" font-size="12">验证并继续</text>
+  <rect x="38" y="420" width="142" height="54" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="48" y="442" fill="#334155">确认经营地区</text>
+  <text x="48" y="460" fill="#64748b" font-size="12">与手机号同一路径</text>
+
+  <!-- controller boxes -->
+  <rect x="228" y="120" width="202" height="54" rx="6" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="238" y="142" fill="#7f1d1d">POST /biz/auth/email-otp/send</text>
+  <text x="238" y="160" fill="#7f1d1d" font-size="12">@Email · ≤191 · 游客可调</text>
+  <rect x="228" y="300" width="202" height="54" rx="6" fill="#fff7ed" stroke="#c2410c"/>
+  <text x="238" y="322" fill="#7c2d12">POST /biz/auth/login</text>
+  <text x="238" y="340" fill="#7c2d12" font-size="12">grantType=EMAIL_OTP（新取值）</text>
+
+  <!-- service boxes -->
+  <rect x="478" y="120" width="202" height="70" rx="6" fill="#fee2e2" stroke="#b91c1c"/>
+  <text x="488" y="142" fill="#7f1d1d">EmailOtpService.send</text>
+  <text x="488" y="160" fill="#7f1d1d" font-size="12">归一化：trim + 全小写</text>
+  <text x="488" y="176" fill="#7f1d1d" font-size="12">键 = email:SHA-256(地址)</text>
+  <rect x="478" y="290" width="202" height="86" rx="6" fill="#fff7ed" stroke="#c2410c"/>
+  <text x="488" y="312" fill="#7c2d12">AuthServiceImpl.login</text>
+  <text x="488" y="330" fill="#7c2d12" font-size="12">EMAIL_OTP → 核码 → 凭证</text>
+  <text x="488" y="346" fill="#7c2d12" font-size="12">(EMAIL, 地址) 认人 / 建号</text>
+  <text x="488" y="362" fill="#7c2d12" font-size="12">不按手机号匹配员工</text>
+
+  <!-- infra boxes -->
+  <rect x="728" y="112" width="194" height="40" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="738" y="137" fill="#334155">OtpSendGuard 发码限流</text>
+  <rect x="728" y="162" width="194" height="56" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="738" y="184" fill="#334155">MailPort</text>
+  <text x="738" y="202" fill="#64748b" font-size="12">SMTP（生产）/ 桩（本地）</text>
+  <rect x="728" y="228" width="194" height="56" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="738" y="250" fill="#334155">OtpStore（内存，5 分钟）</text>
+  <text x="738" y="268" fill="#b91c1c" font-size="12">改：核销改为原子 remove</text>
+  <rect x="728" y="300" width="194" height="56" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="738" y="322" fill="#334155">usr_account + usr_identity</text>
+  <text x="738" y="340" fill="#64748b" font-size="12">phone 可空 · uk(type,value)</text>
+  <rect x="728" y="366" width="194" height="40" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="738" y="391" fill="#334155">TokenStore 签发 B 端会话</text>
+
+  <!-- arrows -->
+  <g stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#a)">
+    <path d="M180 147 H228"/>
+    <path d="M430 147 H478"/>
+    <path d="M680 132 H728"/>
+    <path d="M680 175 L728 190"/>
+    <path d="M680 185 L728 250"/>
+    <path d="M180 327 H228"/>
+    <path d="M430 327 H478"/>
+    <path d="M680 310 L728 262"/>
+    <path d="M680 330 H728"/>
+    <path d="M680 360 L728 386"/>
+    <path d="M109 354 V420"/>
+  </g>
+  <g fill="#475569" font-size="11">
+    <text x="684" y="126">①</text>
+    <text x="686" y="170">②</text>
+    <text x="684" y="214">③ 发信成功才存码</text>
+  </g>
+  <path d="M800 218 C 800 236, 200 236, 109 236 L109 300" stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5 4" fill="none" marker-end="url(#r)"/>
+  <text x="300" y="230" fill="#b91c1c" font-size="12">本地：桩记录并以 debug 打印验证码，从日志取码（生产 profile 拒绝走桩，回 10505）</text>
+</svg>
