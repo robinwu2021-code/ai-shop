@@ -36,7 +36,7 @@ export function ClaimsTab({ c }: { c: MallCopy }) {
     { header: c.colDeclared, numeric: true, cell: (r) => <Money m={r.claim.declaredAmount} /> },
     { header: c.colDeclaredAt, cell: (r) => fmtAt(r.claim.declaredPaidAt) },
     { header: c.colSubmittedAt, cell: (r) => fmtAt(r.claim.submittedAt) },
-    { header: c.colActions, cell: (r) => <Button size="sm" onClick={() => setOpen({ storeNo: r.store.storeNo!, orderNo: r.orderNo })}>{c.btnHandle}</Button> },
+    { header: c.colActions, stickyEnd: "always", cell: (r) => <Button size="sm" onClick={() => setOpen({ storeNo: r.store.storeNo!, orderNo: r.orderNo })}>{c.btnHandle}</Button> },
   ];
 
   return (

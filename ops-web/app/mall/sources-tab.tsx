@@ -55,7 +55,7 @@ export function SourcesTab({ c, canGrant, canRevoke }: { c: MallCopy; canGrant: 
     { header: c.colDuration, numeric: true, cell: (s) => s.permanent ? c.permanent : days(s.durationMillis) },
     { header: c.colConsumed, numeric: true, cell: (s) => s.permanent ? "—" : days(s.consumedMillis) },
     { header: c.colValuation, numeric: true, cell: (s) => <Money m={s.valuationBasis} /> },
-    { header: c.colActions, cell: (s) => canRevoke && revocable(s) ? <Button size="sm" variant="outline" onClick={() => revoke(s)}>{c.btnRevoke}</Button> : null },
+    { header: c.colActions, stickyEnd: "always", cell: (s) => canRevoke && revocable(s) ? <Button size="sm" variant="outline" onClick={() => revoke(s)}>{c.btnRevoke}</Button> : null },
   ];
   const segColumns: Column<MallAccessSegment>[] = [
     { header: c.colSourceNo, cell: (s) => <code className="txt-caption">{s.sourceNo}</code> },

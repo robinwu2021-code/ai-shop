@@ -199,7 +199,7 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
     { header: c.colFunds, cell: (x) => <StatusBadge map={asyncMap(c)} value={x.status ?? "PENDING"} /> },
     { header: c.colCash, numeric: true, cell: (x) => <Money m={x.cashAmount} /> },
     { header: c.colRestore, numeric: true, cell: (x) => <Money m={x.restoredCredit} /> },
-    { header: c.colActions, cell: (x) => (
+    { header: c.colActions, stickyEnd: "always", cell: (x) => (
       <span className="flex flex-wrap gap-2">
         {canReview && x.reviewStatus === "REQUESTED" && (
           <>
@@ -399,7 +399,7 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     { header: c.colDeclared, numeric: true, cell: (x) => <Money m={x.declaredAmount} /> },
     { header: c.colDeclaredAt, cell: (x) => fmtAt(x.declaredPaidAt) },
     { header: c.colSubmittedAt, cell: (x) => fmtAt(x.submittedAt) },
-    { header: c.colActions, cell: (x) => (x.status === "SUBMITTED" || x.status === "REVIEWING") ? (
+    { header: c.colActions, stickyEnd: "always", cell: (x) => (x.status === "SUBMITTED" || x.status === "REVIEWING") ? (
       <span className="flex gap-2">
         {allow("commerce:mall:offline:confirm") && <Button size="sm" onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
         {allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" onClick={() => decline(x)}>{c.btnDecline}</Button>}

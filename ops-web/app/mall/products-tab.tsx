@@ -133,7 +133,7 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
     { header: c.colTypes, cell: (r) => (r.draft?.allowedBusinessTypes ?? []).join(" / ") },
     { header: c.colSale, cell: (r) => <StatusBadge map={saleMap(c)} value={r.saleStatus ?? ""} /> },
     { header: c.colSkuCount, numeric: true, cell: (r) => skuDefs.filter((d) => d.productNo === r.draft?.productNo).length },
-    { header: c.colActions, cell: (r) => (
+    { header: c.colActions, stickyEnd: "always", cell: (r) => (
       <span className="flex gap-2">
         {canEdit && <Button size="sm" variant="outline" onClick={() => setPForm({ creating: false, productNo: r.draft!.productNo!, categoryCode: r.draft?.categoryCode ?? "",
           kind: r.draft?.kind ?? "PLAN", name: r.draft?.name ?? "", description: r.draft?.description ?? "", allowedBusinessTypes: r.draft?.allowedBusinessTypes ?? [],

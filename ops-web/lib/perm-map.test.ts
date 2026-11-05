@@ -23,7 +23,7 @@ const PERMS_JAVA = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/sh
  * 现判，码由宿主迁移种进 sys_function_point。只读这两份迁移、只认 `commerce:` 前缀 ——
  * 放宽成「迁移里出现过的任何码」会把别的域漏登记的码也放过去。
  */
-const COMMERCE_SEEDS = ["V556__commerce_mall_permissions.sql", "V558__commerce_offline_permissions.sql"]
+const COMMERCE_SEEDS = ["V625__commerce_mall_permissions.sql", "V627__commerce_offline_permissions.sql"]
   .map((f) => join(ROOT, "backend/shop-app/src/main/resources/db/migration", f));
 
 /** 从 Java 源码抽后端权限码常量 —— 与 BizEndpointPermTest 同一手法 */

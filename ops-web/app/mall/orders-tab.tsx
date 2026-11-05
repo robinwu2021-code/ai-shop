@@ -31,7 +31,7 @@ export function OrdersTab({ c }: { c: MallCopy }) {
     { header: c.colPayable, numeric: true, cell: (r) => <Money m={r.order?.payable} /> },
     { header: c.colOrderStatus, cell: (r) => <Badge tone="outline">{r.order?.status}</Badge> },
     { header: c.axesLabel, cell: (r) => <OrderAxes c={c} s={r} /> },
-    { header: c.colActions, cell: (r) => <Button size="sm" variant="outline" onClick={() => setOpen(r.order!.orderNo!)}>{c.btnDetail}</Button> },
+    { header: c.colActions, stickyEnd: "always", cell: (r) => <Button size="sm" variant="outline" onClick={() => setOpen(r.order!.orderNo!)}>{c.btnDetail}</Button> },
   ];
 
   return (

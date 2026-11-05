@@ -88,7 +88,7 @@ function TypesSection({ c, canEdit, canPublish }: { c: MallCopy; canEdit: boolea
     { header: c.colEnabled, cell: (r) => r.draft?.enabled ? <Badge tone="success">{c.enabledOn}</Badge> : <Badge tone="muted">{c.enabledOff}</Badge> },
     { header: c.colVersion, numeric: true, cell: (r) => r.version },
     {
-      header: c.colActions, cell: (r) => (
+      header: c.colActions, stickyEnd: "always", cell: (r) => (
         <span className="flex gap-2">
           {canEdit && (
             <Button size="sm" variant="outline" onClick={() => setForm({ creating: false, typeCode: r.draft!.typeCode!, name: r.draft!.name ?? "",
@@ -196,7 +196,7 @@ function EndsSection({ c, canEdit }: { c: MallCopy; canEdit: boolean }) {
     ) },
     { header: c.colAcceptance, cell: (r) => r.draft?.acceptanceRef ? <code className="txt-caption">{r.draft.acceptanceRef}</code> : <span className="text-muted-foreground">{c.endNoAcceptance}</span> },
     { header: c.colVersion, numeric: true, cell: (r) => r.version },
-    { header: c.colActions, cell: (r) => canEdit ? <Button size="sm" variant="outline" onClick={() => edit(r)}>{c.btnEdit}</Button> : null },
+    { header: c.colActions, stickyEnd: "always", cell: (r) => canEdit ? <Button size="sm" variant="outline" onClick={() => edit(r)}>{c.btnEdit}</Button> : null },
   ];
 
   const valid = form && form.code && form.entitlementCode && form.name.trim() && form.reason.trim() && form.allowedBusinessTypes.length > 0
