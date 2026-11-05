@@ -234,6 +234,7 @@ class BizPaymentOrdersFlowTest {
         assertThat(d.get("row").get("payOrderNo").asString()).isEqualTo(p[0]);
         assertThat(d.get("amounts").get("paidMinor").asLong()).isEqualTo(2600);
         assertThat(d.get("refs").get("channelTradeNo").asString()).isEqualTo(p[1]);
+        assertThat(d.get("refs").get("channelMerchantNo").asString()).startsWith("SUB-PM-BO-");
         assertThat(d.get("source").get("kind").asString()).isEqualTo("COLLECT");
         assertThat(d.get("settlement").get("accountMasked").asString()).isEqualTo("****8901");
         assertThat(d.get("settlement").get("expectedDate").isNull()).isFalse();
@@ -251,5 +252,18 @@ class BizPaymentOrdersFlowTest {
         String no = collect(s, 300, false)[0];
         JsonNode d = data(call(s.token(), s.storeNo(), post("/biz/payment/orders/" + no + "/query")));
         assertThat(d.get("row").get("payOrderNo").asString()).isEqualTo(no);
+    }
+
+    @Test
+    @DisplayName("★★ A4 开通状态：有生效的收款商户绑定 = 已开通，并列出渠道；解绑后 = 未开通")
+    void collectStatus() throws Exception {
+        Shop s = shop();
+        JsonNode on = data(as(s, get("/biz/payment/collect-status")));
+        assertThat(on.get("enabled").asBoolean()).isTrue();
+        assertThat(on.get("channels").toString()).contains("TEST");
+        bindings.unbind(s.storeId(), "TEST", "OP-BO");
+        JsonNode off = data(as(s, get("/biz/payment/collect-status")));
+        assertThat(off.get("enabled").asBoolean()).isFalse();
+        assertThat(off.get("channels")).isEmpty();
     }
 }

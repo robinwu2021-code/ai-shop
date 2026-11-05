@@ -127,6 +127,11 @@ public class InternalPayBizEndpoint {
         return run(() -> biz.paymentRefresh(storeNo, operatorNo, payOrderNo));
     }
 
+    @GetMapping(PayBizInternalApi.PREFIX + "/collect-status")
+    public PortResult<?> collectStatus(@PathVariable String storeNo, @RequestParam String operatorNo) {
+        return run(() -> biz.collectStatus(storeNo, operatorNo));
+    }
+
     private static <T> PortResult<T> run(Supplier<T> call) {
         try {
             return PortResult.ok(call.get());

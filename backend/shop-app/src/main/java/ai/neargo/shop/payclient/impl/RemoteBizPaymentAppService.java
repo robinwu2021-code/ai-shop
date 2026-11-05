@@ -3,6 +3,7 @@ package ai.neargo.shop.payclient.impl;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
@@ -139,6 +140,11 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
     @Override
     public Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix) {
         return unwrap(() -> pay.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix));
+    }
+
+    @Override
+    public CollectStatus collectStatus(String storeNo) {
+        return unwrap(() -> pay.collectStatus(storeNo, operator()));
     }
 
     @Override

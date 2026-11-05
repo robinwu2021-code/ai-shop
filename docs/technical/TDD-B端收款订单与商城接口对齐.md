@@ -25,7 +25,7 @@
 | A1 | 收款列表只放经过支付渠道的钱：收款码、POS 刷卡、业务订单线上支付；现金、储值不进（Q01） | 新 `GET /biz/payment/orders`，数据源 `pay_order`（排除无渠道的记录） |
 | A2 | 按日期分组；快捷日期与自定义区间；按来源 / 渠道 / 状态 / 金额区间筛选；按金额、交易号、付款人搜索（Q01、Q02） | 同上，查询参数见 §2 |
 | A3 | 时段汇总：收款、退款、净收款；按渠道的笔数与金额；手续费（预估）；预计入账与日期（Q03） | 新 `GET /biz/payment/orders/summary` |
-| A4 | 门店未开通收款时给开通入口（Q04） | 复用 `GET /biz/stores/{storeNo}/context` 的支付就绪状态，无新接口 |
+| A4 | 门店未开通收款时给开通入口（Q04） | 新 `GET /biz/payment/collect-status` → `{enabled, channels}`（门店上下文里没有支付就绪字段，实现时发现） |
 | A5 | 本店收款码：查看、保存、打印（Q05） | 复用 `GET/POST /biz/payment/qr-code`（返回 url，客户端画码） |
 | A6 | 顾客说「我付了」：按「金额 + 最近 10 分钟 / 1 小时 / 今天」或「交易号后 6 位」查找（Q06、Q07） | 新 `GET /biz/payment/orders/lookup` |
 | A7 | 支付详情：金额与入账（手续费、预计入账、结算状态与账户）、付款（渠道、付款人脱敏 / 卡号末四码、发卡行、授权码）、单号（支付订单号、渠道交易号）、来源（收款码 / 终端 / 收银员 / 业务订单号）、退款记录、操作记录（Q08–Q10） | 新 `GET /biz/payment/orders/{payOrderNo}` |
@@ -300,6 +300,7 @@ P1 测试：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/BizPaymentOr
 | A6 | `#lookup`（金额 + 10 分钟、交易号后 6 位、少于 6 位拒绝） | ✅ | |
 | A7 | `#detail`（金额、渠道交易号、来源、结算账户与预计日、退款记录、时间线；别家的单查不到） | ✅ | |
 | A8 | `#queryRefreshesPending` | ✅ | |
+| A4 | `#collectStatus`（绑定 = 已开通并列渠道；解绑 = 未开通） | ✅ | |
 | 权限 | `BizEndpointPermTest` 新增 5 条映射；`everyBizEndpointHasADecision` 里本次端点不再出现 | ✅ | |
 | 回归 | `BizPayFlowTest` 7/7；pay-svc `PayOpsInternalApiRoundTripTest` 3/3 | ✅ | |
 
@@ -335,4 +336,5 @@ Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.pay.svc.Pa
 5. **时间线给事件码，不给文案**：`CREATED / PAID / FAILED / CLOSED / REFUND_REQUESTED / REFUND_SUCCEEDED`，端上按码出文案。
 6. **独立部署形态的列表走 POST**：`/internal/pay/v1/biz/stores/{storeNo}/payment-orders/search`，请求体带条件。多值条件原样传，不依赖查询串里的重复参数。
 7. **结算状态的判定**。只有这张单进过 `SETTLEMENT` 凭证才算「已结算」，否则是「待结算」。预计入账日 = 成功业务日 + `pay_merchant.settle_cycle`（T1 / T2 / WEEKLY，没配按 T1）。
+9. **应 Flutter 端字段清单补的三项**（2026-11-05）：`GET /biz/payment/collect-status`；详情 `refs.channelMerchantNo`（子商户号优先）；`amounts.feeRateBps`。Flutter 端要的「查询次数 / 下次查询时间」「刷卡方式（感应 / 插卡）」「收银员姓名」服务端目前没有记录，暂不提供。
 8. **手续费估算费率**。`shop.pay.fee.estimate-rate-bps` 默认 0，未对账的单手续费显示 0 并标「预估」。台湾渠道的实际费率定下来后，在配置里设。

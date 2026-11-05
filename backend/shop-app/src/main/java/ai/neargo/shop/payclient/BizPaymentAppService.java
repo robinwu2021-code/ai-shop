@@ -1,5 +1,6 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
@@ -47,6 +48,8 @@ public interface BizPaymentAppService {
     Summary paymentSummary(String storeNo, String from, String to);
 
     Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix);
+
+    CollectStatus collectStatus(String storeNo);
 
     Detail paymentDetail(String storeNo, String payOrderNo);
 

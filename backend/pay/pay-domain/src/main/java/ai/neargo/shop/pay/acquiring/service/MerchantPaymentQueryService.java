@@ -25,6 +25,9 @@ public interface MerchantPaymentQueryService {
     /** 按渠道交易号后几位找（≥6 位，只查今天和昨天） */
     Lookup lookupByTradeNoSuffix(PayCaller caller, Long storeId, String suffix);
 
+    /** 本店能不能收款：有生效的收款商户绑定就算开通；channels 是已绑定的渠道 */
+    CollectStatus status(PayCaller caller, Long storeId);
+
     /** 一笔的全貌；不是本店的单按「没有」处理 */
     Detail detail(PayCaller caller, Long storeId, String payOrderNo);
 
@@ -69,15 +72,20 @@ public interface MerchantPaymentQueryService {
     record Lookup(List<PaymentRow> matches, List<PaymentRow> pendingNearby) {
     }
 
+    record CollectStatus(boolean enabled, List<String> channels) {
+    }
+
+    /** @param feeRateBps 费率（万分之几）：已对账按实扣反算，未对账是估算用的配置费率 */
     record Amounts(long paidMinor, long refundedMinor, long refundableMinor, long feeMinor, boolean feeEstimated,
-                   long expectedNetMinor) {
+                   Long feeRateBps, long expectedNetMinor) {
     }
 
     record Payer(String channel, String method, String payerMasked, String cardBrand, String cardLast4, String issuer,
                  String authCode) {
     }
 
-    record Refs(String payOrderNo, String outTradeNo, String channelTradeNo) {
+    /** @param channelMerchantNo 渠道侧商户号（子商户号优先） */
+    record Refs(String payOrderNo, String outTradeNo, String channelTradeNo, String channelMerchantNo) {
     }
 
     /** @param operatorNo 收银员 / 发起的商家账号（名字由业务服务换） */

@@ -8,6 +8,7 @@ import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
 import ai.neargo.shop.pay.acquiring.entity.PayRefund;
 import ai.neargo.shop.pay.acquiring.port.InternalCallers;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentFilter;
@@ -201,6 +202,11 @@ public class PayBizFacade {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return payments.lookupByAmount(caller(s, operatorNo), s.storeId(), amountMinor, within);
+    }
+
+    public CollectStatus collectStatus(String storeNo, String operatorNo) {
+        StoreRef s = store(storeNo);
+        return payments.status(caller(s, operatorNo), s.storeId());
     }
 
     public Detail paymentDetail(String storeNo, String operatorNo, String payOrderNo) {

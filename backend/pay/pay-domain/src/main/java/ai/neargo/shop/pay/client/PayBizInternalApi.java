@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.client;
 
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
@@ -99,4 +100,7 @@ public interface PayBizInternalApi {
     @PostExchange(PREFIX + "/payment-orders/{payOrderNo}/query")
     PortResult<Detail> paymentRefresh(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,
                                       @RequestParam("operatorNo") String operatorNo);
+
+    @GetExchange(PREFIX + "/collect-status")
+    PortResult<CollectStatus> collectStatus(@PathVariable("storeNo") String storeNo, @RequestParam("operatorNo") String operatorNo);
 }

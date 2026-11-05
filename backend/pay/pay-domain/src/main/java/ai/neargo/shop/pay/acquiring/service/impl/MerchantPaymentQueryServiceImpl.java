@@ -20,10 +20,12 @@ import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayRefundMapper;
 import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayQrCodeMapper;
 import ai.neargo.shop.pay.mapper.ledger.LedgerMappers.LedgerEntryMapper;
 import ai.neargo.shop.pay.mapper.ledger.LedgerMappers.LedgerVoucherMapper;
+import ai.neargo.shop.pay.mapper.merchant.MerchantMappers.PayMerchantBindingMapper;
 import ai.neargo.shop.pay.mapper.merchant.MerchantMappers.PayMerchantMapper;
 import ai.neargo.shop.pay.mapper.terminal.TerminalMappers.PayTerminalMapper;
 import ai.neargo.shop.pay.merchant.MerchantDefaults;
 import ai.neargo.shop.pay.merchant.entity.PayMerchant;
+import ai.neargo.shop.pay.merchant.entity.PayMerchantBinding;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
 import ai.neargo.shop.pay.terminal.entity.PayTerminal;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -70,6 +72,7 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
     private final PayQrCodeMapper qrCodes;
     private final PayTerminalMapper terminals;
     private final PayMerchantMapper merchants;
+    private final PayMerchantBindingMapper bindings;
     private final LedgerEntryMapper entries;
     private final LedgerVoucherMapper vouchers;
     private final PayMerchantBindingService stores;
@@ -78,7 +81,8 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
 
     public MerchantPaymentQueryServiceImpl(PayOrderMapper orders, PayRefundMapper refunds, PaymentMapper attempts,
                                            PayQrCodeMapper qrCodes, PayTerminalMapper terminals,
-                                           PayMerchantMapper merchants, LedgerEntryMapper entries,
+                                           PayMerchantMapper merchants, PayMerchantBindingMapper bindings,
+                                           LedgerEntryMapper entries,
                                            LedgerVoucherMapper vouchers, PayMerchantBindingService stores,
                                            CallerPolicy policy,
                                            @Value("${shop.pay.fee.estimate-rate-bps:0}") long estimateRateBps) {
@@ -88,6 +92,7 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         this.qrCodes = qrCodes;
         this.terminals = terminals;
         this.merchants = merchants;
+        this.bindings = bindings;
         this.entries = entries;
         this.vouchers = vouchers;
         this.stores = stores;
@@ -227,6 +232,18 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         return split(found);
     }
 
+    // ---------------------------------------------------------------- 开通状态
+
+    @Override
+    public CollectStatus status(PayCaller caller, Long storeId) {
+        policy.check(caller, PayAction.READ_LEDGER, storeId);
+        List<String> channels = DataScopeContext.executeWithoutScope(() -> bindings.selectList(
+                Wrappers.<PayMerchantBinding>lambdaQuery().eq(PayMerchantBinding::getStoreId, storeId)
+                        .eq(PayMerchantBinding::getStatus, "ACTIVE"))).stream()
+                .map(PayMerchantBinding::getPayChannel).distinct().sorted().toList();
+        return new CollectStatus(!channels.isEmpty(), channels);
+    }
+
     // ---------------------------------------------------------------- 详情
 
     @Override
@@ -250,7 +267,8 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         long refundable = Math.max(0, paid - refunded - nz(o.getReservedRefundMinor()));
         boolean feeKnown = ok != null && ok.getChannelFeeMinor() != null;
         long fee = paid == 0 ? 0 : feeKnown ? ok.getChannelFeeMinor() : estimate(paid);
-        Amounts amounts = new Amounts(paid, refunded, refundable, fee, paid != 0 && !feeKnown, paid - refunded - fee);
+        Long rate = paid == 0 ? null : feeKnown ? ok.getChannelFeeMinor() * 10_000 / paid : (Long) estimateRateBps;
+        Amounts amounts = new Amounts(paid, refunded, refundable, fee, paid != 0 && !feeKnown, rate, paid - refunded - fee);
 
         PayMerchant m = merchant(o.getPayMerchantId());
         String market = o.getMarket() == null ? market(storeId) : o.getMarket();
@@ -261,8 +279,10 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
                 m == null ? null : m.getSettleAccountMasked());
 
         Payer payer = new Payer(o.getPayChannel(), o.getPayMethod(), o.getPayerMasked(), null, null, null, null);
+        String channelMerchantNo = m == null ? null
+                : m.getSubMerchantId() != null && !m.getSubMerchantId().isBlank() ? m.getSubMerchantId() : m.getChannelMerchantId();
         Refs refs = new Refs(o.getPayOrderNo(), ok == null ? (last == null ? null : last.getOutTradeNo()) : ok.getOutTradeNo(),
-                ok == null ? null : ok.getTradeNo());
+                ok == null ? null : ok.getTradeNo(), channelMerchantNo);
         Source source = source(o);
         Failure failure = ("FAILED".equals(o.getStatus()) || "CLOSED".equals(o.getStatus())) && last != null
                 && (last.getErrCode() != null || last.getErrMsg() != null)

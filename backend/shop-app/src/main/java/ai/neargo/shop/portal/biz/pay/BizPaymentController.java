@@ -2,6 +2,7 @@ package ai.neargo.shop.portal.biz.pay;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.CollectStatus;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
@@ -158,6 +159,13 @@ public class BizPaymentController {
                                 @RequestParam(required = false) String within,
                                 @RequestParam(required = false) String tradeNoSuffix) {
         return app.paymentLookup(BizContext.requireStoreNo(), amountMinor, within, tradeNoSuffix);
+    }
+
+    /** 本店是否已开通收款（有生效的收款商户绑定）及已开通的渠道：「收款」Tab 据此决定给列表还是给开通入口 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/collect-status")
+    public CollectStatus collectStatus() {
+        return app.collectStatus(BizContext.requireStoreNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
