@@ -15,7 +15,14 @@ public interface OfflinePurchaseFacade {
         public ClaimCommand { evidenceKeys = evidenceKeys == null ? null : Collections.unmodifiableList(new ArrayList<>(evidenceKeys)); }
     }
     record DeclineCommand(OrderQuery order, String claimNo, String reason) {}
-    record ClaimView(String claimNo, String status, Money declaredAmount, Instant declaredPaidAt, Instant submittedAt) {}
+    /**
+     * A buyer declaration as submitted. bankReference and evidenceKeys are the buyer's own words and receipts:
+     * operators use them to find the transfer on the bank statement, never as proof of receipt.
+     */
+    record ClaimView(String claimNo, String status, Money declaredAmount, Instant declaredPaidAt, Instant submittedAt,
+            String bankReference, List<String> evidenceKeys) {
+        public ClaimView { evidenceKeys = evidenceKeys == null ? List.of() : List.copyOf(evidenceKeys); }
+    }
     record ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
             String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason) {}
     record VoidCommand(OrderQuery order,String actionNo,String reconciliationReference,String reason,String evidenceKey,

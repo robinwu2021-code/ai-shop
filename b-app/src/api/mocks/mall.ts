@@ -112,7 +112,7 @@ export const mallMock: MallApi = {
     const list = claims.get(key) ?? [];
     if (list.some((c) => c.status === "SUBMITTED" || c.status === "REVIEWING")) throw new Error("CLAIM_ALREADY_SUBMITTED");
     const c: MallOfflineClaim = { claimNo: body.claimNo, status: "SUBMITTED", declaredAmount: body.declaredAmount,
-      declaredPaidAt: body.declaredPaidAt, submittedAt: now() };
+      declaredPaidAt: body.declaredPaidAt, submittedAt: now(), bankReference: body.bankReference, evidenceKeys: body.evidenceKeys };
     claims.set(key, [...list, c]);
     return c;
   },

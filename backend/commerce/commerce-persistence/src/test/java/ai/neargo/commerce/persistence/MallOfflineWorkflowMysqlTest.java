@@ -146,6 +146,10 @@ class MallOfflineWorkflowMysqlTest {
             var ticket=api.reserveEvidence(MallOrderConcurrencyMysqlTest.BUYER,q,"BUYER_RECEIPT");
             api.submit(MallOrderConcurrencyMysqlTest.BUYER,new OfflinePurchaseFacade.ClaimCommand(q,"claim",new Money("CNY",8800),
                     Instant.ofEpochMilli(3000),"buyer-ref",List.of(ticket.assetKey())));
+            // Operators match the transfer by the buyer's own reference and receipts (read back from the stored snapshot)
+            var seen=api.claims(ops,q).getFirst();
+            assertEquals("buyer-ref",seen.bankReference());
+            assertEquals(List.of(ticket.assetKey()),seen.evidenceKeys());
             var evidence=api.reserveEvidence(ops,q,"PLATFORM_RECEIPT");
             var refused=new OfflinePurchaseFacade.ReviewCommand(q,"r1","claim",new Money("CNY",8700),Instant.ofEpochMilli(3000),
                     "platform","bank-ref",evidence.assetKey(),false,"bank checked");

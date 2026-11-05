@@ -14240,12 +14240,22 @@ components:
         submittedAt:
           type: "string"
           description: "提交时间"
+        bankReference:
+          type: "string"
+          description: "买家填的转账备注 / 流水号 —— 拿去银行流水里找这笔钱，**不是**到账证据"
+        evidenceKeys:
+          type: "array"
+          items:
+            type: "string"
+          description: "买家上传的转账凭证（BUYER_RECEIPT）资产键；按键取 5 分钟签名地址查看"
       required:
         - "claimNo"
         - "status"
         - "declaredAmount"
         - "declaredPaidAt"
         - "submittedAt"
+        - "bankReference"
+        - "evidenceKeys"
       additionalProperties: false
       description: "买家付款申报"
     MallOfflinePendingClaim:

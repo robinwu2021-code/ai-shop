@@ -296,6 +296,10 @@ export interface MallOfflineClaim {
   declaredPaidAt: string;
   /** 提交时间（ISO） */
   submittedAt: string;
+  /** 申报时填的转账备注 */
+  bankReference: string;
+  /** 申报时附的凭证 assetKey */
+  evidenceKeys: string[];
 }
 
 /** 付款申报请求 */

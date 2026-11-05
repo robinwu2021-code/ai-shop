@@ -42,7 +42,7 @@ class OfflineHttpContractTest {
                                     return switch (m.getName()) {
                                         case "submit" -> new ClaimView("claim", "SUBMITTED",
                                                 new Money("TWD", 69900), Instant.parse("2026-11-04T01:00:00Z"),
-                                                Instant.parse("2026-11-04T02:00:00Z"));
+                                                Instant.parse("2026-11-04T02:00:00Z"), "ref", List.of("asset-1"));
                                         case "confirm" -> new ActionView("act", "APPLIED", "pay-1");
                                         case "issue", "instructions" -> new InstructionsView("order",
                                                 new Money("TWD", 9007199254740993L),

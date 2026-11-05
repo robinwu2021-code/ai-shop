@@ -24,6 +24,12 @@ const STATUS: Record<string, number> = {
 };
 
 /** 抛后端同款错误：code=10000+HTTP 状态，msg=原因码 */
+
+/** 买家转账截图的样例（mock 看界面用）：一张写着「转账截图（样例）」的小图 */
+const SAMPLE_RECEIPT = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="140"><rect width="240" height="140" fill="#f4f4f5"/>'
+  + '<text x="120" y="76" font-size="16" text-anchor="middle" fill="#52525b">转账截图（样例）</text></svg>');
+
 export function mallFail(reason: string): never {
   const http = STATUS[reason] ?? (reason.endsWith("_UNAVAILABLE") ? 503 : 400);
   throw new ApiError(10000 + http, reason);
@@ -272,7 +278,9 @@ export function seedMall(): MallState {
     { instructions: null, claims: [], evidence: {}, actions: {} });
   o2.offline!.instructions = seedInstructions("MO-1002", o2.payable, T0 - DAY);
   o2.offline!.claims.push({ claimNo: "CL-1002-1", status: "SUBMITTED", declaredAmount: twd("69900"),
-    declaredPaidAt: iso(T0 - DAY + 3 * 3_600_000), submittedAt: iso(T0 - DAY + 4 * 3_600_000) });
+    declaredPaidAt: iso(T0 - DAY + 3 * 3_600_000), submittedAt: iso(T0 - DAY + 4 * 3_600_000),
+    bankReference: "末五码 12345", evidenceKeys: ["EV-1002-1"] });
+  o2.offline!.evidence["EV-1002-1"] = { purpose: "BUYER_RECEIPT", url: SAMPLE_RECEIPT };
 
   // 3. 含硬件的已付单：待发货
   const hw: MallQuoteComponent = { componentNo: "OC-HW-1003", kind: "HARDWARE", listAmount: twd("1980000"), dealAmount: twd("1980000"),
@@ -287,7 +295,9 @@ export function seedMall(): MallState {
     { instructions: null, claims: [], evidence: {}, actions: {} });
   o4.offline!.instructions = seedInstructions("MO-3001", o4.payable, T0 - 2 * DAY);
   o4.offline!.claims.push({ claimNo: "CL-3001-1", status: "MISMATCHED", declaredAmount: twd("60000"),
-    declaredPaidAt: iso(T0 - 2 * DAY + 3_600_000), submittedAt: iso(T0 - 2 * DAY + 2 * 3_600_000) });
+    declaredPaidAt: iso(T0 - 2 * DAY + 3_600_000), submittedAt: iso(T0 - 2 * DAY + 2 * 3_600_000),
+    bankReference: "DEV-BANK-REF-3001", evidenceKeys: ["EV-3001-1"] });
+  o4.offline!.evidence["EV-3001-1"] = { purpose: "BUYER_RECEIPT", url: SAMPLE_RECEIPT };
   o4.attempts.push({ attemptNo: "OA-3001", channel: "OFFLINE", payMethod: "BANK_TRANSFER", amount: twd("60000"), status: "SUCCEEDED",
     paymentNo: "U-3001-1", paidAt: iso(T0 - 2 * DAY + 3_600_000), errorCode: "MALL_UNMATCHED", paidAtPrecisionMs: 1 });
   s.bankRefs.add("DEV-BANK-REF-3001");
@@ -307,7 +317,10 @@ export function seedMall(): MallState {
     { instructions: null, claims: [], evidence: {}, actions: {} });
   o6.offline!.instructions = seedInstructions("MO-2001", o6.payable, T0 - DAY / 2);
   o6.offline!.claims.push({ claimNo: "CL-2001-1", status: "REVIEWING", declaredAmount: twd("69900"),
-    declaredPaidAt: iso(T0 - DAY / 2 + 3_600_000), submittedAt: iso(T0 - DAY / 2 + 2 * 3_600_000) });
+    declaredPaidAt: iso(T0 - DAY / 2 + 3_600_000), submittedAt: iso(T0 - DAY / 2 + 2 * 3_600_000),
+    bankReference: "網銀轉帳 TX88001", evidenceKeys: ["EV-2001-1", "EV-2001-2"] });
+  o6.offline!.evidence["EV-2001-1"] = { purpose: "BUYER_RECEIPT", url: SAMPLE_RECEIPT };
+  o6.offline!.evidence["EV-2001-2"] = { purpose: "BUYER_RECEIPT", url: SAMPLE_RECEIPT };
 
   s.orders.push(o1, o2, o3, o4, o5, o6);
 

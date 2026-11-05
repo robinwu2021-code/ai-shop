@@ -910,6 +910,10 @@ export interface MallOfflineClaimView {
   declaredPaidAt: string;
   /** 提交时间 */
   submittedAt: string;
+  /** 买家填的转账备注 / 流水号 —— 拿去银行流水里找这笔钱，**不是**到账证据 */
+  bankReference: string;
+  /** 买家上传的转账凭证（BUYER_RECEIPT）资产键；按键取 5 分钟签名地址查看 */
+  evidenceKeys: string[];
 }
 
 /** 待审申报队列行 */

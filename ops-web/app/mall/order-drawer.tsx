@@ -294,8 +294,8 @@ function PayoutForm({ c, storeNo, orderNo, refund, onDone }: { c: MallCopy; stor
 /**
  * 运营凭证：预留键 → 上传字节（image/jpeg|png，≤10MB，每个键一次）→ 选中给核款/作废/出款用。
  *
- * ⚠️ 契约里没有「列出某单所有凭证」的接口，买家申报也不带凭证键。所以这里只列**本次打开抽屉
- * 期间上传的键**，另给一个「按键查看」入口（键来自线下沟通或日志）。
+ * ⚠️ 契约里没有「列出某单所有凭证」的接口。买家凭证随申报给出（见申报表的「买家凭证」列）；
+ * 这里只列**本次打开抽屉期间上传的平台凭证键**，另给一个「按键查看」入口（键来自线下沟通或日志）。
  */
 export function EvidenceBox({
   c, storeNo, orderNo, purposes, selected, onSelect,
@@ -363,6 +363,39 @@ export function EvidenceBox({
   );
 }
 
+/**
+ * 买家随申报上传的转账凭证：每张一个按钮，点开取 5 分钟签名地址预览。
+ * 只为在银行流水里找到这笔钱 —— 核款仍以银行实际到账为准（申报 ≠ 到账）。
+ */
+function ClaimReceipts({ c, storeNo, orderNo, keys }: { c: MallCopy; storeNo: string; orderNo: string; keys: string[] }) {
+  const allow = useCan();
+  const [preview, setPreview] = React.useState<string | null>(null);
+  const view = useMutation({
+    mutationFn: (key: string) => api.offlineEvidenceUrl(storeNo, orderNo, key),
+    onSuccess: (r) => setPreview(r.url),
+  });
+  if (!keys.length) return <span className="txt-caption text-muted-foreground">—</span>;
+  if (!allow("commerce:mall:offline:evidence")) return <span className="txt-caption text-muted-foreground">{fill(c.receiptN, { n: keys.length })}</span>;
+  return (
+    <div className="space-y-1">
+      <span className="flex flex-wrap gap-1">
+        {keys.map((k, i) => (
+          <Button key={k} size="sm" variant="ghost" title={c.receiptsHelp} loading={view.isPending && view.variables === k}
+            onClick={() => view.mutate(k)}>{fill(c.receiptN, { n: i + 1 })}</Button>
+        ))}
+      </span>
+      {view.error && <span className="txt-caption text-destructive">{String((showErr(view.error) as Error)?.message ?? view.error)}</span>}
+      {preview && (
+        <div className="space-y-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview} alt={c.colReceipts} className="max-h-64 rounded-card border border-border" />
+          <Button size="sm" variant="ghost" onClick={() => setPreview(null)}>{c.btnClose}</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── 线下核款面板 ──────────────────────────────────────────────────────
 
 function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: MallOrderDetailView }) {
@@ -398,6 +431,8 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     { header: c.colClaimStatus, cell: (x) => <StatusBadge map={claimMap(c)} value={x.status} /> },
     { header: c.colDeclared, numeric: true, cell: (x) => <Money m={x.declaredAmount} /> },
     { header: c.colDeclaredAt, cell: (x) => fmtAt(x.declaredPaidAt) },
+    { header: c.colBankReference, cell: (x) => <code className="txt-caption">{x.bankReference || "—"}</code> },
+    { header: c.colReceipts, cell: (x) => <ClaimReceipts c={c} storeNo={storeNo} orderNo={orderNo} keys={x.evidenceKeys ?? []} /> },
     { header: c.colSubmittedAt, cell: (x) => fmtAt(x.submittedAt) },
     { header: c.colActions, stickyEnd: "always", cell: (x) => (x.status === "SUBMITTED" || x.status === "REVIEWING") ? (
       <span className="flex gap-2">
@@ -496,7 +531,7 @@ function ConfirmForm({
     <div className="mt-3 space-y-3 rounded-card border border-border p-3">
       <div className="txt-strong">{claimNo ? fill(c.confirmForClaim, { no: claimNo }) : c.confirmDirect}</div>
       <Notice tone="warning">{c.confirmNotice}</Notice>
-      {claim && <p className="txt-caption text-muted-foreground">{fill(c.claimDeclaredEcho, { amount: toMajorInput(claim.declaredAmount), at: fmtAt(claim.declaredPaidAt) })}</p>}
+      {claim && <p className="txt-caption text-muted-foreground">{fill(c.claimDeclaredEcho, { amount: toMajorInput(claim.declaredAmount), at: fmtAt(claim.declaredPaidAt), ref: claim.bankReference || "—" })}</p>}
       <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["PLATFORM_RECEIPT", "RECONCILIATION"]} selected={f.evidenceKey}
         onSelect={(k) => setF((x) => ({ ...x, evidenceKey: k }))} />
       <div className="grid gap-3 md:grid-cols-2">

@@ -273,6 +273,8 @@ _无字段_
 | `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
 | `declaredPaidAt` | `string` | 是 | 申报的付款时间 |
 | `submittedAt` | `string` | 是 | 提交时间 |
+| `bankReference` | `string` | 是 | 买家填的转账备注 / 流水号 —— 拿去银行流水里找这笔钱，**不是**到账证据 |
+| `evidenceKeys` | `string`\[\] | 是 | 买家上传的转账凭证（BUYER_RECEIPT）资产键；按键取 5 分钟签名地址查看 |
 
 
 #### POST `/ops/biz-mall/offline/orders/{orderNo}/confirmations`
@@ -14628,6 +14630,8 @@ Delivery state of an inventory/order synchronization event.
 | `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
 | `declaredPaidAt` | `string` | 是 | 申报的付款时间 |
 | `submittedAt` | `string` | 是 | 提交时间 |
+| `bankReference` | `string` | 是 | 买家填的转账备注 / 流水号 —— 拿去银行流水里找这笔钱，**不是**到账证据 |
+| `evidenceKeys` | `string`\[\] | 是 | 买家上传的转账凭证（BUYER_RECEIPT）资产键；按键取 5 分钟签名地址查看 |
 
 ### MallOfflineCollectionTerms
 

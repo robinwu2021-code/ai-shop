@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Portable Commerce Mall — new host HTTP contracts",
+    "title": "Portable Commerce Mall \u2014 new host HTTP contracts",
     "version": "task8-v1",
     "description": "New endpoints only; existing 29 onboarding operations unchanged. Trusted session realm/tenant/store and named capabilities. No body actor, payer identity, paid flag or provider proof. CNY JSAPI protocol adapter is fail-closed until authoritative app-bound payer binding is installed; TWD online routes (NewebPay, LINE Pay, JKOPay) remain unavailable. Task8 adds offline bank-transfer purchase: merchant declarations, private evidence, operator confirmation/void, assisted STORE orders and offline refund payouts. TWD policy twd-whole-v1 uses cash/allocation quantum 100."
   },
@@ -10182,6 +10182,20 @@
           "submittedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "bankReference": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Buyer-declared transfer note / reference; a matching hint for operators, not proof of receipt"
+          },
+          "evidenceKeys": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "type": "string"
+            },
+            "description": "BUYER_RECEIPT asset keys; operators read them through /ops/biz-mall/offline/orders/{orderNo}/evidence/url"
           }
         },
         "additionalProperties": false,
@@ -10190,7 +10204,9 @@
           "status",
           "declaredAmount",
           "declaredPaidAt",
-          "submittedAt"
+          "submittedAt",
+          "bankReference",
+          "evidenceKeys"
         ]
       },
       "OfflinePendingClaim": {

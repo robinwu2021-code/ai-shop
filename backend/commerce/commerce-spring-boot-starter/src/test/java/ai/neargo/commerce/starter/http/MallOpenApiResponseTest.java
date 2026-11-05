@@ -146,7 +146,7 @@ class MallOpenApiResponseTest {
                         Map.of("bankCode", "TESTBANK"));
         var claim =
                 new ai.neargo.commerce.api.offline.OfflinePurchaseFacade.ClaimView(
-                        "claim", "SUBMITTED", money, at, at);
+                        "claim", "SUBMITTED", money, at, at, "TW-REF-12345", List.of("asset-1"));
         var facade =
                 (ai.neargo.commerce.api.offline.OfflinePurchaseFacade)
                         java.lang.reflect.Proxy.newProxyInstance(

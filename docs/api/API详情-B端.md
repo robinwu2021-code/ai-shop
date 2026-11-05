@@ -11747,6 +11747,8 @@ mSvStoreSummary　🔒
 | `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
 | `declaredPaidAt` | `string` | 是 | 申报的转账时间（ISO） |
 | `submittedAt` | `string` | 是 | 提交时间（ISO） |
+| `bankReference` | `string` | 是 | 申报时填的转账备注 |
+| `evidenceKeys` | `string`\[\] | 是 | 申报时附的凭证 assetKey |
 
 
 #### GET `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims`
@@ -13790,6 +13792,8 @@ Delivery state of an inventory/order synchronization event.
 | `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
 | `declaredPaidAt` | `string` | 是 | 申报的转账时间（ISO） |
 | `submittedAt` | `string` | 是 | 提交时间（ISO） |
+| `bankReference` | `string` | 是 | 申报时填的转账备注 |
+| `evidenceKeys` | `string`\[\] | 是 | 申报时附的凭证 assetKey |
 
 ### MallOfflineClaimRequest
 

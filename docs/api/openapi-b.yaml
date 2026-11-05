@@ -15652,12 +15652,22 @@ components:
         submittedAt:
           type: "string"
           description: "提交时间（ISO）"
+        bankReference:
+          type: "string"
+          description: "申报时填的转账备注"
+        evidenceKeys:
+          type: "array"
+          items:
+            type: "string"
+          description: "申报时附的凭证 assetKey"
       required:
         - "claimNo"
         - "status"
         - "declaredAmount"
         - "declaredPaidAt"
         - "submittedAt"
+        - "bankReference"
+        - "evidenceKeys"
       additionalProperties: false
       description: "商家的付款申报"
     MallOfflineClaimStatus:
