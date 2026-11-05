@@ -28,8 +28,11 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST,PUT,DELETE", "/biz/payment(?:/.*)?"),
             // 商户主体（「我的门店 › 商户」）
             HostRoute.of("GET,POST,PUT", "/biz/entities(?:/.*)?"),
+            HostRoute.of("GET", "/biz/entity/[A-Za-z0-9_-]{1,64}"),
             // 本店的分类、发货设置、运费模板、线上售卖规则、库存同步
-            HostRoute.of("GET,POST,PUT", STORE + "(?:categories|ship-setting|freight-template|sell-rules|stock-sync)"));
+            HostRoute.of("GET,POST,PUT", STORE + "(?:categories|ship-setting|freight-template|sell-rules|stock-sync)"),
+            // 本店开通收款：把收款商户挂到这家店
+            HostRoute.of("POST", STORE + "payment"));
 
     private ShopStoreMemberRoutes() {
     }

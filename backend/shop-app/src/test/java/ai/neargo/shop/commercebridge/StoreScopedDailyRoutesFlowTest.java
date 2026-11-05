@@ -100,10 +100,13 @@ class StoreScopedDailyRoutesFlowTest {
     void selectedStoreOpensDailyRoutes() throws Exception {
         String[] o = newModelOwner("15965020101");
         for (String path : new String[] {"/biz/goods?size=1", "/biz/order?caller=RETAIL", "/biz/entities",
-                "/biz/payment/collect-status", "/biz/after-sale/worklist"}) {
+                "/biz/payment/collect-status", "/biz/after-sale/worklist", "/biz/merchant/payment?storeNo=" + o[1]}) {
             JsonNode r = call(o[0], o[1], path);
             assertEquals(0, r.path("code").asInt(), path + " → " + r);
         }
+        String entity = call(o[0], o[1], "/biz/merchant/profile").path("data").path("merchantNo").asText();
+        JsonNode e = call(o[0], o[1], "/biz/entity/" + entity);
+        assertEquals(0, e.path("code").asInt(), e.toString());
     }
 
     @Test
