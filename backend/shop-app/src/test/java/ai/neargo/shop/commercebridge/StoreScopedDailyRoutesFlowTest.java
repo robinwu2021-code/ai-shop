@@ -2,6 +2,7 @@ package ai.neargo.shop.commercebridge;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -107,6 +108,19 @@ class StoreScopedDailyRoutesFlowTest {
         String entity = call(o[0], o[1], "/biz/merchant/profile").path("data").path("merchantNo").asText();
         JsonNode e = call(o[0], o[1], "/biz/entity/" + entity);
         assertEquals(0, e.path("code").asInt(), e.toString());
+    }
+
+    @Test
+    @DisplayName("★★★ App 的店员角色、管理空间、证照协议、地图选址与看板，在新模型门店上都能进门店（不是 70006）")
+    void appAdminAndOnboardingRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020107");
+        for (String path : new String[] {"/biz/staff", "/biz/roles", "/biz/role-perms", "/biz/management/context",
+                "/biz/management/spaces/M1/stores", "/biz/qualifications", "/biz/merchant/pay-channel",
+                "/biz/geo/tips?keyword=taipei", "/biz/geo/reverse?lat=25.03&lng=121.56",
+                "/biz/dashboard/todo", "/biz/dashboard/stats"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
     }
 
     @Test
