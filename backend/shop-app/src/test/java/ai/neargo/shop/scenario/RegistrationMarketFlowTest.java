@@ -172,6 +172,35 @@ class RegistrationMarketFlowTest {
     }
 
     @Test
+    @DisplayName("TDD-双地图 AC5 quick-start 带坐标与坐标系：落 mch_store.lat_e6/lng_e6/coord_sys；只给一半 10400 且不建壳")
+    void quickStartPersistsTheMapPickedCoordinates() throws Exception {
+        // 测试库只启用了 CN（TW 会先被「市场未启用」拦下，被测的坐标规则就跑不到），所以两条都用 CN 账号
+        var mvc = mvc();
+        String half = probePhone();
+        String halfToken = login(mvc, half, "CN");
+        String rejected = mvc.perform(post("/biz/merchant/quick-start").header("Authorization", "Bearer " + halfToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeName\":\"半个坐标的店\",\"latE6\":30259000,\"coordSys\":\"gcj02\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(rejected).path("code").asInt()).as(rejected).isEqualTo(10400);
+        assertThat(jdbc.queryForObject("select count(*) from mch_account where user_no=?", Integer.class,
+                userNoOf(half))).as("被拒之前不能先建壳").isZero();
+
+        String phone = probePhone();
+        String token = login(mvc, phone, "CN");
+        String ok = mvc.perform(post("/biz/merchant/quick-start").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeName\":\"西湖边的店\",\"address\":\"北山街 1 号\","
+                                + "\"latE6\":30259000,\"lngE6\":120130000,\"coordSys\":\"gcj02\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(ok).path("code").asInt()).as(ok).isZero();
+        assertThat(jdbc.queryForMap("select s.lat_e6, s.lng_e6, s.coord_sys from mch_store s join mch_account a"
+                + " on a.entity_no = s.entity_no where a.user_no=?", userNoOf(phone)))
+                .containsEntry("lat_e6", 30259000).containsEntry("lng_e6", 120130000)
+                .containsEntry("coord_sys", "gcj02");
+    }
+
+    @Test
     @DisplayName("AC12 手机号账号：profile 的 account 是手机号（与 phone 同格式）")
     void phoneAccountProfileCarriesThePhoneAsAccount() throws Exception {
         var mvc = mvc();

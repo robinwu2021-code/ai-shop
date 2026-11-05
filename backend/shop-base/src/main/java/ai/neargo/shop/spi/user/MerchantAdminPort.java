@@ -80,20 +80,31 @@ public interface MerchantAdminPort {
      * @param industryText    行业选「其他」时老板自填的文字（已校验、已去空白）；null = 不是「其他」
      * @param subIndustryText 子业态选「其他」时自填的文字；同上
      * @param addressDetail   楼层门牌，可空
+     * @param latE6           地图选点坐标 ×1e6（已校验，两者同有同无）；null = 不写
+     * @param lngE6           同上
+     * @param coordSys        坐标的坐标系 {@code gcj02} / {@code wgs84}；没有坐标时为 null
      */
     record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
-                             String market, String industryText, String subIndustryText, String addressDetail) {
+                             String market, String industryText, String subIndustryText, String addressDetail,
+                             Integer latE6, Integer lngE6, String coordSys) {
+        /** 双地图之前（三步建店）的形状：没有坐标 */
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market, String industryText, String subIndustryText, String addressDetail) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, industryText, subIndustryText,
+                    addressDetail, null, null, null);
+        }
+
         public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                                  String market) {
-            this(ownerUserNo, storeName, address, businessTypeCode, market, null, null, null);
+            this(ownerUserNo, storeName, address, businessTypeCode, market, null, null, null, null, null, null);
         }
 
         public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
-            this(ownerUserNo, storeName, address, businessTypeCode, null, null, null, null);
+            this(ownerUserNo, storeName, address, businessTypeCode, null, null, null, null, null, null, null);
         }
 
         public QuickStartCommand(String ownerUserNo, String storeName, String address) {
-            this(ownerUserNo, storeName, address, null, null, null, null, null);
+            this(ownerUserNo, storeName, address, null, null, null, null, null, null, null, null);
         }
     }
 

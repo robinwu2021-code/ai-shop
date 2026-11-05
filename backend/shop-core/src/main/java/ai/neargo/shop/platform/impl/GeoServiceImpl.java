@@ -176,7 +176,7 @@ public class GeoServiceImpl implements GeoService {
             }
             out.add(new Tip(name, t.path("address").isTextual() ? t.path("address").asText("") : "",
                     t.path("adcode").asText(""), p == null ? null : p[0], p == null ? null : p[1],
-                    t.path("typecode").asText("")));
+                    t.path("typecode").asText(""), GeoPort.GCJ02));
             if (out.size() >= 10) {
                 break;
             }
@@ -207,7 +207,7 @@ public class GeoServiceImpl implements GeoService {
             int[] loc = parseLngLat(p.path("location").isTextual() ? p.path("location").asText("") : "");
             out.add(new Tip(name, p.path("address").isTextual() ? p.path("address").asText("") : "",
                     p.path("adcode").asText(""), loc == null ? null : loc[0], loc == null ? null : loc[1],
-                    p.path("typecode").asText("")));
+                    p.path("typecode").asText(""), GeoPort.GCJ02));
         }
         return out;
     }

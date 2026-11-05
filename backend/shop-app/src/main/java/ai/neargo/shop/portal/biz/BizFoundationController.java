@@ -3,7 +3,7 @@ package ai.neargo.shop.portal.biz;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.pay.MarketPort;
-import ai.neargo.shop.spi.platform.GeoPort;
+import ai.neargo.shop.platform.port.GeoRouter;
 import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
@@ -51,11 +51,15 @@ public class BizFoundationController {
                                      List<StoreSetupSubIndustry> subIndustries) {}
 
     /**
-     * @param mapProvider 建店资料页「地图选点」用哪家地图：{@code "AMAP"} = CN 且本部署配了高德密钥；
-     *                    null = 没有地图能力，端上只给手动地址（TDD-注册地区与三步建店 AC5）
+     * @param mapProvider   建店资料页「地图选点」用哪家地图（TDD-双地图提供方与门店选点 AC1/AC2）：按地区
+     *                      （缺省 CN→{@code AMAP}，TW/AE→{@code GOOGLE}，{@code shop.geo.provider-by-market} 可改），
+     *                      且<b>该家服务端搜索可用、端上 JS key 也配了</b>才给；否则 null，端上只给手动地址
+     * @param mapJsKey      端上画地图用的浏览器 JS key（限定包名 / 域名，本来就要下发）；mapProvider 为 null 时为 null
+     * @param mapJsSecurity 高德 JS 安全密钥（{@code AMAP} 才有）；其余为 null
      */
     public record StoreSetupMarket(String market, String displayName, String currency, int currencyScale,
-                                   String timeZone, List<StoreSetupIndustry> industries, String mapProvider) {}
+                                   String timeZone, List<StoreSetupIndustry> industries, String mapProvider,
+                                   String mapJsKey, String mapJsSecurity) {}
 
     /**
      * @param otherBusinessTypeCode 顶层行业选「其他」时用的经营类型（{@code shop.merchant.other-business-type}）；
@@ -81,9 +85,10 @@ public class BizFoundationController {
                 ? Optional.<MarketPort.MarketBrief>empty()
                 : port.find(accountMarket).filter(MarketPort.MarketBrief::enabled);
         if (market.isEmpty()) return new StoreSetup(List.of(), null);
-        var geoPort = geo == null ? null : geo.getIfAvailable();
+        var router = geo == null ? null : geo.getIfAvailable();
+        var map = router == null ? null : router.clientMapFor(market.get().market()).orElse(null);
         return storeSetup(market.get(), queries.businessTypes(ShopCommerceActorAdapter.current()),
-                geoPort != null && geoPort.available(), otherBusinessType);
+                map, otherBusinessType);
     }
 
     /**
@@ -98,23 +103,24 @@ public class BizFoundationController {
 
     /** Default one-to-one industry mapping from the actually published business types. */
     static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types) {
-        return storeSetup(m, types, false, null);
+        return storeSetup(m, types, null, null);
     }
 
-    static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types, boolean mapAvailable,
+    /** @param map 该市场的端上地图（{@link GeoRouter#clientMapFor}）；null = 没有地图选点 */
+    static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types, GeoRouter.ClientMap map,
                                  String otherBusinessType) {
         var industries = types.stream()
                 .map(t -> new StoreSetupIndustry(t.businessTypeCode(), t.displayName(), List.of(
                         new StoreSetupSubIndustry(t.businessTypeCode(), t.displayName(), t.businessTypeCode(),
                                 t.displayName(), t.catalogVersion()))))
                 .toList();
-        // 本期只有高德（CN）；台湾 / 阿联酋接 Google 地图不在本期
-        String mapProvider = "CN".equals(m.market()) && mapAvailable ? "AMAP" : null;
         String other = otherBusinessType == null || otherBusinessType.isBlank() ? null
                 : types.stream().map(BusinessType::businessTypeCode)
                         .filter(otherBusinessType.trim()::equals).findFirst().orElse(null);
         return new StoreSetup(List.of(new StoreSetupMarket(
-                m.market(), m.name(), m.currency(), m.currencyScale(), m.timeZone(), industries, mapProvider)),
+                m.market(), m.name(), m.currency(), m.currencyScale(), m.timeZone(), industries,
+                map == null ? null : map.provider(), map == null ? null : map.jsKey(),
+                map == null ? null : map.jsSecurity())),
                 other);
     }
 
@@ -148,12 +154,12 @@ public class BizFoundationController {
 
     private ObjectProvider<MerchantQueryPort> merchants;
     private ObjectProvider<AuthService> auth;
-    private ObjectProvider<GeoPort> geo;
+    private ObjectProvider<GeoRouter> geo;
     private String otherBusinessType = "";
 
     /** 账号地区与地图能力用 setter 注入：构造参数是测试按位置传的，见 BizStoreSetupTest */
     @Autowired
-    void setAccountMarketSources(ObjectProvider<AuthService> auth, ObjectProvider<GeoPort> geo) {
+    void setAccountMarketSources(ObjectProvider<AuthService> auth, ObjectProvider<GeoRouter> geo) {
         this.auth = auth;
         this.geo = geo;
     }

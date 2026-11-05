@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "B端注册至进件资料提交 API",
-    "version": "2026-11-05.1-registration-market",
-    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。 2026-11-05 门店列表 Store 补经营上下文 7 个可选字段（与 Flutter .2-store-setup 一致）。 门店经营上下文 CurrentStoreCommercialContext 同步补 8 个可选字段。"
+    "version": "2026-11-05.2-dual-map",
+    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。 2026-11-05 门店列表 Store 补经营上下文 7 个可选字段（与 Flutter .2-store-setup 一致）。 门店经营上下文 CurrentStoreCommercialContext 同步补 8 个可选字段。 2026-11-05 双地图（TDD-双地图提供方与门店选点）：StoreSetupMarket.mapProvider 增 GOOGLE 并补 mapJsKey / mapJsSecurity；quick-start 补 latE6 / lngE6 / coordSys；新收录既有端点 /biz/geo/tips、/biz/geo/reverse（新增可选 market 参数与 coordSys 字段）。"
   },
   "servers": [
     {
@@ -5202,6 +5202,280 @@
           }
         ]
       }
+    },
+    "/biz/geo/tips": {
+      "get": {
+        "operationId": "getGeoTips",
+        "summary": "地点输入提示（地图选点搜索）",
+        "description": "需登录。关键词少于 2 个字返回空表。每条带 coordSys。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10503
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/GeoTip"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-flutter-client-status": "planned",
+        "x-live-dev-request-policy": "allowed",
+        "parameters": [
+          {
+            "name": "kw",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "关键词"
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "城市偏好（AMAP 限定在该城市；GOOGLE 并入查询词）"
+          },
+          {
+            "name": "market",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CN",
+                "TW",
+                "AE"
+              ]
+            },
+            "description": "门店经营市场（取 store-setup 的 market）。带了就按地区选地图提供方（缺省 CN 高德、TW/AE Google）；该地区地图不可用时返回空结果而不是错误，且不换另一家。不带 = 旧行为（高德）。"
+          }
+        ]
+      }
+    },
+    "/biz/geo/reverse": {
+      "get": {
+        "operationId": "getGeoReverse",
+        "summary": "坐标反查地址（地图选点确认位置）",
+        "description": "需登录。不带 market：高德，未开通时 10503（旧行为）。带 market：按地区提供方，未开通或查不到返回 recommend/address 为空串、coordSys 为 null 的结果（code=0）。坐标越界 10400。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10503
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/GeoReverse"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-flutter-client-status": "planned",
+        "x-live-dev-request-policy": "allowed",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "description": "纬度（度）"
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "description": "经度（度）"
+          },
+          {
+            "name": "sys",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gcj02",
+                "wgs84"
+              ]
+            },
+            "description": "请求坐标的坐标系。不带 market 时缺省 gcj02；带 market 时缺省该地区地图的坐标系。AMAP 收到 wgs84 会先转 gcj02。"
+          },
+          {
+            "name": "market",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CN",
+                "TW",
+                "AE"
+              ]
+            },
+            "description": "门店经营市场（取 store-setup 的 market）。带了就按地区选地图提供方（缺省 CN 高德、TW/AE Google）；该地区地图不可用时返回空结果而不是错误，且不换另一家。不带 = 旧行为（高德）。"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6949,6 +7223,36 @@
             ],
             "maxLength": 64,
             "description": "楼层门牌，选填（去首尾空白后 ≤64 字，超长 10400）；空白按未填。"
+          },
+          "latE6": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": -90000000,
+            "maximum": 90000000,
+            "description": "地图选点纬度 ×1e6。与 lngE6 同时给或同时不给，只给一个 → 10400。"
+          },
+          "lngE6": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": -180000000,
+            "maximum": 180000000,
+            "description": "地图选点经度 ×1e6，规则同 latE6；越界 → 10400。"
+          },
+          "coordSys": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "gcj02",
+              "wgs84",
+              null
+            ],
+            "description": "坐标系：AMAP 选点为 gcj02，GOOGLE 选点为 wgs84（取 /biz/geo/tips、/biz/geo/reverse 返回的 coordSys）。给了坐标就必填且只能是这两个之一，否则 10400；没给坐标时忽略、不落库。坐标原样存 mch_store.lat_e6/lng_e6，坐标系存 coord_sys，不做转换。"
           }
         },
         "required": [
@@ -7831,7 +8135,9 @@
           "currencyScale",
           "timeZone",
           "industries",
-          "mapProvider"
+          "mapProvider",
+          "mapJsKey",
+          "mapJsSecurity"
         ],
         "properties": {
           "market": {
@@ -7867,9 +8173,24 @@
             ],
             "enum": [
               "AMAP",
+              "GOOGLE",
               null
             ],
-            "description": "地图选点能力：AMAP = 该市场为 CN 且本部署配置了高德；null = 无地图，只手动输入地址。"
+            "description": "地图选点用哪家：按市场（缺省 CN→AMAP，TW/AE→GOOGLE，部署可配 shop.geo.provider-by-market），且该家服务端搜索可用、端上 JS key 也已配置才给；否则 null = 无地图，只手动输入地址。不跨提供方兜底。"
+          },
+          "mapJsKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "端上加载地图脚本用的浏览器 JS key（AMAP = 高德 JS API key，GOOGLE = Maps JavaScript API key；已按包名/域名限制）。mapProvider 为 null 时为 null。"
+          },
+          "mapJsSecurity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "高德 JS API 安全密钥（window._AMapSecurityConfig.securityJsCode）；仅 mapProvider=AMAP 时可能有值，其余为 null。"
           }
         }
       },
@@ -8095,6 +8416,126 @@
           "resendAfterSeconds"
         ],
         "description": ""
+      },
+      "GeoTip": {
+        "type": "object",
+        "required": [
+          "name",
+          "address",
+          "adcode",
+          "latE6",
+          "lngE6",
+          "typecode",
+          "coordSys"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "地点名"
+          },
+          "address": {
+            "type": "string",
+            "description": "地址；可能为空串"
+          },
+          "adcode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "大陆 6 位区县码（高德）；GOOGLE 为 null"
+          },
+          "latE6": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "纬度 ×1e6，坐标系见 coordSys"
+          },
+          "lngE6": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "经度 ×1e6"
+          },
+          "typecode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "高德 POI 类目码；GOOGLE 为 null"
+          },
+          "coordSys": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "gcj02",
+              "wgs84",
+              null
+            ],
+            "description": "本条坐标的坐标系：AMAP gcj02，GOOGLE wgs84。选中后连同坐标回传 quick-start。"
+          }
+        },
+        "description": "地点输入提示一条。"
+      },
+      "GeoReverse": {
+        "type": "object",
+        "required": [
+          "recommend",
+          "address",
+          "adcode",
+          "township",
+          "latE6",
+          "lngE6",
+          "coordSys"
+        ],
+        "properties": {
+          "recommend": {
+            "type": "string",
+            "description": "带建筑/兴趣点的人话版地址，端上填这个；带 market 且该地区地图不可用或查不到时为空串"
+          },
+          "address": {
+            "type": "string",
+            "description": "标准地址；不可用时为空串"
+          },
+          "adcode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "大陆 6 位区县码；GOOGLE 为 null"
+          },
+          "township": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "街道/镇名；GOOGLE 为 null"
+          },
+          "latE6": {
+            "type": "integer",
+            "description": "结果坐标 ×1e6（AMAP 已归一为 gcj02；GOOGLE 原样 wgs84；不可用时为请求坐标）"
+          },
+          "lngE6": {
+            "type": "integer",
+            "description": "同上"
+          },
+          "coordSys": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "gcj02",
+              "wgs84",
+              null
+            ],
+            "description": "latE6/lngE6 的坐标系；带 market 且无结果时为 null"
+          }
+        },
+        "description": "坐标反查地址。"
       }
     }
   }

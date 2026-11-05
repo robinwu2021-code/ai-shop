@@ -10,7 +10,9 @@ import ai.neargo.commerce.api.foundation.FoundationQueryFacade.BusinessType;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.platform.port.GeoRouter;
 import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.platform.GeoPort;
 import ai.neargo.shop.user.service.AuthService;
 
 import org.junit.jupiter.api.Test;
@@ -84,20 +86,83 @@ class BizStoreSetupTest {
     @Test
     void ac5StoreSetupCarriesMapProviderAndThePublishedOtherBusinessType() {
         var cn = markets(true).find("CN").orElseThrow();
-        var tw = markets(true).find("TW").orElseThrow();
         var types = List.of(new BusinessType("RETAIL", "零售", 3), new BusinessType("FOOD", "餐饮", 1));
+        var amap = new GeoRouter.ClientMap(GeoRouter.AMAP, "amap-js", "amap-sec", GeoPort.GCJ02);
 
-        var withMap = BizFoundationController.storeSetup(cn, types, true, "RETAIL");
+        var withMap = BizFoundationController.storeSetup(cn, types, amap, "RETAIL");
         assertEquals("AMAP", withMap.markets().getFirst().mapProvider());
         assertEquals("RETAIL", withMap.otherBusinessTypeCode());
 
-        assertNull(BizFoundationController.storeSetup(cn, types, false, "RETAIL").markets().getFirst().mapProvider(),
-                "CN 没配地图密钥时不给地图选点");
-        assertNull(BizFoundationController.storeSetup(tw, types, true, "RETAIL").markets().getFirst().mapProvider(),
-                "非 CN 本期没有地图");
-        assertNull(BizFoundationController.storeSetup(cn, types, true, "SERVICE").otherBusinessTypeCode(),
+        assertNull(BizFoundationController.storeSetup(cn, types, null, "RETAIL").markets().getFirst().mapProvider(),
+                "没有可用的端上地图时不给地图选点");
+        assertNull(BizFoundationController.storeSetup(cn, types, amap, "SERVICE").otherBusinessTypeCode(),
                 "配置的兜底经营类型未发布就不提供顶层「其他」");
-        assertNull(BizFoundationController.storeSetup(cn, types, true, "").otherBusinessTypeCode());
+        assertNull(BizFoundationController.storeSetup(cn, types, amap, "").otherBusinessTypeCode());
+    }
+
+    // ---------------------------------------------------------------- TDD-双地图提供方与门店选点
+
+    @Test
+    void mapsAc2StoreSetupCarriesTheMarketsProviderAndItsBrowserKeys() {
+        var tw = markets(true).find("TW").orElseThrow();
+        var cn = markets(true).find("CN").orElseThrow();
+        var types = List.of(new BusinessType("RETAIL", "零售", 3));
+
+        var google = BizFoundationController.storeSetup(tw, types,
+                new GeoRouter.ClientMap(GeoRouter.GOOGLE, "google-js", null, GeoPort.WGS84), null)
+                .markets().getFirst();
+        assertEquals(List.of("GOOGLE", "google-js"), List.of(google.mapProvider(), google.mapJsKey()));
+        assertNull(google.mapJsSecurity(), "安全密钥只有高德有");
+
+        var amap = BizFoundationController.storeSetup(cn, types,
+                new GeoRouter.ClientMap(GeoRouter.AMAP, "amap-js", "amap-sec", GeoPort.GCJ02), null)
+                .markets().getFirst();
+        assertEquals(List.of("AMAP", "amap-js", "amap-sec"),
+                List.of(amap.mapProvider(), amap.mapJsKey(), amap.mapJsSecurity()));
+
+        var none = BizFoundationController.storeSetup(tw, types, null, null).markets().getFirst();
+        assertNull(none.mapProvider());
+        assertNull(none.mapJsKey());
+        assertNull(none.mapJsSecurity());
+    }
+
+    static BizMerchantController.QuickStartReq located(Integer lat, Integer lng, String sys) {
+        return new BizMerchantController.QuickStartReq("店", "地址", null, null, null, null,
+                null, null, null, lat, lng, sys);
+    }
+
+    @Test
+    void mapsAc5QuickStartCoordinatesAreBothOrNeitherInRangeWithAKnownCoordSys() {
+        var on = markets(true);
+        assertEquals("TW",
+                BizMerchantController.resolveMarket("TW", on, located(25_033964, 121_564472, "wgs84"), null));
+        assertEquals("TW",
+                BizMerchantController.resolveMarket("TW", on, located(-90_000000, 180_000000, "gcj02"), null));
+        assertEquals("TW", BizMerchantController.resolveMarket("TW", on, located(null, null, null), null));
+        // 只给一半、越界、坐标系缺失或不认识：都拒
+        assertThrows(BizException.class,
+                () -> BizMerchantController.resolveMarket("TW", on, located(25_033964, null, "wgs84"), null));
+        assertThrows(BizException.class,
+                () -> BizMerchantController.resolveMarket("TW", on, located(null, 121_564472, "wgs84"), null));
+        assertThrows(BizException.class,
+                () -> BizMerchantController.resolveMarket("TW", on, located(90_000001, 0, "wgs84"), null));
+        assertThrows(BizException.class,
+                () -> BizMerchantController.resolveMarket("TW", on, located(0, -180_000001, "wgs84"), null));
+        assertThrows(BizException.class,
+                () -> BizMerchantController.resolveMarket("TW", on, located(25_033964, 121_564472, null), null));
+        assertThrows(BizException.class,
+                () -> BizMerchantController.resolveMarket("TW", on, located(25_033964, 121_564472, "bd09"), null));
+    }
+
+    @Test
+    void mapsAc5QuickStartCommandCarriesCoordinatesOnlyWhenGiven() {
+        var cmd = BizMerchantController.quickStartCommand("U1", "TW", located(25_033964, 121_564472, "wgs84"));
+        assertEquals(List.of(25_033964, 121_564472, "wgs84"), List.of(cmd.latE6(), cmd.lngE6(), cmd.coordSys()));
+
+        var bare = BizMerchantController.quickStartCommand("U1", "TW", located(null, null, "wgs84"));
+        assertNull(bare.latE6());
+        assertNull(bare.lngE6());
+        assertNull(bare.coordSys(), "没有坐标时坐标系不落库");
     }
 
     @Test

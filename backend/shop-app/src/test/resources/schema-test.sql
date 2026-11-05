@@ -1750,6 +1750,7 @@ CREATE TABLE IF NOT EXISTS mch_store
     business_type_changed_at BIGINT NULL,
     industry_text VARCHAR(40) NULL,
     sub_industry_text VARCHAR(40) NULL,
+    coord_sys VARCHAR(8) NULL,
     CONSTRAINT uk_mch_store_slug UNIQUE (slug),
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),

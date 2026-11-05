@@ -1479,6 +1479,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             store.setAddressDetail(cmd.addressDetail());
             store.setIndustryText(cmd.industryText());
             store.setSubIndustryText(cmd.subIndustryText());
+            // 地图选点坐标原样存、记坐标系（TDD-双地图提供方与门店选点 AC5）：高德 gcj02，Google wgs84
+            if (cmd.latE6() != null && cmd.lngE6() != null) {
+                store.setLatE6(cmd.latE6());
+                store.setLngE6(cmd.lngE6());
+                store.setCoordSys(cmd.coordSys());
+            }
         });
         ensureFreePlan(m.getEntityNo());
         /*

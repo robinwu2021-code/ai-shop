@@ -234,9 +234,15 @@ public class MchStore extends BaseEntity {
     private Integer scoreService;
     private Integer scoreSpeed;
 
-    /** 门店坐标（gcj02，E6，V190）。地理编码或定位回填；候选取货点按它排距离 */
+    /** 门店坐标（E6，V190；坐标系见 {@link #coordSys}）。地理编码或定位回填；候选取货点按它排距离 */
     private Integer latE6;
     private Integer lngE6;
+    /**
+     * {@link #latE6}/{@link #lngE6} 的坐标系（V630）：{@code gcj02} / {@code wgs84}。建店地图选点时写入 ——
+     * 大陆高德是 gcj02，台湾 / 阿联酋 Google 是 wgs84（TDD-双地图提供方与门店选点 AC5）。
+     * null = 存量与非选点路径写的坐标，按历史口径即 gcj02。
+     */
+    private String coordSys;
     /** 地理编码给的区县码（国标 6 位），与 sys_region 同口径 */
     private String adcode;
     /** 地址经地理编码校验并标准化（V190）。没配地图密钥时保持 0，不拦保存 */
