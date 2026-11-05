@@ -141,6 +141,13 @@ execution_retention / resource_occupation / service_execution）均为既有，�
 4. **Google 语言**：TW 与 AE 都用 `zh-TW`（按委托方给定）；阿联酋若要英文地名再按市场分语言。
 5. **未做**：`/biz/stores/mine` 等读取路径未回传 `coordSys`（当前也不回传坐标）；`/biz/geo/geocode`、`/biz/geo/estates` 未加 `market`；quick-start 不校验 coordSys 与市场提供方一致（如 CN 提交 wgs84 也收）；App 选点页（AC6/AC7）。
 
+### App 端（ai-shop-bapp-mall `b351fe3`，AC6/AC7）
+
+- `onboarding_location_picker.dart`：WebView 内置 HTML，按 `mapProvider` 加载高德 JS API 或 Google Maps JS；扁平 CSS 图钉固定中心，停下后 `/biz/geo/reverse?market`；搜索走 `/biz/geo/tips?market`，过滤无坐标的提示；`recommend`/`address` 为空即视为无结果。无 key / 脚本或鉴权失败 / 12 秒超时 / 无 WebView → 只留搜索与手动输入。
+- 建店第 2 步：`mapReady`（有提供方且有端上 key）才显示「地图选点」；坐标与 `coordSys` 随 quick-start 提交，地址清空则丢弃坐标。新增依赖 `webview_flutter 4.14.1`。
+- 测试：`onboarding_v4_flow_test#map pick fills the address and sends coordinates with their system`（降级页 + 搜索 + 回填 + 请求带坐标）、`#no map for the market means manual address only`；消融「不带坐标」→ 红。Flutter 全量 430 通过。
+- 本机（2026-11-05，V630 已执行）：未配端上 JS key → TW `mapProvider=null`；`/biz/geo/tips?market=TW` 返回 `[]`（Google 无 key，不回退高德）；`market=CN` 走真实高德，返回 `coordSys=gcj02`。真地图待端上 key（`GOOGLE_MAPS_SERVER_KEY`、`GOOGLE_MAPS_JS_KEY`、`AMAP_JS_KEY`、`AMAP_JS_SECURITY`）—— 原项目的这几把 key 不在本机。
+
 ## §7 确认与完成
 
 - 2026-11-05 用户确认 D1/D2/D3（均按建议）。
