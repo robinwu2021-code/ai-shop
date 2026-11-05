@@ -8,7 +8,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -28,12 +27,41 @@ public class StoreSyncPublisher {
     /** 进程内水位：启动时回看 1 天（已入队的修订不会重复入队） */
     private volatile LocalDateTime watermark = LocalDateTime.now(ZoneOffset.UTC).minusDays(1);
 
-    public StoreSyncPublisher(StoreSnapshotReader reader, OutboxEventBus outbox) {
+    private final StoreSyncProperties props;
+    private java.util.concurrent.ScheduledExecutorService timer;
+
+    public StoreSyncPublisher(StoreSnapshotReader reader, OutboxEventBus outbox, StoreSyncProperties props) {
         this.reader = reader;
         this.outbox = outbox;
+        this.props = props;
     }
 
-    @Scheduled(fixedDelayString = "${shop.nearpay.store-sync.scan-interval:PT60S}", initialDelayString = "PT30S")
+    /**
+     * 自带单线程定时器：ai-shop 的 {@code @Scheduled} 只在 worker profile 生效，而 UME 只跑 ops。
+     * 只在开启同步的部署上启动；多实例部署时应只在一个实例开启（UME 为单实例）。
+     */
+    @jakarta.annotation.PostConstruct
+    void start() {
+        timer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "nearpay-store-sync");
+            t.setDaemon(true);
+            return t;
+        });
+        long every = Math.max(10, props.scanInterval().toSeconds());
+        timer.scheduleWithFixedDelay(() -> {
+            try {
+                scan();
+            } catch (RuntimeException e) {
+                log.warn("[nearpay-store-sync] scan failed: {}", e.getMessage());
+            }
+        }, 30, every, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    @jakarta.annotation.PreDestroy
+    void stop() {
+        if (timer != null) timer.shutdownNow();
+    }
+
     public void scan() {
         LocalDateTime started = LocalDateTime.now(ZoneOffset.UTC);
         List<StoreSnapshotReader.Changed> changed = reader.changedSince(watermark.minusSeconds(5), BATCH);
