@@ -153,7 +153,37 @@ MultiEntityIdentityFlowTest 11/11、StoreBannerFlowTest 5/5、CommerceAccessSecu
 
 已知偏差：原型 S04「有门店时 + 创建门店」本期不做（quick-start 只建首店）。
 
-后端实现（提交见下方 `git show --stat`）与设计的出入：
+后端实现提交 `062a45855`（`git show --stat 062a45855`）：
+
+```
+ .../neargo/shop/portal/biz/BizAuthController.java  |   9 +-
+ .../shop/portal/biz/BizFoundationController.java   |  75 ++++++++-
+ .../shop/portal/biz/BizMerchantController.java     | 162 +++++++++++++++---
+ .../shop-app/src/main/resources/application.yml    |   5 +
+ ...629__account_market_and_store_industry_text.sql |  14 ++
+ .../shop/portal/biz/BizAuthEmailLoginTest.java     |  17 ++
+ .../neargo/shop/portal/biz/BizStoreSetupTest.java  | 113 +++++++++++++
+ .../shop/scenario/RegistrationMarketFlowTest.java  | 186 +++++++++++++++++++++
+ .../src/test/resources/application-test.yml        |   4 +
+ .../shop-app/src/test/resources/schema-test.sql    |   3 +
+ .../ai/neargo/shop/spi/user/MerchantAdminPort.java |  16 +-
+ .../ai/neargo/shop/user/entity/UsrAccount.java     |   6 +
+ .../shop/user/policy/RegistrationMarkets.java      |  48 ++++++
+ .../ai/neargo/shop/user/service/AuthService.java   |  27 ++-
+ .../shop/user/service/impl/AuthServiceImpl.java    |  46 +++++
+ .../shop/user/policy/RegistrationMarketsTest.java  |  31 ++++
+ .../java/ai/neargo/shop/merchant/dto/StoreVO.java  |  36 +++-
+ .../ai/neargo/shop/merchant/entity/MchStore.java   |   9 +
+ .../shop/merchant/port/MerchantPortImpl.java       |  16 +-
+ .../service/impl/StoreAdminServiceImpl.java        |   3 +-
+ .../impl/MerchantEntityStoreMarketTest.java        |  24 +++
+ docs/api/examples/b-foundation.json                |   9 +-
+ docs/api/openapi-b-onboarding.json                 | 120 +++++++++++--
+ ...270\211\346\255\245\345\273\272\345\272\227.md" | 176 +++++++++++++++++++
+ 24 files changed, 1097 insertions(+), 58 deletions(-)
+```
+
+与设计的出入：
 
 1. **`StoreVO.industryCode / subIndustryCode` 对自填的那一级报 `OTHER`**（设计只说新增两段文字）。理由：与 quick-start 提交的码一致，
    App 回显不用再拿文字猜；经营类型仍在 `businessTypeCode`。只有子业态自填时 `industryCode` 仍等于经营类型。
