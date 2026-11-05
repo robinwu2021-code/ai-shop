@@ -602,6 +602,12 @@
       }
     },
     {
+      "path": "pages/pay-link/index",
+      "style": {
+        "navigationBarTitleText": "收款链接"
+      }
+    },
+    {
       "path": "pages/pay-flow/index",
       "style": {
         "navigationBarTitleText": "收款流水"

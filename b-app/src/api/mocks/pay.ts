@@ -17,12 +17,25 @@ const codes: PayQrCode[] = [
     status: "ACTIVE", url: "https://pay.example.com/q/demo" },
 ];
 const grants: PayAppGrant[] = [];
+const links = new Map<string, import("../pay").PayLink>();
 
 export const payMock: PayApi = {
   async mPayCollect(v) {
     const token = rnd(43);
     return { payOrderNo: "PYO" + Date.now(), token, expireAt: Date.now() + (v.expireMinutes ?? 15) * 60_000,
       checkoutUrl: "https://pay.example.com/c/" + token };
+  },
+  async mPayLinkCreate(v) {
+    const token = rnd(43);
+    const link = { requestNo: v.requestNo, payOrderNo: "PYO" + Date.now(), status: "CREATED",
+      url: "https://twpay.example/h5/c/" + token, expireAt: Date.now() + v.expireMinutes * 60_000 };
+    links.set(v.requestNo, link);
+    return link;
+  },
+  async mPayLinkStatus(requestNo) {
+    const link = links.get(requestNo);
+    if (!link) throw new Error("收款链接不存在");
+    return { ...link, url: null };
   },
   async mPayRefunds() {
     return [...refunds];

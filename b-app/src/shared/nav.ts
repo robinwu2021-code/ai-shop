@@ -79,6 +79,7 @@ export const ROUTES = {
   statement: "/pages/statement/index",
   // 商家端支付（TDD-支付服务-I5接入层 S8）
   payCollect: "/pages/pay-collect/index",
+  payLink: "/pages/pay-link/index",
   payFlow: "/pages/pay-flow/index",
   payQrcodes: "/pages/pay-qrcodes/index",
   payGrants: "/pages/pay-grants/index",

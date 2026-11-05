@@ -241,6 +241,11 @@ onShow(() => {
         <text class="txt-body cell__label">{{ $t("bizPay.collect.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
+      <!-- 收款链接（动态码）：固定金额、有效期 15 分钟 ~ 7 天，发给顾客远程付款 -->
+      <view v-if="merchant.can('mch:pay:collect')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payLink)">
+        <text class="txt-body cell__label">{{ $t("bizPay.link.title") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view v-if="merchant.can('mch:pay:statement')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payFlow)">
         <text class="txt-body cell__label">{{ $t("bizPay.flow.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>

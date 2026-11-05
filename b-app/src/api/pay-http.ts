@@ -4,6 +4,8 @@ import type { PayApi } from "./pay";
 
 export const payHttp: PayApi = {
   mPayCollect: (v) => http.post(E.mPayCollect.path, v),
+  mPayLinkCreate: (v) => http.post(E.mPayLinkCreate.path, v),
+  mPayLinkStatus: (requestNo) => http.get(buildPath(E.mPayLinkStatus.path, { requestNo })),
   mPayRefunds: () => http.get(E.mPayRefunds.path),
   mPayRefund: (v) => http.post(E.mPayRefund.path, v),
   mPayStatement: (day) => http.get(E.mPayStatement.path, day ? { day } : undefined),

@@ -20,6 +20,20 @@ export interface PayCollectResult {
   checkoutUrl: string;
 }
 
+/** 收款链接（动态码）：一条链接一张单，金额固定；url 只在生成时返回 */
+export interface PayLink {
+  requestNo: string;
+  payOrderNo: string;
+  /** CREATED / AWAITING_PAYMENT / PAID / CLOSED / … */
+  status: string;
+  url: string | null;
+  /** 链接失效时间（UTC 毫秒） */
+  expireAt: number;
+}
+
+/** 可选有效期（分钟）：15 分钟 / 1 小时 / 24 小时 / 7 天 */
+export const PAY_LINK_VALIDITY = [15, 60, 1440, 10080] as const;
+
 export interface PayRefundItem {
   /** 退款单号（PYR…） */
   payRefundNo: string;
@@ -113,6 +127,8 @@ export interface PayAppGrant {
 
 export interface PayApi {
   mPayCollect(v: { amountMinor: number; subject?: string; expireMinutes?: number }): Promise<PayCollectResult>;
+  mPayLinkCreate(v: { requestNo: string; amountMinor: number; subject?: string; expireMinutes: number }): Promise<PayLink>;
+  mPayLinkStatus(requestNo: string): Promise<PayLink>;
   mPayRefunds(): Promise<PayRefundItem[]>;
   /** outRefundNo：端上防连点时同一次操作带同一个 */
   mPayRefund(v: { payOrderNo: string; amountMinor: number; reason?: string; outRefundNo?: string }): Promise<PayRefundItem>;
