@@ -65,7 +65,7 @@ public class BizAuthController {
             result = authService.login(new AuthService.LoginCommand(
                     req.grantType(), req.principal(), req.credential(),
                     // B 端登录不做进店归因：店主登录自己的后台，不是"从谁的分享进的店"
-                    null, null, req.agreed()));
+                    null, null, req.agreed(), req.marketCode()));
         } catch (BizException e) {
             /*
              * **记进 MERCHANT 池，而不是会话所在的 CONSUMER 池。**
@@ -229,7 +229,12 @@ public class BizAuthController {
         return communityService.all();
     }
 
-    public record LoginReq(String grantType, String principal, String credential, Boolean agreed) {
+    /**
+     * @param marketCode 注册地区（可选，TDD-注册地区与三步建店）。只在这次登录<b>新建账号</b>时生效，
+     *                   已有账号忽略；不在可注册地区内落部署默认
+     */
+    public record LoginReq(String grantType, String principal, String credential, Boolean agreed,
+                           String marketCode) {
     }
 
     /** 对齐 shared {@code MerchantLoginResp}。 */

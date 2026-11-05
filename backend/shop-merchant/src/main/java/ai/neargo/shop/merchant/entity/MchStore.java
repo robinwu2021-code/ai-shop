@@ -183,6 +183,15 @@ public class MchStore extends BaseEntity {
             updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private String addressDetail;
 
+    /**
+     * 建店时行业选「其他」后老板自填的行业名（V629，≤20 字）。<b>只是说明</b>：
+     * 经营类型仍以 {@link #businessTypeCode} 为准，任何判定都不读这一列。
+     */
+    private String industryText;
+
+    /** 同上，子业态选「其他」时自填的那一级（V629，≤20 字） */
+    private String subIndustryText;
+
     /** JSON 数组：主推商品 goods_no，<b>有序</b>。顺序是门面的编排，不是商品自身属性。 */
     private String featured;
 

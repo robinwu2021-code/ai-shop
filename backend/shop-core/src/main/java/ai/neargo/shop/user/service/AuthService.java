@@ -144,8 +144,33 @@ public interface AuthService {
      */
     String ensureAccountByPhone(String phone);
 
+    /**
+     * 这个账号的经营地区（TDD-注册地区与三步建店 AC4）。存量账号 {@code usr_account.market} 为空、
+     * 或查无此人时按部署默认（{@code shop.merchant.default-market}）—— 读的一侧一律走这里，不直接读列。
+     */
+    String accountMarket(String userNo);
+
+    /**
+     * 这个账号已验证的登录标识（TDD-注册地区与三步建店 AC12，个人中心显示「账号」用）：
+     * 有手机号给手机号，没有给邮箱（归一化地址）；都没有（如只有微信）或查无此人为 null。
+     *
+     * <p>手机号优先：手机号账号也可能日后绑邮箱，而它登录时认的一直是手机号。
+     */
+    String loginIdentifier(String userNo);
+
+    /**
+     * @param marketCode 注册地区（TDD-注册地区与三步建店 AC1–AC3）。<b>只在建号那一刻生效</b>，
+     *                   已有账号忽略；不在 {@code shop.merchant.registration-markets} 内时落部署默认。
+     *                   C 端与旧端不传 = 部署默认，与今天等价
+     */
     record LoginCommand(String grantType, String principal, String credential,
-                        String merchantNo, String inviterNo, Boolean agreed) {
+                        String merchantNo, String inviterNo, Boolean agreed, String marketCode) {
+
+        /** 不带注册地区的旧构造：C 端、员工与各处内部调用照旧用它。 */
+        public LoginCommand(String grantType, String principal, String credential,
+                            String merchantNo, String inviterNo, Boolean agreed) {
+            this(grantType, principal, credential, merchantNo, inviterNo, agreed, null);
+        }
     }
 
     record LoginResult(String token, UserVO user) {

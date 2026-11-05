@@ -111,4 +111,21 @@ class BizAuthEmailLoginTest {
         assertThat(json.readTree(body).path("code").asInt()).as(body).isNotZero();
         assertThat(otpStore.peek(EmailOtpService.key("not-an-email"))).isEmpty();
     }
+
+    @Test
+    @DisplayName("TDD-注册地区与三步建店 AC12 邮箱账号：登录响应与 profile 的 merchant.account 是归一化邮箱")
+    void emailAccountProfileCarriesTheEmailAsAccount() throws Exception {
+        var mvc = mvc();
+        String email = probeEmail();
+        String normalized = EmailOtpService.normalize(email);
+        var first = json.readTree(login(mvc, email, send(mvc, email), true));
+        assertThat(first.path("data").path("merchant").path("account").asString()).as(first.toString())
+                .isEqualTo(normalized);
+
+        String token = first.path("data").path("token").asString();
+        String profile = mvc.perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(profile).path("data").path("account").asString()).as(profile)
+                .isEqualTo(normalized);
+    }
 }

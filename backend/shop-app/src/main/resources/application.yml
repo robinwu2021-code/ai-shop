@@ -208,6 +208,11 @@ shop:
     # 本部署的唯一经营市场（TDD-B端建店默认经营市场）。决定新主体的 market 与 FREE 期币种；
     # 该市场须在 sys_market 中启用。台湾实例设 TW。
     default-market: ${SHOP_DEFAULT_MARKET:CN}
+    # 注册时可选的经营地区（TDD-注册地区与三步建店），逗号分隔。登录带的 marketCode 只在新建账号时生效，
+    # 不在清单内一律落 default-market。缺省 = 只有 default-market（与改动前等价）。测试实例 TW,CN,AE。
+    registration-markets: ${SHOP_REGISTRATION_MARKETS:${shop.merchant.default-market}}
+    # 建店时顶层行业选「其他」用的经营类型（须是已发布的经营类型）。空 = 不提供顶层「其他」。
+    other-business-type: ${SHOP_OTHER_BUSINESS_TYPE:}
   period:
     # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
     # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）

@@ -30,7 +30,8 @@
           "agreementPending": false,
           "favoriteCount": 0,
           "displayName": "",
-          "currentStoreNo": null
+          "currentStoreNo": null,
+          "account": "15965010103"
         }
       }
     }
@@ -143,7 +144,8 @@
         "agreementPending": false,
         "favoriteCount": 0,
         "displayName": "",
-        "currentStoreNo": "STORE-EXAMPLE"
+        "currentStoreNo": "STORE-EXAMPLE",
+        "account": "15965010103"
       }
     }
   },
@@ -430,7 +432,8 @@
         "agreementPending": false,
         "favoriteCount": 0,
         "displayName": "",
-        "currentStoreNo": "STORE-EXAMPLE"
+        "currentStoreNo": "STORE-EXAMPLE",
+        "account": "15965010103"
       }
     }
   },

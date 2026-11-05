@@ -4,6 +4,10 @@
 # 在这里重复一份生产配置的话，两边就会各自漂移，而漂移的表现是
 # 「测试全绿、上线才炸」。
 shop:
+  merchant:
+    # 测试世界要能注册出两种地区的账号（RegistrationMarketFlowTest AC1–AC3）。部署默认仍是 CN，
+    # 不带 marketCode 的登录（其余全部用例）建出来的账号与改动前一样落 CN。
+    registration-markets: CN,TW
   mail:
     # 测试世界没有 SMTP：邮箱验证码走桩，需要显式放行（TDD-B端邮箱验证码注册登录 AC9/AC10）。
     # 生产与本地跑同一组 profile，靠名字分不开，所以缺省是拒绝。

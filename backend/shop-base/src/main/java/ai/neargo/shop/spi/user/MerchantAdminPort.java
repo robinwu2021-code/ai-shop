@@ -76,16 +76,24 @@ public interface MerchantAdminPort {
      * @param address     门店地址，可空（之后在店铺资料里补）
      */
     /**
-     * @param market 经营市场（已由调用方按部署配置校验）；null = 不写，沿用库默认（旧 CN 行为）
+     * @param market          经营市场（已由调用方按账号地区校验）；null = 不写，沿用库默认（旧 CN 行为）
+     * @param industryText    行业选「其他」时老板自填的文字（已校验、已去空白）；null = 不是「其他」
+     * @param subIndustryText 子业态选「其他」时自填的文字；同上
+     * @param addressDetail   楼层门牌，可空
      */
     record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
-                             String market) {
+                             String market, String industryText, String subIndustryText, String addressDetail) {
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, null, null, null);
+        }
+
         public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
-            this(ownerUserNo, storeName, address, businessTypeCode, null);
+            this(ownerUserNo, storeName, address, businessTypeCode, null, null, null, null);
         }
 
         public QuickStartCommand(String ownerUserNo, String storeName, String address) {
-            this(ownerUserNo, storeName, address, null, null);
+            this(ownerUserNo, storeName, address, null, null, null, null, null);
         }
     }
 

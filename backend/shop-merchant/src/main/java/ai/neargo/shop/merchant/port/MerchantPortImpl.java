@@ -21,6 +21,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
+import java.util.function.Consumer;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.reach.ConsumerProfile;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -1473,7 +1474,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *                   显示一条永远推不动的记录
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
-        ensureDefaultStore(m.getEntityNo(), name, cmd.address(), actor, cmd.businessTypeCode(), false);
+        // 三步建店填的楼层门牌与自填行业随门店一起落库（TDD-注册地区与三步建店 AC9）；重试命中已有壳时不改
+        ensureDefaultStore(m.getEntityNo(), name, cmd.address(), actor, cmd.businessTypeCode(), false, store -> {
+            store.setAddressDetail(cmd.addressDetail());
+            store.setIndustryText(cmd.industryText());
+            store.setSubIndustryText(cmd.subIndustryText());
+        });
         ensureFreePlan(m.getEntityNo());
         /*
          * 门店号一并返回。调用方拿它当 X-Store-No 进这家新店 —— 身份解析按门店反查主体，
@@ -1660,6 +1666,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 建默认门店。一主体恰好一个，删不掉 —— 它是单店商家的全部。 */
     private void ensureDefaultStore(String merchantNo, String name, String address,
             ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore) {
+        ensureDefaultStore(merchantNo, name, address, actor, type, platformStore, store -> { });
+    }
+
+    /** @param extras 插入前补上的门店资料（快速开店的楼层门牌与自填行业） */
+    private void ensureDefaultStore(String merchantNo, String name, String address,
+            ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore,
+            Consumer<ai.neargo.shop.merchant.entity.MchStore> extras) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 storeMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)));
@@ -1678,6 +1691,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         store.setIsDefault(true);
         store.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
         store.setFeatured("[]");
+        extras.accept(store);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(store));
         payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         if (!platformStore) commerce.inserted(store, actor);

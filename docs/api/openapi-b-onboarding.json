@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "B端注册至进件资料提交 API",
-    "version": "2026-11-04.4-store-market",
+    "version": "2026-11-05.1-registration-market",
     "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。 2026-11-05 门店列表 Store 补经营上下文 7 个可选字段（与 Flutter .2-store-setup 一致）。 门店经营上下文 CurrentStoreCommercialContext 同步补 8 个可选字段。"
   },
   "servers": [
@@ -269,7 +269,7 @@
       "post": {
         "operationId": "loginForOnboarding",
         "summary": "注册或登录",
-        "description": "PHONE_OTP 首次登录即注册。个人 USR 可跨 C/B 共享身份，CTK/BTK 会话池独立；没有个人商家主体且匹配员工时可选择 MCH 会话。",
+        "description": "PHONE_OTP 首次登录即注册。个人 USR 可跨 C/B 共享身份，CTK/BTK 会话池独立；没有个人商家主体且匹配员工时可选择 MCH 会话。 可选 marketCode 只在首次登录建号时决定账号经营地区。",
         "tags": [
           "public"
         ],
@@ -340,7 +340,8 @@
                       "agreementPending": false,
                       "favoriteCount": 0,
                       "displayName": "",
-                      "currentStoreNo": null
+                      "currentStoreNo": null,
+                      "account": "15965010103"
                     }
                   }
                 }
@@ -1457,7 +1458,7 @@
       "post": {
         "operationId": "quickStartOnboardingStore",
         "summary": "创建首店并初始化 FREE",
-        "description": "门店型模式先选已发布经营类型。建店与 FREE 同事务，成功后精确使用 currentStoreNo；既有待补证店同类型重试复用，不重复赠送。",
+        "description": "门店型模式先选已发布经营类型。建店与 FREE 同事务，成功后精确使用 currentStoreNo；既有待补证店同类型重试复用，不重复赠送。 市场取账号经营地区（传了且不同 → 10400，不建壳）。行业/子业态可为 OTHER（规则见 QuickStartRequest），自填文字与楼层门牌随门店落库，/biz/stores/mine 带回。",
         "tags": [
           "account"
         ],
@@ -1531,7 +1532,8 @@
                     "agreementPending": false,
                     "favoriteCount": 0,
                     "displayName": "",
-                    "currentStoreNo": "STORE-EXAMPLE"
+                    "currentStoreNo": "STORE-EXAMPLE",
+                    "account": "15965010103"
                   }
                 }
               }
@@ -2719,7 +2721,8 @@
                     "agreementPending": false,
                     "favoriteCount": 0,
                     "displayName": "",
-                    "currentStoreNo": "STORE-EXAMPLE"
+                    "currentStoreNo": "STORE-EXAMPLE",
+                    "account": "15965010103"
                   }
                 }
               }
@@ -4632,7 +4635,7 @@
       "get": {
         "operationId": "getMerchantStoreSetup",
         "summary": "读取首店经营市场与平台行业子业态映射",
-        "description": "需登录但无需已有门店。市场元数据来自sys_market；只返回启用映射且实际已发布的商业类型。账号电话地区与经营市场正交。",
+        "description": "需登录但无需已有门店。只返回账号经营地区（注册时写入，空按部署默认）这一个市场；市场元数据来自sys_market；只返回启用映射且实际已发布的商业类型。每个市场带 mapProvider，顶层带 otherBusinessTypeCode。",
         "tags": [
           "account"
         ],
@@ -5665,6 +5668,13 @@
           "agreed": {
             "type": "boolean",
             "description": "客户端应在用户勾选登录协议与隐私政策后传 true；不等于商家服务协议的落库确认。"
+          },
+          "marketCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "注册地区（可选，TDD-注册地区与三步建店）。只在本次登录新建账号时写入 usr_account.market；已有账号忽略。不在 shop.merchant.registration-markets 内或为空时落部署默认（shop.merchant.default-market）。正式包传包内固定地区或不传。"
           }
         },
         "required": [
@@ -6219,6 +6229,13 @@
             "type": "integer",
             "format": "int64",
             "description": "收藏数。"
+          },
+          "account": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "当前登录个人账号的已验证登录标识（TDD-注册地区与三步建店 AC12）：有手机号给手机号（与 phone 同格式），否则给归一化邮箱；员工（MCH）会话或取不到为 null。登录响应 merchant 与 GET /biz/merchant/profile 都带。"
           }
         },
         "required": [
@@ -6887,6 +6904,51 @@
           "businessTypeCode": {
             "type": "string",
             "description": "门店型创建模式必填；取 business-types 返回的精确编码。"
+          },
+          "market": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经营市场；省略 = 账号的经营地区（usr_account.market，空按部署默认）。传了且不等于账号地区 → 10400，不建任何主体。"
+          },
+          "industryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "store-setup 返回的行业码，或 \"OTHER\"。为 OTHER 时 subIndustryCode 也必须是 OTHER、industryText 与 subIndustryText 必填，且 businessTypeCode 必须等于 store-setup 的 otherBusinessTypeCode；否则 10400。非 OTHER 时必须等于 businessTypeCode（默认一对一映射）。"
+          },
+          "subIndustryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "store-setup 返回的子业态码，或 \"OTHER\"。行业非 OTHER 而子业态为 OTHER 时 subIndustryText 必填；否则必须等于 businessTypeCode。"
+          },
+          "industryText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20,
+            "description": "行业选 OTHER 时自填（去首尾空白后 1–20 字）；行业非 OTHER 时忽略、不落库。"
+          },
+          "subIndustryText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20,
+            "description": "子业态选 OTHER 时自填（去首尾空白后 1–20 字）；子业态非 OTHER 时忽略、不落库。"
+          },
+          "addressDetail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "楼层门牌，选填（去首尾空白后 ≤64 字，超长 10400）；空白按未填。"
           }
         },
         "required": [
@@ -7098,20 +7160,34 @@
               "string",
               "null"
             ],
-            "description": "创建时持久化的经营行业；旧店可为空。"
+            "description": "经营行业：默认映射下等于 businessTypeCode；建店时行业选「其他」（industryText 非空）则为 OTHER。旧店可为空。"
           },
           "subIndustryCode": {
             "type": [
               "string",
               "null"
             ],
-            "description": "创建时持久化的子业态；旧店可为空。"
+            "description": "子业态：默认映射下等于 businessTypeCode；建店时子业态选「其他」（subIndustryText 非空）则为 OTHER。旧店可为空。"
           },
           "businessTypeCode": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "industryText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "建店时行业选「其他」自填的文字；否则 null。"
+          },
+          "subIndustryText": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "建店时子业态选「其他」自填的文字；否则 null。"
           }
         },
         "required": [
@@ -7726,7 +7802,8 @@
       "StoreSetup": {
         "type": "object",
         "required": [
-          "markets"
+          "markets",
+          "otherBusinessTypeCode"
         ],
         "properties": {
           "markets": {
@@ -7734,7 +7811,14 @@
             "items": {
               "$ref": "#/components/schemas/StoreSetupMarket"
             },
-            "description": "只返回启用市场+启用平台映射+真实已发布商业目录的交集；无配置不补造。"
+            "description": "只含账号的经营地区（usr_account.market，空按部署默认）一项；该市场未启用或无已发布经营类型时为空数组，不补造。员工会话按部署默认。"
+          },
+          "otherBusinessTypeCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "顶层行业选「其他」时提交的 businessTypeCode（部署配置 shop.merchant.other-business-type，且须在本次返回的已发布经营类型中）；null = 不提供顶层「其他」。子业态「其他」不依赖它，任何行业下都可选。"
           }
         }
       },
@@ -7746,7 +7830,8 @@
           "currency",
           "currencyScale",
           "timeZone",
-          "industries"
+          "industries",
+          "mapProvider"
         ],
         "properties": {
           "market": {
@@ -7774,6 +7859,17 @@
             "items": {
               "$ref": "#/components/schemas/StoreSetupIndustry"
             }
+          },
+          "mapProvider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "AMAP",
+              null
+            ],
+            "description": "地图选点能力：AMAP = 该市场为 CN 且本部署配置了高德；null = 无地图，只手动输入地址。"
           }
         }
       },

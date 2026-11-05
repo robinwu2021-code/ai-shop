@@ -8,6 +8,7 @@ import ai.neargo.shop.commercebridge.FoundationPaymentAccess;
 import jakarta.servlet.http.HttpServletRequest;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
@@ -32,6 +33,7 @@ import java.util.Locale;
 import java.util.Objects;
 import ai.neargo.shop.spi.user.CommunityQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -192,10 +194,21 @@ public class BizMerchantController {
         var staff = staffService.profileDetails(user);
         var apply = user.subjectKind() == SubjectKind.USR ? opsService.myApply(user.userNo()) : null;
         String phone = nz(personalPhone).isBlank() ? nz(staff.loginPhone()) : personalPhone;
-        return build(ctx, phone, nz(staff.displayName()), apply);
+        return build(ctx, phone, nz(staff.displayName()), apply, loginAccountOf(user));
     }
 
-    private MerchantProfileVO build(BizContext ctx, String phone, String displayName, MerchantApplyVO apply) {
+    /**
+     * 个人账号的登录标识（AC12）：邮箱账号没有手机号，phone 是空的，App 重启后个人中心无从显示「账号」。
+     * 员工会话（MCH）背后不一定有个人账号，给 null。
+     */
+    private String loginAccountOf(LoginUser user) {
+        if (user.subjectKind() != SubjectKind.USR) return null;
+        var authService = auth == null ? null : auth.getIfAvailable();
+        return authService == null ? null : authService.loginIdentifier(user.userNo());
+    }
+
+    private MerchantProfileVO build(BizContext ctx, String phone, String displayName, MerchantApplyVO apply,
+                                    String loginAccount) {
         MerchantAccountVO account = merchantService.account(ctx.merchantNo());
         boolean pendingAgreement = agreementPending(apply)
                 && java.util.Objects.equals(ctx.merchantNo(), apply.merchantNo());
@@ -217,7 +230,7 @@ public class BizMerchantController {
                     // 而他此刻还不知道自己会被分到哪条路径
                     null,
                     pendingAgreement,
-                    0, displayName, null);   // 还没进件，店都没有，谈不上收藏
+                    0, displayName, null, loginAccount);   // 还没进件，店都没有，谈不上收藏
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
@@ -226,7 +239,8 @@ public class BizMerchantController {
                 null, account.industry(), account.description(),
                 merchantQueryPort.fundsModeOf(account.merchantNo()),
                 pendingAgreement,
-                storeFavoriteService.countByMerchant(account.merchantNo()), displayName, ctx.currentStoreNo());
+                storeFavoriteService.countByMerchant(account.merchantNo()), displayName, ctx.currentStoreNo(),
+                loginAccount);
     }
 
     /**
@@ -328,8 +342,8 @@ public class BizMerchantController {
     public MerchantProfileVO quickStart(@RequestBody QuickStartReq req) {
         var user = BizAuthController.personalUser();
         String userNo = user.userNo();
-        var created = merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
-                userNo, req.storeName(), req.address(), req.businessTypeCode(), marketFor(req)));
+        // 校验先于建壳：市场或行业不对时什么都不建（TDD-注册地区与三步建店 AC6）
+        var created = merchantAdminPort.quickStart(quickStartCommand(userNo, marketFor(userNo, req), req));
         /*
          * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
          * 解析的：那时这个人还没有任何主体，merchantNo 是空的。主体是刚刚在这个请求里
@@ -350,32 +364,119 @@ public class BizMerchantController {
     public record Target(String entityNo, String storeNo) {}
 
     /**
-     * @param market          经营市场；省略 = 本部署的默认市场（{@code shop.merchant.default-market}）
-     * @param industryCode    平台经营行业；默认映射下必须等于 businessTypeCode（见 store-setup）
-     * @param subIndustryCode 子业态；同上
+     * @param market          经营市场；省略 = 账号的经营地区（TDD-注册地区与三步建店）；传了就必须等于它
+     * @param industryCode    平台经营行业；默认映射下必须等于 businessTypeCode（见 store-setup），或为 {@code OTHER}
+     * @param subIndustryCode 子业态；同上，或为 {@code OTHER}
+     * @param industryText    行业选「其他」时自填（≤20 字）；其余情况忽略
+     * @param subIndustryText 子业态选「其他」时自填（≤20 字）；其余情况忽略
+     * @param addressDetail   楼层门牌（≤64 字），可空
      */
     public record QuickStartReq(String storeName, String address, String businessTypeCode,
-                                String market, String industryCode, String subIndustryCode) {
+                                String market, String industryCode, String subIndustryCode,
+                                String industryText, String subIndustryText, String addressDetail) {
+
+        /** 三步建店之前的旧请求形状 */
+        public QuickStartReq(String storeName, String address, String businessTypeCode,
+                             String market, String industryCode, String subIndustryCode) {
+            this(storeName, address, businessTypeCode, market, industryCode, subIndustryCode, null, null, null);
+        }
+    }
+
+    static final int MAX_INDUSTRY_TEXT = 20;
+    static final int MAX_ADDRESS_DETAIL = 64;
+
+    /** 顶层「其他」用的经营类型（{@code shop.merchant.other-business-type}）；空 = 不提供 */
+    private String otherBusinessType = "";
+    private ObjectProvider<AuthService> auth;
+
+    @Autowired
+    void setAuth(ObjectProvider<AuthService> auth) {
+        this.auth = auth;
+    }
+
+    @Value("${shop.merchant.other-business-type:}")
+    void setOtherBusinessType(String code) {
+        this.otherBusinessType = code == null ? "" : code.trim();
     }
 
     /**
-     * 本部署只有一个经营市场（TDD-B端建店默认经营市场）。请求只能显式确认它，不能换成别的；
-     * 行业/子业态按默认映射必须等于经营类型。市场未启用时不建壳。
+     * 经营市场取<b>账号</b>的地区（TDD-注册地区与三步建店 AC4/AC6）：注册时定下，请求只能显式确认它，不能换成别的；
+     * 存量账号没有地区时按部署默认，与改动前一致。市场未启用时不建壳。
      */
-    private String marketFor(QuickStartReq req) {
-        return resolveMarket(defaultMarket, markets.getIfAvailable(), req);
+    private String marketFor(String userNo, QuickStartReq req) {
+        var authService = auth == null ? null : auth.getIfAvailable();
+        String accountMarket = authService == null ? defaultMarket
+                : authService.accountMarket(userNo).trim().toUpperCase(Locale.ROOT);
+        return resolveMarket(accountMarket, markets.getIfAvailable(), req, otherBusinessType);
     }
 
-    static String resolveMarket(String defaultMarket, MarketPort markets, QuickStartReq req) {
-        String requested = req.market() == null || req.market().isBlank() ? defaultMarket : req.market();
-        if (!defaultMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
-        boolean mapped = req.industryCode() != null || req.subIndustryCode() != null;
-        if (mapped && (!Objects.equals(req.industryCode(), req.businessTypeCode())
-                || !Objects.equals(req.subIndustryCode(), req.businessTypeCode())))
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+    static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req) {
+        return resolveMarket(accountMarket, markets, req, null);
+    }
+
+    static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req,
+                                String otherBusinessType) {
+        String requested = req.market() == null || req.market().isBlank() ? accountMarket : req.market();
+        if (!accountMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
+        requireIndustry(req, otherBusinessType);
+        if (tooLong(req.addressDetail(), MAX_ADDRESS_DETAIL)) throw BizException.of(ErrorCode.BAD_REQUEST);
         if (markets != null && markets.find(requested).filter(MarketPort.MarketBrief::enabled).isEmpty())
             throw BizException.of(ErrorCode.BAD_REQUEST);
         return requested;
+    }
+
+    /**
+     * 行业两级（TDD-注册地区与三步建店 AC7/AC8）。经营类型才是判定依据，自填文字只是说明：
+     * <ul>
+     *   <li>行业 {@code OTHER}：子业态也必须 {@code OTHER}、两段文字都要填，经营类型必须是配置的兜底类型 ——
+     *       没有可映射的行业，只能落到运营指定的那一个</li>
+     *   <li>已有行业 + 子业态 {@code OTHER}：子业态文字要填，经营类型仍按默认映射等于行业</li>
+     *   <li>两级都是已有项：默认一对一映射，都必须等于经营类型（改动前的规则）</li>
+     * </ul>
+     */
+    private static void requireIndustry(QuickStartReq req, String otherBusinessType) {
+        String industry = req.industryCode();
+        String sub = req.subIndustryCode();
+        String type = req.businessTypeCode();
+        if (industry == null && sub == null) return;
+        boolean ok;
+        if (BizFoundationController.OTHER.equals(industry)) {
+            ok = BizFoundationController.OTHER.equals(sub)
+                    && filled(req.industryText(), MAX_INDUSTRY_TEXT)
+                    && filled(req.subIndustryText(), MAX_INDUSTRY_TEXT)
+                    && otherBusinessType != null && !otherBusinessType.isBlank()
+                    && otherBusinessType.equals(type);
+        } else if (BizFoundationController.OTHER.equals(sub)) {
+            ok = industry != null && industry.equals(type)
+                    && filled(req.subIndustryText(), MAX_INDUSTRY_TEXT);
+        } else {
+            ok = Objects.equals(industry, type) && Objects.equals(sub, type);
+        }
+        if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    /** 已校验的请求 → 建店命令。自填文字只在对应那一级是「其他」时才带上，其余情况不存 */
+    static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req) {
+        String industryText = BizFoundationController.OTHER.equals(req.industryCode()) ? trimmed(req.industryText())
+                : null;
+        String subText = BizFoundationController.OTHER.equals(req.subIndustryCode()) ? trimmed(req.subIndustryText())
+                : null;
+        return new MerchantAdminPort.QuickStartCommand(userNo, req.storeName(), req.address(),
+                req.businessTypeCode(), market, industryText, subText, trimmed(req.addressDetail()));
+    }
+
+    private static boolean filled(String text, int max) {
+        return trimmed(text) != null && !tooLong(text, max);
+    }
+
+    /** 按字符（码点）计，与库里 utf8mb4 VARCHAR 的口径一致 */
+    private static boolean tooLong(String text, int max) {
+        String t = trimmed(text);
+        return t != null && t.codePointCount(0, t.length()) > max;
+    }
+
+    private static String trimmed(String text) {
+        return text == null || text.isBlank() ? null : text.trim();
     }
 
     // ---------------------------------------------------------------- 店铺资料
@@ -994,6 +1095,23 @@ public class BizMerchantController {
                                      */
                                     int favoriteCount,
                                     /** 当前登录账号的显示名（用户名，§账号管理）。空=没设过，端上显示「未设置」 */
-                                    String displayName, String currentStoreNo) {
+                                    String displayName, String currentStoreNo,
+                                    /**
+                                     * 当前登录个人账号的已验证登录标识（TDD-注册地区与三步建店 AC12）：
+                                     * 有手机号给手机号（与 phone 同格式），没有给归一化邮箱；员工会话或取不到为 null
+                                     */
+                                    String account) {
+
+        /** 不带登录标识的旧构造 */
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount,
+                                 String displayName, String currentStoreNo) {
+            this(merchantNo, name, logo, status, subject, tier, phone, isPickupPoint, pickupNo, rejectReason,
+                    industry, description, fundsMode, agreementPending, favoriteCount, displayName, currentStoreNo,
+                    null);
+        }
     }
 }

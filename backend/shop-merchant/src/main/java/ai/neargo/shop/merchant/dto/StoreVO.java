@@ -61,7 +61,13 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                       String timeZone,
                       String industryCode,
                       String subIndustryCode,
-                      String businessTypeCode) {
+                      String businessTypeCode,
+                      /*
+                       * 建店时行业 / 子业态选「其他」后自填的文字（TDD-注册地区与三步建店 AC9），均可为空。
+                       * 有文字的那一级，industryCode / subIndustryCode 报 OTHER（见 withMarket）。
+                       */
+                      String industryText,
+                      String subIndustryText) {
 
     /** 不带经营上下文的旧构造：其它门店列表照旧用它。 */
     public StoreVO(String storeNo, String name, String address, boolean isDefault,
@@ -70,13 +76,35 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                    boolean selfOperated, String slug, String shareUrl) {
         this(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
                 planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
-    /** 补上门店所属主体的经营市场（元数据取不到时只给 market）；行业与子业态按默认映射等于经营类型。 */
+    /** 不带自填行业的构造（TDD-B端建店默认经营市场 那一版的形状）。 */
+    public StoreVO(String storeNo, String name, String address, boolean isDefault,
+                   String status, String payMerchantNo, boolean payReady, int staffCount,
+                   boolean planSuspended, int rating, int ratingCount, String businessMode,
+                   boolean selfOperated, String slug, String shareUrl, String market, String currency,
+                   Integer currencyScale, String timeZone, String industryCode, String subIndustryCode,
+                   String businessTypeCode) {
+        this(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
+                planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
+                market, currency, currencyScale, timeZone, industryCode, subIndustryCode, businessTypeCode,
+                null, null);
+    }
+
+    /** 行业或子业态选了「其他」时报的码，与 store-setup / quick-start 同一个 */
+    public static final String OTHER = "OTHER";
+
+    /**
+     * 补上门店所属主体的经营市场（元数据取不到时只给 market）；行业与子业态按默认映射等于经营类型，
+     * 自填过文字的那一级报 {@link #OTHER} —— 与建店时提交的一致，端上回显不用自己猜。
+     */
     public StoreVO withMarket(String market, String currency, Integer currencyScale, String timeZone) {
+        String industry = industryText != null ? OTHER : businessTypeCode;
+        String sub = subIndustryText != null ? OTHER : businessTypeCode;
         return new StoreVO(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
                 planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
-                market, currency, currencyScale, timeZone, businessTypeCode, businessTypeCode, businessTypeCode);
+                market, currency, currencyScale, timeZone, industry, sub, businessTypeCode,
+                industryText, subIndustryText);
     }
 }

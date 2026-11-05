@@ -3,6 +3,13 @@ package ai.neargo.shop.portal.biz;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.platform.GeoPort;
+import ai.neargo.shop.merchant.dto.StoreVO;
+import ai.neargo.auth.store.SubjectKind;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.user.service.AuthService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.Optional;
@@ -43,35 +50,72 @@ public class BizFoundationController {
     public record StoreSetupIndustry(String industryCode, String displayName,
                                      List<StoreSetupSubIndustry> subIndustries) {}
 
+    /**
+     * @param mapProvider 建店资料页「地图选点」用哪家地图：{@code "AMAP"} = CN 且本部署配了高德密钥；
+     *                    null = 没有地图能力，端上只给手动地址（TDD-注册地区与三步建店 AC5）
+     */
     public record StoreSetupMarket(String market, String displayName, String currency, int currencyScale,
-                                   String timeZone, List<StoreSetupIndustry> industries) {}
-
-    public record StoreSetup(List<StoreSetupMarket> markets) {}
+                                   String timeZone, List<StoreSetupIndustry> industries, String mapProvider) {}
 
     /**
-     * 首店可选的经营市场（TDD-B端建店默认经营市场）。本部署只有一个市场；未启用则返回空列表，
-     * 不补造。行业映射为默认的一对一：每个已发布经营类型 T → 行业 T → 子业态 T → 经营类型 T。
+     * @param otherBusinessTypeCode 顶层行业选「其他」时用的经营类型（{@code shop.merchant.other-business-type}）；
+     *                              未配置或该类型未发布时为 null，端上不提供顶层「其他」
+     */
+    public record StoreSetup(List<StoreSetupMarket> markets, String otherBusinessTypeCode) {}
+
+    /** 行业与子业态的「其他」都用这个码；对应的经营类型见 {@link StoreSetup#otherBusinessTypeCode} */
+    public static final String OTHER = StoreVO.OTHER;
+
+    /**
+     * 首店可选的经营市场（TDD-注册地区与三步建店 AC5）：<b>只有账号的地区</b>，注册时定下，App 里不再切换。
+     * 市场未启用则返回空列表，不补造。行业映射为默认的一对一：每个已发布经营类型 T → 行业 T → 子业态 T → 经营类型 T；
+     * 两级都可选「其他」（{@link #OTHER}），由端上追加，不在列表里。
      */
     @PreAuthorize("@perm.merchantAccount()")
     @GetMapping("/biz/merchant/store-setup")
     public StoreSetup storeSetup() {
         var port = markets.getIfAvailable();
+        String accountMarket = accountMarketOf(SecurityUtils.requireUser(),
+                auth == null ? null : auth.getIfAvailable(), defaultMarket);
         var market = port == null
                 ? Optional.<MarketPort.MarketBrief>empty()
-                : port.find(defaultMarket).filter(MarketPort.MarketBrief::enabled);
-        if (market.isEmpty()) return new StoreSetup(List.of());
-        return storeSetup(market.get(), queries.businessTypes(ShopCommerceActorAdapter.current()));
+                : port.find(accountMarket).filter(MarketPort.MarketBrief::enabled);
+        if (market.isEmpty()) return new StoreSetup(List.of(), null);
+        var geoPort = geo == null ? null : geo.getIfAvailable();
+        return storeSetup(market.get(), queries.businessTypes(ShopCommerceActorAdapter.current()),
+                geoPort != null && geoPort.available(), otherBusinessType);
+    }
+
+    /**
+     * 当前会话的账号地区。店员会话（{@code MCH}）背后不一定有 C 端账号，按部署默认 ——
+     * 店员不建首店，这里只是不让他读到别的地区。
+     */
+    static String accountMarketOf(LoginUser user, AuthService authService, String defaultMarket) {
+        if (authService == null || user.realm() != Realm.MERCHANT || user.subjectKind() != SubjectKind.USR)
+            return defaultMarket;
+        return authService.accountMarket(user.userNo()).trim().toUpperCase(Locale.ROOT);
     }
 
     /** Default one-to-one industry mapping from the actually published business types. */
     static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types) {
+        return storeSetup(m, types, false, null);
+    }
+
+    static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types, boolean mapAvailable,
+                                 String otherBusinessType) {
         var industries = types.stream()
                 .map(t -> new StoreSetupIndustry(t.businessTypeCode(), t.displayName(), List.of(
                         new StoreSetupSubIndustry(t.businessTypeCode(), t.displayName(), t.businessTypeCode(),
                                 t.displayName(), t.catalogVersion()))))
                 .toList();
+        // 本期只有高德（CN）；台湾 / 阿联酋接 Google 地图不在本期
+        String mapProvider = "CN".equals(m.market()) && mapAvailable ? "AMAP" : null;
+        String other = otherBusinessType == null || otherBusinessType.isBlank() ? null
+                : types.stream().map(BusinessType::businessTypeCode)
+                        .filter(otherBusinessType.trim()::equals).findFirst().orElse(null);
         return new StoreSetup(List.of(new StoreSetupMarket(
-                m.market(), m.name(), m.currency(), m.currencyScale(), m.timeZone(), industries)));
+                m.market(), m.name(), m.currency(), m.currencyScale(), m.timeZone(), industries, mapProvider)),
+                other);
     }
 
     @PreAuthorize("@perm.merchantAccount()")
@@ -103,6 +147,21 @@ public class BizFoundationController {
     }
 
     private ObjectProvider<MerchantQueryPort> merchants;
+    private ObjectProvider<AuthService> auth;
+    private ObjectProvider<GeoPort> geo;
+    private String otherBusinessType = "";
+
+    /** 账号地区与地图能力用 setter 注入：构造参数是测试按位置传的，见 BizStoreSetupTest */
+    @Autowired
+    void setAccountMarketSources(ObjectProvider<AuthService> auth, ObjectProvider<GeoPort> geo) {
+        this.auth = auth;
+        this.geo = geo;
+    }
+
+    @Value("${shop.merchant.other-business-type:}")
+    void setOtherBusinessType(String code) {
+        this.otherBusinessType = code == null ? "" : code.trim();
+    }
 
     @Autowired
     void setMerchants(ObjectProvider<MerchantQueryPort> merchants) {

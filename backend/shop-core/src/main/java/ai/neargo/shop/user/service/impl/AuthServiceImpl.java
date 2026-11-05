@@ -18,12 +18,14 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.UserVO;
 import ai.neargo.shop.user.IdentityType;
 import ai.neargo.shop.user.entity.UsrAccount;
+import ai.neargo.shop.user.policy.RegistrationMarkets;
 import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.mapper.UserMappers.IdentityMapper;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -229,6 +231,48 @@ public class AuthServiceImpl implements AuthService {
     public void setMockSmsPrefixes(String csv) {
         this.mockSmsPrefixes = csv == null ? List.of()
                 : java.util.Arrays.stream(csv.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
+    }
+
+    private String defaultMarket = "CN";
+    private String registrationMarketsCsv = "";
+
+    /** 部署默认经营地区。setter 注入，理由同 {@link #setMockSmsPrefixes} */
+    @Value("${shop.merchant.default-market:CN}")
+    public void setDefaultMarket(String market) {
+        this.defaultMarket = market;
+    }
+
+    /** 可注册地区（TDD-注册地区与三步建店）。缺省空 = 只有部署默认 */
+    @Value("${shop.merchant.registration-markets:}")
+    public void setRegistrationMarkets(String csv) {
+        this.registrationMarketsCsv = csv;
+    }
+
+    /** 每次现算：两个 setter 的注入顺序不保证，提前合成会拿到半份配置 */
+    private RegistrationMarkets registrationMarkets() {
+        return RegistrationMarkets.of(registrationMarketsCsv, defaultMarket);
+    }
+
+    @Override
+    public String accountMarket(String userNo) {
+        var markets = registrationMarkets();
+        if (userNo == null || userNo.isBlank()) return markets.defaultMarket();
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        String market = user == null ? null : user.getMarket();
+        return market == null || market.isBlank() ? markets.defaultMarket() : market;
+    }
+
+    @Override
+    public String loginIdentifier(String userNo) {
+        if (userNo == null || userNo.isBlank()) return null;
+        String phone = phoneOf(userNo);
+        if (phone != null) return phone;
+        UsrIdentity email = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.EMAIL)
+                .last("limit 1"));
+        return email == null ? null : email.getIdentityValue();
     }
 
     private boolean mockedSmsRegion(String phone) {
@@ -814,6 +858,8 @@ public class AuthServiceImpl implements AuthService {
         user.setAvatar("");
         user.setStatus("NORMAL");
         user.setEntityNo(cmd.merchantNo());
+        // 经营地区只在这里写（AC1–AC3）：这一支才是「新账号」，老账号再带别的地区登录不改
+        user.setMarket(registrationMarkets().resolve(cmd.marketCode()));
         userMapper.insert(user);
         /*
          * ★ 邀请落台账。**只在这里调** —— 这一支才是「新账号」；

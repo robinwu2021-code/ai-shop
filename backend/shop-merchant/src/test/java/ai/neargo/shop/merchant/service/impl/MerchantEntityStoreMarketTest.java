@@ -88,4 +88,28 @@ class MerchantEntityStoreMarketTest {
         assertNull(s.industryCode());
         assertNull(s.subIndustryCode());
     }
+
+    @Test
+    @DisplayName("TDD-注册地区与三步建店 AC9 自填行业带回；自填的那一级行业码是 OTHER，经营类型照旧")
+    void selfDescribedIndustryComesBackAsOther() {
+        var markets = mock(MarketPort.class);
+        when(markets.find("TW")).thenReturn(Optional.empty());
+        var row = new StoreVO("S1", "Shop", "Road", true, "ACTIVE", null, false, 0, false, 0, 0,
+                "SELF_OPERATED", false, null, null,
+                null, null, null, null, null, null, "RETAIL", "花艺", "永生花");
+
+        var s = service("TW", row, markets)
+                .myStores(LoginUser.merchant("A1", "owner")).getFirst().stores().getFirst();
+        assertEquals(List.of("花艺", "永生花", "OTHER", "OTHER", "RETAIL"),
+                List.of(s.industryText(), s.subIndustryText(), s.industryCode(), s.subIndustryCode(),
+                        s.businessTypeCode()));
+
+        var subOnly = new StoreVO("S1", "Shop", "Road", true, "ACTIVE", null, false, 0, false, 0, 0,
+                "SELF_OPERATED", false, null, null,
+                null, null, null, null, null, null, "RETAIL", null, "文具");
+        var t = service("TW", subOnly, markets)
+                .myStores(LoginUser.merchant("A1", "owner")).getFirst().stores().getFirst();
+        assertEquals(List.of("RETAIL", "OTHER"), List.of(t.industryCode(), t.subIndustryCode()));
+        assertNull(t.industryText());
+    }
 }
