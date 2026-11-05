@@ -113,6 +113,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final ai.neargo.shop.spi.marketing.FissionPort fissionPort;
 
+    private final ai.neargo.shop.user.service.EmailOtpService emailOtpService;
+
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            WxPhonePort wxPhonePort, MpSessionService mpSessions,
                            TokenStore tokenStore, OtpStore otpStore,
@@ -125,7 +127,8 @@ public class AuthServiceImpl implements AuthService {
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp,
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
-                           OtpTestPhoneService testPhoneService) {
+                           OtpTestPhoneService testPhoneService,
+                           ai.neargo.shop.user.service.EmailOtpService emailOtpService) {
         this.wxPhonePort = wxPhonePort;
         this.mpSessions = mpSessions;
         this.userMapper = userMapper;
@@ -141,6 +144,7 @@ public class AuthServiceImpl implements AuthService {
         this.fixedOtp = fixedOtp;
         this.fissionPort = fissionPort;
         this.testPhoneService = testPhoneService;
+        this.emailOtpService = emailOtpService;
         if (usingFixedOtp()) {
             /*
              * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
@@ -205,6 +209,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
+    @Override
+    public ai.neargo.shop.user.service.EmailOtpService.Delivery sendEmailOtp(String email, String locale) {
+        return emailOtpService.send(email, locale);
+    }
+
     private boolean usingFixedOtp() {
         return fixedOtp != null && !fixedOtp.isBlank();
     }
@@ -455,14 +464,22 @@ public class AuthServiceImpl implements AuthService {
         if (phone.isBlank() || raw.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        // principal 带 @ 就按邮箱身份找人（ADR-051）；限流键也分开，免得两种身份互相耗额度
+        boolean email = phone.contains("@");
+        if (email) {
+            phone = ai.neargo.shop.user.service.EmailOtpService.normalize(phone);
+        }
+        String rateKey = "pwd:login:" + (email ? "EMAIL:" + phone : phone);
         ai.neargo.shop.common.ratelimit.RateLimiter.Decision d =
-                rateLimiter.tryAcquire("pwd:login:" + phone, PWD_TRY_RULE);
+                rateLimiter.tryAcquire(rateKey, PWD_TRY_RULE);
         if (!d.allowed()) {
-            log.warn("[auth] 密码登录触发限流 phone={} —— 撞库的典型形状", mask(phone));
+            log.warn("[auth] 密码登录触发限流 principal={} —— 撞库的典型形状",
+                    email ? "***@***" : mask(phone));
             throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
         }
 
-        UsrIdentity phoneId = findIdentity(new Credential(IdentityType.PHONE, phone, null));
+        UsrIdentity phoneId = findIdentity(
+                new Credential(email ? IdentityType.EMAIL : IdentityType.PHONE, phone, null));
         if (phoneId == null) {
             // 查无此人也报 10456：分开说等于送一个账号探测接口（见 ErrorCode 注释）
             throw BizException.of(ErrorCode.PASSWORD_INVALID);
@@ -486,7 +503,7 @@ public class AuthServiceImpl implements AuthService {
             identityMapper.updateById(pwd);
         }
         // 登录成功清掉失败计数：否则真用户输错几次再输对，仍会被之前的计数挡住
-        rateLimiter.reset("pwd:login:" + phone);
+        rateLimiter.reset(rateKey);
 
         UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
                 .eq(UsrAccount::getUserNo, phoneId.getUserNo()).last("limit 1"));
@@ -602,6 +619,8 @@ public class AuthServiceImpl implements AuthService {
                 verifyOtp(cmd.principal(), cmd.credential());
                 yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));
             }
+            case GRANT_EMAIL_OTP -> List.of(new Credential(IdentityType.EMAIL,
+                    emailOtpService.verify(cmd.principal(), cmd.credential()), "APP"));
             case GRANT_APPLE ->
                 /*
                  * TODO(S4) 校验 identityToken 签名后取 sub；Apple 永远给不出手机号，
@@ -656,6 +675,11 @@ public class AuthServiceImpl implements AuthService {
                 userMapper.updateById(user);
             }
         } else {
+            // 邮箱首登即注册，协议必须主动确认（TDD-B端邮箱验证码注册登录 AC3）。
+            // 只管邮箱这条新路：手机号的既有行为另有端依赖，不在本期改。
+            if (GRANT_EMAIL_OTP.equals(cmd.grantType()) && !Boolean.TRUE.equals(cmd.agreed())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             user = createAccount(cmd);
         }
 

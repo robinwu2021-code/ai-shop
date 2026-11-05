@@ -37,6 +37,12 @@ public interface AuthService {
     String GRANT_PASSWORD = "PASSWORD";
 
     /**
+     * 邮箱 + 验证码（TDD-B端邮箱验证码注册登录）。与 {@link #GRANT_PHONE_OTP} 一样「登录即注册」，
+     * 但凭证是 {@code EMAIL}，<b>不与手机号账号合并</b>（ADR-051），也不参与员工匹配。
+     */
+    String GRANT_EMAIL_OTP = "EMAIL_OTP";
+
+    /**
      * @param req 授权凭据 + 归因参数
      * @return token + 用户
      */
@@ -53,6 +59,13 @@ public interface AuthService {
 
     /** 发送短信验证码。返回是否发送成功；验证码本身<b>绝不回传</b>。 */
     void sendOtp(String phone);
+
+    /**
+     * 发邮箱验证码。
+     *
+     * @param locale App 当前界面语言，决定正文用繁体还是简体；为空按繁体
+     */
+    ai.neargo.shop.user.service.EmailOtpService.Delivery sendEmailOtp(String email, String locale);
 
     /** 带发起人的发码。见 {@code OtpSendGuard} 的「按发起人」那一维 */
     void sendOtp(String phone, String senderKey);

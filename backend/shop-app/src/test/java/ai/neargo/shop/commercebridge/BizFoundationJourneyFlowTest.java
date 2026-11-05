@@ -559,6 +559,7 @@ class BizFoundationJourneyFlowTest {
             for (String path :
                     java.util.List.of(
                             "/biz/auth/otp/send",
+                            "/biz/auth/email-otp/send",
                             "/biz/auth/login",
                             "/biz/auth/staff-login",
                             "/biz/auth/logout")) {

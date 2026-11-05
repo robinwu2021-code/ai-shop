@@ -87,7 +87,8 @@ class ApiContractTest {
          * 后端测试没发现，是因为测试里发码走的是 C 端的 /mp/user/otp/send；
          * 只有真的从 B 端登录页点一次才会走到这条路径。
          */
-        for (String path : new String[]{"/biz/auth/otp/send", "/biz/auth/login", "/biz/auth/staff-login"}) {
+        for (String path : new String[]{"/biz/auth/otp/send", "/biz/auth/email-otp/send",
+                "/biz/auth/login", "/biz/auth/staff-login"}) {
             mockMvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                             .post(path)
                             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)

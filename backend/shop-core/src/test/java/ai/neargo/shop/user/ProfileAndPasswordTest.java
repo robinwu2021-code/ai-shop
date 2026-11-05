@@ -79,7 +79,8 @@ class ProfileAndPasswordTest {
                 mock(ai.neargo.shop.auth.PasswordHasher.class),
                 mock(ai.neargo.shop.common.ratelimit.RateLimiter.class),
                 personService, "", fissionPort,
-                mock(ai.neargo.shop.user.service.OtpTestPhoneService.class));
+                mock(ai.neargo.shop.user.service.OtpTestPhoneService.class),
+                mock(ai.neargo.shop.user.service.EmailOtpService.class));
 
         auth.login(new ai.neargo.shop.user.service.AuthService.LoginCommand(
                 "WX_MINI", "code-1", null, null, null, Boolean.TRUE));

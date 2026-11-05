@@ -46,6 +46,7 @@ public final class CommerceRoutePolicy {
                     "POST /biz/auth/login",
                     "POST /biz/auth/staff-login",
                     "POST /biz/auth/otp/send",
+                    "POST /biz/auth/email-otp/send",
                     "POST /biz/auth/logout",
                     "GET /biz/auth/context",
                     "GET /biz/merchant/apply",
@@ -78,6 +79,7 @@ public final class CommerceRoutePolicy {
                                 "/biz/auth/login",
                                 "/biz/auth/staff-login",
                                 "/biz/auth/otp/send",
+                                "/biz/auth/email-otp/send",
                                 "/biz/auth/logout")
                         .contains(path);
     }

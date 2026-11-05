@@ -10,6 +10,11 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.community.dto.CommunityVO;
 import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.user.service.EmailOtpService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.community.service.CommunityService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -122,6 +127,25 @@ public class BizAuthController {
 
     /** @param phone 收码手机号 */
     public record OtpReq(String phone) {
+    }
+
+    /**
+     * 发邮箱验证码（TDD-B端邮箱验证码注册登录）。台湾一期没有国际短信，这是商户真实可用的注册入口。
+     *
+     * <p>与手机号发码共用限流（{@code OtpSendGuard}）与验证码存储，键按邮箱哈希隔离。
+     * 没有可用邮件通道时回 10505，<b>不回成功</b> —— 「说发了、没人收到」比报错更难查。
+     */
+    @PostMapping("/biz/auth/email-otp/send")
+    public EmailOtpService.Delivery sendEmailOtp(@RequestBody @Valid EmailOtpReq req) {
+        return authService.sendEmailOtp(req.email(), req.locale());
+    }
+
+    /**
+     * @param email  收码邮箱，≤191（{@code usr_identity.identity_value} 列宽）
+     * @param locale App 当前界面语言 {@code zh-Hant} / {@code zh-Hans}，决定正文字形；可空
+     */
+    public record EmailOtpReq(@NotBlank @Email @Size(max = 191) String email,
+                              @Size(max = 16) String locale) {
     }
 
     /**

@@ -4,6 +4,10 @@
 # 在这里重复一份生产配置的话，两边就会各自漂移，而漂移的表现是
 # 「测试全绿、上线才炸」。
 shop:
+  mail:
+    # 测试世界没有 SMTP：邮箱验证码走桩，需要显式放行（TDD-B端邮箱验证码注册登录 AC9/AC10）。
+    # 生产与本地跑同一组 profile，靠名字分不开，所以缺省是拒绝。
+    otp-stub-allowed: true
   logistics:
     # 单元/场景使用显式假订阅者，避免真实渠道请求和月度额度消耗。
     subscribe-enabled: false

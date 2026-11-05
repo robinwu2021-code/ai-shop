@@ -1,6 +1,6 @@
 # TDD-B端邮箱验证码注册登录
 
-状态：**已确认**（2026-11-05，L4 三条按建议确认）
+状态：**已实现**（2026-11-05；本地提交，未推送。实现与设计的偏差见 §6）
 关联需求：`ai-shop-bapp` · `docs/requirements/PRD-台湾一期注册开店Plan套餐商城与支付开通-V3.md` §3.1；
 本仓 `docs/requirements/B端全链路-流程节点与开发状态-2026-11-04.md`（「邮箱验证码登录为商城后独立追加工作」）
 关联决策：[ADR-051 B端账号允许邮箱作为独立登录身份](./ADR/ADR-051-B端账号允许邮箱作为独立登录身份.md)
@@ -53,8 +53,8 @@
 | AC6 | 输错 → 10455；连错 5 次 → 10454 并作废当前码；过期 → 10455；同码并发两次只成功一次 | 复用 `OtpStore` 失败闸；核销改原子 |
 | AC7 | Given 已设登录密码 When `PASSWORD` 登录且 principal 为邮箱 Then 按 EMAIL 身份找人；限流键与手机号分开 | `AuthServiceImpl#loginByPassword` 识别 `@` |
 | AC8 | 日志、审计、异常消息中不出现完整邮箱与验证码（生产口径） | `LoginAuditor.maskPrincipal` 遮邮箱；SMTP 失败映射 10505 且不带供应商原文 |
-| AC9 | Given 生产 profile 且 `shop.mail.stub=true` When 发码 Then 10505，不返回成功 | `EmailOtpService#send` 检查 profile（同 `FixedOtpGuard` 的口径） |
-| AC10 | Given 本地 profile 且走桩 When 发码 Then 桩记录，debug 日志可见 `[mail-stub] otp to n***@domain = 123456` | `StubMailGateway` 覆写 5 参 `send`，仅 `bizType=OTP` 打印 |
+| AC9 | Given `shop.mail.stub=true` 且未显式放行（`shop.mail.otp-stub-allowed` 缺省 false）When 发码 Then 10505，不返回成功 | `EmailOtpServiceImpl#send`（§6 偏差 1：生产与本地 profile 同名，改为显式开关） |
+| AC10 | Given 走桩且已放行 When 发码 Then debug 日志可见 `[mail-stub] otp to t***r@example.test = 123456`（地址打码） | `EmailOtpServiceImpl#send`（§6 偏差 2：日志打在服务里而非 `StubMailGateway`） |
 | AC11 | 邮件正文语言跟随 App 当前界面语言（繁 / 简），缺省繁体 | 请求体 `locale`；`EmailOtpService` 两套正文模板（见 L4-D3） |
 | AC12 | App：邮箱页签可发码、显示倒计时、输入后才可提交；成功后进入「确认经营地区」；10455/10454/10505/10450 各自提示 | Flutter `OnboardingApi#sendEmailOtp`、`login(grant: EMAIL_OTP)`、`StandardLoginPage` 邮箱卡片 |
 
@@ -103,7 +103,7 @@
 - **权限码**：无。
 - **i18n**：后端无新增错误码（复用 10450/10451/10454/10455/10505）。邮件正文不进 `messages*.properties`（理由见 L4-D3）。
   Flutter：删除 `emailUnavailable`；新增 `emailOtpPrompt`、`errMailUnavailable`（繁 / 简两份 arb）。
-- **配置项**：无新增。`shop.mail.stub`、`shop.mail.*` 沿用；生产 profile 下走桩发验证码即拒绝。
+- **配置项**：新增 `shop.mail.otp-stub-allowed`（缺省 false）：邮件走桩时是否允许发登录验证码。只在测试 profile（`application-test.yml`）与本机启动脚本里打开；`shop.mail.stub`、`shop.mail.*` 沿用。（§6 偏差 1）
 
 ### 模块设计
 
@@ -184,28 +184,52 @@ Future<AppResult<OnboardingLogin>> login(String principal, String credential,
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-实现后填写。stash 中已有、预计直接移植的测试先列出名字：
-
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC1 | `EmailOtpAuthTest#sendsThroughExistingMailAndReturnsRealExpiryAndResendMetadata`（stash） | | |
-| AC2 | `EmailOtpAuthTest#resendIsRateLimitedBeforeCodeReplacement`（stash） | | |
-| AC3 | `EmailOtpAuthTest#firstRegistrationRequiresAgreementAndExistingLoginDoesNot`（stash） · `BizAuthEmailLoginTest#emailOnlyAccountReachesProfileWithoutPhone`（新增，§4 第二条风险） | | |
-| AC4 | `EmailOtpAuthTest#repeatedEmailLoginUsesSameRealAccountWithoutPhoneMerge`（stash） | | |
-| AC5 | `EmailOtpAuthTest#emailCodeIsSingleUseAndCannotConsumePhoneCode`（stash） · `BizAuthEmailLoginTest#emailLoginNeverAttemptsPhoneStaffMatch`（新增） | | |
-| AC6 | `EmailOtpAuthTest#expiredEmailCodeCannotAuthenticate` · `#repeatedWrongAttemptsInvalidateEmailCode` · `#sameCodeCanOnlyBeConsumedByOneConcurrentRequest`（stash） | | |
-| AC7 | `EmailOtpAuthTest#passwordLoginResolvesEmailIdentity`（stash） | | |
-| AC8 | `EmailOtpAuthTest#emailLoginAuditNeverContainsRawAddress` · `SmtpMailPrivacyTest#failureLogMessageDoesNotContainRecipientOrCode`（stash） | | |
-| AC9 | `EmailOtpAuthTest#productionRefusesStubDelivery` · `#deliveryFailureNeverStoresValidOtp`（由 stash 的 `stubAndDeliveryFailuresNeverProduceSuccessfulDeliveryOrValidOtp` 拆分：stash 在任何环境都拒绝桩，与 AC10「本地可走桩」冲突，必须改） | | |
-| AC10 | `StubMailGatewayTest#otpCodeIsLoggedAtDebugWithMaskedAddress` | | |
-| AC11 | `EmailOtpAuthTest#bodyFollowsRequestedScript` | | |
-| AC12 | `onboarding_email_login_test.dart`：发码→倒计时→空码不可提交→错码 10455 提示→正确码进入「确认经营地区」 | | |
+| AC1 | `EmailOtpAuthTest#sendsThroughExistingMailAndReturnsRealExpiryAndResendMetadata` · `BizAuthEmailLoginTest#emailOnlyAccountReachesProfileWithoutPhone`（HTTP 层断言 300/60） | ✅ | — |
+| AC2 | `EmailOtpAuthTest#resendIsRateLimitedBeforeCodeReplacement` | ✅ | — |
+| AC3 | `EmailOtpAuthTest#firstRegistrationRequiresAgreementAndExistingLoginDoesNot` · `BizAuthEmailLoginTest#emailOnlyAccountReachesProfileWithoutPhone` | ✅ | 去掉邮箱首登协议校验 → `firstRegistration…` 变红 ✅ |
+| AC4 | `EmailOtpAuthTest#repeatedEmailLoginUsesSameRealAccountWithoutPhoneMerge` · `BizAuthEmailLoginTest`（大写地址再登录仍 1 条身份） | ✅ | — |
+| AC5 | `EmailOtpAuthTest#emailCodeIsSingleUseAndCannotConsumePhoneCode` · `#repeatedEmailLoginUsesSameRealAccountWithoutPhoneMerge` | ✅ | — |
+| AC6 | `EmailOtpAuthTest#expiredEmailCodeCannotAuthenticate` · `#repeatedWrongAttemptsInvalidateEmailCode` · `#sameCodeCanOnlyBeConsumedByOneConcurrentRequest` | ✅ | 核销改回「先 get 再 remove」→ `sameCode…Concurrent…` 变红 ✅ |
+| AC7 | `EmailOtpAuthTest#passwordLoginResolvesEmailIdentity` | ✅ | — |
+| AC8 | `EmailOtpAuthTest#emailLoginAuditNeverContainsRawAddress` · `SmtpMailPrivacyTest#failureLogMessageDoesNotContainRecipientOrCode` | ✅ | — |
+| AC9 | `EmailOtpAuthTest#stubIsRefusedUnlessExplicitlyAllowed` · `#deliveryFailureNeverStoresValidOtp` | ✅ | 去掉放行判断 → `stubIsRefused…` 变红 ✅ |
+| AC10 | `EmailOtpAuthTest#allowedStubLogsCodeAtDebugWithMaskedAddress` | ✅ | — |
+| AC11 | `EmailOtpAuthTest#bodyFollowsRequestedScriptAndDefaultsToTraditional` | ✅ | 正文不跟随语言 → 该测试变红 ✅ |
+| AC12 | Flutter `onboarding_email_login_test.dart`（3 条）· `dev/standard_onboarding_live_policy_test.dart#live dev entry lets the email tab request a code` | ✅ | 邮箱登录发成 `PHONE_OTP` → 主流程用例变红 ✅；去掉邮箱页 10505 文案 → 断网用例变红 ✅；白名单用例先红后绿 ✅ |
 
-另：模拟器 `pos_tablet@5580` 全链路一次 —— 本地走桩，从后端日志取码完成注册、退出、再登录；贴截图与日志行。
+**跑过的输出（2026-11-05）**
+
+- 后端定向：`EmailOtpAuthTest` 14/0、`ProfileAndPasswordTest` 9/0、`SmtpMailPrivacyTest` 1/0、`BizAuthEmailLoginTest` 2/0、`ApiContractTest` 5/0、`BizFoundationJourneyFlowTest` 7/0、`OtpTestPhoneFlowTest` 8/0（Tests run / Failures）。
+- 后端 shop-core + shop-notify 全量（`-Dmaven.test.failure.ignore`）：945 条，1 失败 2 错误 + 另 3 处失败，共 6 条，**全部在 trade / order / spi.trade**；在不含本改动的 HEAD 上用独立 worktree 跑同 5 个类，**同样 6 条红** —— 既有欠账，与本期无关。
+- `ArchitectureTest` 22 条 5 红：第一次跑时其中 1 处是本期的 `EmailOtpService` 具体类（`serviceMustBeInterface`），已拆成接口 + `EmailOtpServiceImpl`；余下违规全部指向 trade / food 既有类，报告中不再出现 EmailOtp。`BackendI18nParityTest` 6/0。
+- Flutter：`flutter analyze` 无问题；全量 419 通过（+5 跳过）。
+- 本机部署（TW 实例，邮件走桩已放行）HTTP 冒烟：发码 → `{"expiresInSeconds":300,"resendAfterSeconds":60}`；60 秒内重发 → 10450；非邮箱 → 10400；日志取码登录 → `btk_…`；同码重放 → 10455；`usr_account.phone` 为 NULL；`sys_notify_log` 记 `MAIL/OTP/s***r@example.test/SENT`。
+- 模拟器 `pos_tablet@5580`（简体界面）：邮箱页签输入 `TW.Owner@Example.test` → 获取验证码（倒计时、提示「请输入发送到此邮箱的验证码」、空码时「验证并继续」置灰）→ 从后端日志取码 → 进入「确认经营地区」；库里新增 `EMAIL / tw.owner@example.test`、phone 为空；退出后用新码再登录 → 同一账号，身份仍 1 条。
 
 ## §6 对账二 · 设计 → 实现
 
-实现完填写（`git show --stat <提交>` 与 §2 模块设计逐行比）。
+后端（`ai-shop-integ`，`codex/commerce-into-ai-shop-codex`）与 Flutter（`ai-shop-bapp-mall`，`codex/mall-offline-checkout`）各一个提交，文件清单见提交本身（`git show --stat`）。与 §2 逐行比：
+
+| 差异 | 说明 |
+|---|---|
+| 新增 `user/service/impl/EmailOtpServiceImpl.java`；`EmailOtpService` 变为接口 | `ArchitectureTest#serviceMustBeInterface`。归一化与键规则作为接口静态方法，登录、密码登录、测试共用一份 |
+| 修改 `shop-base-auth/.../BizContextFilter.java`；`CommerceRoutePolicy` 改了两处（`ACCOUNT` 通道 + 会话入口） | §2 只列了 `SecurityConfig` 与 `CommerceRoutePolicy` 一处。登录入口清单在四个地方各有一份，`BizFoundationJourneyFlowTest` 逐个抓出来的 |
+| 修改 `shop-app/src/test/resources/application-test.yml` | 测试世界放行走桩发码（偏差 1） |
+| 修改 `BizFoundationJourneyFlowTest.java` | 新端点进「会话入口不查商家目录」断言 |
+| §2 列了 `StubMailGateway.java` / `StubMailGatewayTest.java`，实际未动 | 偏差 2 |
+| §2 列了 `LoginReq` 加 `@Valid`，实际未加 | 邮箱形态在发码端点已校验；登录时地址不对只会核码失败（10455），不另加一层校验以免改动手机号登录的既有入参行为 |
+| Flutter 新增改动 `lib/dev/standard_onboarding_live.dart` + `test/dev/standard_onboarding_live_policy_test.dart` | 开发入口有写请求白名单；不加时页面只显示「当前服务尚未开放」、请求根本没发出（模拟器上实测到） |
+| Flutter `onboarding_phone.dart`、`onboarding_widgets.dart` | 邮箱归一化放在身份归一化文件里；`failureText` 钩子让 10505 在邮箱页显示邮件通道文案 |
+| Flutter i18n 多了 `useEmailOtpLogin` | 邮箱页「使用密码登录」切回时的文案，原来写的是「使用短信验证码登录」 |
+
+### 偏差说明
+
+1. **AC9 的判据从 profile 改为显式开关 `shop.mail.otp-stub-allowed`。** `FixedOtpGuard` 类注释写明本项目生产与本地都跑 `api,ops`，靠 profile 名分不开。缺省拒绝，只在测试 profile 与本机启动脚本里打开；生产误开桩的症状是发码报 10505，当天可见。
+2. **桩日志打在 `EmailOtpServiceImpl`，不改 `StubMailGateway`。** 发送记录装饰器 `NotifyLoggingMailPort` 调桩时走 3 参 `send`，桩拿不到 `bizType`，无法只对验证码打印；而桩对所有正文打印会泄露运营初始密码。
+3. **「首登须勾协议」只加在 `EMAIL_OTP`。** stash 同时加在 `PHONE_OTP`，那会改变手机号注册的既有行为（其它端依赖），不在本期范围。
+4. **审计遮盖的已知缺口（未改）：** `LoginAuditor.maskPrincipal` 对非 11 位数字（如 `+886912345611`）原样返回。台湾手机号在审计里是明文，属既有问题，建议另行处理。
 
 ## §7 确认与完成
 
@@ -213,6 +237,7 @@ Future<AppResult<OnboardingLogin>> login(String principal, String credential,
 |---|---|
 | 2026-11-05 | 草稿 |
 | 2026-11-05 | 方案确认：D1 本期不互绑；D2 邮箱账号可设密码；D3 请求带 locale、繁 / 简两段正文、缺省繁体 |
+| 2026-11-05 | 已实现；后端定向测试与 Flutter 全量绿，消融 7 处均变红；`ArchitectureTest` / shop-core 全量的既有红已在不含本改动的 HEAD 上复现；本机 HTTP 与模拟器全链路通过。未推送 |
 
 ---
 

@@ -29,7 +29,7 @@ public class OtpStore {
 
     private static final Logger log = LoggerFactory.getLogger(OtpStore.class);
 
-    private static final Duration TTL = Duration.ofMinutes(5);
+    public static final Duration TTL = Duration.ofMinutes(5);
 
     /**
      * 验码失败闸（安全整改方案 §2.2 的第 ④ 道）。
@@ -80,10 +80,11 @@ public class OtpStore {
      */
     public boolean verifyAndConsume(String phone, String code) {
         Entry e = cache.get(phone);
+        // remove(key, e) 是原子的「比较并删除」：同一条码被并发提交两次，只有一个能删掉它，
+        // 于是只有一个登录成功（先 get 再 remove 的话两个都会看到 ok）
         boolean ok = e != null && !Instant.now().isAfter(e.expireAt())
-                && e.code().equals(code);
+                && e.code().equals(code) && cache.remove(phone, e);
         if (ok) {
-            cache.remove(phone);
             // 成功即清零：**按「连续失败」计数而不是累计失败** ——
             // 累计的话，一个用她自己号码用了半年的人迟早会被自己锁掉
             limiter.reset(failKey(phone));

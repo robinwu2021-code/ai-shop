@@ -8,15 +8,19 @@ import java.util.List;
  * <p>登录时不是「只用一把钥匙开一把锁」，而是把本次能拿到的全部凭证按这个顺序
  * 依次去找人；命中之后把新出现的凭证补登到同一个人名下，识别能力越用越强。
  *
- * <p><b>手机号是唯一权威标识</b>（本项目的选择）：它跨微信生态、跨 App、跨 H5，
- * 且用户真实控制。三个 openid 互不相通，只能认出「同一应用的回访」。
+ * <p><b>手机号与邮箱是权威标识</b>（ADR-051）：手机号跨微信生态、跨 App、跨 H5，
+ * 且用户真实控制；台湾一期没有国际短信，B 端商户从注册起就可能只有邮箱。
+ * 同一账号可以先后拥有两者，但只能由已登录的本人主动绑定，<b>系统不凭相似度合并</b>。
+ * 三个 openid 互不相通，只能认出「同一应用的回访」。
  * unionid 仍然存但不参与认人——它是手机号缺失或换号时的修复线索，
  * 存它的边际成本是一行数据，不存则将来想补要回填历史用户。
  */
 public final class IdentityType {
 
-    /** 手机号。<b>唯一权威标识</b>，注册时强制获取。 */
+    /** 手机号。权威标识；C 端注册时强制获取。 */
     public static final String PHONE = "PHONE";
+    /** 已验证的邮箱（归一化为 trim + 全小写）。与手机号独立，不自动合并账号（ADR-051）。 */
+    public static final String EMAIL = "EMAIL";
 
     /** 微信开放平台 unionid：同主体下所有微信应用通用。不参与认人，作修复线索。 */
     public static final String WX_UNIONID = "WX_UNIONID";
@@ -56,7 +60,7 @@ public final class IdentityType {
      * <p>{@link #PASSWORD} 不在其中，理由见该常量的注释。
      */
     public static final List<String> RESOLVE_ORDER =
-            List.of(PHONE, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB);
+            List.of(PHONE, EMAIL, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB);
 
     private IdentityType() {
     }

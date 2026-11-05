@@ -143,6 +143,128 @@
         }
       }
     },
+    "/biz/auth/email-otp/send": {
+      "post": {
+        "operationId": "sendRegistrationEmailOtp",
+        "summary": "发送注册/登录邮箱验证码",
+        "description": "台湾一期没有国际短信，这是商户真实可用的注册入口（TDD-B端邮箱验证码注册登录，ADR-051）。首次以 EMAIL_OTP 登录即建立只有邮箱的个人账号，不与手机号账号合并。没有可用邮件通道时返回 10505，不返回成功。",
+        "tags": [
+          "public"
+        ],
+        "x-scope": "public",
+        "x-role": "有效商家账号",
+        "x-retry": "不要自动循环发码；10450/10451 等待后由用户重试；10505 表示邮件通道不可用，提示稍后再试。",
+        "x-business-error-codes": [
+          10400,
+          10450,
+          10451,
+          10505
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/EmailOtpDelivery"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailOtpSendRequest"
+              },
+              "example": {
+                "email": "owner@example.com",
+                "locale": "zh-Hant"
+              }
+            }
+          }
+        }
+      }
+    },
     "/biz/auth/login": {
       "post": {
         "operationId": "loginForOnboarding",
@@ -5530,15 +5652,15 @@
         "properties": {
           "grantType": {
             "type": "string",
-            "description": "本流程使用 PHONE_OTP；已设个人密码时可用 PASSWORD。其他已有授权方式不作为本轮验收入口。"
+            "description": "PHONE_OTP 为手机号验证码；EMAIL_OTP 为邮箱验证码（首次即注册，须 agreed=true）；已设个人密码时可用 PASSWORD。其他已有授权方式不作为本轮验收入口。"
           },
           "principal": {
             "type": "string",
-            "description": "PHONE_OTP 为手机号；PASSWORD 为绑定手机号。"
+            "description": "PHONE_OTP 为手机号；EMAIL_OTP 为邮箱；PASSWORD 为绑定手机号或邮箱（含 @ 按邮箱身份）。"
           },
           "credential": {
             "type": "string",
-            "description": "一次性短信验证码或密码；不得记录日志。"
+            "description": "一次性短信/邮箱验证码或密码；不得记录日志。"
           },
           "agreed": {
             "type": "boolean",
@@ -7832,6 +7954,51 @@
           "storeNo",
           "endCode"
         ]
+      },
+      "EmailOtpSendRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 191,
+            "description": "收码邮箱；服务端按 trim + 全小写归一化，不合并供应商别名。"
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "zh-Hant",
+              "zh-Hans",
+              null
+            ],
+            "description": "App 当前界面语言，决定邮件正文字形；为空按繁体。"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "description": ""
+      },
+      "EmailOtpDelivery": {
+        "type": "object",
+        "properties": {
+          "expiresInSeconds": {
+            "type": "integer",
+            "description": "验证码有效期（秒），当前 300。"
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "description": "再次发码前需等待的秒数，当前 60。"
+          }
+        },
+        "required": [
+          "expiresInSeconds",
+          "resendAfterSeconds"
+        ],
+        "description": ""
       }
     }
   }
