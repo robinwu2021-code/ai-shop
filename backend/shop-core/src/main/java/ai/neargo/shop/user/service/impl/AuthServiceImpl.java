@@ -115,6 +115,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final ai.neargo.shop.user.service.EmailOtpService emailOtpService;
 
+    private List<String> mockSmsPrefixes = List.of();
+
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            WxPhonePort wxPhonePort, MpSessionService mpSessions,
                            TokenStore tokenStore, OtpStore otpStore,
@@ -205,15 +207,40 @@ public class AuthServiceImpl implements AuthService {
         }
         String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
         otpStore.save(phone, code);
+        if (mockedSmsRegion(phone)) {
+            // 这个号段还没有短信通道（TDD-短信按号段走模拟通道）：只存码，验证码打 debug 供本地取码
+            log.debug("[sms-mock] otp to {} = {}", mask(phone), code);
+            return;
+        }
         smsPort.sendOtp(phone, code);
     }
 
-    /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
+    /**
+     * 走模拟通道的号段前缀，如 {@code +886,+971}（{@code shop.sms.mock-prefixes}，缺省空）。
+     *
+     * <p>台湾 / 阿联酋还没有国际短信通道，而现有短信实现（阿里云）的模板只对大陆号码可用：
+     * 不分流的话，开真实短信之后这两个号段的发码会直接失败。<b>缺省空 = 不分流</b>，
+     * 所有号码都走原来的 {@link SmsPort}；生产不配它，行为与改动前完全一致。
+     *
+     * <p>用 setter 注入而不是构造参数：构造参数已有十几个，测试与调用方都按位置传，
+     * 再加一个会把每一处都改一遍。
+     */
+    @org.springframework.beans.factory.annotation.Value("${shop.sms.mock-prefixes:}")
+    public void setMockSmsPrefixes(String csv) {
+        this.mockSmsPrefixes = csv == null ? List.of()
+                : java.util.Arrays.stream(csv.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
+    }
+
+    private boolean mockedSmsRegion(String phone) {
+        return phone != null && mockSmsPrefixes.stream().anyMatch(phone::startsWith);
+    }
+
     @Override
     public ai.neargo.shop.user.service.EmailOtpService.Delivery sendEmailOtp(String email, String locale) {
         return emailOtpService.send(email, locale);
     }
 
+    /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
     private boolean usingFixedOtp() {
         return fixedOtp != null && !fixedOtp.isBlank();
     }
