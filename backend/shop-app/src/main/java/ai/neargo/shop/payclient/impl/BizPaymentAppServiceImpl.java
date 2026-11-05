@@ -1,7 +1,12 @@
 package ai.neargo.shop.payclient.impl;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -92,6 +97,37 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
     public DailyStatement statement(String storeNo, String day) {
         DailyStatement result = biz.statement(storeNo, operator(), day);
         auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款日流水 " + (day == null ? "今天" : day));
+        return result;
+    }
+
+    @Override
+    public PaymentPage paymentOrders(String storeNo, PaymentQuery query) {
+        return biz.paymentOrders(storeNo, operator(), query);
+    }
+
+    @Override
+    public Summary paymentSummary(String storeNo, String from, String to) {
+        Summary result = biz.paymentSummary(storeNo, operator(), from, to);
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款汇总 " + from + "~" + to);
+        return result;
+    }
+
+    @Override
+    public Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix) {
+        return biz.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix);
+    }
+
+    @Override
+    public Detail paymentDetail(String storeNo, String payOrderNo) {
+        Detail result = biz.paymentDetail(storeNo, operator(), payOrderNo);
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo + "/" + payOrderNo, "收款详情");
+        return result;
+    }
+
+    @Override
+    public Detail paymentRefresh(String storeNo, String payOrderNo) {
+        Detail result = biz.paymentRefresh(storeNo, operator(), payOrderNo);
+        auditLogPort.record("BIZ_PAY_QUERY", storeNo + "/" + payOrderNo, "收款查单");
         return result;
     }
 

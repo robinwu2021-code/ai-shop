@@ -1,6 +1,11 @@
 package ai.neargo.shop.payclient;
 
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -34,4 +39,16 @@ public interface BizPaymentAppService {
     List<RefundView> refunds(String storeNo);
 
     DailyStatement statement(String storeNo, String day);
+
+    // ---- 「收款」Tab：本店支付订单 ----
+
+    PaymentPage paymentOrders(String storeNo, PaymentQuery query);
+
+    Summary paymentSummary(String storeNo, String from, String to);
+
+    Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix);
+
+    Detail paymentDetail(String storeNo, String payOrderNo);
+
+    Detail paymentRefresh(String storeNo, String payOrderNo);
 }

@@ -2,7 +2,12 @@ package ai.neargo.shop.portal.biz.pay;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
+import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -119,5 +124,52 @@ public class BizPaymentController {
     @GetMapping("/biz/payment/statement")
     public DailyStatement statement(@RequestParam(required = false) String day) {
         return app.statement(BizContext.requireStoreNo(), day);
+    }
+
+    // ---- 「收款」Tab：本店支付订单（TDD-B端收款订单与商城接口对齐 P1）。日期是门店市场的 yyyy-MM-dd，不传 = 今天 ----
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders")
+    public PaymentPage paymentOrders(@RequestParam(required = false) String from,
+                                     @RequestParam(required = false) String to,
+                                     @RequestParam(required = false) List<String> source,
+                                     @RequestParam(required = false) List<String> channel,
+                                     @RequestParam(required = false) List<String> status,
+                                     @RequestParam(required = false) Long amountMin,
+                                     @RequestParam(required = false) Long amountMax,
+                                     @RequestParam(required = false) String q,
+                                     @RequestParam(required = false) String cursor,
+                                     @RequestParam(required = false) Integer size) {
+        return app.paymentOrders(BizContext.requireStoreNo(),
+                new PaymentQuery(from, to, source, channel, status, amountMin, amountMax, q, cursor, size));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
+    @GetMapping("/biz/payment/orders/summary")
+    public Summary paymentSummary(@RequestParam(required = false) String from,
+                                  @RequestParam(required = false) String to) {
+        return app.paymentSummary(BizContext.requireStoreNo(), from, to);
+    }
+
+    /** 顾客说「我付了」：传 tradeNoSuffix（≥6 位）按交易号找；否则按 amountMinor + within（10m / 1h / today） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders/lookup")
+    public Lookup paymentLookup(@RequestParam(required = false) Long amountMinor,
+                                @RequestParam(required = false) String within,
+                                @RequestParam(required = false) String tradeNoSuffix) {
+        return app.paymentLookup(BizContext.requireStoreNo(), amountMinor, within, tradeNoSuffix);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @GetMapping("/biz/payment/orders/{payOrderNo}")
+    public Detail paymentDetail(@PathVariable String payOrderNo) {
+        return app.paymentDetail(BizContext.requireStoreNo(), payOrderNo);
+    }
+
+    /** 待确认的单「立即查询结果」：向渠道查单补账，返回查后的详情 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
+    @PostMapping("/biz/payment/orders/{payOrderNo}/query")
+    public Detail paymentRefresh(@PathVariable String payOrderNo) {
+        return app.paymentRefresh(BizContext.requireStoreNo(), payOrderNo);
     }
 }

@@ -7,7 +7,14 @@ import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
 import ai.neargo.shop.pay.acquiring.entity.PayRefund;
 import ai.neargo.shop.pay.acquiring.port.InternalCallers;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Detail;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Lookup;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentFilter;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentPage;
+import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService;
+import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.checkout.entity.PayQrCode;
@@ -47,11 +54,14 @@ public class PayBizFacade {
     private final QrCodeService codes;
     private final RefundService refunds;
     private final PayStatementService statements;
+    private final MerchantPaymentQueryService payments;
+    private final PaymentService paymentService;
     private final String checkoutBase;
 
     public PayBizFacade(PayMerchantBindingService stores, InternalCallers callers, AppGrantService grants,
                         CheckoutService checkout, QrCodeService codes, RefundService refunds,
-                        PayStatementService statements, @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
+                        PayStatementService statements, MerchantPaymentQueryService payments,
+                        PaymentService paymentService, @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
         this.stores = stores;
         this.callers = callers;
         this.grants = grants;
@@ -59,6 +69,8 @@ public class PayBizFacade {
         this.codes = codes;
         this.refunds = refunds;
         this.statements = statements;
+        this.payments = payments;
+        this.paymentService = paymentService;
         this.checkoutBase = checkoutBase;
     }
 
@@ -158,6 +170,62 @@ public class PayBizFacade {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return statements.daily(caller(s, operatorNo), s.storeId(), d);
+    }
+
+    // ---- 「收款」Tab：本店支付订单（TDD-B端收款订单与商城接口对齐 P1） ----
+
+    /** 列表的查询条件（日期用 {@code yyyy-MM-dd} 字符串收，便于两种部署形态原样转发） */
+    public record PaymentQuery(String from, String to, List<String> sources, List<String> channels, List<String> statuses,
+                               Long amountMin, Long amountMax, String q, String cursor, Integer size) {
+    }
+
+    public PaymentPage paymentOrders(String storeNo, String operatorNo, PaymentQuery q) {
+        StoreRef s = store(storeNo);
+        PaymentQuery x = q == null ? new PaymentQuery(null, null, null, null, null, null, null, null, null, null) : q;
+        return payments.list(caller(s, operatorNo), s.storeId(), new PaymentFilter(date(x.from()), date(x.to()),
+                x.sources(), x.channels(), x.statuses(), x.amountMin(), x.amountMax(), x.q(), x.cursor(), x.size()));
+    }
+
+    public Summary paymentSummary(String storeNo, String operatorNo, String from, String to) {
+        StoreRef s = store(storeNo);
+        return payments.summary(caller(s, operatorNo), s.storeId(), date(from), date(to));
+    }
+
+    /** 两种查法二选一：{@code tradeNoSuffix} 有值按交易号找，否则按金额 + 窗口 */
+    public Lookup paymentLookup(String storeNo, String operatorNo, Long amountMinor, String within, String tradeNoSuffix) {
+        StoreRef s = store(storeNo);
+        if (tradeNoSuffix != null && !tradeNoSuffix.isBlank()) {
+            return payments.lookupByTradeNoSuffix(caller(s, operatorNo), s.storeId(), tradeNoSuffix);
+        }
+        if (amountMinor == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return payments.lookupByAmount(caller(s, operatorNo), s.storeId(), amountMinor, within);
+    }
+
+    public Detail paymentDetail(String storeNo, String operatorNo, String payOrderNo) {
+        StoreRef s = store(storeNo);
+        return payments.detail(caller(s, operatorNo), s.storeId(), payOrderNo);
+    }
+
+    /** 「立即查询结果」：先确认是本店的单，再对未结束的渠道尝试查单补账，返回查后的详情 */
+    public Detail paymentRefresh(String storeNo, String operatorNo, String payOrderNo) {
+        StoreRef s = store(storeNo);
+        PayCaller c = caller(s, operatorNo);
+        payments.detail(c, s.storeId(), payOrderNo);
+        paymentService.refresh(c, payOrderNo);
+        return payments.detail(c, s.storeId(), payOrderNo);
+    }
+
+    private static LocalDate date(String d) {
+        if (d == null || d.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(d);
+        } catch (DateTimeParseException e) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 
     private StoreRef store(String storeNo) {

@@ -1,6 +1,6 @@
 # TDD-B端收款、业务订单与商城接口对齐
 
-状态：P1 已确认（2026-11-05）；P2–P4 草稿
+状态：P1 已实现（2026-11-05）；P2–P4 草稿
 档位：2（跨端；新表族：门店用量余额；新权限码）
 关联需求与原型：
 - 门店订单原型 v6：`ai-shop-bapp-mall/docs/prototypes/core-pages/v6-store-orders.html`（发布版：https://claude.ai/artifact/TZaqctJv2df6VCVj3fcqeN）
@@ -289,18 +289,50 @@ GET /biz/payment/orders/{payOrderNo}
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-| AC | 测试方法（计划） | 跑过 | 消融验证 |
+P1 测试：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/BizPaymentOrdersFlowTest.java`。
+它与 `BizPayFlowTest` 用同一套开店方式（入驻审核 → 店主令牌 → TEST 收款商户），付款走真实收银台加 `SettlePort.settlePayment` 入账。
+
+| AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| A1 | `MerchantPaymentQueryServiceTest#list_excludes_cash_partner_and_never_attempted` | | |
-| A2 | `#list_filters_by_source_channel_status_amount_and_dates`、`#list_cursor_is_stable_when_new_payment_arrives` | | |
-| A3 | `#summary_nets_refunds_and_estimates_fee_when_not_reconciled` | | |
-| A6 | `#lookup_by_amount_within_window`、`#lookup_by_trade_no_suffix_requires_six_digits` | | |
-| A7 | `#detail_maps_qr_terminal_and_order_sources`、`BizPaymentControllerTest#detail_is_store_scoped` | | |
-| A8 | `#detail_failed_carries_reason`、`#query_refreshes_pending` | | |
-| A9 | 现有 `RefundServiceImplTest` 覆盖，补 `#refund_rejects_over_refundable` | | |
-| 权限 | `BizPaymentControllerTest#clerk_without_order_view_is_forbidden` | | |
-| B1–B3、C1–C8 | P2、P3 开工前补齐本表 | | |
+| A1 | `#listShowsPaidOnlyAndIsStoreScoped`（付了的进、只开单没付的不进、别家看不到、未登录 401） | ✅ | 去掉 `visible()` 里「至少有一次渠道尝试」的条件 → 变红 ✅ |
+| A2 | `#filtersAndCursor`（来源、状态、金额区间；翻页期间新进一笔，两页合起来不重不漏） | ✅ | |
+| A3 | `#summary` | ✅ | |
+| A6 | `#lookup`（金额 + 10 分钟、交易号后 6 位、少于 6 位拒绝） | ✅ | |
+| A7 | `#detail`（金额、渠道交易号、来源、结算账户与预计日、退款记录、时间线；别家的单查不到） | ✅ | |
+| A8 | `#queryRefreshesPending` | ✅ | |
+| 权限 | `BizEndpointPermTest` 新增 5 条映射；`everyBizEndpointHasADecision` 里本次端点不再出现 | ✅ | |
+| 回归 | `BizPayFlowTest` 7/7；pay-svc `PayOpsInternalApiRoundTripTest` 3/3 | ✅ | |
+
+```
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.BizPaymentOrdersFlowTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.BizPayFlowTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.pay.svc.PayOpsInternalApiRoundTripTest
+消融：Tests run: 1, Failures: 1 -- BizPaymentOrdersFlowTest#listShowsPaidOnlyAndIsStoreScoped
+```
+
+**存量红灯，与本次无关，未改**（改动前同样红）：
+- `ArchitectureTest` 5 项：库存与餐饮合并带进来的 Port 包位置、全限定名、定时任务锁、Service 命名、portal 依赖 JsonMapper。
+- `BizEndpointPermTest#everyBizEndpointHasADecision` 剩 15 个端点：餐饮库存投影、美业排班与资源、服务单报价与手工收款、门店销售目录。本次只补了本会话早先加的 `/biz/auth/email-otp/send`。
+- `check-app-backend-orphan` 本来就有别人的新增，见下文闸门说明。
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填写 `git show --stat`）
+| 动作 | 路径 |
+|---|---|
+| 新增 | `pay/pay-domain/.../acquiring/service/MerchantPaymentQueryService.java`、`impl/MerchantPaymentQueryServiceImpl.java` |
+| 修改 | `pay/pay-domain/.../pay/biz/PayBizFacade.java`、`pay/pay-domain/.../pay/client/PayBizInternalApi.java` |
+| 修改 | `pay/pay-svc/.../svc/InternalPayBizEndpoint.java` |
+| 修改 | `shop-app/.../payclient/BizPaymentAppService.java`、`impl/BizPaymentAppServiceImpl.java`、`impl/RemoteBizPaymentAppService.java` |
+| 修改 | `shop-app/.../portal/biz/pay/BizPaymentController.java`、`shop-base-auth/.../auth/BizPerms.java` |
+| 新增 / 修改 | 测试 `BizPaymentOrdersFlowTest`；`BizEndpointPermTest` 加映射；`known-app-backend-orphan.txt` 加 6 行（出口在 Flutter） |
+
+**偏差说明**
+
+1. **没有加库表列**。`stl_payment` 的卡号末四码、发卡行、授权码、付款人这几列先不加：现有渠道没有一个会写它们，LINE Pay 和蓝新都还没接。详情里 `payer.cardBrand / cardLast4 / issuer / authCode` 先固定返回空，等真实渠道接入时和回写一起加。`pay_order(store_id, created_at)` 索引已经存在，不需要另加 `(store_id, succeeded_at)`。
+2. **没有新增错误码**。参数不合法用 `BAD_REQUEST`，不是本店的单用 `NOT_FOUND`，所以也不需要三语 i18n。
+3. **时间口径**。列表按创建时间分日、排序、出游标（单子一创建就有位置，翻页稳定）；汇总按成功时间落在区间内统计，与原有收款日流水的口径一致。
+4. **收银员**。来源里只给 `operatorNo`，名字由端上用现有员工接口换。
+5. **时间线给事件码，不给文案**：`CREATED / PAID / FAILED / CLOSED / REFUND_REQUESTED / REFUND_SUCCEEDED`，端上按码出文案。
+6. **独立部署形态的列表走 POST**：`/internal/pay/v1/biz/stores/{storeNo}/payment-orders/search`，请求体带条件。多值条件原样传，不依赖查询串里的重复参数。
+7. **结算状态的判定**。只有这张单进过 `SETTLEMENT` 凭证才算「已结算」，否则是「待结算」。预计入账日 = 成功业务日 + `pay_merchant.settle_cycle`（T1 / T2 / WEEKLY，没配按 T1）。
+8. **手续费估算费率**。`shop.pay.fee.estimate-rate-bps` 默认 0，未对账的单手续费显示 0 并标「预估」。台湾渠道的实际费率定下来后，在配置里设。

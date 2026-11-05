@@ -5,6 +5,7 @@ import ai.neargo.shop.pay.biz.PayBizFacade;
 import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.CollectReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.GrantReq;
+import ai.neargo.shop.pay.client.PayBizInternalApi.PaymentSearchReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.QrReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.RefundReq;
 import ai.neargo.shop.pay.client.PortResult;
@@ -90,6 +91,40 @@ public class InternalPayBizEndpoint {
     public PortResult<?> statement(@PathVariable String storeNo, @RequestParam String operatorNo,
                                    @RequestParam(required = false) String day) {
         return run(() -> biz.statement(storeNo, operatorNo, day));
+    }
+
+    // ---- 「收款」Tab ----
+
+    @PostMapping(PayBizInternalApi.PREFIX + "/payment-orders/search")
+    public PortResult<?> paymentOrders(@PathVariable String storeNo, @RequestBody PaymentSearchReq req) {
+        return run(() -> biz.paymentOrders(storeNo, req.operatorNo(), req.query()));
+    }
+
+    @GetMapping(PayBizInternalApi.PREFIX + "/payment-orders/summary")
+    public PortResult<?> paymentSummary(@PathVariable String storeNo, @RequestParam String operatorNo,
+                                        @RequestParam(required = false) String from,
+                                        @RequestParam(required = false) String to) {
+        return run(() -> biz.paymentSummary(storeNo, operatorNo, from, to));
+    }
+
+    @GetMapping(PayBizInternalApi.PREFIX + "/payment-orders/lookup")
+    public PortResult<?> paymentLookup(@PathVariable String storeNo, @RequestParam String operatorNo,
+                                       @RequestParam(required = false) Long amountMinor,
+                                       @RequestParam(required = false) String within,
+                                       @RequestParam(required = false) String tradeNoSuffix) {
+        return run(() -> biz.paymentLookup(storeNo, operatorNo, amountMinor, within, tradeNoSuffix));
+    }
+
+    @GetMapping(PayBizInternalApi.PREFIX + "/payment-orders/{payOrderNo}")
+    public PortResult<?> paymentDetail(@PathVariable String storeNo, @PathVariable String payOrderNo,
+                                       @RequestParam String operatorNo) {
+        return run(() -> biz.paymentDetail(storeNo, operatorNo, payOrderNo));
+    }
+
+    @PostMapping(PayBizInternalApi.PREFIX + "/payment-orders/{payOrderNo}/query")
+    public PortResult<?> paymentRefresh(@PathVariable String storeNo, @PathVariable String payOrderNo,
+                                        @RequestParam String operatorNo) {
+        return run(() -> biz.paymentRefresh(storeNo, operatorNo, payOrderNo));
     }
 
     private static <T> PortResult<T> run(Supplier<T> call) {

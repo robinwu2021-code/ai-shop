@@ -170,6 +170,11 @@ public final class BizPerms {
     public static final String PAY_STATEMENT = "mch:pay:statement";
     public static final String PAY_APP_GRANT = "mch:pay:app-grant";
     public static final String PAY_QR = "mch:pay:qr";
+    /**
+     * 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）。只读、不含汇总与手续费：
+     * 店员要能对着顾客手机查「这笔付了没」，所以店长、店员默认都有；汇总仍是 {@link #PAY_STATEMENT}，退款仍是 {@link #PAY_REFUND}。
+     */
+    public static final String PAY_ORDER_VIEW = "mch:pay:order:view";
 
     public static final String PRINT_READ = "biz:print:read";
     public static final String PRINT_SUBMIT = "biz:print:submit";
@@ -184,10 +189,10 @@ public final class BizPerms {
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             OWNER, List.of("*"),
             MANAGER, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
-                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE,
+                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PAY_ORDER_VIEW,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
                     PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
-            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
+            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
@@ -261,6 +266,7 @@ public final class BizPerms {
             Map.entry(PAY_STATEMENT, "看本店收款流水"),
             Map.entry(PAY_APP_GRANT, "授权第三方代本店收款或退款"),
             Map.entry(PAY_QR, "生成与停用本店收款码"),
+            Map.entry(PAY_ORDER_VIEW, "查看本店收款记录（列表与详情）"),
             Map.entry(FINANCE, "结算账单与收款进件"));
 
     /**
