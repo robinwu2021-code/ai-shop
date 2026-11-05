@@ -103,7 +103,7 @@ public class MerchantCollectLinkQueryServiceImpl implements MerchantCollectLinkQ
         return page.stream().map(o -> {
             String st = status(o, voidedBy.containsKey(o.getId()), now);
             return new LinkRow(o.getPayOrderNo(), o.getAmountMinor() == null ? 0 : o.getAmountMinor(), o.getCurrency(),
-                    o.getSubject(), st, epoch(o.getCreatedAt()), epoch(o.getExpireAt()), epoch(o.getSucceededAt()),
+                    o.getSubject(), st, MerchantPaymentQueryServiceImpl.auditEpoch(o.getCreatedAt()), epoch(o.getExpireAt()), epoch(o.getSucceededAt()),
                     o.getPayChannel(), o.getOperatorNo(), "VOIDED".equals(st) ? voidedBy.get(o.getId()) : null);
         }).toList();
     }

@@ -34,6 +34,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -112,8 +113,8 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         int size = f.size() == null ? DEFAULT_SIZE : Math.max(1, Math.min(f.size(), MAX_SIZE));
 
         LambdaQueryWrapper<PayOrder> w = visible(storeId)
-                .ge(PayOrder::getCreatedAt, BizDates.startUtc(market, from))
-                .lt(PayOrder::getCreatedAt, BizDates.startUtc(market, to.plusDays(1)));
+                .ge(PayOrder::getCreatedAt, auditLocal(BizDates.startUtc(market, from)))
+                .lt(PayOrder::getCreatedAt, auditLocal(BizDates.startUtc(market, to.plusDays(1))));
         applySources(w, f.sources());
         applyStatuses(w, f.statuses());
         if (f.channels() != null && !f.channels().isEmpty()) {
@@ -205,9 +206,9 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         }
         String market = market(storeId);
         LocalDateTime since = switch (within == null ? "10m" : within) {
-            case "10m" -> LocalDateTime.now(ZoneOffset.UTC).minusMinutes(10);
-            case "1h" -> LocalDateTime.now(ZoneOffset.UTC).minusHours(1);
-            case "today" -> BizDates.startUtc(market, today(market));
+            case "10m" -> LocalDateTime.now().minusMinutes(10);
+            case "1h" -> LocalDateTime.now().minusHours(1);
+            case "today" -> auditLocal(BizDates.startUtc(market, today(market)));
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
         List<PayOrder> found = DataScopeContext.executeWithoutScope(() -> orders.selectList(visible(storeId)
@@ -224,7 +225,7 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         }
         String s = suffix.trim();
         String market = market(storeId);
-        LocalDateTime since = BizDates.startUtc(market, today(market).minusDays(1));
+        LocalDateTime since = auditLocal(BizDates.startUtc(market, today(market).minusDays(1)));
         List<PayOrder> found = DataScopeContext.executeWithoutScope(() -> orders.selectList(visible(storeId)
                 .ge(PayOrder::getCreatedAt, since)
                 .inSql(PayOrder::getId, HAS_ATTEMPT + " AND trade_no LIKE '%" + s + "'")
@@ -288,19 +289,19 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
                 && (last.getErrCode() != null || last.getErrMsg() != null)
                 ? new Failure(last.getErrCode(), last.getErrMsg()) : null;
         List<RefundItem> refundItems = rs.stream().map(r -> new RefundItem(r.getPayRefundNo(), nz(r.getAmountMinor()),
-                r.getReason(), r.getRequestedBy(), r.getStatus(), epoch(r.getCreatedAt()), epoch(r.getSucceededAt()))).toList();
+                r.getReason(), r.getRequestedBy(), r.getStatus(), auditEpoch(r.getCreatedAt()), epoch(r.getSucceededAt()))).toList();
 
         List<Event> timeline = new ArrayList<>();
-        timeline.add(new Event(epoch(o.getCreatedAt()), "CREATED", nz(o.getAmountMinor()), null));
+        timeline.add(new Event(auditEpoch(o.getCreatedAt()), "CREATED", nz(o.getAmountMinor()), null));
         if (o.getSucceededAt() != null) {
             timeline.add(new Event(epoch(o.getSucceededAt()), "PAID", paid, ok == null ? null : ok.getTradeNo()));
         }
         if ("FAILED".equals(o.getStatus()) || "CLOSED".equals(o.getStatus())) {
-            timeline.add(new Event(epoch(o.getClosedAt() == null ? o.getUpdatedAt() : o.getClosedAt()), o.getStatus(), null,
+            timeline.add(new Event(o.getClosedAt() == null ? auditEpoch(o.getUpdatedAt()) : epoch(o.getClosedAt()), o.getStatus(), null,
                     failure == null ? null : failure.code()));
         }
         for (PayRefund r : rs) {
-            timeline.add(new Event(epoch(r.getCreatedAt()), "REFUND_REQUESTED", nz(r.getAmountMinor()), r.getPayRefundNo()));
+            timeline.add(new Event(auditEpoch(r.getCreatedAt()), "REFUND_REQUESTED", nz(r.getAmountMinor()), r.getPayRefundNo()));
             if (r.getSucceededAt() != null) {
                 timeline.add(new Event(epoch(r.getSucceededAt()), "REFUND_SUCCEEDED", nz(r.getAmountMinor()),
                         r.getPayRefundNo()));
@@ -374,7 +375,7 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
         return page.stream().map(o -> new PaymentRow(o.getPayOrderNo(), sourceKind(o), o.getPayChannel(), o.getPayMethod(),
                 o.getCurrency(), nz(o.getAmountMinor()), nz(o.getPaidMinor()), nz(o.getRefundedMinor()), viewStatus(o.getStatus()),
                 o.getPayerMasked(), null, sns.get(o.getSourceId()), bizRef(o), epoch(o.getSucceededAt()),
-                epoch(o.getCreatedAt()))).toList();
+                auditEpoch(o.getCreatedAt()))).toList();
     }
 
     private Lookup split(List<PayOrder> found) {
@@ -487,6 +488,21 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
 
     private static long nz(Long v) {
         return v == null ? 0L : v;
+    }
+
+    /*
+     * 两种时间口径并存（2026-11-05 查实）：succeeded_at / closed_at / expire_at 由支付域按 UTC 写；
+     * created_at / updated_at 由 AuditMetaObjectHandler 按 JVM 本地时区写（LocalDateTime.now()）。
+     * 拿 UTC 的日界去比 created_at，会在本地时间与 UTC 跨日的那几个小时里把当天的单筛掉。
+     */
+    /** UTC 的时刻 → 审计列（created_at / updated_at）同一口径的本地时间 */
+    static LocalDateTime auditLocal(LocalDateTime utc) {
+        return utc.atOffset(ZoneOffset.UTC).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+    }
+
+    /** 审计列（本地时区）→ epoch 毫秒 */
+    static Long auditEpoch(LocalDateTime local) {
+        return local == null ? null : local.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     private static Long epoch(LocalDateTime t) {
