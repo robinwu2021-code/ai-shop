@@ -1,6 +1,6 @@
 # TDD-注册地区与三步建店
 
-状态：**已确认**（2026-11-05，用户：「按照建议实施」）
+状态：**已实现**（2026-11-05；后端 062a45855 + App 端见 §6；均为本地提交，未推送）
 关联需求：用户 2026-11-05 两轮要求（见下方 AC）；原型 `ai-shop-bapp` · `docs/prototypes/core-pages/v4-store-onboarding.html`（S01–S10，提交 48b7559）；
 前置：`TDD-B端建店默认经营市场.md`（部署级默认市场、store-setup、quick-start）。
 档位：**2**（账号新增市场字段、门店新增自填行业字段；login / store-setup / quick-start 契约变化；新增两个配置项；跨端）
@@ -149,6 +149,23 @@ MultiEntityIdentityFlowTest 11/11、StoreBannerFlowTest 5/5、CommerceAccessSecu
 `ArchitectureTest` 5 红均为既有（food/report/trade 类，无本期类）；`BizEndpointPermTest#everyBizEndpointHasADecision`
 1 红为既有（`/biz/auth/email-otp/send`、`/biz/inventory/food-stock-projections` 等，本期未新增端点）。
 
+### App 端（ai-shop-bapp-mall，AC10–AC13）
+
+| AC | 测试 | 结果 | 消融 |
+|---|---|---|---|
+| AC10 | `onboarding_v4_flow_test#test build picks the registration market under the submit button`（选阿联酋 → 登录请求 `marketCode: AE`）；`onboarding_email_login_test`（缺省带 `TW`） | 绿 | 登录不带 `marketCode` → 红 |
+| AC11 | `standard_onboarding_store_setup_test#explicit server market …`（×4：单一地区不显示地区页、不读写本地地区记忆）；`#server setup empty`（地区未开放只给一句说明）；`standard_onboarding_widget_test#standard login goes straight …`（无地区字样、无地区按钮） | 绿 | 单一地区不再直接通过 → ×3 红 |
+| AC12 | `onboarding_v4_flow_test#profile page holds account settings apart from stores`；`standard_onboarding_widget_test#standard login …`（我的门店无密码入口、有个人中心入口） | 绿 | — |
+| AC13 | `onboarding_v4_flow_test#top-level Other …`、`#Other under a real industry …`、`#an Other store still confirms FREE …`；`standard_onboarding_store_setup_test` 主流程（三步 + 方案对比 + 提交中锁定）；`standard_onboarding_widget_test` 建店恢复两条；`standard_onboarding_journey_test` | 绿 | 结果页对 OTHER 仍严格比对行业码 → 「FREE 已確認」用例红 |
+
+Flutter 全量：428 通过（5 跳过），`flutter analyze` 无问题。
+
+本机联调（手机模拟器 `pos_phone`，TW 实例，`SHOP_REGISTRATION_MARKETS=TW,CN,AE`、`SHOP_OTHER_BUSINESS_TYPE=RETAIL`，V629 已执行）：
+- 台湾号 +886 0912 345 655、注册页选「中国大陆」→ `usr_account.market=CN`（与手机区号无关）→ 直接进「我的门店」，无地区页。
+- 个人中心显示账号 `+886912345655`（来自 `account`）。
+- 顶层「其他」建店（pet · grooming，地址 + 2F）→ `mch_store.industry_text/sub_industry_text/address_detail` 落库、主体 market=CN、经营类型 RETAIL；结果页「门店已建立」，列表副标题与工作台行业显示自填文字，工作台不再展示经营地区。
+- +971 号、选「阿联酋」→ `market=AE`；本地 `sys_market` 无 AE → 「我的门店」显示「你注册的经营地区暂未开放创建门店」，无地区选择。
+
 ## §6 对账二 · 设计 → 实现
 
 已知偏差：原型 S04「有门店时 + 创建门店」本期不做（quick-start 只建首店）。
@@ -199,8 +216,19 @@ MultiEntityIdentityFlowTest 11/11、StoreBannerFlowTest 5/5、CommerceAccessSecu
    未改本机运行中的实例与 env 文件。
 9. 追加（协调方 2026-11-05）：`MerchantProfileVO.account`，见 §2；`docs/api/examples/b-foundation.json` 三处商家档案示例同步补 `account`。
 
+### App 端与设计的出入
+
+1. **结果页（原型 S08）一并简化**：设计 §2 未列 `StandardStoreResultPage`。联调发现它仍是旧版（展示地区、店号、经营类型、开发用按钮），且对 OTHER 门店永远「FREE 待确认」（列表报 OTHER、门店上下文报经营类型，严格比对必然不等）。已改为：自填那一级跳过行业码比对（店号 / 主体 / 地区 / 币种比对照旧），未确认时自动刷新最多 5 次，底部「进入门店 / 返回我的门店」。
+2. **门店工作台首页也去掉了「经营地区」一行**，行业显示自填文字（设计只提到「我的」页签的地区按钮）。
+3. **地区未开放的空态**：服务端回空地区列表时，标题改为「我的门店」并给一句说明（设计 §4 风险里写的是「显示该地区暂未开放建店」）。
+4. **多地区兜底保留**：服务端若回多个地区（旧版后端），仍走原地区页 + 本地记忆；对应测试改用两地区数据继续覆盖。
+5. **地图选点按钮未渲染**：本期只做 `mapProvider` 解析，按钮等地图组件接入时再加（本机 CN 也是 null）。
+6. **有门店时不提供「＋ 创建门店」**（同 §0 不做项）。
+7. App 修改清单：`onboarding_api.dart`、`onboarding_controller.dart`、`onboarding_forms.dart`、`onboarding_store_setup.dart`、`onboarding_app.dart`、`onboarding_store_creation.dart`、`onboarding_models.dart`、`onboarding_widgets.dart`（`page()` 支持下拉刷新）、新增 `onboarding_profile.dart`；arb + 生成物；测试 5 个文件修改、新增 `onboarding_v4_flow_test.dart`。
+
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-11-05 | 用户确认按建议实施（含扁平步骤条） |
+| 2026-11-05 | 已实现：后端 062a45855（子代理）、App 端本地提交；后端定向测试、Flutter 全量 428 绿；手机模拟器全链路通过。未推送 |
