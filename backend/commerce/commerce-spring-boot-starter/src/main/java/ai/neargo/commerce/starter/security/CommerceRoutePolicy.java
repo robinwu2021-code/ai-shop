@@ -3,6 +3,7 @@ package ai.neargo.commerce.starter.security;
 import ai.neargo.commerce.api.access.AccessDenied;
 import ai.neargo.commerce.api.access.AccessStatus;
 
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -35,6 +36,34 @@ public final class CommerceRoutePolicy {
         private Route(Lane lane, String pathStore, String entitlement, String capability) {
             this(lane, pathStore, entitlement, capability, false);
         }
+    }
+
+    /**
+     * 主机登记的「门店成员即可」路由：主机已有的日常经营接口（商品、订单、主体、收款……）。
+     * 登录的是账户；这些接口在请求里选门店（X-Store-No），按「令牌 + 该门店成员 + 接口自己的权限码」放行，
+     * 不要求业务端权益。没登记的受保护路由照旧默认拒绝。
+     *
+     * @param methods HTTP 方法
+     * @param path    完整路径的正则（整串匹配）
+     */
+    public record HostRoute(Set<String> methods, Pattern path) {
+        public static HostRoute of(String methods, String pathRegex) {
+            return new HostRoute(Set.of(methods.split(",")), Pattern.compile(pathRegex));
+        }
+
+        boolean matches(String method, String fullPath) {
+            return methods.contains(method) && path.matcher(fullPath).matches();
+        }
+    }
+
+    private final List<HostRoute> hostRoutes;
+
+    public CommerceRoutePolicy() {
+        this(List.of());
+    }
+
+    public CommerceRoutePolicy(List<HostRoute> hostRoutes) {
+        this.hostRoutes = List.copyOf(hostRoutes);
     }
 
     public static final String BIZ = "END_BIZ_APP", POS = "END_APP_POS";
@@ -135,6 +164,12 @@ public final class CommerceRoutePolicy {
                         && (path.equals("/biz/message/read-all")
                                 || path.matches("/biz/message/" + ID + "/read")))
             return new Route(Lane.BOOTSTRAP, null, null, null);
+        for (HostRoute h : hostRoutes) {
+            if (h.matches(method, path)) {
+                var inPath = STORE.matcher(path);
+                return new Route(Lane.BOOTSTRAP, inPath.matches() ? inPath.group(1) : null, null, null, false);
+            }
+        }
         var m = STORE.matcher(path);
         if (!m.matches())
             return new Route(Lane.DENY, null, null, null, path.startsWith("/biz/stores/"));
