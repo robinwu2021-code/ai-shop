@@ -82,6 +82,11 @@ export const ROUTES = {
   payFlow: "/pages/pay-flow/index",
   payQrcodes: "/pages/pay-qrcodes/index",
   payGrants: "/pages/pay-grants/index",
+  // 平台商城：本店向平台采购套餐 / 硬件（首期线下银行转账，运营端核款）
+  bizMall: "/pages/biz-mall/index",
+  bizMallCheckout: "/pages/biz-mall-checkout/index",
+  bizMallOrders: "/pages/biz-mall-orders/index",
+  bizMallOrder: "/pages/biz-mall-order/index",
   stats: "/pages/stats/index",
   crossStore: "/pages/cross-store/index",
   plan: "/pages/plan/index",

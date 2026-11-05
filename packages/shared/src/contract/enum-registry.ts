@@ -853,6 +853,14 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:MallOfflineActionStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["ACCEPTED", "APPLIED", "UNMATCHED"],
     note: "核款/作废动作结果；ACCEPTED 只是受理、资金端未确认，UNMATCHED 记为 MALL_UNMATCHED 不发权益" },
   { decl: "ops-web:MallEvidencePurpose", dom: "commerce", shape: "CLASS", verdict: "OK", note: "运营凭证用途 PLATFORM_RECEIPT/RECONCILIATION/REFUND_PROOF" },
+  // B 端平台商城（商家向平台采购，首期线下银行转账）—— 与运营端同一份 commerce 契约，取值逐字一致
+  { decl: "b-app:MallProductKind", dom: "commerce", shape: "CLASS", verdict: "OK", note: "商城商品种类，对应 commerce-api ProductKind；同 ops-web:MallProductKind" },
+  { decl: "b-app:MallComponentKind", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU/订单组件种类 PLAN/END_PACKAGE/HARDWARE，对应 commerce-api ComponentKind；有 HARDWARE 才要收货地址" },
+  { decl: "b-app:MallOrderStatus", dom: "commerce", shape: "STATUS", verdict: "OK",
+    words: ["PENDING_INVENTORY", "AWAITING_PAYMENT", "PAYMENT_UNKNOWN", "PAID", "FULFILLING", "COMPLETED", "CANCEL_PENDING", "REFUNDING", "PARTIALLY_REFUNDED", "REFUNDED"],
+    note: "商城订单总状态，同 ops-web:MallOrderStatus；B 端页面按资金轴 paymentStatus 显示付款状态" },
+  { decl: "b-app:MallOfflineClaimStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["SUBMITTED", "REVIEWING", "CONFIRMED", "MISMATCHED", "DECLINED"],
+    note: "商家线下付款申报状态，同 ops-web:MallOfflineClaimStatus；申报不是到账，DECLINED 后用新申报号重报" },
   { decl: "ops-web:MallUnusedRefundPolicy", dom: "commerce", shape: "CLASS", verdict: "OK", note: "SKU 未使用数字权益的退款口径；已使用部分固定 MANUAL_ONLY" },
 // 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-hxkey，登记在那边；
   // 这里只留运营端（ops-web:Elec*）的那几条 —— 运营端仍在 ai-shop。

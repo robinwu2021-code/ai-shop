@@ -237,6 +237,11 @@ onShow(() => {
         收款（TDD-支付服务-I5接入层 S8）。**每格按自己的码显示**，不跟 biz:finance 绑 ——
         老板给收银员只勾了「代客收款」，他就只看到那一格；看结算是另一件事。
       -->
+      <!-- 平台商城：本店向平台买套餐 / 硬件。采购职责（biz:store:admin）才显示，与后端同一个判据 -->
+      <view v-if="merchant.can('biz:store:admin')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.bizMall)">
+        <text class="txt-body cell__label">{{ $t("bizMall.store.title") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view v-if="merchant.can('mch:pay:collect')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payCollect)">
         <text class="txt-body cell__label">{{ $t("bizPay.collect.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>

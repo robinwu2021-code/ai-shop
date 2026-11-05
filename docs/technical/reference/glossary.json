@@ -8702,6 +8702,504 @@
           "ar": "{a} ليس لديهم الوسم؛ سيُزال من {n}"
         },
         {
+          "key": "bizMall.address.city",
+          "zh-CN": "城市",
+          "en": "City",
+          "ar": "المدينة"
+        },
+        {
+          "key": "bizMall.address.line",
+          "zh-CN": "详细地址",
+          "en": "Address",
+          "ar": "العنوان"
+        },
+        {
+          "key": "bizMall.address.optional",
+          "zh-CN": "选填",
+          "en": "Optional",
+          "ar": "اختياري"
+        },
+        {
+          "key": "bizMall.address.phone",
+          "zh-CN": "电话",
+          "en": "Phone",
+          "ar": "الهاتف"
+        },
+        {
+          "key": "bizMall.address.postal",
+          "zh-CN": "邮编",
+          "en": "Postal code",
+          "ar": "الرمز البريدي"
+        },
+        {
+          "key": "bizMall.address.recipient",
+          "zh-CN": "收件人",
+          "en": "Recipient",
+          "ar": "المستلم"
+        },
+        {
+          "key": "bizMall.address.required",
+          "zh-CN": "必填",
+          "en": "Required",
+          "ar": "مطلوب"
+        },
+        {
+          "key": "bizMall.address.title",
+          "zh-CN": "收货地址",
+          "en": "Shipping address",
+          "ar": "عنوان الشحن"
+        },
+        {
+          "key": "bizMall.checkout.days",
+          "zh-CN": "{n} 天",
+          "en": "{n} days",
+          "ar": "{n} يومًا"
+        },
+        {
+          "key": "bizMall.checkout.expiresAt",
+          "zh-CN": "报价 {time} 前有效",
+          "en": "Quote valid until {time}",
+          "ar": "عرض السعر صالح حتى {time}"
+        },
+        {
+          "key": "bizMall.checkout.offlineHint",
+          "zh-CN": "提交后会给出平台收款账户。请在截止时间前转账，再回到订单上传转账凭证；平台核对到账后开通权益、安排发货。",
+          "en": "After you submit, we'll show the platform's bank account. Transfer before the deadline, then upload the transfer receipt on the order. Access and shipping start once the platform confirms the payment.",
+          "ar": "بعد الإرسال سنعرض حساب المنصة البنكي. حوّل المبلغ قبل الموعد النهائي، ثم ارفع إيصال التحويل في الطلب. يبدأ التفعيل والشحن بعد تأكيد المنصة للدفع."
+        },
+        {
+          "key": "bizMall.checkout.payBy",
+          "zh-CN": "付款方式：银行转账",
+          "en": "Payment: bank transfer",
+          "ar": "طريقة الدفع: تحويل بنكي"
+        },
+        {
+          "key": "bizMall.checkout.payable",
+          "zh-CN": "应付金额",
+          "en": "Amount due",
+          "ar": "المبلغ المستحق"
+        },
+        {
+          "key": "bizMall.checkout.quoting",
+          "zh-CN": "正在报价…",
+          "en": "Getting a quote…",
+          "ar": "جارٍ إعداد عرض السعر…"
+        },
+        {
+          "key": "bizMall.checkout.submit",
+          "zh-CN": "提交订单",
+          "en": "Submit order",
+          "ar": "إرسال الطلب"
+        },
+        {
+          "key": "bizMall.checkout.title",
+          "zh-CN": "确认商城订单",
+          "en": "Confirm Order",
+          "ar": "تأكيد الطلب"
+        },
+        {
+          "key": "bizMall.checkout.total",
+          "zh-CN": "商品总额",
+          "en": "Total",
+          "ar": "الإجمالي"
+        },
+        {
+          "key": "bizMall.claim.bankReference",
+          "zh-CN": "转账备注 / 账号末五码",
+          "en": "Transfer note / last 5 digits",
+          "ar": "ملاحظة التحويل / آخر 5 أرقام"
+        },
+        {
+          "key": "bizMall.claim.bankReferenceHint",
+          "zh-CN": "必填，平台对账用",
+          "en": "Required, used to match the payment",
+          "ar": "مطلوب لمطابقة الدفع"
+        },
+        {
+          "key": "bizMall.claim.hint",
+          "zh-CN": "上传转账凭证、填写转账备注与时间。申报后由平台核对到账，核对通过前订单仍显示待付款。",
+          "en": "Upload the transfer receipt and enter the transfer note and time. The platform will check the payment; the order stays awaiting payment until then.",
+          "ar": "ارفع إيصال التحويل وأدخل ملاحظة التحويل ووقته. ستتحقق المنصة من الدفع، ويبقى الطلب بانتظار الدفع حتى ذلك الحين."
+        },
+        {
+          "key": "bizMall.claim.history",
+          "zh-CN": "付款申报",
+          "en": "Payment reports",
+          "ar": "بلاغات الدفع"
+        },
+        {
+          "key": "bizMall.claim.paidAt",
+          "zh-CN": "转账时间",
+          "en": "Transfer time",
+          "ar": "وقت التحويل"
+        },
+        {
+          "key": "bizMall.claim.receipts",
+          "zh-CN": "转账凭证（最多 3 张）",
+          "en": "Transfer receipts (up to 3)",
+          "ar": "إيصالات التحويل (حتى 3)"
+        },
+        {
+          "key": "bizMall.claim.status.CONFIRMED",
+          "zh-CN": "已确认到账",
+          "en": "Payment confirmed",
+          "ar": "تم تأكيد الدفع"
+        },
+        {
+          "key": "bizMall.claim.status.DECLINED",
+          "zh-CN": "未通过，请重新申报",
+          "en": "Not accepted, please report again",
+          "ar": "لم يُقبل، يُرجى الإبلاغ مجددًا"
+        },
+        {
+          "key": "bizMall.claim.status.MISMATCHED",
+          "zh-CN": "金额不符",
+          "en": "Amount mismatch",
+          "ar": "المبلغ غير مطابق"
+        },
+        {
+          "key": "bizMall.claim.status.REVIEWING",
+          "zh-CN": "核对中",
+          "en": "Checking",
+          "ar": "قيد التحقق"
+        },
+        {
+          "key": "bizMall.claim.status.SUBMITTED",
+          "zh-CN": "待核对",
+          "en": "To be checked",
+          "ar": "بانتظار التحقق"
+        },
+        {
+          "key": "bizMall.claim.submit",
+          "zh-CN": "提交申报",
+          "en": "Submit report",
+          "ar": "إرسال البلاغ"
+        },
+        {
+          "key": "bizMall.claim.submitted",
+          "zh-CN": "已提交，等待平台核对",
+          "en": "Submitted. Waiting for the platform to confirm.",
+          "ar": "تم الإرسال، بانتظار تأكيد المنصة."
+        },
+        {
+          "key": "bizMall.claim.title",
+          "zh-CN": "我已转账",
+          "en": "I've paid",
+          "ar": "لقد حوّلت المبلغ"
+        },
+        {
+          "key": "bizMall.claim.waiting",
+          "zh-CN": "已申报，平台正在核对到账。核对通过后订单会变为已付款。",
+          "en": "Reported. The platform is checking the payment; the order will show as paid once confirmed.",
+          "ar": "تم الإبلاغ. تتحقق المنصة من الدفع، وسيظهر الطلب مدفوعًا بعد التأكيد."
+        },
+        {
+          "key": "bizMall.err.CHECKOUT_UNAVAILABLE",
+          "zh-CN": "这件商品暂时不能购买",
+          "en": "This item can't be purchased right now",
+          "ar": "لا يمكن شراء هذا المنتج حاليًا"
+        },
+        {
+          "key": "bizMall.err.CHECK_UNAVAILABLE",
+          "zh-CN": "暂时无法校验权限，请稍后再试",
+          "en": "Can't verify permissions right now. Please try again later.",
+          "ar": "تعذّر التحقق من الصلاحيات حاليًا، يُرجى المحاولة لاحقًا."
+        },
+        {
+          "key": "bizMall.err.EVIDENCE_NOT_IMAGE",
+          "zh-CN": "凭证只能是 JPG 或 PNG 图片",
+          "en": "Receipts must be JPG or PNG images",
+          "ar": "يجب أن تكون الإيصالات صور JPG أو PNG"
+        },
+        {
+          "key": "bizMall.err.EVIDENCE_TOO_LARGE",
+          "zh-CN": "凭证图片不能超过 10MB",
+          "en": "Receipt images can't exceed 10 MB",
+          "ar": "لا يمكن أن تتجاوز صورة الإيصال 10 ميغابايت"
+        },
+        {
+          "key": "bizMall.err.EVIDENCE_UNAVAILABLE",
+          "zh-CN": "凭证没有上传成功，请重新选择",
+          "en": "The receipt didn't upload. Please choose it again.",
+          "ar": "لم يُرفع الإيصال، يُرجى اختياره مجددًا."
+        },
+        {
+          "key": "bizMall.err.FORBIDDEN",
+          "zh-CN": "没有权限做这件事",
+          "en": "You don't have permission to do this",
+          "ar": "لا تملك صلاحية القيام بذلك"
+        },
+        {
+          "key": "bizMall.err.IDEMPOTENCY_CONFLICT",
+          "zh-CN": "这笔订单已提交过，请到商城订单查看",
+          "en": "This order was already submitted. See Store Orders.",
+          "ar": "أُرسل هذا الطلب من قبل، راجع طلبات المتجر."
+        },
+        {
+          "key": "bizMall.err.INVALID_REQUEST",
+          "zh-CN": "填写的信息不完整或格式不对",
+          "en": "Some details are missing or invalid",
+          "ar": "بعض البيانات ناقصة أو غير صحيحة"
+        },
+        {
+          "key": "bizMall.err.INVENTORY_MAPPING_UNAVAILABLE",
+          "zh-CN": "这件硬件暂时不能购买",
+          "en": "This hardware can't be purchased right now",
+          "ar": "لا يمكن شراء هذا الجهاز حاليًا"
+        },
+        {
+          "key": "bizMall.err.NOT_FOUND",
+          "zh-CN": "找不到这笔订单或商品",
+          "en": "Order or item not found",
+          "ar": "الطلب أو المنتج غير موجود"
+        },
+        {
+          "key": "bizMall.err.OFFLINE_ALREADY_PAID",
+          "zh-CN": "这笔订单已付款",
+          "en": "This order is already paid",
+          "ar": "هذا الطلب مدفوع بالفعل"
+        },
+        {
+          "key": "bizMall.err.OFFLINE_INSTRUCTIONS_NOT_ISSUED",
+          "zh-CN": "付款指引还没发出，请稍后刷新",
+          "en": "Payment instructions aren't ready yet. Please refresh later.",
+          "ar": "تعليمات الدفع غير جاهزة بعد، يُرجى التحديث لاحقًا."
+        },
+        {
+          "key": "bizMall.err.OFFLINE_UNAVAILABLE",
+          "zh-CN": "平台暂未开放银行转账购买",
+          "en": "Bank transfer purchases aren't available yet",
+          "ar": "الشراء بالتحويل البنكي غير متاح بعد"
+        },
+        {
+          "key": "bizMall.err.QUOTE_EXPIRED",
+          "zh-CN": "报价已过期，已为你重新报价",
+          "en": "The quote expired. We've requoted for you.",
+          "ar": "انتهت صلاحية عرض السعر، وأعددنا عرضًا جديدًا."
+        },
+        {
+          "key": "bizMall.err.QUOTE_USED",
+          "zh-CN": "这份报价已用过，已为你重新报价",
+          "en": "That quote was already used. We've requoted for you.",
+          "ar": "استُخدم عرض السعر هذا من قبل، وأعددنا عرضًا جديدًا."
+        },
+        {
+          "key": "bizMall.err.STORE_UNAVAILABLE",
+          "zh-CN": "当前门店暂不能购买",
+          "en": "This store can't make purchases right now",
+          "ar": "لا يمكن لهذا المتجر الشراء حاليًا"
+        },
+        {
+          "key": "bizMall.err.VERSION_CONFLICT",
+          "zh-CN": "商品信息有变化，已为你重新报价",
+          "en": "The item changed. We've requoted for you.",
+          "ar": "تغيّر المنتج، وأعددنا عرض سعر جديدًا."
+        },
+        {
+          "key": "bizMall.err.generic",
+          "zh-CN": "操作没有成功（{code}）",
+          "en": "That didn't work ({code})",
+          "ar": "تعذّر إتمام العملية ({code})"
+        },
+        {
+          "key": "bizMall.err.network",
+          "zh-CN": "网络异常，请稍后再试",
+          "en": "Network error. Please try again later.",
+          "ar": "خطأ في الشبكة، يُرجى المحاولة لاحقًا."
+        },
+        {
+          "key": "bizMall.fulfillment.COMPLETED",
+          "zh-CN": "已交付",
+          "en": "Delivered",
+          "ar": "تم التسليم"
+        },
+        {
+          "key": "bizMall.fulfillment.FAILED",
+          "zh-CN": "交付异常",
+          "en": "Delivery issue",
+          "ar": "مشكلة في التسليم"
+        },
+        {
+          "key": "bizMall.fulfillment.PARTIAL",
+          "zh-CN": "部分交付",
+          "en": "Partly delivered",
+          "ar": "تسليم جزئي"
+        },
+        {
+          "key": "bizMall.fulfillment.PENDING",
+          "zh-CN": "待交付",
+          "en": "To be delivered",
+          "ar": "بانتظار التسليم"
+        },
+        {
+          "key": "bizMall.fulfillment.PROCESSING",
+          "zh-CN": "交付中",
+          "en": "Delivering",
+          "ar": "قيد التسليم"
+        },
+        {
+          "key": "bizMall.fulfillment.WAIT_INVENTORY",
+          "zh-CN": "备货中",
+          "en": "Preparing",
+          "ar": "قيد التجهيز"
+        },
+        {
+          "key": "bizMall.kind.END_PACKAGE",
+          "zh-CN": "业务端",
+          "en": "Business app",
+          "ar": "تطبيق أعمال"
+        },
+        {
+          "key": "bizMall.kind.HARDWARE",
+          "zh-CN": "硬件",
+          "en": "Hardware",
+          "ar": "جهاز"
+        },
+        {
+          "key": "bizMall.kind.PLAN",
+          "zh-CN": "套餐",
+          "en": "Plan",
+          "ar": "باقة"
+        },
+        {
+          "key": "bizMall.order.createdAt",
+          "zh-CN": "下单时间",
+          "en": "Ordered at",
+          "ar": "وقت الطلب"
+        },
+        {
+          "key": "bizMall.order.fulfillment",
+          "zh-CN": "交付",
+          "en": "Delivery",
+          "ar": "التسليم"
+        },
+        {
+          "key": "bizMall.order.shipped",
+          "zh-CN": "已发货：{carrier} {no}",
+          "en": "Shipped: {carrier} {no}",
+          "ar": "تم الشحن: {carrier} {no}"
+        },
+        {
+          "key": "bizMall.order.title",
+          "zh-CN": "商城订单详情",
+          "en": "Order Details",
+          "ar": "تفاصيل الطلب"
+        },
+        {
+          "key": "bizMall.orders.empty",
+          "zh-CN": "本店还没有商城订单",
+          "en": "No platform orders for this store yet",
+          "ar": "لا توجد طلبات من المنصة لهذا المتجر بعد"
+        },
+        {
+          "key": "bizMall.orders.title",
+          "zh-CN": "商城订单",
+          "en": "Store Orders",
+          "ar": "طلبات المتجر"
+        },
+        {
+          "key": "bizMall.pay.accountName",
+          "zh-CN": "户名",
+          "en": "Account name",
+          "ar": "اسم الحساب"
+        },
+        {
+          "key": "bizMall.pay.amount",
+          "zh-CN": "转账金额",
+          "en": "Amount",
+          "ar": "المبلغ"
+        },
+        {
+          "key": "bizMall.pay.bankAccount",
+          "zh-CN": "收款账号",
+          "en": "Account number",
+          "ar": "رقم الحساب"
+        },
+        {
+          "key": "bizMall.pay.bankCode",
+          "zh-CN": "银行代码",
+          "en": "Bank code",
+          "ar": "رمز البنك"
+        },
+        {
+          "key": "bizMall.pay.dueAt",
+          "zh-CN": "付款截止",
+          "en": "Pay by",
+          "ar": "آخر موعد للدفع"
+        },
+        {
+          "key": "bizMall.pay.hint",
+          "zh-CN": "请按上面金额转账一次。点账号可复制。转账后在下方上传凭证并申报。",
+          "en": "Transfer the exact amount once. Tap the account number to copy it. After transferring, upload the receipt below.",
+          "ar": "حوّل المبلغ المحدد مرة واحدة. اضغط على رقم الحساب لنسخه. بعد التحويل ارفع الإيصال أدناه."
+        },
+        {
+          "key": "bizMall.pay.title",
+          "zh-CN": "银行转账付款",
+          "en": "Pay by bank transfer",
+          "ar": "الدفع بالتحويل البنكي"
+        },
+        {
+          "key": "bizMall.payment.CANCEL_PENDING",
+          "zh-CN": "取消处理中",
+          "en": "Cancelling",
+          "ar": "جارٍ الإلغاء"
+        },
+        {
+          "key": "bizMall.payment.CLOSED",
+          "zh-CN": "已关闭",
+          "en": "Closed",
+          "ar": "مغلق"
+        },
+        {
+          "key": "bizMall.payment.PAID",
+          "zh-CN": "已付款",
+          "en": "Paid",
+          "ar": "مدفوع"
+        },
+        {
+          "key": "bizMall.payment.PAYING",
+          "zh-CN": "付款处理中",
+          "en": "Payment processing",
+          "ar": "جارٍ معالجة الدفع"
+        },
+        {
+          "key": "bizMall.payment.PAYMENT_UNKNOWN",
+          "zh-CN": "付款确认中",
+          "en": "Confirming payment",
+          "ar": "جارٍ تأكيد الدفع"
+        },
+        {
+          "key": "bizMall.payment.UNPAID",
+          "zh-CN": "待付款",
+          "en": "Awaiting payment",
+          "ar": "بانتظار الدفع"
+        },
+        {
+          "key": "bizMall.store.cannotProcure",
+          "zh-CN": "你没有为本店采购的权限，请联系店主",
+          "en": "You can't purchase for this store. Please contact the owner.",
+          "ar": "لا تملك صلاحية الشراء لهذا المتجر، يُرجى التواصل مع المالك."
+        },
+        {
+          "key": "bizMall.store.empty",
+          "zh-CN": "本店暂时没有可购买的商品",
+          "en": "Nothing available for this store yet",
+          "ar": "لا توجد منتجات متاحة لهذا المتجر بعد"
+        },
+        {
+          "key": "bizMall.store.hint",
+          "zh-CN": "向平台购买套餐、业务端与硬件，归属当前门店",
+          "en": "Buy plans, business apps and hardware from the platform for this store",
+          "ar": "اشترِ الباقات وتطبيقات الأعمال والأجهزة من المنصة لهذا المتجر"
+        },
+        {
+          "key": "bizMall.store.title",
+          "zh-CN": "平台商城",
+          "en": "Platform Store",
+          "ar": "متجر المنصة"
+        },
+        {
           "key": "bizPay.collect.again",
           "zh-CN": "再收一笔",
           "en": "Collect another",
@@ -42181,6 +42679,13 @@
       },
       {
         "host": "IdentityType",
+        "name": "EMAIL",
+        "value": "EMAIL",
+        "zh": "已验证的邮箱（归一化为 trim + 全小写）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "IdentityType",
         "name": "WX_UNIONID",
         "value": "WX_UNIONID",
         "zh": "微信开放平台 unionid：同主体下所有微信应用通用。",
@@ -42297,6 +42802,13 @@
         "value": "SHOP",
         "zh": "",
         "module": "shop-inventory"
+      },
+      {
+        "host": "StoreVO",
+        "name": "OTHER",
+        "value": "OTHER",
+        "zh": "行业或子业态选了「其他」时报的码，与 store-setup / quick-start 同一个",
+        "module": "shop-merchant"
       },
       {
         "host": "MchAccount",
@@ -44482,6 +44994,15 @@
         ],
         "zh": "交接方式：POOL 过账生成出库池记录。",
         "module": "inventory"
+      },
+      {
+        "name": "HardwareStock",
+        "values": [
+          "UNTRACKED",
+          "COORDINATED"
+        ],
+        "zh": "商城硬件是否接进销存。",
+        "module": "shop-app"
       },
       {
         "name": "Holder",
@@ -47800,6 +48321,16 @@
       },
       {
         "name": "MallComponentKind",
+        "client": "b-app",
+        "values": [
+          "PLAN",
+          "END_PACKAGE",
+          "HARDWARE"
+        ],
+        "zh": "组件种类：套餐 / 业务端包 / 硬件"
+      },
+      {
+        "name": "MallComponentKind",
         "client": "ops-web",
         "values": [
           "PLAN",
@@ -47853,6 +48384,18 @@
       },
       {
         "name": "MallOfflineClaimStatus",
+        "client": "b-app",
+        "values": [
+          "SUBMITTED",
+          "REVIEWING",
+          "CONFIRMED",
+          "MISMATCHED",
+          "DECLINED"
+        ],
+        "zh": "申报状态。"
+      },
+      {
+        "name": "MallOfflineClaimStatus",
         "client": "ops-web",
         "values": [
           "SUBMITTED",
@@ -47862,6 +48405,24 @@
           "DECLINED"
         ],
         "zh": "申报状态（申报 ≠ 到账）"
+      },
+      {
+        "name": "MallOrderStatus",
+        "client": "b-app",
+        "values": [
+          "PENDING_INVENTORY",
+          "AWAITING_PAYMENT",
+          "PAYMENT_UNKNOWN",
+          "PAID",
+          "FULFILLING",
+          "COMPLETED",
+          "CANCEL_PENDING",
+          "CLOSED",
+          "REFUNDING",
+          "PARTIALLY_REFUNDED",
+          "REFUNDED"
+        ],
+        "zh": "订单总状态（概览用。"
       },
       {
         "name": "MallOrderStatus",
@@ -47903,6 +48464,17 @@
           "CHAIN"
         ],
         "zh": "三档"
+      },
+      {
+        "name": "MallProductKind",
+        "client": "b-app",
+        "values": [
+          "PLAN",
+          "END_ACCESS",
+          "HARDWARE",
+          "BUNDLE"
+        ],
+        "zh": "商品种类：套餐 / 业务端 / 硬件 / 组合套装"
       },
       {
         "name": "MallProductKind",
@@ -49006,6 +49578,10 @@
           "/pages/pay-flow/index",
           "/pages/pay-qrcodes/index",
           "/pages/pay-grants/index",
+          "/pages/biz-mall/index",
+          "/pages/biz-mall-checkout/index",
+          "/pages/biz-mall-orders/index",
+          "/pages/biz-mall-order/index",
           "/pages/stats/index",
           "/pages/cross-store/index",
           "/pages/plan/index",
@@ -52491,6 +53067,14 @@
       "module": "shop-app"
     },
     {
+      "host": "BizFoundationController",
+      "name": "OTHER",
+      "type": "String",
+      "value": "StoreVO.OTHER",
+      "zh": "行业与子业态的「其他」都用这个码。",
+      "module": "shop-app"
+    },
+    {
       "host": "ReportDailyRollupJob",
       "name": "WATERMARK_KEY",
       "type": "String",
@@ -52560,6 +53144,14 @@
       "type": "int",
       "value": "120",
       "zh": "发货信息录入 item_desc 的上限",
+      "module": "shop-base"
+    },
+    {
+      "host": "OtpStore",
+      "name": "TTL",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(5)",
+      "zh": "",
       "module": "shop-base"
     },
     {
@@ -54982,7 +55574,7 @@
       "host": "IdentityType",
       "name": "RESOLVE_ORDER",
       "type": "List<String>",
-      "value": "List.of(PHONE, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB)",
+      "value": "List.of(PHONE, EMAIL, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB)",
       "zh": "认人时的尝试顺序。",
       "module": "shop-core"
     },

@@ -1,5 +1,6 @@
 import type {StoredValueFinanceApi} from "./stored-value-finance";
 import type { PayApi } from "./pay";
+import type { MallApi } from "./mall";
 import type { StoredValueGovernanceApi } from "./stored-value-governance";
 import type { IssuerApi } from "./stored-value-issuers";
 import type { ManagementApi } from "./management-types";
@@ -850,7 +851,7 @@ export interface EstateList {
   stale: boolean;
 }
 
-export interface MerchantApi extends ManagementApi,IssuerApi,StoredValueGovernanceApi,StoredValueFinanceApi,PayApi {
+export interface MerchantApi extends ManagementApi,IssuerApi,StoredValueGovernanceApi,StoredValueFinanceApi,PayApi,MallApi {
   mScopeCandidates(store:string,q:{keyword?:string;cursor?:string;size?:number}):Promise<SV.ScopeCandidatePage>;
   mScopeSelectCustomer(store:string,body:{source:SV.ScopeSelectionSource}):Promise<SV.ScopeSelectedCustomer>;
   mScopeEnrollMember(store:string,body:{phone:string;remark?:string;tagNos?:string[]}):Promise<SV.ScopeMemberSummary>;

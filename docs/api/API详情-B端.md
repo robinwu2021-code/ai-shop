@@ -11720,6 +11720,222 @@ mSvStoreSummary　🔒
 类型：[`FulfillmentImpactItem`](#fulfillmentimpactitem)\[\]
 
 
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims`
+
+平台商城：申报已转账　🔒
+
+**入参**
+
+请求体：[`MallOfflineClaimRequest`](#mallofflineclaimrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号（端上生成，同号重放幂等；被拒后用新号重报） |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额，取指引里的应转账金额 |
+| `declaredPaidAt` | `string` | 是 | 转账时间（ISO） |
+| `bankReference` | `string` | 是 | 转账备注 / 流水号 / 账号末几位 —— 运营对账用 |
+| `evidenceKeys` | `string`\[\] | 是 | 1–10 张已上传凭证的 assetKey |
+
+**出参**（`data`）
+
+类型：[`MallOfflineClaim`](#mallofflineclaim)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号 |
+| `status` | [`MallOfflineClaimStatus`](#mallofflineclaimstatus) | 是 | 申报状态 |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
+| `declaredPaidAt` | `string` | 是 | 申报的转账时间（ISO） |
+| `submittedAt` | `string` | 是 | 提交时间（ISO） |
+
+
+#### GET `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims`
+
+平台商城：本单的付款申报　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflineClaim`](#mallofflineclaim)\[\]
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence`
+
+平台商城：预留一个转账凭证位　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallEvidenceTicket`](#mallevidenceticket)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键；随后按它上传字节、在申报里引用 |
+| `purpose` | `string` | 是 | 用途（商家侧固定 BUYER_RECEIPT） |
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content`
+
+平台商城：上传转账凭证图片　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallEvidenceUploaded`](#mallevidenceuploaded)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions`
+
+平台商城：发出付款指引（幂等）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflineInstructions`](#mallofflineinstructions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
+| `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
+| `profileNo` | `string` | 是 | 收款档案号 |
+| `profileVersion` | `number` | 是 | 收款档案版本 |
+| `instructions` | [`Record_string_string`](#record_string_string) | 是 | 收款信息：bankCode / bankAccount / accountName |
+
+
+#### GET `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions`
+
+平台商城：查看付款指引　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflineInstructions`](#mallofflineinstructions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
+| `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
+| `profileNo` | `string` | 是 | 收款档案号 |
+| `profileVersion` | `number` | 是 | 收款档案版本 |
+| `instructions` | [`Record_string_string`](#record_string_string) | 是 | 收款信息：bankCode / bankAccount / accountName |
+
+
+#### POST `/biz/stores/{storeNo}/mall/offline/quotes`
+
+平台商城：线下转账报价　🔒
+
+**入参**
+
+请求体：[`MallQuoteRequest`](#mallquoterequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lines` | [`MallQuoteLine`](#mallquoteline)\[\] | 是 | 报价行；首期一单一个 SKU |
+| `currency` | `string` | 是 | 币种，取本店结算币种 |
+
+**出参**（`data`）
+
+类型：[`MallQuote`](#mallquote)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号；下单时带上 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 商品总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付现金 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `expiresAt` | `string` | 否 | 过期时间（ISO） |
+
+
+#### POST `/biz/stores/{storeNo}/mall/orders`
+
+平台商城：按报价下单　🔒
+
+**入参**
+
+请求体：[`MallPlaceRequest`](#mallplacerequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 报价号 |
+| `idempotencyKey` | `string` | 是 | 幂等键；同一次确认重复提交只下一单 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 是 | 收货地址；纯数字订单为 null |
+
+**出参**（`data`）
+
+类型：[`MallOrder`](#mallorder)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 否 | 订单号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `status` | [`MallOrderStatus`](#mallorderstatus) | 否 | 总状态 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `createdAt` | `string` | 否 | 下单时间（ISO） |
+
+
+#### GET `/biz/stores/{storeNo}/mall/orders`
+
+平台商城：本店的商城订单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOrderSummary`](#mallordersummary)\[\]
+
+
+#### GET `/biz/stores/{storeNo}/mall/orders/{orderNo}`
+
+平台商城：订单详情　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOrderDetail`](#mallorderdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 硬件发货 |
+
+
+#### GET `/biz/stores/{storeNo}/mall/products`
+
+平台商城：本店可买的商品　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallStorefront`](#mallstorefront)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `businessTypeCode` | `string` | 否 | 门店经营类型 |
+| `currency` | `string` | 否 | 本店结算币种；报价按它 |
+| `catalogVersion` | `number` | 否 | 目录版本 |
+| `canProcure` | `boolean` | 否 | 当前账号能不能为本店采购 |
+| `products` | [`MallStorefrontProduct`](#mallstorefrontproduct)\[\] | 否 | 商品 |
+
+
 #### GET `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts`
 
 Separate local and brand wallets　🔒
@@ -13526,6 +13742,331 @@ Delivery state of an inventory/order synchronization event.
 | `outcome` | `string` | 是 | 更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。 |
 | `detail` | `string,null` | 是 | 查询结果或最近节点摘要；不含收件人手机号。 |
 | `occurredAt` | `number` | 是 | 更新时间，UTC 毫秒时间戳。 |
+
+### MallComponentKind
+
+组件种类：套餐 / 业务端包 / 硬件
+
+枚举取值：
+
+- `PLAN`
+- `END_PACKAGE`
+- `HARDWARE`
+
+### MallEvidenceTicket
+
+凭证预留回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键；随后按它上传字节、在申报里引用 |
+| `purpose` | `string` | 是 | 用途（商家侧固定 BUYER_RECEIPT） |
+
+### MallEvidenceUploaded
+
+凭证上传回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+
+### MallMoney
+
+金额：币种 + 最小单位整数字符串
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string` | 是 | ISO 4217 三位大写币种（TWD / CNY …） |
+| `minor` | `string` | 是 | 最小货币单位的十进制整数文本（TWD 699000 = NT$6,990.00）；不是 number，避免超过 2^53 失真 |
+
+### MallOfflineClaim
+
+商家的付款申报
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号 |
+| `status` | [`MallOfflineClaimStatus`](#mallofflineclaimstatus) | 是 | 申报状态 |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
+| `declaredPaidAt` | `string` | 是 | 申报的转账时间（ISO） |
+| `submittedAt` | `string` | 是 | 提交时间（ISO） |
+
+### MallOfflineClaimRequest
+
+付款申报请求
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号（端上生成，同号重放幂等；被拒后用新号重报） |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额，取指引里的应转账金额 |
+| `declaredPaidAt` | `string` | 是 | 转账时间（ISO） |
+| `bankReference` | `string` | 是 | 转账备注 / 流水号 / 账号末几位 —— 运营对账用 |
+| `evidenceKeys` | `string`\[\] | 是 | 1–10 张已上传凭证的 assetKey |
+
+### MallOfflineClaimStatus
+
+申报状态。**申报不是到账**：CONFIRMED 才表示运营已核到款
+
+枚举取值：
+
+- `SUBMITTED`
+- `REVIEWING`
+- `CONFIRMED`
+- `MISMATCHED`
+- `DECLINED`
+
+### MallOfflineInstructions
+
+已发出的付款指引（收款账户按发出时的档案版本冻结）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应转账金额 |
+| `paymentDueAt` | `string` | 是 | 付款截止（ISO 时间） |
+| `profileNo` | `string` | 是 | 收款档案号 |
+| `profileVersion` | `number` | 是 | 收款档案版本 |
+| `instructions` | [`Record_string_string`](#record_string_string) | 是 | 收款信息：bankCode / bankAccount / accountName |
+
+### MallOrder
+
+订单
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 否 | 订单号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `status` | [`MallOrderStatus`](#mallorderstatus) | 否 | 总状态 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `createdAt` | `string` | 否 | 下单时间（ISO） |
+
+### MallOrderDetail
+
+订单详情
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuote`](#mallquote) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 硬件发货 |
+
+### MallOrderStatus
+
+订单总状态（概览用；付款以资金轴 paymentStatus 为准）
+
+枚举取值：
+
+- `PENDING_INVENTORY`
+- `AWAITING_PAYMENT`
+- `PAYMENT_UNKNOWN`
+- `PAID`
+- `FULFILLING`
+- `COMPLETED`
+- `CANCEL_PENDING`
+- `CLOSED`
+- `REFUNDING`
+- `PARTIALLY_REFUNDED`
+- `REFUNDED`
+
+### MallOrderSummary
+
+订单概览：总状态 + 资金 / 交付 / 退款三个独立维度
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`MallOrder`](#mallorder) | 否 | 订单 |
+| `paymentStatus` | `string` | 否 | 资金维度：UNPAID / PAYING / PAYMENT_UNKNOWN / CANCEL_PENDING / PAID / CLOSED |
+| `fulfillmentStatus` | `string` | 否 | 权益 / 交付维度 |
+| `refundStatus` | `string` | 否 | 退款维度 |
+
+### MallPlaceRequest
+
+下单请求
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 报价号 |
+| `idempotencyKey` | `string` | 是 | 幂等键；同一次确认重复提交只下一单 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 是 | 收货地址；纯数字订单为 null |
+
+### MallProductInfo
+
+商品基本信息
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 否 | 商品号 |
+| `kind` | [`MallProductKind`](#mallproductkind) | 否 | 商品种类 |
+| `name` | `string` | 否 | 名称 |
+| `description` | `string,null` | 否 | 描述 |
+| `categoryCode` | `string` | 否 | 类目编码 |
+
+### MallProductKind
+
+商品种类：套餐 / 业务端 / 硬件 / 组合套装
+
+枚举取值：
+
+- `PLAN`
+- `END_ACCESS`
+- `HARDWARE`
+- `BUNDLE`
+
+### MallQuote
+
+报价（服务器冻结，默认 15 分钟有效）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号；下单时带上 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 商品总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付现金 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `expiresAt` | `string` | 否 | 过期时间（ISO） |
+
+### MallQuoteComponent
+
+报价 / 订单里冻结的组件与金额
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `componentNo` | `string` | 否 | 组件号 |
+| `kind` | [`MallComponentKind`](#mallcomponentkind) | 否 | 种类 |
+| `listAmount` | [`MallMoney`](#mallmoney) | 否 | 原价 |
+| `dealAmount` | [`MallMoney`](#mallmoney) | 否 | 成交价 |
+| `creditAmount` | [`MallMoney`](#mallmoney) | 否 | 抵扣部分 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金部分 |
+| `cycleDays` | `number` | 否 | 周期天数 |
+| `quantity` | `number` | 否 | 数量 |
+
+### MallQuoteLine
+
+报价行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuVersionNo` | `string` | 是 | SKU 版本号 |
+| `quantity` | `number` | 是 | 数量 |
+
+### MallQuoteRequest
+
+报价请求
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lines` | [`MallQuoteLine`](#mallquoteline)\[\] | 是 | 报价行；首期一单一个 SKU |
+| `currency` | `string` | 是 | 币种，取本店结算币种 |
+
+### MallReadiness
+
+在线支付口径的可购买判断（线下转账另有判断，以报价结果为准）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `available` | `boolean` | 否 | 在线支付是否可买 |
+| `reasons` | `string`\[\] | 否 | 不可买的原因码 |
+
+### MallShipment
+
+硬件发货
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 否 | 操作号 |
+| `orderComponentNo` | `string` | 否 | 订单组件号 |
+| `carrierCode` | `string` | 否 | 承运商 |
+| `trackingNo` | `string` | 否 | 运单号 |
+| `quantity` | `number` | 否 | 数量 |
+| `status` | `string` | 否 | 状态 |
+
+### MallShippingAddress
+
+收货地址（含硬件时必填）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recipient` | `string` | 否 | 收件人 |
+| `phone` | `string` | 否 | 电话 |
+| `countryCode` | `string` | 否 | 国家 / 地区码（TW / CN / AE） |
+| `region` | `string,null` | 否 | 省 / 州 |
+| `city` | `string,null` | 否 | 城市 |
+| `addressLine` | `string` | 否 | 详细地址 |
+| `postalCode` | `string,null` | 否 | 邮编 |
+
+### MallSku
+
+可售 SKU 的已发布版本
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 否 | 所属商品号 |
+| `skuNo` | `string` | 否 | SKU 号 |
+| `skuVersionNo` | `string` | 否 | SKU 版本号；报价按这个版本冻结 |
+| `title` | `string` | 否 | 标题 |
+| `listPrice` | [`MallMoney`](#mallmoney) | 否 | 划线原价 |
+| `price` | [`MallMoney`](#mallmoney) | 否 | 售价 |
+| `refundPolicySnapshot` | `string` | 否 | 退款政策快照（发布时冻结） |
+| `components` | [`MallSkuComponent`](#mallskucomponent)\[\] | 否 | 交付组件 |
+| `maxPerOrder` | `number` | 否 | 每单最多买几件 |
+
+### MallSkuComponent
+
+SKU 组件：一件 SKU 交付哪些东西
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `componentNo` | `string,null` | 否 | 组件号 |
+| `kind` | [`MallComponentKind`](#mallcomponentkind) | 否 | 种类；有 HARDWARE 的单要收货地址 |
+| `planVersionNo` | `string,null` | 否 | PLAN 组件引用的 Plan 版本 |
+| `entitlementCode` | `string,null` | 否 | END_PACKAGE 组件的业务端权益编码 |
+| `hardwareSkuNo` | `string,null` | 否 | HARDWARE 组件的硬件 SKU 号 |
+| `periodDays` | `number,null` | 否 | 数字组件的周期天数；硬件为空 |
+| `unitCount` | `number` | 否 | 数量 |
+| `gift` | `boolean` | 否 | 赠送组件（不参与金额分摊） |
+
+### MallStoreRef
+
+门店引用；租户与门店都由后端按登录态与路径决定，页面只读
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tenantNo` | `string` | 否 | 租户号（固定 MAIN） |
+| `storeNo` | `string` | 否 | 门店号 |
+
+### MallStorefront
+
+本店能买的商品（按门店经营类型过滤）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `businessTypeCode` | `string` | 否 | 门店经营类型 |
+| `currency` | `string` | 否 | 本店结算币种；报价按它 |
+| `catalogVersion` | `number` | 否 | 目录版本 |
+| `canProcure` | `boolean` | 否 | 当前账号能不能为本店采购 |
+| `products` | [`MallStorefrontProduct`](#mallstorefrontproduct)\[\] | 否 | 商品 |
+
+### MallStorefrontProduct
+
+列表里的一件商品及其可售 SKU
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `product` | [`MallProductInfo`](#mallproductinfo) | 否 | 商品信息 |
+| `skus` | [`MallStorefrontSku`](#mallstorefrontsku)\[\] | 否 | 可售 SKU |
+
+### MallStorefrontSku
+
+列表里的一个可售 SKU
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sku` | [`MallSku`](#mallsku) | 否 | SKU 版本内容 |
+| `readiness` | [`MallReadiness`](#mallreadiness) | 否 | 在线支付口径的可购买判断 |
 
 ### ManagementAudit
 

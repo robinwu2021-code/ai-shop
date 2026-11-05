@@ -4,6 +4,11 @@ import type {CurrencyCode} from "@shared/types";
 import type { AfterSale, Order } from "@shared/types";
 // 商家端支付（S8）的响应类型住在 ./pay.ts；这里转出一次，OpenAPI 生成器只读本文件
 export type { PayCollectResult, PayRefundItem, PayDailyStatement, PayStatementItem, PayQrCode, PayAppGrant } from "./pay";
+// 平台商城（向平台采购，线下银行转账）的响应类型住在 ./mall.ts；同样转出一次
+export type {
+  MallStorefront, MallQuote, MallOrder, MallOrderSummary, MallOrderDetail, MallOfflineInstructions,
+  MallEvidenceTicket, MallEvidenceUploaded, MallOfflineClaim,
+} from "./mall";
 
 export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
 

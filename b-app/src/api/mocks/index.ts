@@ -1,6 +1,7 @@
 import {managementMock} from "./management";
 import { storedValueMock } from './stored-value';
 import { payMock } from './pay';
+import { mallMock } from './mall';
 // B 端 mock 的门面：把各域拼成一份完整实现。
 //
 // <p><b>类型标注在这里，就是那道闸</b>：`MerchantApi` 要求 228 个方法一个不少，
@@ -113,6 +114,7 @@ mSvFinancialBrandResume:async()=>{throw Error("Financial operations require the 
   mOrderPointsEarning: async () => [],
   ...storedValueMock,
   ...payMock,
+  ...mallMock,
   ...accountMock,
   ...storeMock,
   ...dashboardMock,

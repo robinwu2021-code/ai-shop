@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 120,
+      "count": 124,
       "domains": [
         {
           "name": "其它",
@@ -183,6 +183,50 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/statement/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/biz-mall/index",
+              "title": "平台商城",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/biz-mall/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/biz-mall-checkout/index",
+              "title": "确认商城订单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/biz-mall-checkout/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/biz-mall-orders/index",
+              "title": "商城订单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/biz-mall-orders/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/biz-mall-order/index",
+              "title": "商城订单详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/biz-mall-order/index"
             },
             {
               "app": "b-app",
@@ -4111,5 +4155,5 @@
       ]
     }
   ],
-  "total": 328
+  "total": 332
 }

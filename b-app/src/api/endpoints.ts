@@ -616,6 +616,18 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mOfflineSales: { method: "GET", path: "/biz/store/:storeNo/offline-sale", auth: true, summary: "本店某天的线下卖出" },
   mOfflineSell: { method: "POST", path: "/biz/store/:storeNo/offline-sale", auth: true, summary: "记一笔线下卖出并过账" },
   mOfflineSaleRevoke: { method: "POST", path: "/biz/store/:storeNo/offline-sale/:docNo/revoke", auth: true, summary: "撤销一笔线下卖出（开退回入库单）" },
+  // 平台商城：本店向平台采购套餐 / 硬件，首期只走线下银行转账（docs/api/commerce-mall-http.md「线下银行转账购买」）
+  mMallStorefront: { method: "GET", path: "/biz/stores/{storeNo}/mall/products", auth: true, summary: "平台商城：本店可买的商品" },
+  mMallOfflineQuote: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/quotes", auth: true, summary: "平台商城：线下转账报价" },
+  mMallPlaceOrder: { method: "POST", path: "/biz/stores/{storeNo}/mall/orders", auth: true, summary: "平台商城：按报价下单" },
+  mMallOrders: { method: "GET", path: "/biz/stores/{storeNo}/mall/orders", auth: true, summary: "平台商城：本店的商城订单" },
+  mMallOrder: { method: "GET", path: "/biz/stores/{storeNo}/mall/orders/{orderNo}", auth: true, summary: "平台商城：订单详情" },
+  mMallIssueInstructions: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions", auth: true, summary: "平台商城：发出付款指引（幂等）" },
+  mMallInstructions: { method: "GET", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions", auth: true, summary: "平台商城：查看付款指引" },
+  mMallReserveEvidence: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence", auth: true, summary: "平台商城：预留一个转账凭证位" },
+  mMallUploadEvidence: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content", auth: true, summary: "平台商城：上传转账凭证图片" },
+  mMallSubmitClaim: { method: "POST", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims", auth: true, summary: "平台商城：申报已转账" },
+  mMallClaims: { method: "GET", path: "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims", auth: true, summary: "平台商城：本单的付款申报" },
 };
 
 /**

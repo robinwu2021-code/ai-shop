@@ -620,6 +620,30 @@
       }
     },
     {
+      "path": "pages/biz-mall/index",
+      "style": {
+        "navigationBarTitleText": "平台商城"
+      }
+    },
+    {
+      "path": "pages/biz-mall-checkout/index",
+      "style": {
+        "navigationBarTitleText": "确认商城订单"
+      }
+    },
+    {
+      "path": "pages/biz-mall-orders/index",
+      "style": {
+        "navigationBarTitleText": "商城订单"
+      }
+    },
+    {
+      "path": "pages/biz-mall-order/index",
+      "style": {
+        "navigationBarTitleText": "商城订单详情"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",

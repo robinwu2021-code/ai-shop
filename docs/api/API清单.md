@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1137 个接口**：后端已实现 930（82%）· 前端在调 1002
+**合计 1148 个接口**：后端已实现 930（81%）· 前端在调 1013
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **460** 个接口 ｜ 后端已实现 **365**（79%）｜ 前端在调 **458**
+共 **471** 个接口 ｜ 后端已实现 **365**（77%）｜ 前端在调 **469**
 
 ### activities（4）
 
@@ -1086,7 +1086,7 @@
 | GET | `/biz/stored-value/plans/{planNo}` | 储值方案详情 | — | `SvPlan` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stored-value/plans/{planNo}/status` | 启停门店储值方案 | `SvPlanStatusReq` | `SvPlan` | 🔒 | ✅ | ✅ |
 
-### stores（36）
+### stores（47）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1114,6 +1114,17 @@
 | GET | `/biz/stores/{storeNo}/fulfillment` | 门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stores/{storeNo}/fulfillment` | 保存门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/fulfillment/{channel}/impact` | 关掉这一路会影响的在售商品 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims` | 平台商城：申报已转账 | `MallOfflineClaimRequest` | `MallOfflineClaim` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/claims` | 平台商城：本单的付款申报 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence` | 平台商城：预留一个转账凭证位 | — | `MallEvidenceTicket` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/evidence/content` | 平台商城：上传转账凭证图片 | — | `MallEvidenceUploaded` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：发出付款指引（幂等） | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/instructions` | 平台商城：查看付款指引 | — | `MallOfflineInstructions` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/offline/quotes` | 平台商城：线下转账报价 | `MallQuoteRequest` | `MallQuote` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/stores/{storeNo}/mall/orders` | 平台商城：按报价下单 | `MallPlaceRequest` | `MallOrder` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/orders` | 平台商城：本店的商城订单 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/orders/{orderNo}` | 平台商城：订单详情 | — | `MallOrderDetail` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/{storeNo}/mall/products` | 平台商城：本店可买的商品 | — | `MallStorefront` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts` | Separate local and brand wallets | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records` | Current store records of selected wallet | — | `SvRecordPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/stores/{storeNo}/stored-value/issuer-recharges/{rechargeNo}` | 查询本店原储值进度 | — | `SvProgress` | 🔒 | ✅ | ✅ |

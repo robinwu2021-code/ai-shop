@@ -77,6 +77,17 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mSetStockSync: "同上，写路径",
   mSellRules: "BizStockSyncController → 路径带门店号，这家店的线上可售规则",
   mOfflineSales: "BizOfflineSaleController → 路径带门店号，只列这家店出货库位上的线下卖出",
+  mMallStorefront: "CommerceStorefrontHttpController → 路径带门店号，按这家店的经营类型列可买商品",
+  mMallOfflineQuote: "CommerceOfflineBuyerHttpController → 路径带门店号，报价归这家店",
+  mMallPlaceOrder: "CommerceBuyerMallHttpController → 路径带门店号，订单与权益归这家店",
+  mMallOrders: "CommerceBuyerMallHttpController → 路径带门店号，只列这家店的商城订单",
+  mMallOrder: "CommerceBuyerMallHttpController → 路径带门店号，校验订单属于这家店",
+  mMallIssueInstructions: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",
+  mMallInstructions: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",
+  mMallReserveEvidence: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",
+  mMallUploadEvidence: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",
+  mMallSubmitClaim: "CommerceOfflineBuyerHttpController → 路径带门店号，校验订单属于这家店",
+  mMallClaims: "CommerceOfflineBuyerHttpController → 路径带门店号，只列这家店本单的申报",
   mOfflineSell: "同上，写路径：扣的是这家店的实存",
   mOfflineSaleRevoke: "同上，撤销开的退回入库单落回这家店的库位",
   mSaveSellRule: "同上，写路径",
@@ -142,6 +153,10 @@ export const STORE_SCOPED_PAGES: Record<string, string> = {
   stats: "经营统计整页走 mStats —— 与工作台同一个数",
   "stock-align": "期初对齐对照的是这家店的实存与线上库存（mStockAlignment 路径带当前门店号），确认会调这家店的实存",
   "offline-sale": "柜台卖出扣的是这家店的实存（mOfflineSales / mOfflineSell 路径带当前门店号）",
+  "biz-mall": "平台商城按这家店的经营类型列商品（mMallStorefront 路径带当前门店号）",
+  "biz-mall-checkout": "报价与下单都归这家店（mMallOfflineQuote / mMallPlaceOrder 路径带当前门店号）",
+  "biz-mall-orders": "只列这家店的商城订单（mMallOrders 路径带当前门店号）",
+  "biz-mall-order": "订单、付款指引与申报都按这家店校验（mMallOrder / mMallClaims 路径带当前门店号）",
 };
 
 /** 这一页是不是按门店取数。`dir` 是 `b-app/src/pages/` 下的目录名。 */
