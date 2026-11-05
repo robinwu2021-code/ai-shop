@@ -1,6 +1,6 @@
 # TDD-B端收款、业务订单与商城接口对齐
 
-状态：草稿（待确认）
+状态：P1 已确认（2026-11-05）；P2–P4 草稿
 档位：2（跨端；新表族：门店用量余额；新权限码）
 关联需求与原型：
 - 门店订单原型 v6：`ai-shop-bapp-mall/docs/prototypes/core-pages/v6-store-orders.html`（发布版：https://claude.ai/artifact/TZaqctJv2df6VCVj3fcqeN）
@@ -129,7 +129,7 @@
 |---|---|---|
 | **P1** | 收款：A1–A9 | 无；先做（用户要求「订单首先要展示支付订单」） |
 | **P2** | 零售订单：B1–B3 | 无 |
-| **P3** | 商城：C1–C8 | 先把 `codex/mall-hardware-without-inventory` 的后端两个提交并入本分支（需你同意） |
+| **P3** | 商城：C1–C8 | 是否并入 `codex/mall-hardware-without-inventory` 的后端提交：P3 开工前再问（2026-11-05 用户决定） |
 | P4 | 餐饮、美业订单视图 | 插件补齐 B 端结账与汇总视图；另立 TDD |
 
 ### 契约变更
@@ -163,10 +163,10 @@ P3：
 
 **权限码**
 
-- 新增 `mch:pay:order:view`（看收款列表和详情），默认给 OWNER、MANAGER。
+- 新增 `mch:pay:order:view`（看收款列表和详情），默认给 OWNER、MANAGER、CLERK（已定：店员可看列表与详情）。
 - 汇总里的手续费和预计入账另需 `mch:pay:statement`。
 - 退款仍是 `mch:pay:refund`。
-- CLERK 是否可看列表，待定（§4 ③）。
+- CLERK 不给 `mch:pay:statement`、`mch:pay:refund`：看不到汇总与手续费，不能退款（已定）。
 
 **i18n**
 
@@ -279,9 +279,9 @@ GET /biz/payment/orders/{payOrderNo}
 |---|---|---|
 | ① LINE Pay、蓝新未接，街口支付没有 | 台湾门店的真实收款进不来，列表只能用测试渠道验证 | 接口与渠道无关；真实渠道接入另立任务（pay 项目） |
 | ② 卡号末四码、授权码、付款人依赖渠道回执 | 老数据和不回传这些字段的渠道显示为空 | 字段全部可空，客户端缺省只显示渠道名 |
-| ③ CLERK 能否看收款列表 | 权限码默认授权 | 建议店员可看列表和详情，不可看汇总、手续费，不可退款 |
+| ③ CLERK 能否看收款列表 | 权限码默认授权 | **已定**：店员可看列表和详情，不看汇总与手续费，不退款 |
 | ④ 退款需店长确认的门槛（原型 NT$1,000） | 现有门槛规则是「运营双人复核」，不是「店长确认」 | P1 只做退款时提示超限；B 端店长确认流程另议 |
-| ⑤ 商城依赖 `codex/mall-hardware-without-inventory` | P3 必须基于它 | 需要你同意把它的后端两个提交并入本分支 |
+| ⑤ 商城依赖 `codex/mall-hardware-without-inventory` | P3 必须基于它 | 已定：先不并，P3 开工前再问 |
 | ⑥ 餐饮、美业 | 原型 F、B 部分本期没有接口 | P4 另立 TDD；Flutter 端先用假数据 |
 | ⑦ 列表性能 | 单店每天几千笔时 | `(store_id, succeeded_at)` 索引 + 游标分页；`q` 搜索限定在所选日期区间内 |
 
