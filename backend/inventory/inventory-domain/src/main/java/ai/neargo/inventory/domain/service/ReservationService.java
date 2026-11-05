@@ -18,6 +18,15 @@ import java.util.Optional;
 public interface ReservationService {
 
     /**
+     * 生命周期 4：协同库存操作（{@code CoordinatedOperations}，商城硬件 SKU）独占的预留。
+     *
+     * <p>1/2/3 已分别是付款扣减 / 交付扣减 / 先货后款。生命周期 4 的预留<b>不到期回收</b>
+     * （付款结果未知时不能放货），本接口里按单号 / 履约单号的动作一律 CONFLICT ——
+     * 只有协同协议自己的 release / ship 能动它。
+     */
+    int LIFECYCLE_COORDINATED = 4;
+
+    /**
      * 预留。**全成功或全失败**，不允许部分预留 ——
      * 部分成功意味着「购物车里 3 件商品成了 2 件」，这种单没法结算也没法退。
      *
@@ -31,6 +40,14 @@ public interface ReservationService {
 
     default String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds, int lifecycleVersion) {
         return reserve(ownerId, externalRef, lines, ttlSeconds);
+    }
+
+    /**
+     * 建一条生命周期 {@link #LIFECYCLE_COORDINATED} 的预留，只给协同库存操作用（单行、无履约单、无来源）。
+     * 其余调用方传 lifecycle 4 给 {@link #reserve(String, String, List, long, int)} 一律 BAD_REQUEST。
+     */
+    default String reserveCoordinated(String ownerId, String externalRef, Line line) {
+        throw new UnsupportedOperationException("coordinated reservations");
     }
 
     /** Returns persisted original facts; absence is distinct from a durable RELEASED cancellation tombstone. */

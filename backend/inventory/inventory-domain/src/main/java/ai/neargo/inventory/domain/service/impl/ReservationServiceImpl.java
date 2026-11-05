@@ -107,9 +107,29 @@ public class ReservationServiceImpl implements ReservationService {
             List<Line> lines,
             long ttlSeconds,
             int lifecycleVersion) {
+        // 生命周期 4 只能经 reserveCoordinated 建：从这里（含 HTTP 入参）建出来的话，没有协同记录能释放它
         if (lifecycleVersion != 1 && lifecycleVersion != 2 && lifecycleVersion != 3) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }
+        return reserveVersioned(ownerId, externalRef, lines, ttlSeconds, lifecycleVersion);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String reserveCoordinated(String ownerId, String externalRef, Line line) {
+        if (line == null || line.fulfillmentRef() != null || line.sourceSkuNo() != null) {
+            throw InventoryException.of(InventoryError.BAD_REQUEST);
+        }
+        // ttl 0：不到期回收（expireOverdue 跳过生命周期 4），expires_at 只是落库时刻
+        return reserveVersioned(ownerId, externalRef, List.of(line), 0, LIFECYCLE_COORDINATED);
+    }
+
+    private String reserveVersioned(
+            String ownerId,
+            String externalRef,
+            List<Line> lines,
+            long ttlSeconds,
+            int lifecycleVersion) {
         if (ownerId == null || ownerId.isBlank() || externalRef == null || externalRef.isBlank()) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }
@@ -281,7 +301,7 @@ public class ReservationServiceImpl implements ReservationService {
     public void acceptUnpaid(String ownerId, String externalRef) {
         requireWriter(ownerId);
         fencedByRef(externalRef);
-        InvReservation head = find(ownerId, externalRef);
+        InvReservation head = findLegacy(ownerId, externalRef);
         if (head == null
                 || lifecycle(head) != 3
                 || InvEnums.ReservationStatus.RELEASED.equals(head.getStatus())
@@ -803,7 +823,7 @@ public class ReservationServiceImpl implements ReservationService {
     public void release(String ownerId, String externalRef) {
         requireWriter(ownerId);
         fencedByRef(externalRef);
-        InvReservation head = find(ownerId, externalRef);
+        InvReservation head = findLegacy(ownerId, externalRef);
         if (head != null && lifecycle(head) == 3) {
             releaseAllocatedLines(head, linesOf(head.getReservationId()));
             return;
@@ -834,7 +854,7 @@ public class ReservationServiceImpl implements ReservationService {
     public void cancelByRef(String ownerId, String externalRef) {
         requireWriter(ownerId);
         fencedByRef(externalRef);
-        InvReservation head = find(ownerId, externalRef);
+        InvReservation head = findLegacy(ownerId, externalRef);
         if (head != null) {
             if (lifecycle(head) != 3
                     && InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
@@ -896,6 +916,8 @@ public class ReservationServiceImpl implements ReservationService {
         List<InvReservation> candidates = resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
                 .lt(InvReservation::getExpiresAt, now)
+                // 协同预留：付款未知时不能放货，只由协同协议释放
+                .ne(InvReservation::getLifecycleVersion, LIFECYCLE_COORDINATED)
                 .inSql(InvReservation::getOwnerId, ownersSql(null))
                 .select(InvReservation::getOwnerId, InvReservation::getReservationId)
                 .last("LIMIT " + Math.min(limit, EXPIRE_BATCH_MAX)));
@@ -905,7 +927,8 @@ public class ReservationServiceImpl implements ReservationService {
         var locked = lockHeads(candidates);
         retention.requireUnretained(locked);
         for (InvReservation current : locked) {
-            if (current == null || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
+            if (current == null || lifecycle(current) == LIFECYCLE_COORDINATED
+                    || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
                     || current.getExpiresAt() == null || !current.getExpiresAt().isBefore(now)) continue;
             unholdAll(current, InvEnums.ReservationStatus.EXPIRED);
             expired++;
@@ -919,7 +942,8 @@ public class ReservationServiceImpl implements ReservationService {
                 resMapper.selectCount(
                         Wrappers.<InvReservation>lambdaQuery()
                                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
-                                .lt(InvReservation::getExpiresAt, LocalDateTime.now())));
+                                .lt(InvReservation::getExpiresAt, LocalDateTime.now())
+                                .ne(InvReservation::getLifecycleVersion, LIFECYCLE_COORDINATED)));
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -974,6 +998,7 @@ public class ReservationServiceImpl implements ReservationService {
                 heads.putIfAbsent(head.getReservationId(), head);
             }
         }
+        heads.values().forEach(ReservationServiceImpl::requireLegacy);
         var matching = new ArrayList<InvReservationLine>();
         for (InvReservation head : heads.values()) {
             // Keep the original SQL collation semantics; Java equality would silently drop
@@ -1114,8 +1139,25 @@ public class ReservationServiceImpl implements ReservationService {
     private List<InvReservation> fencedByRef(String systemCode, String externalRef) {
         var original = resMapper.lockOriginal(externalRef).stream()
                 .filter(head -> writers == null || writers.writes(head.getOwnerId(), systemCode)).toList();
+        original.forEach(ReservationServiceImpl::requireLegacy);
         retention.requireUnretained(original);
         return original;
+    }
+
+    /**
+     * 旧动作（按单号 / 履约单号的受理、付款、出库、释放、取消、到期）碰到协同预留一律 CONFLICT：
+     * 它的栅栏与发货证明在 inv_coordinated_*，绕过协同协议改它会让「已释放」与「已发货」的证据对不上。
+     */
+    private static void requireLegacy(InvReservation head) {
+        if (head != null && lifecycle(head) == LIFECYCLE_COORDINATED) {
+            throw InventoryException.of(InventoryError.CONFLICT);
+        }
+    }
+
+    private InvReservation findLegacy(String ownerId, String externalRef) {
+        InvReservation head = find(ownerId, externalRef);
+        requireLegacy(head);
+        return head;
     }
 
     private InvReservation find(String ownerId, String externalRef) {
@@ -1128,7 +1170,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     private InvReservation require(String ownerId, String externalRef) {
         fencedByRef(externalRef);
-        InvReservation head = find(ownerId, externalRef);
+        InvReservation head = findLegacy(ownerId, externalRef);
         if (head == null) {
             throw InventoryException.of(InventoryError.NOT_FOUND);
         }

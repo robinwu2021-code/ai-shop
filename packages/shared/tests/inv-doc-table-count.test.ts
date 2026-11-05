@@ -18,7 +18,8 @@ import { join } from "node:path";
  */
 const ROOT = new URL("../../..", import.meta.url).pathname;
 const DOC = join(ROOT, "docs/technical/design/进销存-数据库表结构.md");
-const MIG = join(ROOT, "backend/shop-inventory/src/main/resources/db/inventory");
+// ADR-046 起迁移随领域搬到 inventory-domain；旧路径已不存在（readdirSync 会 ENOENT）
+const MIG = join(ROOT, "backend/inventory/inventory-domain/src/main/resources/db/inventory");
 
 function tablesInMigrations(): Set<string> {
   const out = new Set<string>();

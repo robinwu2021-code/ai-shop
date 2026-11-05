@@ -1062,6 +1062,42 @@ CREATE TABLE IF NOT EXISTS inv_paired_transfer
     CONSTRAINT uk_paired_in UNIQUE (to_owner_id, inbound_no)
 );
 
+CREATE TABLE IF NOT EXISTS inv_coordinated_reservation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    client_code VARCHAR(32) NOT NULL,
+    external_ref VARCHAR(64) NOT NULL,
+    reserve_operation_no VARCHAR(64) NOT NULL,
+    owner_id VARCHAR(32) DEFAULT NULL,
+    item_id VARCHAR(32) DEFAULT NULL,
+    location_id VARCHAR(32) DEFAULT NULL,
+    mapping_version VARCHAR(64) DEFAULT NULL,
+    request_reference VARCHAR(64) DEFAULT NULL,
+    original_quantity INT DEFAULT NULL,
+    reservation_id VARCHAR(32) DEFAULT NULL,
+    released TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_coordinated_ref UNIQUE (client_code, external_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_coordinated_shipment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    client_code VARCHAR(32) NOT NULL,
+    external_ref VARCHAR(64) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    quantity INT NOT NULL,
+    carrier VARCHAR(64) NOT NULL,
+    tracking_no VARCHAR(128) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    outbound_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_coordinated_ship UNIQUE (client_code, external_ref, operation_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL
