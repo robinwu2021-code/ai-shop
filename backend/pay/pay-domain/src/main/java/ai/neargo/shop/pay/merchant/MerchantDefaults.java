@@ -30,6 +30,11 @@ public final class MerchantDefaults {
     public static String currencyOf(String market) {
         return market == null ? null : switch (market) {
             case "CN" -> "CNY";
+            // 与 sys_market 对齐（2026-11-05）：此前没有 TW，台湾门店开通收款后双写报「市场 TW 没有对应币种」、
+            // 门店绑不上收款商户，收款汇总的币种也是空
+            case "TW" -> "TWD";
+            case "HK" -> "HKD";
+            case "SG" -> "SGD";
             case "AE" -> "AED";
             case "SA" -> "SAR";
             default -> null;
