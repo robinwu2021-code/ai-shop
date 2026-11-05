@@ -19,7 +19,7 @@
 | 选店 | **登录后必须先选门店，所有经营操作都基于门店**。每个经营请求都带 `X-Store-No: <storeNo>`；路径里带门店号的，必须与请求头一致 |
 | 响应 | `{code, msg, data}`。`code=0` 为成功，msg 不能作为程序分支的依据 |
 | 金额 | `amountMinor` 为最小货币单位（long）。商城接口的 `Money` 是 `{currency, minor}`，其中 `minor` 是**字符串** |
-| 时间 | 都是 UTC epoch 毫秒；日期参数用门店所在市场的 `yyyy-MM-dd` |
+| 时间 | 收款、付款链接、订单接口用 UTC epoch 毫秒；**商城接口（§5，`/mall/**`）按 openapi 用 ISO-8601 字符串**（如 `createdAt`、`paymentDueAt`、`submittedAt`、`declaredPaidAt`）；日期参数用门店所在市场的 `yyyy-MM-dd` |
 | 分页 | 本期新接口用**游标**：传 `cursor`、`size`（≤50），返回 `nextCursor`，为 null 表示没有下一页。旧接口 `/biz/order` 仍用 `page`、`size` |
 | 枚举 | 端上遇到不认识的枚举值，按「其他 / 未知」显示，不要崩溃 |
 
