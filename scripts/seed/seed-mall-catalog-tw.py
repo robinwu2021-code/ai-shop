@@ -16,6 +16,10 @@
   - shop.commerce.mall.required-ends.RETAIL[0]=END_BIZ_APP、required-ends.FOOD[0]=END_BIZ_APP
   - accepted-deployments 里 END_BIZ_APP 的 allowed-business-types 含 RETAIL 与 FOOD，END_APP_POS 含 RETAIL
   - TW 市场已启用（TWD 金额网格可用）
+  - END_BIZ_APP 一旦被方案引用，适用行业就不能再改（服务端规则）。所以必须在空目录上第一次跑，
+    一次注册零售 + 餐饮。已有零售方案的环境（如本机主库）会在第 2 步报 INVALID_ARGUMENT。
+
+本机验证（2026-11-06）：在空目录副本库上 --apply 一次全部成功；再跑一次全部跳过。
 """
 import json
 import os
