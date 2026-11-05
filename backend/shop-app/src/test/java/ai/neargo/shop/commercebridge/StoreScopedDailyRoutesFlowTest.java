@@ -107,6 +107,17 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 新店主给自己的店设货架类目（POST）：同样按门店成员放行")
+    void ownerSetsStoreCategories() throws Exception {
+        String[] o = newModelOwner("15965020104");
+        String body = mvc.perform(post("/biz/store/" + o[1] + "/categories")
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"categoryNos\":[\"CAT210\"]}"))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals(0, json.readTree(body).path("code").asInt(), body);
+    }
+
+    @Test
     @DisplayName("★★★ 没选门店：日常接口回 SELECT_STORE（让 App 去选店），而不是「联系管理员」")
     void noSelectionAsksToSelectStore() throws Exception {
         String[] o = newModelOwner("15965020102");

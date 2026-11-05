@@ -29,7 +29,7 @@ final class ShopStoreMemberRoutes {
             // 商户主体（「我的门店 › 商户」）
             HostRoute.of("GET,POST,PUT", "/biz/entities(?:/.*)?"),
             // 本店的分类、发货设置、运费模板、线上售卖规则、库存同步
-            HostRoute.of("GET,PUT", STORE + "(?:categories|ship-setting|freight-template|sell-rules|stock-sync)"));
+            HostRoute.of("GET,POST,PUT", STORE + "(?:categories|ship-setting|freight-template|sell-rules|stock-sync)"));
 
     private ShopStoreMemberRoutes() {
     }
