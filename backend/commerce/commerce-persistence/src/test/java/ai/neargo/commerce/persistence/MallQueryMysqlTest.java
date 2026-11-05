@@ -87,6 +87,18 @@ class MallQueryMysqlTest {
             assertEquals("UNPAID", detail.summary().paymentStatus());
             assertEquals("PENDING", detail.summary().fulfillmentStatus());
             assertEquals("NONE", detail.summary().refundStatus());
+            // P3-2: product titles come from the frozen quote snapshot, additively.
+            assertEquals(1, detail.lines().size());
+            var line = detail.lines().getFirst();
+            assertEquals("sku", line.skuNo());
+            assertEquals("sku-1", line.skuVersionNo());
+            assertEquals("product", line.productNo());
+            assertEquals("套餐", line.title());
+            assertEquals(1, line.quantity());
+            assertEquals("套餐", detail.summary().title());
+            assertEquals(1, detail.summary().lineCount());
+            // P3-4: no offline repository wired -> no claim status, never an error.
+            assertNull(detail.summary().latestClaimStatus());
             assertTrue(detail.paymentAttempts().isEmpty());
             assertEquals(
                     List.of(detail.summary()),

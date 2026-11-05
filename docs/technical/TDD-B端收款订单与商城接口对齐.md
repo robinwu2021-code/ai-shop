@@ -333,6 +333,34 @@ Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.pay.svc.Pa
 3. **付款列表取自主单**（渠道、交易号、支付时间、线下确认人与确认时间），一单一条。要跳到「收款」里对应的支付订单，用 `q=channelTradeNo` 搜，不另开按业务单号的查询。
 4. **配送员调 `/full`** 时，与详情同一档次，只给裁剪档（`CourierOrderVO`），金额和付款一概不给。
 
+### P3 第一批测试（2026-11-05 · 商城采购）
+
+档位：1（对外 JSON 结构加字段，全部为**新增可空字段**，原字段不动）。契约文件 `docs/api/commerce-mall-openapi.json` 同步，`info.version` → `task8-v1+p3`。
+测试跑真实 MySQL（`COMMERCE_MYSQL_*`，库 `commerce_test_<uuid>` 用完即删）。
+
+| AC | 测试方法 | 跑过 | 消融验证 |
+|---|---|---|---|
+| P3-1 目录给线下可购 | `MallStorefrontMysqlTest#offlineReadinessIsAdditiveAndUsesPublishedTermsOutsideTheCommerceTransaction`（在线仍 `PAYER_BINDING_UNPROVEN`，`offlineReadiness.available=true` 带 `OFFLINE/BANK_TRANSFER`；无采购权 → `PROCUREMENT_REQUIRED`；未开线下 → `null`；条款在事务外读取） | ✅ | |
+| P3-2 订单带商品名 | `MallQueryMysqlTest#authorizedDetailsReadFrozenAmountsAndIndependentAxesWithoutPaymentConfiguration`（`lines[0]` = sku/sku-1/product/「套餐」×1，`summary.title`/`lineCount`） | ✅ | |
+| P3-3 申报带实收与审核说明 | `MallOfflineWorkflowMysqlTest#missingCollectionsAreInvalidRequestsAndClaimFollowsReviewOutcome`（MISMATCHED → `receivedAmount=8700`、`reviewNote`；序列化里不含凭证 key / 银行流水号 / 收款方）、`#declarationAndDeclineNeverCreatePaymentOrRightsOrReleaseStoreHold`（DECLINED → `reviewNote`，无金额） | ✅ | |
+| P3-3 转账附言 | `MallOfflineWorkflowMysqlTest#instructionsCarryTransferRemarkAndConfirmedClaimShowsReceivedAmount`（`instructions.transferRemark` = 订单号去分隔符；CONFIRMED → 有金额、无说明） | ✅ | 把 `view()` 里 `withRemark(...)` 改回 `terms.instructions()` → 变红 ✅ |
+| P3-4 订单带最新申报状态 | 同上两条：无申报 `null` → SUBMITTED → MISMATCHED / CONFIRMED，详情与列表一致 | ✅ | |
+| 契约 | `MallOpenApiResponseTest`（新增 StorefrontView 夹具）+ `validate_mall_openapi.py` | ✅ | |
+| 回归 | commerce-core / persistence / starter 全量；shop-app `MallOfflineHostAdapterTest`、`MallHostReadinessTest` | ✅ | |
+
+```
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.persistence.MallStorefrontMysqlTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.persistence.MallQueryMysqlTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.persistence.MallOfflineWorkflowMysqlTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.starter.http.MallOpenApiResponseTest
+OpenAPI 3.1: 8 actual MVC response trees valid; pending payment, digital address, refund review, draft version nulls and exact money checked
+全量：commerce-core 98/0、commerce-persistence 166/0、commerce-spring-boot-starter 49/0（失败/错误均 0）
+Tests run: 7, Failures: 0 -- MallOfflineHostAdapterTest；Tests run: 1, Failures: 0 -- MallHostReadinessTest
+ArchitectureTest：Tests run: 22, Failures: 5（即存量 5 项，报告中无 commerce 相关条目）
+消融：Tests run: 8, Failures: 1 -- MallOfflineWorkflowMysqlTest#instructionsCarryTransferRemarkAndConfirmedClaimShowsReceivedAmount
+      expected: <aa3e0a813c564efb81d741adb4362cc6> but was: <null>
+```
+
 ## §6 对账二 · 设计 → 实现
 
 | 动作 | 路径 |
@@ -355,3 +383,32 @@ Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.pay.svc.Pa
 7. **结算状态的判定**。只有这张单进过 `SETTLEMENT` 凭证才算「已结算」，否则是「待结算」。预计入账日 = 成功业务日 + `pay_merchant.settle_cycle`（T1 / T2 / WEEKLY，没配按 T1）。
 9. **应 Flutter 端字段清单补的三项**（2026-11-05）：`GET /biz/payment/collect-status`；详情 `refs.channelMerchantNo`（子商户号优先）；`amounts.feeRateBps`。Flutter 端要的「查询次数 / 下次查询时间」「刷卡方式（感应 / 插卡）」「收银员姓名」服务端目前没有记录，暂不提供。
 8. **手续费估算费率**。`shop.pay.fee.estimate-rate-bps` 默认 0，未对账的单手续费显示 0 并标「预估」。台湾渠道的实际费率定下来后，在配置里设。
+
+### P3 第一批（商城采购）
+
+| 动作 | 路径 |
+|---|---|
+| 修改（契约） | `commerce-api/.../mall/StorefrontView.java`（`Sku.offlineReadiness`）、`mall/MallOrderDetailView.java`（`lines`、`Line`、`Summary.title/lineCount/latestClaimStatus`）、`offline/OfflinePurchaseFacade.java`（`ClaimView.receivedAmount/reviewNote`） |
+| 修改 | `commerce-core/.../mall/DefaultStorefrontFacade.java`、`query/DefaultMallQueryFacade.java`、`offline/DefaultOfflinePurchaseFacade.java`、`offline/OfflineRepository.java`（`Claim.received`） |
+| 修改（装配） | `commerce-spring-boot-starter/.../CommerceMallAutoConfiguration.java`、`CommerceMallQueryAutoConfiguration.java` |
+| 修改（测试 / 契约） | `MallStorefrontMysqlTest`、`MallQueryMysqlTest`、`MallOfflineWorkflowMysqlTest`、`MallOpenApiResponseTest`；`docs/api/commerce-mall-openapi.json` |
+
+示例：
+
+```json
+{"sku":{"skuNo":"sku","title":"套餐"},"readiness":{"available":false,"reasons":["PAYER_BINDING_UNPROVEN"],"paymentOptions":[]},
+ "offlineReadiness":{"available":true,"reasons":[],"paymentOptions":[{"channel":"OFFLINE","payMethod":"BANK_TRANSFER","currency":"CNY","maximumMinor":9007199254740991}]}}
+{"summary":{"order":{},"paymentStatus":"UNPAID","fulfillmentStatus":"PENDING","refundStatus":"NONE","title":"套餐","lineCount":1,"latestClaimStatus":"SUBMITTED"},
+ "lines":[{"productNo":"product","skuNo":"sku","skuVersionNo":"sku-1","title":"套餐","quantity":1}]}
+{"claimNo":"claim","status":"MISMATCHED","declaredAmount":{"currency":"CNY","minor":"8800"},"receivedAmount":{"currency":"CNY","minor":"8700"},"reviewNote":"…"}
+{"instructions":{"bankCode":"…","bankAccount":"…","accountName":"…","transferRemark":"M202611050001"}}
+```
+
+**P3 偏差说明**
+
+1. **线下可购用独立字段 `offlineReadiness`**（与 `readiness` 同形），不改 `readiness` 的语义，未开线下时为 `null`。条款从支付域读，放在商城事务**之后**读（与线下报价同一规矩），`evaluateOffline` 只用本地配置。装配条件与线下工作流一致：`commerce.mall.payment.enabled` + `offline.enabled` + `offline.profile-no` + 宿主提供 `OfflineCollectionPort`。
+2. **商品名取 SKU 标题**：报价快照里冻结的是 `SkuDraft`（含 `title`），没有冻结商品（Product）名，所以 `lines[].title` 与 `summary.title` 都是下单时的 SKU 标题，不读在架目录。列表行给首行标题 + `lineCount`，「等 N 件」由端上拼。
+3. **转账附言没有现成约定**：运营确认到账（`confirm`）是先定位订单再录银行流水号，支付域按银行流水号去重，不按附言匹配。故 `transferRemark` = 订单号去掉非字母数字字符，供运营按订单号检索；只在需付现金时出现（零元单 `instructions` 仍为空）。
+4. **审核说明的可见范围**：`reviewNote` 只在 DECLINED / MISMATCHED 给（解释为什么没认），CONFIRMED 不给（确认时写的是运营内部备注）；`receivedAmount` 只在 CONFIRMED / MISMATCHED 给。凭证、收款方、银行流水号一律不出。实收金额在审核落定时写进申报快照（`Claim.received`，JSON 列，**无迁移**）；本次之前已审核的申报读出来为 `null`。
+5. **`latestClaimStatus` 与申报列表同一可见范围**：商家只看自己提交的申报，运营看全部；非线下单恒为 `null`。列表每行多一次按订单读申报（≤100 行，只对线下单），没有加批量查询。
+6. `MallOpenApiResponseTest` 新增的 StorefrontView 夹具里 `reason` 填了字符串：契约里 `ProductDraft/SkuDraft.reason` 不可空，与本次无关，未改。

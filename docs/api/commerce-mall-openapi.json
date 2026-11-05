@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Portable Commerce Mall — new host HTTP contracts",
-    "version": "task8-v1",
+    "version": "task8-v1+p3",
     "description": "New endpoints only; existing 29 onboarding operations unchanged. Trusted session realm/tenant/store and named capabilities. No body actor, payer identity, paid flag or provider proof. CNY JSAPI protocol adapter is fail-closed until authoritative app-bound payer binding is installed; TWD online routes (NewebPay, LINE Pay, JKOPay) remain unavailable. Task8 adds offline bank-transfer purchase: merchant declarations, private evidence, operator confirmation/void, assisted STORE orders and offline refund payouts. TWD policy twd-whole-v1 uses cash/allocation quantum 100."
   },
   "servers": [
@@ -7975,6 +7975,36 @@
           },
           "refundStatus": {
             "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "P3: first frozen order line SKU title (order-time snapshot), null if no lines."
+          },
+          "lineCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "P3: number of frozen order lines."
+          },
+          "latestClaimStatus": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SUBMITTED",
+                  "REVIEWING",
+                  "CONFIRMED",
+                  "MISMATCHED",
+                  "DECLINED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P3: newest offline payment declaration visible to the caller; null when none or not an offline order."
           }
         }
       },
@@ -8039,6 +8069,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RefundView"
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MallOrderDetailView_Line"
             }
           }
         }
@@ -9757,6 +9793,17 @@
           },
           "readiness": {
             "$ref": "#/components/schemas/CheckoutReadinessPort_Readiness"
+          },
+          "offlineReadiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckoutReadinessPort_Readiness"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P3: offline bank-transfer purchasability; null when the deployment has no offline transfer. readiness stays online-only."
           }
         }
       },
@@ -10103,7 +10150,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Empty when nothing is payable."
+            "description": "Empty when nothing is payable. Otherwise bank fields plus transferRemark (P3): order number, letters and digits only, to write on the transfer."
           }
         },
         "additionalProperties": false,
@@ -10182,6 +10229,24 @@
           "submittedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "receivedAmount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "P3: amount the platform recorded at review; only CONFIRMED/MISMATCHED."
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "P3: reviewer reason; only DECLINED/MISMATCHED."
           }
         },
         "additionalProperties": false,
@@ -10190,7 +10255,9 @@
           "status",
           "declaredAmount",
           "declaredPaidAt",
-          "submittedAt"
+          "submittedAt",
+          "receivedAmount",
+          "reviewNote"
         ]
       },
       "OfflinePendingClaim": {
@@ -10288,6 +10355,36 @@
           "paymentWindowVersion",
           "paymentWindowMs",
           "instructions"
+        ]
+      },
+      "MallOrderDetailView_Line": {
+        "type": "object",
+        "description": "P3: order line frozen from the quote SKU snapshot at order time.",
+        "properties": {
+          "productNo": {
+            "type": "string"
+          },
+          "skuNo": {
+            "type": "string"
+          },
+          "skuVersionNo": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "productNo",
+          "skuNo",
+          "skuVersionNo",
+          "title",
+          "quantity"
         ]
       }
     }

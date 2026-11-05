@@ -12,9 +12,40 @@ public record MallOrderDetailView(
         ShippingAddress shippingAddress,
         List<PaymentAttempt> paymentAttempts,
         List<Shipment> shipments,
-        List<RefundView> refunds) {
+        List<RefundView> refunds,
+        List<Line> lines) {
+    public MallOrderDetailView(
+            Summary summary,
+            QuoteView quote,
+            ShippingAddress shippingAddress,
+            List<PaymentAttempt> paymentAttempts,
+            List<Shipment> shipments,
+            List<RefundView> refunds) {
+        this(summary, quote, shippingAddress, paymentAttempts, shipments, refunds, List.of());
+    }
+
+    /**
+     * {@code title}/{@code lineCount}: display name from the first frozen order line and the number
+     * of lines. {@code latestClaimStatus}: the newest offline payment declaration visible to the
+     * caller (SUBMITTED/REVIEWING/CONFIRMED/MISMATCHED/DECLINED), or null.
+     */
     public record Summary(
-            OrderView order, String paymentStatus, String fulfillmentStatus, String refundStatus) {}
+            OrderView order,
+            String paymentStatus,
+            String fulfillmentStatus,
+            String refundStatus,
+            String title,
+            int lineCount,
+            String latestClaimStatus) {
+        public Summary(
+                OrderView order, String paymentStatus, String fulfillmentStatus, String refundStatus) {
+            this(order, paymentStatus, fulfillmentStatus, refundStatus, null, 0, null);
+        }
+    }
+
+    /** Frozen at order time from the quote's SKU snapshot; never the live catalog. */
+    public record Line(
+            String productNo, String skuNo, String skuVersionNo, String title, int quantity) {}
 
     public record PaymentAttempt(
             String attemptNo,

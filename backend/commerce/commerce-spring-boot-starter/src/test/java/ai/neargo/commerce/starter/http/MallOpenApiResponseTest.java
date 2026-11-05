@@ -34,7 +34,10 @@ class MallOpenApiResponseTest {
                                         at),
                                 "PAYING",
                                 "PENDING",
-                                "NONE"),
+                                "NONE",
+                                "套餐",
+                                1,
+                                null),
                         new QuoteView("quote", store, amount, zero, amount, List.of(), 1, 1, at),
                         null,
                         List.of(
@@ -65,7 +68,8 @@ class MallOpenApiResponseTest {
                                         zero,
                                         "REQUESTED",
                                         "digest",
-                                        null)));
+                                        null)),
+                        List.of(new MallOrderDetailView.Line("product", "sku", "sku-1", "套餐", 1)));
         var queries =
                 (MallQueryFacade)
                         java.lang.reflect.Proxy.newProxyInstance(
@@ -78,6 +82,18 @@ class MallOpenApiResponseTest {
                                 getClass().getClassLoader(),
                                 new Class[] {CatalogFacade.class},
                                 (p, m, a) -> new DraftSaveResult("retail", null, 1));
+        var sku =
+                new SkuDraft("product", "sku", "sku-1", "套餐", amount, amount, List.of("retail"), "{}",
+                        List.of(), 1, 1, "publish");
+        var online = new ai.neargo.commerce.api.port.CheckoutReadinessPort.Readiness(
+                false, List.of("PAYER_BINDING_UNPROVEN"), List.of());
+        var offlineReady = new ai.neargo.commerce.api.port.CheckoutReadinessPort.Readiness(
+                true, List.of(), List.of(new ai.neargo.commerce.api.port.CheckoutReadinessPort.PaymentOption(
+                        "OFFLINE", "BANK_TRANSFER", "CNY", 9007199254740991L)));
+        StorefrontFacade storefront =
+                (a, s) -> new StorefrontView(s, "retail", "CNY", 1, true, List.of(new StorefrontView.Product(
+                        new ProductDraft("product", "cat", ProductKind.BUNDLE, "套餐", "d", List.of("retail"), 0, 1, "publish"),
+                        List.of(new StorefrontView.Sku(sku, online, offlineReady), new StorefrontView.Sku(sku, online)))));
         var actor = new ActorContext("MAIN", SubjectKind.ACCOUNT, "buyer", "live");
         var context =
                 new MallHttpContextPort() {
@@ -107,7 +123,8 @@ class MallOpenApiResponseTest {
                 MockMvcBuilders.standaloneSetup(
                                 new CommerceBuyerMallHttpController(
                                         null, queries, null, null, context, envelope),
-                                new CommerceCatalogHttpController(catalog, context, envelope))
+                                new CommerceCatalogHttpController(catalog, context, envelope),
+                                new CommerceStorefrontHttpController(storefront, context, envelope))
                         .build();
         var order = mvc.perform(get("/biz/stores/S/mall/orders/order")).andReturn().getResponse();
         var save =
@@ -118,6 +135,9 @@ class MallOpenApiResponseTest {
                                                 "{\"typeCode\":\"retail\",\"name\":\"Retail\",\"sortOrder\":0,\"enabled\":false,\"expectedVersion\":0,\"reason\":\"create\"}"))
                         .andReturn()
                         .getResponse();
+        var products = mvc.perform(get("/biz/stores/S/mall/products")).andReturn().getResponse();
+        assertEquals(200, products.getStatus());
+        assertTrue(products.getContentAsString().contains("\"offlineReadiness\":null"));
         assertEquals(200, order.getStatus());
         assertEquals(200, save.getStatus());
         assertTrue(order.getContentAsString().contains("\"shippingAddress\":null"));
@@ -127,6 +147,7 @@ class MallOpenApiResponseTest {
         var fixtures = new LinkedHashMap<String, Object>();
         fixtures.put("MallOrderDetailView", mapper.readTree(order.getContentAsString()).get("data"));
         fixtures.put("DraftSaveResult", mapper.readTree(save.getContentAsString()).get("data"));
+        fixtures.put("StorefrontView", mapper.readTree(products.getContentAsString()).get("data"));
         for (var e : offline.entrySet())
             fixtures.put(e.getKey(), mapper.readTree(e.getValue()).get("data"));
         assertEquals("null", mapper.readTree(offline.get("OfflineActionView")).get("data").get("paymentNo").toString());
@@ -146,7 +167,7 @@ class MallOpenApiResponseTest {
                         Map.of("bankCode", "TESTBANK"));
         var claim =
                 new ai.neargo.commerce.api.offline.OfflinePurchaseFacade.ClaimView(
-                        "claim", "SUBMITTED", money, at, at);
+                        "claim", "MISMATCHED", money, at, at, new Money("TWD", 69800), "short paid");
         var facade =
                 (ai.neargo.commerce.api.offline.OfflinePurchaseFacade)
                         java.lang.reflect.Proxy.newProxyInstance(
@@ -157,7 +178,7 @@ class MallOpenApiResponseTest {
                                             case "instructions" ->
                                                     new ai.neargo.commerce.api.offline.OfflinePurchaseFacade
                                                             .InstructionsView("order", money, at, "profile", 2,
-                                                            Map.of("bankCode", "TESTBANK"));
+                                                            Map.of("bankCode", "TESTBANK", "transferRemark", "order"));
                                             case "claims" -> List.of(claim);
                                             case "pendingClaims" ->
                                                     List.of(new ai.neargo.commerce.api.offline.OfflinePurchaseFacade

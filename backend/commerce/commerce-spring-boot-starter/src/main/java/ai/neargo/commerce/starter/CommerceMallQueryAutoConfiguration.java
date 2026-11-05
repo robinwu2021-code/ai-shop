@@ -49,7 +49,11 @@ public class CommerceMallQueryAutoConfiguration {
             SubscriptionAccountRepository accounts,
             CommerceUnitOfWork uow,
             StoreDirectoryPort stores,
-            ActorAuthorizationPort auth) {
-        return new DefaultMallQueryFacade(mall, operations, refunds, accounts, uow, stores, auth);
+            ActorAuthorizationPort auth,
+            org.springframework.beans.factory.ObjectProvider<
+                            ai.neargo.commerce.core.offline.OfflineRepository>
+                    offline) {
+        return new DefaultMallQueryFacade(
+                mall, operations, refunds, accounts, uow, stores, auth, offline.getIfAvailable());
     }
 }

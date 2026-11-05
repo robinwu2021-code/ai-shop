@@ -23,6 +23,9 @@ class MallOfflineWorkflowMysqlTest {
             var claim=new OfflinePurchaseFacade.ClaimCommand(q,"claim",new Money("CNY",8800),Instant.ofEpochMilli(3000),"claimed-bank-ref",List.of(ticket.assetKey()));
             assertEquals("SUBMITTED",api.submit(MallOrderConcurrencyMysqlTest.BUYER,claim).status());
             assertEquals("DECLINED",api.decline(f.mall().c.ops,new OfflinePurchaseFacade.DeclineCommand(q,"claim","illegible")).status());
+            var declined=api.claims(MallOrderConcurrencyMysqlTest.BUYER,q).getFirst();
+            assertEquals("illegible",declined.reviewNote());
+            assertNull(declined.receivedAmount());
             assertEquals(0,db.jdbc.queryForObject("SELECT COUNT(*) FROM mall_payment_ref WHERE status='SUCCEEDED'",Integer.class));
             assertEquals(0,db.jdbc.queryForObject("SELECT COUNT(*) FROM mall_fulfillment_task WHERE task_type='DIGITAL'",Integer.class));
             assertEquals(f.order().orderNo(),db.jdbc.queryForObject("SELECT pending_change_order_no FROM mch_subscription_account",String.class));
@@ -156,6 +159,18 @@ class MallOfflineWorkflowMysqlTest {
                     "platform","bank-ref",evidence.assetKey(),false,"bank checked");
             assertEquals("UNMATCHED",api.confirm(ops,applied).status());
             assertEquals("MISMATCHED",status(db,"claim"));
+            // P3-3: buyer sees what the platform actually recorded and why, never operator evidence.
+            var mismatched=api.claims(MallOrderConcurrencyMysqlTest.BUYER,q).getFirst();
+            assertEquals(new Money("CNY",8700),mismatched.receivedAmount());
+            assertEquals("bank checked",mismatched.reviewNote());
+            var wire=tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(mismatched);
+            assertFalse(wire.contains(evidence.assetKey()),wire);
+            assertFalse(wire.contains("bank-ref"),wire);
+            assertFalse(wire.contains("platform"),wire);
+            // P3-4: order summary carries the latest claim status.
+            var queries=queries(db,f);
+            assertEquals("MISMATCHED",queries.order(MallOrderConcurrencyMysqlTest.BUYER,q).summary().latestClaimStatus());
+            assertEquals("MISMATCHED",queries.orders(MallOrderConcurrencyMysqlTest.BUYER,q.store(),null,20).getFirst().latestClaimStatus());
             assertEquals("CLAIM_ALREADY_REVIEWED",assertThrows(MallException.class,()->api.decline(ops,
                     new OfflinePurchaseFacade.DeclineCommand(q,"claim","late decline"))).code());
             assertEquals("CLAIM_ALREADY_REVIEWED",assertThrows(MallException.class,()->api.confirm(ops,
@@ -232,6 +247,49 @@ class MallOfflineWorkflowMysqlTest {
             assertEquals(ops.principalNo(),payouts.getFirst().operatorNo());
             assertEquals(List.of(new RefundQuery("tenant-a",f.order().orderNo(),"refund-1")),recovered);
         }
+    }
+
+    /** P3-3: the buyer is told what to write on the transfer; it is the order number ops searches by. */
+    @Test
+    void instructionsCarryTransferRemarkAndConfirmedClaimShowsReceivedAmount() {
+        try(var db=new MysqlDatabase()) {
+            var helper=new MallFulfillmentMysqlTest();var f=helper.setup(db,false);
+            new MallOfflineDeadlineMysqlTest().freezeOffline(db,86400000);
+            f.svc().prepareOffline(new FulfillmentQuery("tenant-a",f.order().orderNo()));
+            OfflineCollectionPort money=new OfflineCollectionPort() {
+                public ManualResult confirm(ManualPayment command) { return new ManualResult("MATCHED","ledger-row"); }
+            };
+            var api=service(db,f,money);
+            var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());
+            var instructions=api.instructions(MallOrderConcurrencyMysqlTest.BUYER,q).instructions();
+            assertEquals(f.order().orderNo().replaceAll("[^A-Za-z0-9]",""),instructions.get("transferRemark"));
+            assertEquals("test-only",instructions.get("bank"));
+            var queries=queries(db,f);
+            assertNull(queries.order(MallOrderConcurrencyMysqlTest.BUYER,q).summary().latestClaimStatus());
+            var ticket=api.reserveEvidence(MallOrderConcurrencyMysqlTest.BUYER,q,"BUYER_RECEIPT");
+            api.submit(MallOrderConcurrencyMysqlTest.BUYER,new OfflinePurchaseFacade.ClaimCommand(q,"claim",new Money("CNY",8800),
+                    Instant.ofEpochMilli(3000),"buyer-ref",List.of(ticket.assetKey())));
+            var submitted=api.claims(MallOrderConcurrencyMysqlTest.BUYER,q).getFirst();
+            assertNull(submitted.receivedAmount());
+            assertNull(submitted.reviewNote());
+            assertEquals("SUBMITTED",queries.order(MallOrderConcurrencyMysqlTest.BUYER,q).summary().latestClaimStatus());
+            var evidence=api.reserveEvidence(f.mall().c.ops,q,"PLATFORM_RECEIPT");
+            api.confirm(f.mall().c.ops,new OfflinePurchaseFacade.ReviewCommand(q,"r1","claim",new Money("CNY",8800),Instant.ofEpochMilli(3000),
+                    "platform","bank-ref",evidence.assetKey(),false,"internal note"));
+            var confirmed=api.claims(MallOrderConcurrencyMysqlTest.BUYER,q).getFirst();
+            assertEquals("CONFIRMED",confirmed.status());
+            assertEquals(new Money("CNY",8800),confirmed.receivedAmount());
+            assertNull(confirmed.reviewNote());
+            assertEquals("CONFIRMED",queries.order(MallOrderConcurrencyMysqlTest.BUYER,q).summary().latestClaimStatus());
+        }
+    }
+
+    static ai.neargo.commerce.core.query.DefaultMallQueryFacade queries(MysqlDatabase db,MallFulfillmentMysqlTest.Fixture f) {
+        var events=new JdbcCommerceEventPersistence(db.ds);
+        return new ai.neargo.commerce.core.query.DefaultMallQueryFacade(new JdbcMallRepository(db.ds,events),new JdbcFulfillmentRepository(db.ds),
+                new JdbcRefundRepository(db.ds,f.mall().c.ids),new JdbcSubscriptionAccountRepository(db.ds),f.mall().c.uow,
+                s->Optional.of(new StoreSnapshot(s,"merchant","RETAIL",StoreStatus.ACTIVE,CommerceModel.STORE_V1)),
+                (a,s,cap)->new AuthorizationDecision(true,"TEST",Optional.empty()),new JdbcOfflineRepository(db.ds));
     }
 
     static String status(MysqlDatabase db,String claim) {

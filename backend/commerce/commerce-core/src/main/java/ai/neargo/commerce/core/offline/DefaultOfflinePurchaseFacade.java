@@ -190,7 +190,13 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         if(!issued)throw fail("OFFLINE_INSTRUCTIONS_NOT_ISSUED");
         boolean cash=o.view().payable().minor()>0;
         return new InstructionsView(o.orderNo(),o.view().payable(),java.time.Instant.ofEpochMilli(o.paymentDueAt()),
-                terms.profileNo(),terms.profileVersion(),cash?terms.instructions():Map.of());
+                terms.profileNo(),terms.profileVersion(),cash?withRemark(terms.instructions(),o.orderNo()):Map.of());
+    }
+    /** Ops confirms a transfer by locating the order; the buyer puts its number on the transfer. */
+    static Map<String,String> withRemark(Map<String,String> instructions,String orderNo) {
+        var out=new TreeMap<>(instructions);
+        out.put("transferRemark",orderNo.replaceAll("[^A-Za-z0-9]",""));
+        return Collections.unmodifiableMap(out);
     }
     private String purchaseCapability(ActorContext actor) {
         return actor!=null && actor.subjectKind()==SubjectKind.OPERATOR?"commerce:mall:assisted:purchase":"commerce:mall:purchase";
@@ -343,9 +349,9 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         var t=a.order().store().tenantNo();
         offline.claim(t,a.order().orderNo(),a.review().claimNo()).filter(c->"REVIEWING".equals(c.status())).ifPresent(c->
             offline.saveClaim(switch(a.status()) {
-                case "APPLIED" -> c.reviewed("CONFIRMED",a.operatorNo(),c.reason());
-                case "UNMATCHED" -> c.reviewed("MISMATCHED",a.operatorNo(),c.reason());
-                default -> c.reviewed("SUBMITTED",null,null);
+                case "APPLIED" -> c.reviewed("CONFIRMED",a.operatorNo(),c.reason(),a.review().actualAmount());
+                case "UNMATCHED" -> c.reviewed("MISMATCHED",a.operatorNo(),c.reason(),a.review().actualAmount());
+                default -> c.reviewed("SUBMITTED",null,null,null);
             }));
     }
 
