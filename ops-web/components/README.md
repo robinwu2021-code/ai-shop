@@ -86,6 +86,7 @@
 | `ThemeSwitcher` | `layout/theme-switcher.tsx` | 顶栏皮肤切换（五套） |
 | `ScrollHint` / `useScrollHint` | `layout/scroll-hint.tsx` | 导航溢出提示。Rail 与 L2 面板**一直都能滚**，缺的是「下面还有」这件事的可见性 —— macOS 的覆盖式滚动条静止时不渲染，而 Rail 是 56px 宽的纯图标条，21 个域在 720px 以下必有几个落在折线以下 |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |
+| `ChangePasswordButton` | `layout/change-password.tsx` | 顶栏「修改密码」：旧密码 + 新密码两次，调 `POST /ops/staffs/me/password`。旧密码错后端回 10401（业务码），这里说成「当前密码不正确」而不是登录过期；成功后后端吊销全部会话，所以随即登出回登录页 |
 
 ### `components/status.tsx` 的归位
 

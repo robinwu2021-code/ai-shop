@@ -51,7 +51,6 @@ POST /ops/notify-channels/merchant
 GET /ops/rule-texts/history
 # 规格值合并：脏数据治理动作，今天只能靠人工提工单
 POST /ops/spec-values/merge
-# 改员工角色 / 改自己的密码：**IAM 这两条是能力缺口，不是重复能力**
-# —— 运营账号今天改不了自己的密码，也调不了别人的角色
+# 改员工角色：**IAM 能力缺口，不是重复能力** —— 运营今天调不了别人的角色
+# （改自己的密码 2026-11-06 已接上：顶栏「修改密码」）
 POST /ops/staffs/{staffNo}/role
-POST /ops/staffs/me/password

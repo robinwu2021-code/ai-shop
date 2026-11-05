@@ -19112,6 +19112,39 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/staffs/me/password":
+    post:
+      operationId: "changeOwnPassword"
+      summary: "登录后改自己的密码（`POST /ops/staffs/me/password`）"
+      tags:
+        - "dashboard"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/menu":
     get:
       operationId: "menu"
