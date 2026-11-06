@@ -33,12 +33,21 @@ final class PayCallerHeaders implements ClientHttpRequestInterceptor {
     static PayCallerHeaders of(String caller, Map<String, String> credentials) {
         if (caller == null || caller.isBlank()) return null;
         String c = caller.trim();
-        String credential = credentials == null ? null : credentials.get(c);
+        String credential = credentials == null ? null : credentials.entrySet().stream()
+                .filter(e -> norm(e.getKey()).equals(norm(c))).map(Map.Entry::getValue).findFirst().orElse(null);
         if (credential == null || credential.isBlank()) {
             throw new IllegalStateException("shop.pay.internal-caller=" + c
                     + " 但没有凭据：请配置 shop.pay.internal-caller-credentials." + c);
         }
         return new PayCallerHeaders(c, credential);
+    }
+
+    /**
+     * 凭据表的键按调用方码比对时不区分大小写与分隔符：环境变量 {@code SHOP_PAY_INTERNAL_CALLER_CREDENTIALS_AI_SHOP_UME}
+     * 经 relaxed binding 进 Map 后键会变成 {@code ai-shop-ume} 一类（166 上 2026-11-06 因此启动失败过）。
+     */
+    private static String norm(String k) {
+        return k == null ? "" : k.toLowerCase(java.util.Locale.ROOT).replaceAll("[-_.]", "");
     }
 
     @Override

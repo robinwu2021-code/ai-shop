@@ -58,23 +58,59 @@ class PayCallerHeadersTest {
     }
 
     @Test
-    @DisplayName("★★★ 接线：PayClientConfig 配了调用方时，PayInternalApi 挂上调用方头；没配时不挂")
-    void configWiresCallerHeadersIntoPayInternalApi() {
-        var http = org.mockito.Mockito.mock(ai.neargo.shop.svc.InternalHttp.class);
+    @DisplayName("★★★ 接线：配了调用方时注册成 PAY 的按服务拦截器 —— 收款页、运营支付页、双写等所有 PAY 客户端都带上")
+    void configRegistersCallerHeadersForEveryPayClient() {
         var env = new org.springframework.mock.env.MockEnvironment()
                 .withProperty("shop.pay.internal-caller", "AI_SHOP_UME")
                 .withProperty("shop.pay.internal-caller-credentials.AI_SHOP_UME", "cred-ume");
-        new PayClientConfig().payInternalApi(http, env);
-        org.mockito.Mockito.verify(http).client(org.mockito.ArgumentMatchers.eq("PAY"),
-                org.mockito.ArgumentMatchers.eq(ai.neargo.shop.pay.client.PayInternalApi.class),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.<org.springframework.http.client.ClientHttpRequestInterceptor>argThat(
-                        i -> i instanceof PayCallerHeaders));
-        var plain = org.mockito.Mockito.mock(ai.neargo.shop.svc.InternalHttp.class);
-        new PayClientConfig().payInternalApi(plain, new org.springframework.mock.env.MockEnvironment());
-        org.mockito.Mockito.verify(plain).client(org.mockito.ArgumentMatchers.eq("PAY"),
-                org.mockito.ArgumentMatchers.eq(ai.neargo.shop.pay.client.PayInternalApi.class),
-                org.mockito.ArgumentMatchers.any());
+        var bean = new PayClientConfig().payCallerHeaders(env);
+        assertThat(bean.service()).isEqualTo(ai.neargo.shop.svc.ServiceName.PAY);
+        assertThat(bean.interceptor()).isInstanceOf(PayCallerHeaders.class);
+    }
+
+    interface AnyPayApi {
+        @org.springframework.web.service.annotation.GetExchange("/internal/pay/v1/biz/stores/S1/collect-status")
+        String collectStatus();
+    }
+
+    @Test
+    @DisplayName("★★★ 真发请求：InternalHttp 造的任意 PAY 客户端（如收款页的 PayBizInternalApi）都带调用方头")
+    void anyPayClientBuiltByInternalHttpSendsCallerHeaders() throws Exception {
+        var seen = new java.util.concurrent.atomic.AtomicReference<com.sun.net.httpserver.Headers>();
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", ex -> {
+            seen.set(ex.getRequestHeaders());
+            byte[] b = "\"ok\"".getBytes();
+            ex.getResponseHeaders().add("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, b.length);
+            ex.getResponseBody().write(b);
+            ex.close();
+        });
+        server.start();
+        try {
+            var env = new org.springframework.mock.env.MockEnvironment()
+                    .withProperty("shop.pay.internal-caller", "AI_SHOP_UME")
+                    .withProperty("shop.pay.internal-caller-credentials.ai-shop-ume", "cred-ume");
+            var beans = new org.springframework.beans.factory.support.StaticListableBeanFactory(
+                    Map.of("payCaller", new PayClientConfig().payCallerHeaders(env)));
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            var http = new ai.neargo.shop.svc.InternalHttp(svc -> java.util.Optional.of(base), "tok",
+                    beans.getBeanProvider(ai.neargo.shop.svc.InternalServiceInterceptor.class));
+            http.client(ai.neargo.shop.svc.ServiceName.PAY, AnyPayApi.class, java.time.Duration.ofSeconds(2)).collectStatus();
+            assertThat(seen.get().getFirst("X-Internal-Caller")).isEqualTo("AI_SHOP_UME");
+            assertThat(seen.get().getFirst("X-Internal-Credential")).isEqualTo("cred-ume");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 凭据键不区分大小写与分隔符：环境变量经 relaxed binding 变成 ai-shop-ume / aishopume 也找得到")
+    void credentialLookupIgnoresCaseAndSeparators() throws Exception {
+        for (String key : new String[] {"ai-shop-ume", "aishopume", "ai.shop.ume", "AI_SHOP_UME"}) {
+            var req = send(PayCallerHeaders.of("AI_SHOP_UME", Map.of(key, "cred-ume")));
+            assertThat(req.getHeaders().getFirst("X-Internal-Credential")).as(key).isEqualTo("cred-ume");
+        }
     }
 
     @Test

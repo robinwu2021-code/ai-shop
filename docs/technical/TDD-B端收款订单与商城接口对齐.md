@@ -418,5 +418,6 @@ ArchitectureTest：Tests run: 22, Failures: 5（即存量 5 项，报告中无 c
 166 联调发现：生产 near-pay 的 `/internal/pay/v1/**` 只认调用方鉴权（`X-Internal-Caller` + `X-Internal-Credential`），而 `PayInternalApi`（收款页、运营支付页、商户双写）只带共享令牌，于是 B 端收款接口全部 10500（near-pay 返回 401）。
 
 - 新配置：`shop.pay.internal-caller=<调用方码>`。凭据复用 `shop.pay.internal-caller-credentials.<调用方码>`，与 `RemotePaymentPort` 用同一张表，由部署环境提供，不进仓库。
-- 实现：`PayCallerHeaders` 拦截器挂在 `PayInternalApi` 客户端上。没配调用方时不加头，行为不变；配了调用方却没有凭据，启动时直接报错；方法上已经声明了调用方头的请求不覆盖。
-- 测试：`PayCallerHeadersTest`（6 条）。消融：去掉写头，或去掉接线，对应测试都会变红。
+- 实现：`PayCallerHeaders` 注册成 PAY 的按服务拦截器（`InternalServiceInterceptor`），`InternalHttp` 给每一个 PAY 客户端都挂上：收款页 `PayBizInternalApi`、运营支付页 `PayOpsInternalApi`、`PayInternalApi`。（第一版只挂在 `PayInternalApi` 上，166 部署后收款页仍 401，3bb3c33e4 之后补正。）没配调用方时不加头，行为不变；配了调用方却没有凭据，启动时直接报错；方法上已经声明了调用方头的请求不覆盖（`RemotePaymentPort`）。
+- 凭据键：按调用方码比对时不区分大小写和分隔符。环境变量 `SHOP_PAY_INTERNAL_CALLER_CREDENTIALS_AI_SHOP_UME` 经 relaxed binding 进 Map 后键会变成 `ai-shop-ume` 之类，166 曾因此启动失败。
+- 测试：`PayCallerHeadersTest`（8 条），其中一条起本地 HTTP 服务，真发请求，断言任意 PAY 客户端都带上了调用方头。消融：注册到别的服务名、去掉键名归一化，对应测试都会变红。

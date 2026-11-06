@@ -5,6 +5,7 @@ import ai.neargo.shop.pay.client.PaymentInternalApi;
 import ai.neargo.shop.pay.client.port.RemotePaymentPort;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.svc.InternalServiceInterceptor;
 import ai.neargo.shop.svc.ServiceName;
 import java.time.Duration;
 import java.util.Map;
@@ -26,16 +27,21 @@ public class PayClientConfig {
     /** 与迁移前一致：pay 的内部调用读超时 5 秒 */
     private static final Duration PAY_READ_TIMEOUT = Duration.ofSeconds(5);
 
+    @Bean
+    PayInternalApi payInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT);
+    }
+
     /**
-     * 收款页、运营支付页、商户双写走的内部客户端。配了 {@code shop.pay.internal-caller} 时带调用方鉴权头
-     * （独立 near-pay 按调用方鉴权，只带共享令牌会 401），见 {@link PayCallerHeaders}。
+     * 调用方鉴权头，注册成 PAY 的按服务拦截器：{@link InternalHttp} 给<b>每一个</b> PAY 客户端都挂上
+     * （收款页 {@code PayBizInternalApi}、运营支付页 {@code PayOpsInternalApi}、{@code PayInternalApi}…）。
+     * 独立 near-pay 按调用方鉴权，只带共享令牌会 401。见 {@link PayCallerHeaders}。
      */
     @Bean
-    PayInternalApi payInternalApi(InternalHttp http, Environment env) {
-        PayCallerHeaders caller = PayCallerHeaders.of(env.getProperty("shop.pay.internal-caller"), credentials(env));
-        return caller == null
-                ? http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT)
-                : http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT, caller);
+    @ConditionalOnProperty(name = "shop.pay.internal-caller")
+    InternalServiceInterceptor payCallerHeaders(Environment env) {
+        return new InternalServiceInterceptor(ServiceName.PAY,
+                PayCallerHeaders.of(env.getProperty("shop.pay.internal-caller"), credentials(env)));
     }
 
     private static Map<String, String> credentials(Environment env) {
