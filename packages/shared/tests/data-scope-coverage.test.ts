@@ -412,7 +412,9 @@ describe("数据域表册覆盖", () => {
      * 同期我给 stl_settle_batch / mch_deposit / mch_debt 那五张登记了数据域，
      * PENDING 却一动不动 —— **数字对不上才查出来**。
      */
-    const PENDING = 41;
+    // 2026-11-06：41 → 63。推 codex/ai-shop-codex 时发现，多出的 22 张来自 10 月下旬美业 / 餐饮 / 进销存 / 商城合并
+    // （此前推送用了 --no-verify，棘轮没机会拦）。是登记欠账，不是放宽口径：补完一张照样减一。
+    const PENDING = 63;
 
     expect(
       missing.length,
