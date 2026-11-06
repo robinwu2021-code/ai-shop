@@ -26,9 +26,21 @@ public class PayClientConfig {
     /** 与迁移前一致：pay 的内部调用读超时 5 秒 */
     private static final Duration PAY_READ_TIMEOUT = Duration.ofSeconds(5);
 
+    /**
+     * 收款页、运营支付页、商户双写走的内部客户端。配了 {@code shop.pay.internal-caller} 时带调用方鉴权头
+     * （独立 near-pay 按调用方鉴权，只带共享令牌会 401），见 {@link PayCallerHeaders}。
+     */
     @Bean
-    PayInternalApi payInternalApi(InternalHttp http) {
-        return http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT);
+    PayInternalApi payInternalApi(InternalHttp http, Environment env) {
+        PayCallerHeaders caller = PayCallerHeaders.of(env.getProperty("shop.pay.internal-caller"), credentials(env));
+        return caller == null
+                ? http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT)
+                : http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT, caller);
+    }
+
+    private static Map<String, String> credentials(Environment env) {
+        return Binder.get(env)
+                .bind("shop.pay.internal-caller-credentials", Bindable.mapOf(String.class, String.class)).orElse(Map.of());
     }
 
     /**
@@ -37,8 +49,7 @@ public class PayClientConfig {
      */
     @Bean
     PaymentPort remotePaymentPort(InternalHttp http, Environment env) {
-        Map<String, String> credentials = Binder.get(env)
-                .bind("shop.pay.internal-caller-credentials", Bindable.mapOf(String.class, String.class)).orElse(Map.of());
+        Map<String, String> credentials = credentials(env);
         return new RemotePaymentPort(http.client(ServiceName.PAY, PaymentInternalApi.class, PAY_READ_TIMEOUT),
                 credentials, ServiceName.PAY);
     }

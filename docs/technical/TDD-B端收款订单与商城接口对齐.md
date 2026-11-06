@@ -412,3 +412,11 @@ ArchitectureTest：Tests run: 22, Failures: 5（即存量 5 项，报告中无 c
 4. **审核说明的可见范围**：`reviewNote` 只在 DECLINED / MISMATCHED 给（解释为什么没认），CONFIRMED 不给（确认时写的是运营内部备注）；`receivedAmount` 只在 CONFIRMED / MISMATCHED 给。凭证、收款方、银行流水号一律不出。实收金额在审核落定时写进申报快照（`Claim.received`，JSON 列，**无迁移**）；本次之前已审核的申报读出来为 `null`。
 5. **`latestClaimStatus` 与申报列表同一可见范围**：商家只看自己提交的申报，运营看全部；非线下单恒为 `null`。列表每行多一次按订单读申报（≤100 行，只对线下单），没有加批量查询。
 6. `MallOpenApiResponseTest` 新增的 StorefrontView 夹具里 `reason` 填了字符串：契约里 `ProductDraft/SkuDraft.reason` 不可空，与本次无关，未改。
+
+## 补记 · 2026-11-06 独立支付服务按调用方鉴权
+
+166 联调发现：生产 near-pay 的 `/internal/pay/v1/**` 只认调用方鉴权（`X-Internal-Caller` + `X-Internal-Credential`），而 `PayInternalApi`（收款页、运营支付页、商户双写）只带共享令牌，于是 B 端收款接口全部 10500（near-pay 返回 401）。
+
+- 新配置：`shop.pay.internal-caller=<调用方码>`。凭据复用 `shop.pay.internal-caller-credentials.<调用方码>`，与 `RemotePaymentPort` 用同一张表，由部署环境提供，不进仓库。
+- 实现：`PayCallerHeaders` 拦截器挂在 `PayInternalApi` 客户端上。没配调用方时不加头，行为不变；配了调用方却没有凭据，启动时直接报错；方法上已经声明了调用方头的请求不覆盖。
+- 测试：`PayCallerHeadersTest`（6 条）。消融：去掉写头，或去掉接线，对应测试都会变红。
