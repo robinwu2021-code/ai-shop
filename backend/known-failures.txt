@@ -36,3 +36,12 @@
 # 它让人以为这件事「有人在管」。所以这个文件真正的用法是「短期止血 + 尽快清零」，
 # 不是长期停车场。再往里加行之前先问一句：这条是今天修不了，还是没人去修。
 # ══════════════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════
+# 2026-11-06 登记 3 条（推 codex/ai-shop-codex 时发现，此前两次推送用了 --no-verify）。
+# 都不是商城 / 收款 / 付款链接 / near-pay 修复带来的，归属会话请修好后删行：
+#   · CheckoutContractTest —— 741b38178 服务结账：内部 API 方法清单与断言不一致（多出的 *Bound 方法）
+#   · ExecutionPreparationOriginalProtocolTest ×2 —— 87311602b 美业任务准备：协议字段校验与执行凭证形状
+CheckoutContractTest.eightOwnerMethodsKeepConsumerPaymentOutOfDelegatedInternalApi
+ExecutionPreparationOriginalProtocolTest.concreteCallRoundTripsAndRejectsUnknownMissingDuplicateFields
+ExecutionPreparationOriginalProtocolTest.evidenceReplyRequiresSignedMatchingReferenceAndServerDecodedDigest
