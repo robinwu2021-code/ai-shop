@@ -19093,6 +19093,12 @@ SELECT 'OPS_COMMERCE__TAB_CATEGORIES', 'OPS_MERCHANT', '商城商品分类', '�
 INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_CATEGORIES', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_CATEGORIES');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MERCHANT_STORE_NEARPAY_SYNC', 'OPS_MERCHANT', '门店信息重推支付系统', '门店', NULL, 'merchant:store:nearpay-sync', 'merchant:store:nearpay-sync', 'IMPLEMENTED', 0, NULL, 'ACTION', 92, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MERCHANT_STORE_NEARPAY_SYNC');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_STORE_NEARPAY_SYNC', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MERCHANT_STORE_NEARPAY_SYNC');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

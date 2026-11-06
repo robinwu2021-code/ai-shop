@@ -183,7 +183,6 @@
     "GET /ops/stores/acquisition",
     "GET /ops/stores/audits",
     "POST /ops/stores/audits/{auditNo}/decide",
-    "POST /ops/stores/nearpay-sync",
     "GET /ops/stores/qrcodes",
     "GET /ops/stores/qrcodes/export",
     "GET /ops/stream"

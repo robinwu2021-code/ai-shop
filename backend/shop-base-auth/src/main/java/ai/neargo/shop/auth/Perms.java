@@ -305,6 +305,13 @@ public final class Perms {
      */
     public static final String MERCHANT_NUDGE = "merchant:merchant:nudge";
 
+    /**
+     * 门店信息全量重推到支付系统（near-pay）。**不复用 {@link #MERCHANT_BAN}**：
+     * 重推不改任何数据，与封店不是一个量级；挂在封店下等于「能封店的人才能重推」，审计上也说不清凭什么推。
+     * 只给超管（运维动作）。
+     */
+    public static final String MERCHANT_STORE_NEARPAY_SYNC = "merchant:store:nearpay-sync";
+
     public static final String MERCHANT_CATEGORY_READ = "merchant:category:read";
 
     /**

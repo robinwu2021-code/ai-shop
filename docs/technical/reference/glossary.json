@@ -54776,6 +54776,14 @@
     },
     {
       "host": "Perms",
+      "name": "MERCHANT_STORE_NEARPAY_SYNC",
+      "type": "String",
+      "value": "\"merchant:store:nearpay-sync\"",
+      "zh": "门店信息全量重推到支付系统（near-pay）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "MERCHANT_CATEGORY_READ",
       "type": "String",
       "value": "\"merchant:category:read\"",
