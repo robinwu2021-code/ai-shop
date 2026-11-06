@@ -1,6 +1,6 @@
 # B 端经营 · 收款、订单、商城采购、付款链接 · API 对接文档
 
-文档版本：2026-11-05。后端基线：`92bb3a701`，分支 `codex/commerce-into-ai-shop-codex`（未推送）。
+文档版本：2026-11-06。后端基线：`959289faf`，分支 `codex/ai-shop-codex`（已推送）；166 预发布已部署同一套代码（发布分支 `release/ume-mall-20261105`）。线上联调地址见 §10。
 
 本文汇总 Flutter 商户端在原型 v5 / v6 下要用的服务端接口，包括本期新增和改动的接口，以及直接复用的既有接口。注册、登录、建店、证照、进件前半段见 [B端注册到进件-标准API文档](B端注册到进件-标准API文档.md)。设计与测试对账见：
 - `docs/technical/TDD-B端收款订单与商城接口对齐.md`（P1 收款、P2 零售订单、P3 第一批商城）
@@ -39,6 +39,11 @@
 - `/biz/payment/**`
 - `/biz/entities/**`、`GET /biz/entity/{entityNo}`
 - `/biz/store/{storeNo}/` 下的 `categories`、`ship-setting`、`freight-template`、`sell-rules`、`stock-sync`、`payment`
+- 店员与角色：`/biz/staff`、`/biz/staff/logs`、`/biz/staff/{no}/status|store`、`/biz/roles`、`/biz/role-perms`、`/biz/role/{code}`（`/delete`）
+- 管理空间：`GET /biz/management/context`、`/biz/management/spaces/**`
+- 证照与协议：`/biz/qualifications`（`/recognize`、`/save`）、`POST /biz/merchant/agreement/accept`、`GET /biz/merchant/pay-channel`
+- 地图选点：`GET /biz/geo/tips`、`GET /biz/geo/reverse`
+- 首页看板：`GET /biz/dashboard/todo`、`GET /biz/dashboard/stats`（2026-11-06 补，`f8218d4ca`）
 
 新增经营接口必须同步登记。
 
@@ -176,7 +181,7 @@
 
 | 方法 · 路径 | 说明 |
 |---|---|
-| GET `…/products` | 目录。每个 SKU 带 `readiness`（在线支付）和 `offlineReadiness`（线下转账，本期新增；线下没开时为 null） |
+| GET `…/products` | 目录。每个 SKU 带 `readiness`（在线支付）和 `offlineReadiness`（线下转账，本期新增；线下没开时为 null）。响应新增 `categories:[{code, parentCode, level, names{语言:名称}, icon, sortOrder}]`：在售商品用到的商城类目及其全部上级，按 (level, sortOrder, code) 排序，用来做多级分类导航 |
 | POST `…/offline/quotes` | 线下报价：`{lines:[{skuVersionNo, quantity}], currency}` → `quoteNo, payable…` |
 | POST `…/orders` | 下单：`{quoteNo, idempotencyKey, shippingAddress?}`。含硬件时必须带收货地址 |
 | GET `…/orders`、`…/orders/{orderNo}` | 采购订单列表与详情 |
@@ -191,6 +196,7 @@
 - `ClaimView` 本期新增两个字段：
   - `receivedAmount`：只在 `CONFIRMED`、`MISMATCHED` 时有；
   - `reviewNote`：只在 `DECLINED`、`MISMATCHED` 时有。
+- **2026-11-06 状态**：商城线下付款（改为「销售代收、运营确认」）已搁置，166 未开线下也未开在线支付，SKU 均不可买，端上显示「即将开放」属正常。
 - 申报状态：`SUBMITTED`、`REVIEWING` → `CONFIRMED`、`MISMATCHED`、`DECLINED`。
 - 订单 `paymentStatus` 要等运营确认到账后才变；页头的「核款中」看 `latestClaimStatus`。
 
@@ -230,11 +236,13 @@
 |---|---|
 | 开通收款 | 门店改挂已有主体（N1）、绑定已有渠道商户号（N2）、一次提交开通（N3） |
 | 商城 | 用量组件与「我的 › 用量」余额；硬件规格；逐组件的交付状态；硬件退款 |
-| 零售 | 订单按单号 / 顾客搜索；商品分组计数一次返回；新门店默认类目方案（待定） |
+| 零售 | 订单按单号 / 顾客搜索；商品分组计数一次返回；新门店默认类目方案（待定）；平台类目只有简体中文与英文名，无繁体 |
 | 发货 | 台湾物流公司代码与物流公司列表（本期不补）；台湾门店发货会被拒 |
 | 付款链接 | 链接记录里给 `operatorName` |
 | 支付渠道 | 台湾 LINE Pay、蓝新、街口尚未接入；本机用 TEST 渠道，配合 `shop.pay.stub=true` 和 `/pay/callback/stub` 模拟回调 |
-| 登录语义 | 登录不预选门店、无主体时不转店员会话（见 TDD-账户登录与选店校验 第二步，待定） |
+| 登录语义 | 登录不预选门店、无主体时不转店员会话（见 TDD-账户登录与选店校验 第二步，待定）；登录响应与 `/biz/merchant/profile` 不含 `userNo`，端上暂用 account / phone 作账号键 |
+| 商城付款 | 线下「销售代收」已搁置；在线支付未开 |
+| 门店收款 | 166 未启用收款渠道（70045），未配支付服务地址（收款与付款链接接口 10500），本期不联调；END 准入头 `X-Client-Id` / `X-End-Context` 端上未带 |
 | 餐饮、美业 | 订单视图（P4）整块未做 |
 
 ## 9. 本机联调环境
@@ -245,3 +253,15 @@
 | 顾客端收银台 H5 | `http://localhost:5177`，`/checkout/v1` 代理到 8091；`shop.pay.checkout.base-url=http://10.0.2.2:5177` |
 | 模拟付款成功 | `POST /pay/callback/stub {"outTradeNo":"<payOrderNo>","transactionId":"TX-…","sign":"stub-secret"}`（仅本机 `shop.pay.stub=true`） |
 | 测试门店 | Joint Test Store `ST261105EZ7KKE8WAS`，TW；已开通 TEST 渠道 |
+
+## 10. 166 预发布联调环境（台湾）
+
+| 项 | 值 |
+|---|---|
+| API | `https://twpay.umeshop.ai/shop-api`，路径照常 `/biz/...`；对外只开放 `/biz/**` 与 `/common/master-data`；证书为公网 DigiCert |
+| 构建参数 | `--dart-define=MERCHANT_DATA_SOURCE=server --dart-define=MERCHANT_API_BASE_URL=https://twpay.umeshop.ai/shop-api` |
+| 登录 | `POST /biz/auth/login {grantType:"PHONE_OTP", principal:"+886…", credential, agreed:true, marketCode:"TW"}`；+886 走模拟短信，验证码只在服务端日志，由部署会话代取；同一号码两次发码要隔 60 秒以上（否则静默限流） |
+| 测试账号 | `+886900000102` → 主体 `M26110512GRAR2551`、门店 `ST261105S2K8ZD6T3C`（RETAIL / TW，PENDING_LICENSE）；`+886900000101` 是 CN 账号，不要用 |
+| 商城目录 | 零售 FREE / PRO / CHAIN、餐饮 FREE；7 个 TWD SKU（PRO 年 1990 / 月 199、CHAIN 年 5990 / 月 599、80mm 印表机 2400、热敏纸 560、開店套餐 3990） |
+| 平台类目 | 从本机库导入（2026-11-06），测试店配预包装食品、纸品清洁、个护化妆 |
+| 本期不联调 | 门店收款（收款 Tab、扫码 / POS、付款链接）、商城付款 |
