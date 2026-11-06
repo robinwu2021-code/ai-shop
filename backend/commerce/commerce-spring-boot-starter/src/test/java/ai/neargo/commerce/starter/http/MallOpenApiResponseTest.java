@@ -81,7 +81,12 @@ class MallOpenApiResponseTest {
                         java.lang.reflect.Proxy.newProxyInstance(
                                 getClass().getClassLoader(),
                                 new Class[] {CatalogFacade.class},
-                                (p, m, a) -> new DraftSaveResult("retail", null, 1));
+                                (p, m, a) ->
+                                        "categories".equals(m.getName())
+                                                ? List.of(
+                                                        new CategoryView("hw", null, 1, Map.of("zh-TW", "硬體"), null, 1, "ENABLED", 1),
+                                                        new CategoryView("pos", "hw", 2, Map.of("en", "POS"), "https://cdn/x.png", 0, "DISABLED", 3))
+                                                : new DraftSaveResult("retail", null, 1));
         var sku =
                 new SkuDraft("product", "sku", "sku-1", "套餐", amount, amount, List.of("retail"), "{}",
                         List.of(), 1, 1, "publish");
@@ -93,7 +98,8 @@ class MallOpenApiResponseTest {
         StorefrontFacade storefront =
                 (a, s) -> new StorefrontView(s, "retail", "CNY", 1, true, List.of(new StorefrontView.Product(
                         new ProductDraft("product", "cat", ProductKind.BUNDLE, "套餐", "d", List.of("retail"), 0, 1, "publish"),
-                        List.of(new StorefrontView.Sku(sku, online, offlineReady), new StorefrontView.Sku(sku, online)))));
+                        List.of(new StorefrontView.Sku(sku, online, offlineReady), new StorefrontView.Sku(sku, online)))),
+                        List.of(new StorefrontView.Category("cat", null, 1, Map.of("en", "Plans"), null, 0)));
         var actor = new ActorContext("MAIN", SubjectKind.ACCOUNT, "buyer", "live");
         var context =
                 new MallHttpContextPort() {
@@ -124,6 +130,7 @@ class MallOpenApiResponseTest {
                                 new CommerceBuyerMallHttpController(
                                         null, queries, null, null, context, envelope),
                                 new CommerceCatalogHttpController(catalog, context, envelope),
+                                new CommerceMallProductHttpController(catalog, context, envelope),
                                 new CommerceStorefrontHttpController(storefront, context, envelope))
                         .build();
         var order = mvc.perform(get("/biz/stores/S/mall/orders/order")).andReturn().getResponse();
@@ -136,6 +143,17 @@ class MallOpenApiResponseTest {
                         .andReturn()
                         .getResponse();
         var products = mvc.perform(get("/biz/stores/S/mall/products")).andReturn().getResponse();
+        var categories = mvc.perform(get("/ops/biz-mall/categories")).andReturn().getResponse();
+        assertEquals(200, categories.getStatus());
+        var savedCategory =
+                mvc.perform(
+                                put("/ops/biz-mall/categories/pos")
+                                        .contentType("application/json")
+                                        .content(
+                                                "{\"parentCode\":\"hw\",\"names\":{\"en\":\"POS\"},\"icon\":null,\"sortOrder\":0,\"enabled\":true,\"expectedVersion\":3,\"reason\":\"edit\"}"))
+                        .andReturn()
+                        .getResponse();
+        assertEquals(200, savedCategory.getStatus());
         assertEquals(200, products.getStatus());
         assertTrue(products.getContentAsString().contains("\"offlineReadiness\":null"));
         assertEquals(200, order.getStatus());
@@ -148,6 +166,8 @@ class MallOpenApiResponseTest {
         fixtures.put("MallOrderDetailView", mapper.readTree(order.getContentAsString()).get("data"));
         fixtures.put("DraftSaveResult", mapper.readTree(save.getContentAsString()).get("data"));
         fixtures.put("StorefrontView", mapper.readTree(products.getContentAsString()).get("data"));
+        fixtures.put("CategoryView", mapper.readTree(categories.getContentAsString()).get("data").get(0));
+        assertTrue(categories.getContentAsString().contains("\"parentCode\":null"));
         for (var e : offline.entrySet())
             fixtures.put(e.getKey(), mapper.readTree(e.getValue()).get("data"));
         assertEquals("null", mapper.readTree(offline.get("OfflineActionView")).get("data").get("paymentNo").toString());

@@ -27,6 +27,47 @@ public final class CommerceMallProductHttpController extends MallHttpSupport {
         return ok(catalog.overview(context.operator("commerce:catalog:read")));
     }
 
+    /** Flat category tree, ordered by (level, sortOrder, categoryCode). */
+    @GetMapping("/ops/biz-mall/categories")
+    public Object categories() {
+        return ok(catalog.categories(context.operator("commerce:catalog:read")));
+    }
+
+    @PostMapping("/ops/biz-mall/categories")
+    public Object createCategory(@RequestBody String body) {
+        return ok(
+                catalog.saveCategory(
+                        context.operator("commerce:catalog:edit"),
+                        json.read(body, CategoryDraft.class)));
+    }
+
+    public record CategoryUpdate(
+            String parentCode,
+            Map<String, String> names,
+            String icon,
+            int sortOrder,
+            boolean enabled,
+            long expectedVersion,
+            String reason) {}
+
+    /** The path code wins; category codes are immutable. */
+    @PutMapping("/ops/biz-mall/categories/{categoryCode}")
+    public Object category(@PathVariable("categoryCode") String no, @RequestBody String body) {
+        var d = json.read(body, CategoryUpdate.class);
+        return ok(
+                catalog.saveCategory(
+                        context.operator("commerce:catalog:edit"),
+                        new CategoryDraft(
+                                code(no),
+                                d.parentCode(),
+                                d.names(),
+                                d.icon(),
+                                d.sortOrder(),
+                                d.enabled(),
+                                d.expectedVersion(),
+                                d.reason())));
+    }
+
     @GetMapping("/ops/biz-mall/products")
     public Object products() {
         return ok(catalog.overview(context.operator("commerce:catalog:read")).products());

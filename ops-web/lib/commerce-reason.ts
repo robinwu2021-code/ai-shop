@@ -44,6 +44,11 @@ const REASONS: Record<string, [zh: string, en: string]> = {
   OFFLINE_UNMATCHED_DISPOSITION_REQUIRED: ["作废前必须为每一笔金额不符的实收（MALL_UNMATCHED）写处置说明，一笔不漏", "Every unmatched receipt (MALL_UNMATCHED) needs a disposition note before voiding"],
   OFFLINE_RECONCILIATION_CONFLICT: ["这张单已经作废过，或作废参数与上次不一致", "Already voided, or the void details differ from the earlier attempt"],
   OFFLINE_PAYOUT_AMOUNT_MISMATCH: ["实际出款金额必须等于批准的退款金额", "The payout amount must equal the approved refund amount"],
+  CATEGORY_UNAVAILABLE: ["分类不存在或已停用（商品只能挂启用中的分类；新建下级时上级也必须启用）", "Category missing or disabled — products and new children need an enabled category"],
+  CATEGORY_TOO_DEEP: ["分类最多 3 级（移动时整棵子树一起算）", "Categories are limited to 3 levels (a moved subtree counts as a whole)"],
+  CATEGORY_CYCLE: ["上级不能是自己或自己的下级", "A category cannot be moved under itself or its own descendant"],
+  CATEGORY_HAS_CHILDREN: ["还有启用中的下级分类，先停用下级", "Disable its enabled child categories first"],
+  CATEGORY_IN_USE: ["还有在售商品挂在这个分类上，先改商品分类或停售", "On-sale products still use this category — move or stop them first"],
   PAYMENT_UNAVAILABLE: ["支付协调未开启", "Payment coordination is not enabled"],
 };
 

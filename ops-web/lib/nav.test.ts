@@ -171,6 +171,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     "/mall?tab=collection",
     "/mall?tab=assisted",
     "/mall?tab=sources",
+    "/mall?tab=categories",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {

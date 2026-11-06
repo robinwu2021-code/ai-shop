@@ -19,6 +19,15 @@ public interface CatalogFacade {
 
     DraftSaveResult stopSale(ActorContext actor, StopSaleCommand command);
 
+    default DraftSaveResult saveCategory(ActorContext actor, CategoryDraft command) {
+        throw new UnsupportedOperationException("CATEGORY_UNAVAILABLE");
+    }
+
+    /** Flat list ordered by (level, sortOrder, categoryCode). */
+    default java.util.List<CategoryView> categories(ActorContext actor) {
+        return overview(actor).categories();
+    }
+
     default CatalogOverview overview(ActorContext actor) {
         throw new UnsupportedOperationException("CATALOG_OVERVIEW_UNAVAILABLE");
     }

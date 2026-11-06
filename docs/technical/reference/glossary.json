@@ -40318,6 +40318,20 @@
         "module": "shop-core"
       },
       {
+        "host": "GeoRouter",
+        "name": "AMAP",
+        "value": "AMAP",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "GeoRouter",
+        "name": "GOOGLE",
+        "value": "GOOGLE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PromotionVO",
         "name": "BUY_N_GET_M",
         "value": "BUY_N_GET_M",
@@ -42181,6 +42195,13 @@
       },
       {
         "host": "IdentityType",
+        "name": "EMAIL",
+        "value": "EMAIL",
+        "zh": "已验证的邮箱（归一化为 trim + 全小写）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "IdentityType",
         "name": "WX_UNIONID",
         "value": "WX_UNIONID",
         "zh": "微信开放平台 unionid：同主体下所有微信应用通用。",
@@ -42297,6 +42318,13 @@
         "value": "SHOP",
         "zh": "",
         "module": "shop-inventory"
+      },
+      {
+        "host": "StoreVO",
+        "name": "OTHER",
+        "value": "OTHER",
+        "zh": "行业或子业态选了「其他」时报的码，与 store-setup / quick-start 同一个",
+        "module": "shop-merchant"
       },
       {
         "host": "MchAccount",
@@ -43569,7 +43597,12 @@
           "NOT_FOUND",
           "VERSION_CONFLICT",
           "FORBIDDEN",
-          "IMMUTABLE_VERSION"
+          "IMMUTABLE_VERSION",
+          "CATEGORY_TOO_DEEP",
+          "CATEGORY_CYCLE",
+          "CATEGORY_HAS_CHILDREN",
+          "CATEGORY_IN_USE",
+          "CATEGORY_UNAVAILABLE"
         ],
         "zh": "Stable module outcomes; transport adapters map codes rather than parsing messages.",
         "module": "commerce"
@@ -47799,6 +47832,16 @@
         "zh": "外部异步动作状态"
       },
       {
+        "name": "MallCategoryLocale",
+        "client": "ops-web",
+        "values": [
+          "zh-CN",
+          "zh-TW",
+          "en"
+        ],
+        "zh": "分类名称的语言键（zh-CN / zh-TW / en 的子集，至少一个）"
+      },
+      {
         "name": "MallComponentKind",
         "client": "ops-web",
         "values": [
@@ -49874,6 +49917,14 @@
     ]
   },
   "constants": [
+    {
+      "host": "CategoryService",
+      "name": "MAX_DEPTH",
+      "type": "int",
+      "value": "3",
+      "zh": "",
+      "module": "commerce"
+    },
     {
       "host": "CommerceRoutePolicy",
       "name": "BIZ",
@@ -52491,6 +52542,14 @@
       "module": "shop-app"
     },
     {
+      "host": "BizFoundationController",
+      "name": "OTHER",
+      "type": "String",
+      "value": "StoreVO.OTHER",
+      "zh": "行业与子业态的「其他」都用这个码。",
+      "module": "shop-app"
+    },
+    {
       "host": "ReportDailyRollupJob",
       "name": "WATERMARK_KEY",
       "type": "String",
@@ -52560,6 +52619,14 @@
       "type": "int",
       "value": "120",
       "zh": "发货信息录入 item_desc 的上限",
+      "module": "shop-base"
+    },
+    {
+      "host": "OtpStore",
+      "name": "TTL",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(5)",
+      "zh": "",
       "module": "shop-base"
     },
     {
@@ -53327,7 +53394,7 @@
       "name": "PAY_COLLECT",
       "type": "String",
       "value": "\"mch:pay:collect\"",
-      "zh": "商家端支付（TDD-支付服务-I5接入层 S8，接口清单 §5）。",
+      "zh": "门店收银台：生成、再次分享、作废付款链接（TDD-门店收银台与付款链接 L7）。",
       "module": "shop-base-auth"
     },
     {
@@ -53360,6 +53427,14 @@
       "type": "String",
       "value": "\"mch:pay:qr\"",
       "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_ORDER_VIEW",
+      "type": "String",
+      "value": "\"mch:pay:order:view\"",
+      "zh": "看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）。",
       "module": "shop-base-auth"
     },
     {
@@ -53438,7 +53513,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -54982,7 +55057,7 @@
       "host": "IdentityType",
       "name": "RESOLVE_ORDER",
       "type": "List<String>",
-      "value": "List.of(PHONE, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB)",
+      "value": "List.of(PHONE, EMAIL, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB)",
       "zh": "认人时的尝试顺序。",
       "module": "shop-core"
     },

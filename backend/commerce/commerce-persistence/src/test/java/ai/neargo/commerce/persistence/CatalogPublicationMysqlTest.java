@@ -500,6 +500,7 @@ class CatalogPublicationMysqlTest {
             f.setup();
             f.accepted.add("RETAIL");
             f.facade.saveBusinessEnd(f.ops, f.endDraft("RETAIL", EndScope.STORE, false, true));
+            f.category("category");
             f.facade.saveProduct(
                     f.ops,
                     new ProductDraft(
@@ -579,6 +580,11 @@ class CatalogPublicationMysqlTest {
                                         "edit draft"));
                 ids.put(definition.tier(), edited.draftVersionNo());
             }
+            api.saveCategory(
+                    f.ops,
+                    new CategoryDraft(
+                            "subscriptions", null, Map.of("en", "Plans"), null, 0, true, 0,
+                            "create category"));
             api.saveProduct(
                     f.ops,
                     new ProductDraft(

@@ -54,6 +54,9 @@ class MallStorefrontMysqlTest {
             assertEquals("CNY", view.currency());
             assertFalse(view.canProcure());
             assertEquals(1, view.products().size());
+            assertEquals(
+                    List.of("subscriptions"),
+                    view.categories().stream().map(c -> c.code()).toList());
             assertFalse(view.products().getFirst().skus().getFirst().readiness().available());
             assertEquals(
                     "sku-1", view.products().getFirst().skus().getFirst().sku().skuVersionNo());
@@ -116,8 +119,9 @@ class MallStorefrontMysqlTest {
             var mall = new JdbcMallRepository(db.ds, new JdbcCommerceEventPersistence(db.ds));
             var accounts = new JdbcSubscriptionAccountRepository(db.ds);
             var api = new DefaultStorefrontFacade(f.c.repo, mall, accounts, f.c.uow, stores, auth, readiness, collection, "p");
-            var sku = api.catalog(MallOrderConcurrencyMysqlTest.BUYER, MallOrderConcurrencyMysqlTest.STORE)
-                    .products().getFirst().skus().getFirst();
+            var offlineView = api.catalog(MallOrderConcurrencyMysqlTest.BUYER, MallOrderConcurrencyMysqlTest.STORE);
+            assertEquals(1, offlineView.categories().size());
+            var sku = offlineView.products().getFirst().skus().getFirst();
             assertEquals(List.of("tenant-a/p/CNY"), requested);
             assertFalse(sku.readiness().available());
             assertEquals(List.of("PAYER_BINDING_UNPROVEN"), sku.readiness().reasons());

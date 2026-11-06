@@ -1132,6 +1132,350 @@
         }
       }
     },
+    "/ops/biz-mall/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "summary": "listCategories",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:catalog:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; persisted outcome may remain PENDING or UNKNOWN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CategoryView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "description": "Flat merchant-mall category tree ordered by (level, sortOrder, categoryCode); max 3 levels."
+      },
+      "post": {
+        "operationId": "createCategory",
+        "summary": "createCategory",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:catalog:edit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; persisted outcome may remain PENDING or UNKNOWN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DraftSaveResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryDraft"
+              }
+            }
+          }
+        },
+        "description": "Create a category (expectedVersion 0). Rejections: CATEGORY_UNAVAILABLE (parent missing/disabled), CATEGORY_TOO_DEEP, INVALID_ARGUMENT, VERSION_CONFLICT."
+      }
+    },
+    "/ops/biz-mall/categories/{categoryCode}": {
+      "put": {
+        "operationId": "updateCategory",
+        "summary": "updateCategory",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:catalog:edit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; persisted outcome may remain PENDING or UNKNOWN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DraftSaveResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "categoryCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,32}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryUpdate"
+              }
+            }
+          }
+        },
+        "description": "Update parent/names/icon/sort/status; the path code wins. Rejections: CATEGORY_CYCLE, CATEGORY_TOO_DEEP, CATEGORY_UNAVAILABLE, CATEGORY_HAS_CHILDREN, CATEGORY_IN_USE (on-sale products), VERSION_CONFLICT."
+      }
+    },
     "/ops/biz-mall/products": {
       "get": {
         "operationId": "listProducts",
@@ -8195,6 +8539,13 @@
             "items": {
               "$ref": "#/components/schemas/StorefrontView_Product"
             }
+          },
+          "categories": {
+            "type": "array",
+            "description": "Enabled categories used by the visible products plus all ancestors, ordered by (level, sortOrder, code).",
+            "items": {
+              "$ref": "#/components/schemas/StorefrontView_Category"
+            }
           }
         }
       },
@@ -8922,6 +9273,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SkuVersionView"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryView"
             }
           }
         }
@@ -10386,6 +10743,264 @@
           "title",
           "quantity"
         ]
+      },
+      "CategoryDraft": {
+        "type": "object",
+        "properties": {
+          "categoryCode": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,32}$"
+          },
+          "parentCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,32}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "names": {
+            "type": "object",
+            "description": "Locale → name; keys are a non-empty subset of zh-CN, zh-TW, en; each name 1..64 chars.",
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "zh-CN",
+                "zh-TW",
+                "en"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CategoryUpdate": {
+        "type": "object",
+        "properties": {
+          "parentCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,32}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "names": {
+            "type": "object",
+            "description": "Locale → name; keys are a non-empty subset of zh-CN, zh-TW, en; each name 1..64 chars.",
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "zh-CN",
+                "zh-TW",
+                "en"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CategoryView": {
+        "type": "object",
+        "required": [
+          "categoryCode",
+          "parentCode",
+          "level",
+          "names",
+          "icon",
+          "sortOrder",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "categoryCode": {
+            "type": "string"
+          },
+          "parentCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "names": {
+            "type": "object",
+            "description": "Locale → name; keys are a non-empty subset of zh-CN, zh-TW, en; each name 1..64 chars.",
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "zh-CN",
+                "zh-TW",
+                "en"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "enum": [
+              "ENABLED",
+              "DISABLED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "StorefrontView_Category": {
+        "type": "object",
+        "required": [
+          "code",
+          "parentCode",
+          "level",
+          "names",
+          "icon",
+          "sortOrder"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "parentCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "names": {
+            "type": "object",
+            "description": "Locale → name; keys are a non-empty subset of zh-CN, zh-TW, en; each name 1..64 chars.",
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "zh-CN",
+                "zh-TW",
+                "en"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
       }
     }
   }

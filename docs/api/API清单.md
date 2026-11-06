@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1137 个接口**：后端已实现 930（82%）· 前端在调 1002
+**合计 1140 个接口**：后端已实现 930（82%）· 前端在调 1002
 
 ---
 
@@ -1135,7 +1135,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **544** 个接口 ｜ 后端已实现 **434**（80%）｜ 前端在调 **411**
+共 **547** 个接口 ｜ 后端已实现 **434**（79%）｜ 前端在调 **411**
 
 ### aftersale（5）
 
@@ -1147,11 +1147,14 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### commerce（42）
+### commerce（45）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/biz-mall/catalog` | 目录总览 | — | `MallCatalogOverview` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/categories` | 商品分类（扁平，按 level、sortOrder、编码） */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/categories` | 新建分类（expectedVersion=0） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/categories/{code}` | 改分类：上级 / 名称 / 图标 / 排序 / 启停 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/claims` | 待审申报队列 */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders` | 代客下单 */ | — | `MallOrderView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |

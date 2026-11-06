@@ -25,7 +25,8 @@ final class CatalogQueryService {
                 s.planVersions.values().stream().map(p -> new PlanVersionView(p.draft(),p.status(),p.revision(),p.version())).toList(),
                 s.products.values().stream().map(p -> new ProductView(p.draft(),p.saleStatus(),p.version())).toList(),
                 s.skus.values().stream().map(v -> new SkuDefinitionView(v.skuNo(),v.productNo(),v.title(),v.maxPerOrder(),v.currentVersionNo(),v.saleStatus(),v.version())).toList(),
-                s.skuVersions.values().stream().map(v -> new SkuVersionView(v.draft(),v.status(),v.revision(),v.version())).toList());
+                s.skuVersions.values().stream().map(v -> new SkuVersionView(v.draft(),v.status(),v.revision(),v.version())).toList(),
+                ai.neargo.commerce.core.catalog.category.CategoryService.views(s));
     }
 
     CatalogView catalog(ActorContext actor, String type) {

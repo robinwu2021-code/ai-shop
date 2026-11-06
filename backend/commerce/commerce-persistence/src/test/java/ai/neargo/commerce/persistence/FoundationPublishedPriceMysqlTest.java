@@ -20,6 +20,7 @@ class FoundationPublishedPriceMysqlTest {
             var f = new JdbcCatalogFixture(db);
             f.setup();
             f.plans();
+            f.category("subscriptions");
             f.facade.saveProduct(
                     f.ops,
                     new ProductDraft(

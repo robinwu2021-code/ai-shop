@@ -29,8 +29,14 @@ final class MysqlDatabase implements AutoCloseable {
     }
 
     void migrate() {
-        Flyway.configure()
-                .dataSource(ds)
+        migrate(null);
+    }
+
+    /** {@code target} null = latest; otherwise stop at that version (for data-migration tests). */
+    void migrate(String target) {
+        var config = Flyway.configure();
+        if (target != null) config = config.target(target);
+        config.dataSource(ds)
                 .table("commerce_schema_history")
                 .locations("classpath:db/commerce/migration")
                 .load()

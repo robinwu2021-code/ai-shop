@@ -165,6 +165,7 @@ export const NAV: NavSection[] = [
       // gated-endpoints.test.ts 的扫描认不出来，登记了反而被判「陈了的登记」。
       // 开关关着时接口 404，页面显示错误态，不显示空目录。
       { href: "/mall", label: "经营类型与套餐", perm: "commerce:catalog:read", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=categories", label: "商城商品分类", perm: "commerce:catalog:read", group: "套餐商城", matrix: "P-11.2", ready: true },
       { href: "/mall?tab=products", label: "商城商品与SKU", perm: "commerce:catalog:read", group: "套餐商城", matrix: "P-11.2", ready: true },
       { href: "/mall?tab=orders", label: "商城订单", perm: "commerce:mall:order:read", group: "套餐商城", matrix: "P-11.2", ready: true },
       { href: "/mall?tab=claims", label: "线下核款", perm: "commerce:mall:offline:review", group: "套餐商城", matrix: "P-11.2", ready: true },

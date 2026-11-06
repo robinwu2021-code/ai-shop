@@ -255,3 +255,45 @@ describe("订单与权益", () => {
     expect(after.sources!.find((x) => x.sourceNo === "SRC-001-GIFT")!.lifecycle).toBe("REVOKED");
   });
 });
+
+describe("商品分类：多级、防环、停用条件", () => {
+  const draft = (categoryCode: string, parentCode: string | null, enabled = true, expectedVersion = 0) =>
+    ({ categoryCode, parentCode, names: { "zh-TW": categoryCode }, icon: null, sortOrder: 1, enabled, expectedVersion, reason: "r" });
+  const v = (code: string) => mall.s.categories[code]!.version;
+
+  it("最多 3 级；移动子树时整棵子树都算深度；改上级会重算下级层级", async () => {
+    await api.createMallCategory(draft("PRINTER", "POS"));
+    expect(mall.s.categories.PRINTER!.level).toBe(3);
+    expect(await reason(api.createMallCategory(draft("PAPER", "PRINTER")))).toBe("CATEGORY_TOO_DEEP");
+    await api.createMallCategory(draft("ACC", "PLAN"));
+    // HARDWARE（含 POS › PRINTER）挂到 ACC 下会到第 4 级
+    const { categoryCode: _c, ...hw } = draft("HARDWARE", "ACC", true, v("HARDWARE"));
+    expect(await reason(api.updateMallCategory("HARDWARE", hw))).toBe("CATEGORY_TOO_DEEP");
+    // POS 提到一级：PRINTER 跟着变成 2 级
+    const { categoryCode: _p, ...pos } = draft("POS", null, true, v("POS"));
+    await api.updateMallCategory("POS", pos);
+    expect([mall.s.categories.POS!.level, mall.s.categories.PRINTER!.level]).toEqual([1, 2]);
+    expect((await api.mallCategories()).map((c) => c.categoryCode).slice(0, 4)).toEqual(["POS", "PLAN", "HARDWARE", "ACC"]);
+  });
+
+  it("上级不能是自己或下级；上级必须存在且启用", async () => {
+    const { categoryCode: _a, ...self } = draft("HARDWARE", "POS", true, v("HARDWARE"));
+    expect(await reason(api.updateMallCategory("HARDWARE", self))).toBe("CATEGORY_CYCLE");
+    expect(await reason(api.createMallCategory(draft("X", "NOPE")))).toBe("CATEGORY_UNAVAILABLE");
+    await api.createMallCategory(draft("OFF", null, false));
+    expect(await reason(api.createMallCategory(draft("X", "OFF")))).toBe("CATEGORY_UNAVAILABLE");
+    expect(await reason(api.createMallCategory({ ...draft("Y", null), names: { fr: "x" } as never }))).toBe("INVALID_ARGUMENT");
+  });
+
+  it("有启用的下级、或有在售商品引用时不能停用；商品只能挂启用的分类", async () => {
+    const { categoryCode: _h, ...hw } = draft("HARDWARE", null, false, v("HARDWARE"));
+    expect(await reason(api.updateMallCategory("HARDWARE", hw))).toBe("CATEGORY_HAS_CHILDREN");
+    const { categoryCode: _p, ...plan } = draft("PLAN", null, false, v("PLAN"));
+    expect(await reason(api.updateMallCategory("PLAN", plan))).toBe("CATEGORY_IN_USE");
+    const product = { productNo: "MP-NEW", kind: "HARDWARE" as const, name: "n", description: null,
+      allowedBusinessTypes: ["RETAIL"], sortOrder: 1, expectedVersion: 0, reason: "r" };
+    expect(await reason(api.createMallProduct({ ...product, categoryCode: "GHOST" }))).toBe("CATEGORY_UNAVAILABLE");
+    await api.createMallProduct({ ...product, categoryCode: "POS" });
+    expect((await api.mallCatalog()).categories?.length).toBe(3);
+  });
+});
