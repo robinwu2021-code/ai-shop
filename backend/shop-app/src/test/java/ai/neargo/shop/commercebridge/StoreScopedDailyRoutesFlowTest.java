@@ -117,7 +117,7 @@ class StoreScopedDailyRoutesFlowTest {
         for (String path : new String[] {"/biz/staff", "/biz/roles", "/biz/role-perms", "/biz/management/context",
                 "/biz/management/spaces/M1/stores", "/biz/qualifications", "/biz/merchant/pay-channel",
                 "/biz/geo/tips?keyword=taipei", "/biz/geo/reverse?lat=25.03&lng=121.56",
-                "/biz/dashboard/todo", "/biz/dashboard/stats"}) {
+                "/biz/dashboard/todo", "/biz/dashboard/stats", "/biz/merchant/pay-service"}) {
             JsonNode r = call(o[0], o[1], path);
             assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
         }

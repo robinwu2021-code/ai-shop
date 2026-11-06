@@ -687,6 +687,7 @@ class BizEndpointPermTest {
                     put("/biz/merchant/pay-channel", BizPerms.FINANCE);
                     // 申请支付服务（near-pay 平台商户）：与提交进件同一个财务码
                     put("/biz/merchant/pay-service/apply", BizPerms.FINANCE);
+                    put("/biz/merchant/pay-service", BizPerms.FINANCE);
                     // 欠款：商家要看得到「为什么欠、扣到哪了」，与看账同一档
                     put("/biz/merchant/debt", BizPerms.FINANCE);
                     put("/biz/merchant/payment/{payChannel}/refresh", BizPerms.FINANCE);

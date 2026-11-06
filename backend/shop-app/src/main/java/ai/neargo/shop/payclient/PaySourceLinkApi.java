@@ -34,4 +34,14 @@ public interface PaySourceLinkApi {
 
     @PostExchange(PATH)
     Result apply(@RequestBody Apply body);
+
+    /**
+     * 申请审核状态：NONE / PENDING / NEED_MORE / REJECTED / APPROVED；reviewReason 只在需补件 / 被拒时有。
+     */
+    record Status(String status, String merchantRef, String linkStatus, String profileStatus, String reviewReason) {
+    }
+
+    @org.springframework.web.service.annotation.GetExchange("/internal/pay/v2/source-links/status")
+    Status status(@org.springframework.web.bind.annotation.RequestParam("sourceScope") String sourceScope,
+                  @org.springframework.web.bind.annotation.RequestParam("sourceEntityRef") String sourceEntityRef);
 }

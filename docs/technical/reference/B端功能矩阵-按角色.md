@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 492 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 493 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -20,7 +20,7 @@
 | `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 33 | ✅ | — | — | — | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 34 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
@@ -302,6 +302,7 @@
 - `/biz/deposit/txns`
 - `/biz/merchant/debt`
 - `/biz/merchant/pay-channel`
+- `/biz/merchant/pay-service`
 - `/biz/merchant/pay-service/apply`
 - `/biz/merchant/payment`
 - `/biz/merchant/payment/store/{storeNo}`

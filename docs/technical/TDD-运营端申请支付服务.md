@@ -63,3 +63,4 @@ near-pay 的平台商户由来源系统「申请支付服务」时建立：`POST
 - 运营确认：在 near-pay 运营端 `POST /pay-ops/v2/merchants/{merchantNo}/confirm` 一键通过（near-pay TDD-单人审批开关与确认审核）。
 - 入口在 Flutter 商户端（ai-shop-bapp）；uni-app b-app 不接，已登记进 known-app-backend-orphan.txt。
 - 测试：`StoreScopedDailyRoutesFlowTest.payServiceApplyPassesAdmission`（不是 70006）、`BizEndpointPermTest`（已登记）、`PayServiceApplyRequestsTest`（组装同一份逻辑）。
+- 2026-11-06 加「申请状态」（用户回复「加上」）：B 端 `GET /biz/merchant/pay-service`（`BizPerms.FINANCE`），转发 near-pay `GET /internal/pay/v2/source-links/status`，返回 `{status: NONE/PENDING/NEED_MORE/REJECTED/APPROVED, merchantRef, linkStatus, profileStatus, reviewReason}`。门店准入已登记；`PayServiceApplyRequestsTest` 真发请求核对路径、查询参数与调用方头；去掉门店准入登记后准入测试为红。

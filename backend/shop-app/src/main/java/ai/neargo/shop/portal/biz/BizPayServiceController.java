@@ -44,6 +44,20 @@ public class BizPayServiceController {
         this.access = access;
     }
 
+    /** 申请审核状态（App 收款 Tab 的开通引导据此显示「审核中 / 需补件 / 未通过」） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @org.springframework.web.bind.annotation.GetMapping("/biz/merchant/pay-service")
+    public PaySourceLinkApi.Status status(HttpServletRequest request) {
+        PaySourceLinkApi api = sourceLinks.getIfAvailable();
+        if (api == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
+        String entityNo = access.require(request, entities.requireOwned(SecurityUtils.currentUserNo(), null), null).entityNo();
+        try {
+            return api.status(props.sourceScope(), entityNo);
+        } catch (ServiceCallException e) {
+            throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
+        }
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/pay-service/apply")
     public PaySourceLinkApi.Result apply(@RequestBody PayServiceApplyRequests.Form form, HttpServletRequest request) {

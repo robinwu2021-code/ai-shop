@@ -104,6 +104,11 @@ class PayServiceApplyRequestsTest {
             assertThat(seen.get().getRequestHeaders().getFirst("X-Internal-Token")).isEqualTo("tok");
             assertThat(result.merchantRef()).isEqualTo("PM1");
             assertThat(result.status()).isEqualTo("VERIFY_PENDING");
+            // 申请状态：同一个客户端，查询参数是来源域与主体号
+            new PayClientConfig().paySourceLinkApi(http).status("MAIN", "M261106BF7GK8052W");
+            assertThat(path.get()).isEqualTo("/internal/pay/v2/source-links/status");
+            assertThat(seen.get().getRequestURI().getQuery()).contains("sourceScope=MAIN").contains("sourceEntityRef=M261106BF7GK8052W");
+            assertThat(seen.get().getRequestHeaders().getFirst("X-Internal-Caller")).isEqualTo("AI_SHOP_UME");
         } finally {
             server.stop(0);
         }
