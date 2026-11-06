@@ -37,3 +37,6 @@ BizDashboardController
 # 正好在阈值上。判据改动见 check-controller-cohesion.mjs 里的单复数归一那一段。
 OpsNotifyLogController
 OpsPlatformConfigController
+# 独立进销存服务的库存投影接口（inventory-svc）：activate/apply/deactivate/query/receipt/validate-mappings
+# 是同一个「投影」资源的生命周期动作，按动词拆路径导致判据数成 6 个资源。2026-11-06 推 ai-shop-codex 时登记，拆不拆留给进销存会话
+StockProjectionController
