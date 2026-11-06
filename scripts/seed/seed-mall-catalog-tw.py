@@ -72,16 +72,16 @@ PRODUCTS = [
 REFUND = {"unusedDigital": "MANUAL_ONLY", "usedDigital": "MANUAL_ONLY"}
 
 
-def plan_c(tier, days, weight=100):
+def plan_c(tier, days, weight=100, title=None):
     return {"componentNo": None, "kind": "PLAN", "planVersionNo": ("RETAIL", tier), "entitlementCode": None,
             "hardwareSkuNo": None, "periodDays": days, "unitCount": 1, "allocationWeight": weight,
-            "gift": False, "activationPolicy": "ON_FULFILLMENT"}
+            "gift": False, "activationPolicy": "ON_FULFILLMENT", "title": title}
 
 
-def hw_c(hw, weight=100, units=1):
+def hw_c(hw, weight=100, units=1, title=None):
     return {"componentNo": None, "kind": "HARDWARE", "planVersionNo": None, "entitlementCode": None,
             "hardwareSkuNo": hw, "periodDays": None, "unitCount": units, "allocationWeight": weight,
-            "gift": False, "activationPolicy": "ON_FULFILLMENT"}
+            "gift": False, "activationPolicy": "ON_FULFILLMENT", "title": title}
 
 
 # skuNo → (productNo, 标题, 原价, 售价, 行业, 组件, 每单上限)
@@ -94,7 +94,9 @@ SKUS = {
     "tw-paper-80-box": ("tw-paper-80", "熱敏紙 80mm × 50 卷", 560, 560, ["RETAIL", "FOOD"], [hw_c("HW-PAPER-80-50")], 20),
     # 套餐分摊权重按单买价：1990 / 2400 / 560（退款按比例拆分用）
     "tw-starter-bundle": ("tw-starter-bundle", "開店套餐", 4950, 3990, ["RETAIL"],
-                          [plan_c("PRO", 365, 1990), hw_c("HW-PRINTER-80", 2400), hw_c("HW-PAPER-80-50", 560)], 1),
+                          [plan_c("PRO", 365, 1990, "零售專業版・年付"),
+                           hw_c("HW-PRINTER-80", 2400, title="熱敏印表機 80mm"),
+                           hw_c("HW-PAPER-80-50", 560, title="熱敏紙 80mm × 50 卷")], 1),
 }
 # 跟随行业发布的 SKU（含方案组件）；其余单独发布
 INDUSTRY_SKUS = {"RETAIL": ["tw-retail-pro-y", "tw-retail-pro-m", "tw-retail-chain-y", "tw-retail-chain-m",
@@ -242,11 +244,22 @@ def resolve(components, cat):
     return out
 
 
-def sku_matches(draft, spec):
-    _, title, lst, price, types, _, mx = spec
-    return (draft["title"] == title and int(draft["price"]["minor"]) == price * 100
+def sku_matches(draft, spec, titles=True):
+    """titles=False：只比价格/范围/上限，不比组件名称（V12 之前发布的版本没有组件名称）。"""
+    _, title, lst, price, types, comps, mx = spec
+    same = (draft["title"] == title and int(draft["price"]["minor"]) == price * 100
             and int(draft["listPrice"]["minor"]) == lst * 100 and draft["price"]["currency"] == CUR
             and sorted(draft["allowedBusinessTypes"]) == sorted(types) and draft["maxPerOrder"] == mx)
+    if not same or not titles:
+        return same
+    have = [c.get("title") for c in draft.get("components") or []]
+    want = [c.get("title") for c in comps]
+    return have == want
+
+
+def titles_only(no, pub, draft):
+    """已发布版本只差组件名称：起一个带名称的新版本单独发布（不重发行业）。"""
+    return bool(pub) and not sku_matches(pub["draft"], SKUS[no]) and sku_matches(pub["draft"], SKUS[no], titles=False)
 
 
 def sku_version(cat, sku_no):
@@ -278,6 +291,14 @@ def step_skus(cat):
         if draft and sku_matches(draft["draft"], spec):
             print(f"  = SKU {no} 草稿已就绪")
             continue
+        if titles_only(no, pub, draft) and not draft:
+            comps_now = [dict(c, componentNo=None, title=w.get("title"))
+                         for c, w in zip(pub["draft"]["components"], comps)]
+            write(f"SKU 新版本 {no}（补组件名称）", "POST", f"/ops/biz-mall/products/{product}/skus", {
+                "skuNo": no, "skuVersionNo": None, "title": title, "listPrice": nt(lst), "price": nt(price),
+                "allowedBusinessTypes": types, "refundPolicy": REFUND, "components": comps_now,
+                "maxPerOrder": mx, "expectedVersion": 0, "reason": OP})
+            continue
         if pub or draft:
             CONFLICTS.append(no)
             print(f"  ! SKU {no} 已存在但内容不同，不覆盖（请运营核对）")
@@ -296,7 +317,7 @@ def step_publish_industry(cat, t):
     cands = []
     for no in INDUSTRY_SKUS[t]:
         pub, draft = sku_version(cat, no)
-        if draft and not (pub and sku_matches(pub["draft"], SKUS[no])):
+        if draft and not (pub and sku_matches(pub["draft"], SKUS[no])) and not titles_only(no, pub, draft):
             cands.append(draft)
     if plans_live and not cands:
         print(f"  = 行业 {t} 已发布")
@@ -323,9 +344,9 @@ def step_publish_industry(cat, t):
 
 def step_publish_rest(cat):
     for no in SKUS:
-        if any(no in v for v in INDUSTRY_SKUS.values()):
-            continue
         pub, draft = sku_version(cat, no)
+        if any(no in v for v in INDUSTRY_SKUS.values()) and not (draft and titles_only(no, pub, draft)):
+            continue
         if pub and sku_matches(pub["draft"], SKUS[no]):
             print(f"  = SKU {no} 已在售")
         elif draft:

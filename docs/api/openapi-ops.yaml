@@ -13372,6 +13372,11 @@ components:
         activationPolicy:
           type: "string"
           description: "生效策略"
+        title:
+          type:
+            - "string"
+            - "null"
+          description: "组件名称（可选，1~64 字；随 SKU 版本冻结；空 = 按种类显示）"
       additionalProperties: false
       description: "SKU 组件：PLAN 引用 Plan 版本，END_PACKAGE 引用权益编码，HARDWARE 引用硬件 SKU"
     MallSkuDefinitionView:

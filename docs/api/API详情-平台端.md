@@ -15093,6 +15093,7 @@ SKU 组件：PLAN 引用 Plan 版本，END_PACKAGE 引用权益编码，HARDWARE
 | `allocationWeight` | `number` | 否 | 分摊权重 |
 | `gift` | `boolean` | 否 | 赠送（分摊基数为 0） |
 | `activationPolicy` | `string` | 否 | 生效策略 |
+| `title` | `string,null` | 否 | 组件名称（可选，1~64 字；随 SKU 版本冻结；空 = 按种类显示） |
 
 ### MallSkuDefinitionView
 

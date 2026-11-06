@@ -619,6 +619,7 @@ export function saveSkuVersion(productNo: string, v: {
     else if (c.kind === "END_PACKAGE") need(c.entitlementCode && Object.values(s.ends).some((e) => e.draft.entitlementCode === c.entitlementCode) && (c.periodDays ?? 0) > 0, "INVALID_ARGUMENT");
     else if (c.kind === "HARDWARE") need(text(c.hardwareSkuNo, 64), "INVALID_ARGUMENT");
     else mallFail("INVALID_ARGUMENT");
+    need(c.title == null || text(c.title, 64), "INVALID_ARGUMENT");
     need((c.unitCount ?? 0) >= 1 && (c.allocationWeight ?? -1) >= 0, "INVALID_ARGUMENT");
   }
   for (const t of v.allowedBusinessTypes) need(product.draft.allowedBusinessTypes?.includes(t), "INVALID_ARGUMENT");

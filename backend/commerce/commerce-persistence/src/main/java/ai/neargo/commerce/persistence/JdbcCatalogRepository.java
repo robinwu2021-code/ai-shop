@@ -238,7 +238,8 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                                                     integer(c, "unit_count"),
                                                     num(c, "allocation_weight"),
                                                     flag(c, "is_gift"),
-                                                    str(c, "activation_policy")))
+                                                    str(c, "activation_policy"),
+                                                    str(c, "title")))
                             .toList();
             var d =
                     new SkuDraft(
@@ -730,7 +731,9 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             "is_gift",
                             c.gift(),
                             "activation_policy",
-                            c.activationPolicy());
+                            c.activationPolicy(),
+                            "title",
+                            c.title());
             if (previous < 0)
                 row(
                         "mall_sku_component",

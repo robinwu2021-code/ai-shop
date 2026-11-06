@@ -1245,9 +1245,10 @@ class MallFulfillmentMysqlTest {
                     .target("5")
                     .load()
                     .migrate();
-            // Current catalogue code reads mall_category (V11); borrow its DDL for the V5 fixture,
-            // then drop it so the real V11 recreates and seeds it from mall_product.
+            // Current catalogue code reads mall_category (V11) and mall_sku_component.title (V12);
+            // borrow both for the V5 fixture, then drop them so the real migrations recreate them.
             db.jdbc.execute(categoryDdl());
+            db.jdbc.execute("ALTER TABLE mall_sku_component ADD COLUMN title VARCHAR(64) NULL");
             var components =
                     List.of(
                             new ai.neargo.commerce.api.catalog.SkuComponent(
@@ -1285,6 +1286,7 @@ class MallFulfillmentMysqlTest {
                         + " ('tenant-a',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,'legacy-reserve',?,1,'RESERVE','UNKNOWN',1,0)",
                     part);
             db.jdbc.execute("DROP TABLE mall_category");
+            db.jdbc.execute("ALTER TABLE mall_sku_component DROP COLUMN title");
             db.migrate();
             assertEquals(
                     1,

@@ -40,7 +40,7 @@ interface ProductForm {
 
 interface CompRow {
   kind: MallComponentKind; planVersionNo: string; entitlementCode: string; hardwareSkuNo: string; periodDays: string;
-  unitCount: string; allocationWeight: string; gift: boolean; activationPolicy: string;
+  unitCount: string; allocationWeight: string; gift: boolean; activationPolicy: string; title: string;
 }
 
 interface SkuForm {
@@ -50,7 +50,7 @@ interface SkuForm {
 }
 
 const blankComp = (): CompRow => ({ kind: "PLAN", planVersionNo: "", entitlementCode: "", hardwareSkuNo: "", periodDays: "365",
-  unitCount: "1", allocationWeight: "1", gift: false, activationPolicy: "IMMEDIATE" });
+  unitCount: "1", allocationWeight: "1", gift: false, activationPolicy: "IMMEDIATE", title: "" });
 
 function useInvalidate() {
   const qc = useQueryClient();
@@ -85,6 +85,7 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
     kind: r.kind, planVersionNo: r.kind === "PLAN" ? r.planVersionNo : null, entitlementCode: r.kind === "END_PACKAGE" ? r.entitlementCode : null,
     hardwareSkuNo: r.kind === "HARDWARE" ? r.hardwareSkuNo.trim() : null, periodDays: r.kind === "HARDWARE" ? null : Number(r.periodDays),
     unitCount: Number(r.unitCount), allocationWeight: Number(r.allocationWeight), gift: r.gift, activationPolicy: r.activationPolicy,
+    title: r.title.trim() || null,
   });
 
   const saveSku = useMutation({
@@ -110,7 +111,8 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
       unusedDigital: policy, maxPerOrder: String(d?.maxPerOrder ?? 1), expectedVersion: def?.version ?? 0, reason: "",
       components: (d?.components ?? []).map((x) => ({ kind: x.kind ?? "PLAN", planVersionNo: x.planVersionNo ?? "", entitlementCode: x.entitlementCode ?? "",
         hardwareSkuNo: x.hardwareSkuNo ?? "", periodDays: String(x.periodDays ?? ""), unitCount: String(x.unitCount ?? 1),
-        allocationWeight: String(x.allocationWeight ?? 1), gift: !!x.gift, activationPolicy: x.activationPolicy ?? "IMMEDIATE" })),
+        allocationWeight: String(x.allocationWeight ?? 1), gift: !!x.gift, activationPolicy: x.activationPolicy ?? "IMMEDIATE",
+        title: x.title ?? "" })),
     });
   };
 
@@ -347,6 +349,8 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
                         {ends.map((e) => <option key={e.draft?.entitlementCode} value={e.draft?.entitlementCode}>{e.draft?.name} ({e.draft?.entitlementCode})</option>)}
                       </Select>
                     )}
+                    <Input aria-label={c.fieldComponentTitle} placeholder={c.fieldComponentTitlePh} maxLength={64} value={r.title}
+                      onChange={(e) => setComp(i, { title: e.target.value })} />
                     {r.kind === "HARDWARE" && (
                       <Input aria-label={c.fieldHardwareSku} placeholder={c.fieldHardwareSku} value={r.hardwareSkuNo} onChange={(e) => setComp(i, { hardwareSkuNo: e.target.value })} />
                     )}
@@ -383,6 +387,7 @@ function SkuVersionDrawer({ c, versionNo, onClose }: { c: MallCopy; versionNo: s
   const d = q.data?.draft;
   const compColumns: Column<MallSkuComponent>[] = [
     { header: c.colKind, cell: (x) => x.kind },
+    { header: c.fieldComponentTitle, cell: (x) => x.title ?? "—" },
     { header: c.colRef, cell: (x) => <code className="txt-caption">{x.planVersionNo ?? x.entitlementCode ?? x.hardwareSkuNo}</code> },
     { header: c.fieldPeriodDays, numeric: true, cell: (x) => x.periodDays ?? "—" },
     { header: c.fieldUnitCount, numeric: true, cell: (x) => x.unitCount },

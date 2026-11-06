@@ -84,7 +84,8 @@ public final class SkuPublicationService {
                                                 c.unitCount(),
                                                 c.allocationWeight(),
                                                 c.gift(),
-                                                c.activationPolicy()))
+                                                c.activationPolicy(),
+                                                c.title()))
                         .toList();
         var d =
                 new SkuDraft(
@@ -103,6 +104,9 @@ public final class SkuPublicationService {
         code(d.skuNo(), 64);
         code(d.skuVersionNo(), 64);
         text(d.title(), 128, "title");
+        components.forEach(c -> {
+            if (c.title() != null) text(c.title(), 64, "component title");
+        });
         return s.write(
                 a,
                 "edit",

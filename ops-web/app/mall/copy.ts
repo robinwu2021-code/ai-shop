@@ -143,6 +143,8 @@ const zh = {
   btnNewSku: "新建 SKU",
   skuCurrent: "当前在售：{v}",
   fieldCategory: "分类",
+  fieldComponentTitle: "组件名称",
+  fieldComponentTitlePh: "组件名称（可选，B 端显示用，如「熱敏印表機 80mm」）",
   categoryPick: "选择分类",
   categoryMissing: "（分类 {c} 不存在或已停用，请重新选择）",
   // ── 商品分类 ──
@@ -587,6 +589,8 @@ const en: typeof zh = {
   btnNewSku: "New SKU",
   skuCurrent: "On sale: {v}",
   fieldCategory: "Category",
+  fieldComponentTitle: "Component name",
+  fieldComponentTitlePh: "Component name (optional, shown in the merchant app, e.g. 80mm thermal printer)",
   categoryPick: "Choose a category",
   categoryMissing: " (category {c} is missing or disabled — pick another)",
   // ── Product categories ──

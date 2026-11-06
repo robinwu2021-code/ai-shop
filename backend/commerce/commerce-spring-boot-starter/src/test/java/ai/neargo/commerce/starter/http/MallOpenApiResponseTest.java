@@ -89,7 +89,10 @@ class MallOpenApiResponseTest {
                                                 : new DraftSaveResult("retail", null, 1));
         var sku =
                 new SkuDraft("product", "sku", "sku-1", "套餐", amount, amount, List.of("retail"), "{}",
-                        List.of(), 1, 1, "publish");
+                        List.of(
+                                new SkuComponent("c-1", ComponentKind.PLAN, "pv-1", null, null, 365, 1, 1, false, "ON_FULFILLMENT", "零售專業版・年付"),
+                                new SkuComponent("c-2", ComponentKind.HARDWARE, null, null, "HW-1", null, 1, 1, false, "ON_FULFILLMENT")),
+                        1, 1, "publish");
         var online = new ai.neargo.commerce.api.port.CheckoutReadinessPort.Readiness(
                 false, List.of("PAYER_BINDING_UNPROVEN"), List.of());
         var offlineReady = new ai.neargo.commerce.api.port.CheckoutReadinessPort.Readiness(
@@ -156,6 +159,8 @@ class MallOpenApiResponseTest {
         assertEquals(200, savedCategory.getStatus());
         assertEquals(200, products.getStatus());
         assertTrue(products.getContentAsString().contains("\"offlineReadiness\":null"));
+        assertTrue(products.getContentAsString().contains("\"title\":\"零售專業版・年付\""));
+        assertTrue(products.getContentAsString().contains("\"title\":null"));
         assertEquals(200, order.getStatus());
         assertEquals(200, save.getStatus());
         assertTrue(order.getContentAsString().contains("\"shippingAddress\":null"));

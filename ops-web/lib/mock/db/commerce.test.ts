@@ -297,3 +297,18 @@ describe("商品分类：多级、防环、停用条件", () => {
     expect((await api.mallCatalog()).categories?.length).toBe(3);
   });
 });
+
+describe("SKU 组件名称", () => {
+  it("可选；随草稿保存；空白或超长被拒", async () => {
+    const base = { skuNo: "SKU-TITLE-1", skuVersionNo: null, title: "t", listPrice: { currency: "TWD", minor: "100" },
+      price: { currency: "TWD", minor: "100" }, allowedBusinessTypes: ["RETAIL"],
+      refundPolicy: { unusedDigital: "MANUAL_ONLY", usedDigital: "MANUAL_ONLY" }, maxPerOrder: 1, expectedVersion: 0, reason: "r" };
+    const hw = { componentNo: null, kind: "HARDWARE" as const, planVersionNo: null, entitlementCode: null, hardwareSkuNo: "HW-1",
+      periodDays: null, unitCount: 1, allocationWeight: 1, gift: false, activationPolicy: "ON_SHIPMENT" };
+    expect(await reason(api.saveMallSkuVersion("MP-POS-HW", { ...base, components: [{ ...hw, title: " " }] }))).toBe("INVALID_ARGUMENT");
+    expect(await reason(api.saveMallSkuVersion("MP-POS-HW", { ...base, components: [{ ...hw, title: "x".repeat(65) }] }))).toBe("INVALID_ARGUMENT");
+    const r = await api.saveMallSkuVersion("MP-POS-HW", { ...base, components: [{ ...hw, title: "收银机" }, { ...hw, title: null }] });
+    const v = await api.mallSkuVersion(r.draftVersionNo!);
+    expect(v.draft?.components?.map((c) => c.title ?? null)).toEqual(["收银机", null]);
+  });
+});

@@ -381,6 +381,8 @@ export interface MallSkuComponent {
   gift?: boolean;
   /** 生效策略 */
   activationPolicy?: string;
+  /** 组件名称（可选，1~64 字；随 SKU 版本冻结；空 = 按种类显示） */
+  title?: string | null;
 }
 
 /** SKU 定义行 */

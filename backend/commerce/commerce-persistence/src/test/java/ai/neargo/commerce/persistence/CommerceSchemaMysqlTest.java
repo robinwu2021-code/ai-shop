@@ -127,7 +127,7 @@ class CommerceSchemaMysqlTest {
                             db.name,
                             "mall_sku_version"));
             assertEquals(
-                    20,
+                    21,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
                                     + " AND table_name=?",

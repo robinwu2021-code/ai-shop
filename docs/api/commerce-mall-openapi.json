@@ -9887,6 +9887,19 @@
           },
           "activationPolicy": {
             "type": "string"
+          },
+          "title": {
+            "description": "Optional display name (1..64 chars), frozen with the SKU version; null = none, clients fall back to kind.",
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
