@@ -291,6 +291,39 @@ export type MallProductKind = "PLAN" | "END_ACCESS" | "HARDWARE" | "BUNDLE";
 /** 组件种类 */
 export type MallComponentKind = "PLAN" | "END_PACKAGE" | "HARDWARE";
 
+/** 分类名称的语言键（zh-CN / zh-TW / en 的子集，至少一个） */
+export type MallCategoryLocale = "zh-CN" | "zh-TW" | "en";
+export type MallCategoryNames = Partial<Record<MallCategoryLocale, string>>;
+
+/** 新建分类（编码建后不可改；parentCode 为空 = 一级；最多 3 级） */
+export interface MallCategoryDraft {
+  categoryCode: string;
+  parentCode: string | null;
+  names: MallCategoryNames;
+  icon: string | null;
+  sortOrder: number;
+  enabled: boolean;
+  /** 乐观锁：新建传 0 */
+  expectedVersion: number;
+  reason: string;
+}
+
+/** 改分类（路径编码为准） */
+export type MallCategoryUpdate = Omit<MallCategoryDraft, "categoryCode">;
+
+/** 分类行（扁平，按 level、sortOrder、categoryCode 排序） */
+export interface MallCategoryView {
+  categoryCode: string;
+  parentCode: string | null;
+  /** 1..3，服务端按上级计算 */
+  level: number;
+  names: MallCategoryNames;
+  icon: string | null;
+  sortOrder: number;
+  status: "ENABLED" | "DISABLED";
+  version: number;
+}
+
 /** 商品草稿 */
 export interface MallProductDraft {
   /** 商品号 */
@@ -483,6 +516,8 @@ export interface MallCatalogOverview {
   skuDefinitions?: MallSkuDefinitionView[];
   /** SKU 版本 */
   skuVersions?: MallSkuVersionView[];
+  /** 商品分类（扁平树） */
+  categories?: MallCategoryView[];
 }
 
 // ── 订单 ──────────────────────────────────────────────────────────────

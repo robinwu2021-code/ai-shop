@@ -6,6 +6,9 @@ import ai.neargo.commerce.core.catalog.*;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
+
 import java.time.*;
 import java.util.*;
 import java.util.function.*;
@@ -20,6 +23,8 @@ import javax.sql.DataSource;
 public final class JdbcCatalogRepository implements CatalogRepository {
     private final DataSource ds;
     private final JdbcTemplate jdbc;
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final TypeReference<TreeMap<String, String>> NAMES = new TypeReference<>() {};
 
     public JdbcCatalogRepository(DataSource ds) {
         this.ds = Objects.requireNonNull(ds);
@@ -162,6 +167,21 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             num(r, "version"),
                             nullableLong(r, "published_at"),
                             str(r, "published_by")));
+        }
+        for (var r : rows("mall_category", tenant, mode)) {
+            var d =
+                    new CategoryDraft(
+                            str(r, "category_code"),
+                            str(r, "parent_code"),
+                            JSON.readValue(str(r, "names"), NAMES),
+                            str(r, "icon"),
+                            integer(r, "sort_order"),
+                            "ENABLED".equals(str(r, "status")),
+                            num(r, "version"),
+                            "persisted category");
+            s.categories.put(
+                    d.categoryCode(),
+                    new CatalogState.Category(d, integer(r, "level"), num(r, "version")));
         }
         for (var r : rows("mall_product", tenant, mode)) {
             var d =
@@ -446,6 +466,33 @@ public final class JdbcCatalogRepository implements CatalogRepository {
                             d,
                             after,
                             context);
+                });
+        changes(
+                before.categories,
+                after.categories,
+                (o, n) -> {
+                    var d = n.draft();
+                    row(
+                            "mall_category",
+                            "category_code",
+                            d.categoryCode(),
+                            tenant,
+                            o == null ? -1 : o.version(),
+                            n.version(),
+                            context,
+                            fields(
+                                    "parent_code",
+                                    d.parentCode(),
+                                    "level",
+                                    n.level(),
+                                    "names",
+                                    JSON.writeValueAsString(new TreeMap<>(d.names())),
+                                    "icon",
+                                    d.icon(),
+                                    "sort_order",
+                                    d.sortOrder(),
+                                    "status",
+                                    n.status()));
                 });
         changes(
                 before.products,

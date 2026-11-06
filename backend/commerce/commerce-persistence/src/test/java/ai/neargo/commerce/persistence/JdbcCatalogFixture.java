@@ -143,7 +143,16 @@ class JdbcCatalogFixture {
         facade.savePlan(ops, plan("CHAIN", "chain-1", List.of("BASE", "POS", "KDS")));
     }
 
+    void category(String code) {
+        if (facade.categories(ops).stream().noneMatch(c -> c.categoryCode().equals(code)))
+            facade.saveCategory(
+                    ops,
+                    new CategoryDraft(
+                            code, null, java.util.Map.of("en", code), null, 0, true, 0, "seed"));
+    }
+
     void product() {
+        category("subscriptions");
         facade.saveProduct(
                 ops,
                 new ProductDraft(

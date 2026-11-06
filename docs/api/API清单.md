@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1148 个接口**：后端已实现 930（81%）· 前端在调 1013
+**合计 1152 个接口**：后端已实现 931（81%）· 前端在调 1014
 
 ---
 
@@ -1146,7 +1146,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **544** 个接口 ｜ 后端已实现 **434**（80%）｜ 前端在调 **411**
+共 **548** 个接口 ｜ 后端已实现 **435**（79%）｜ 前端在调 **412**
 
 ### aftersale（5）
 
@@ -1158,11 +1158,14 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### commerce（42）
+### commerce（45）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/biz-mall/catalog` | 目录总览 | — | `MallCatalogOverview` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/categories` | 商品分类（扁平，按 level、sortOrder、编码） */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/categories` | 新建分类（expectedVersion=0） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/categories/{code}` | 改分类：上级 / 名称 / 图标 / 排序 / 启停 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/claims` | 待审申报队列 */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders` | 代客下单 */ | — | `MallOrderView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |
@@ -1260,7 +1263,7 @@
 | POST | `/ops/materials` | 保存素材（P-15.1.1–15.1.4） | — | `Material` | — | ✅ | ✅ |
 | POST | `/ops/materials/{no}/published` | setMaterialPublished | — | `Material` | — | ⬜ | ✅ |
 
-### dashboard（11）
+### dashboard（12）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1275,6 +1278,7 @@
 | GET | `/ops/dashboard/stores` | 门店经营排行（门店③） | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/staffs/me/password` | 登录后改自己的密码（`POST /ops/staffs/me/password`） | — | `object` | — | ✅ | ✅ |
 
 ### finance（103）
 

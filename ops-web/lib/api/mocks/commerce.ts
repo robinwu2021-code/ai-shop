@@ -18,6 +18,7 @@ function catalog(): MallCatalogOverview {
     products: Object.values(s.products),
     skuDefinitions: Object.values(s.skuDefs),
     skuVersions: Object.values(s.skuVersions),
+    categories: m.categoryList(),
   });
 }
 
@@ -62,6 +63,9 @@ export const commerceMock: CommerceApi = {
   mallPlanDefinitions: async () => wait(catalog().planDefinitions ?? []),
   saveMallPlanVersion: async (planNo, v) => wait(m.savePlanVersion(planNo, v), 350),
   publishMallIndustry: async (type, v) => wait(clone(m.publishIndustry(type, v)), 400),
+  mallCategories: async () => wait(clone(m.categoryList())),
+  createMallCategory: async (v) => wait(m.saveCategory(v, true), 350),
+  updateMallCategory: async (code, v) => wait(m.saveCategory({ ...v, categoryCode: code }, false), 350),
   mallProducts: async () => wait(catalog().products ?? []),
   createMallProduct: async (v) => wait(m.saveProduct(v, true), 350),
   updateMallProduct: async (no, v) => wait(m.saveProduct({ ...v, productNo: no }, false), 350),

@@ -9,7 +9,7 @@ import * as React from "react";
 import { formatMoney } from "@/lib/commerce-money";
 import { humanError } from "@/lib/commerce-reason";
 import type {
-  MallAsyncStatus, MallMoney, MallOfflineActionView, MallOfflineClaimStatus, MallOrderSummary,
+  MallAsyncStatus, MallCategoryNames, MallCategoryView, MallMoney, MallOfflineActionView, MallOfflineClaimStatus, MallOrderSummary,
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,45 @@ export function newOpNo(prefix: string) {
 }
 
 export const showErr = humanError;
+
+// ── 商品分类（扁平行 → 树序 / 名称 / 路径）──
+
+export const CATEGORY_MAX_DEPTH = 3;
+
+/** 按当前界面语言取分类名；缺了按 zh-TW → zh-CN → en 回落 */
+export function categoryName(names: MallCategoryNames | undefined, locale: string): string | null {
+  const order = locale === "en" ? (["en", "zh-TW", "zh-CN"] as const) : (["zh-CN", "zh-TW", "en"] as const);
+  for (const l of order) if (names?.[l]?.trim()) return names[l]!;
+  return null;
+}
+
+/** 扁平行排成深度优先的树序（同级按 sortOrder、编码）；找不到上级的行挂在末尾 */
+export function categoryTree(rows: MallCategoryView[]): MallCategoryView[] {
+  const by = (a: MallCategoryView, b: MallCategoryView) => a.sortOrder - b.sortOrder || a.categoryCode.localeCompare(b.categoryCode);
+  const codes = new Set(rows.map((r) => r.categoryCode));
+  const out: MallCategoryView[] = [];
+  const walk = (parent: string | null) => rows.filter((r) => (r.parentCode ?? null) === parent).sort(by)
+    .forEach((r) => { if (!out.includes(r)) { out.push(r); walk(r.categoryCode); } });
+  walk(null);
+  rows.filter((r) => r.parentCode && !codes.has(r.parentCode)).sort(by).forEach((r) => { if (!out.includes(r)) { out.push(r); walk(r.categoryCode); } });
+  return out;
+}
+
+/** code 的全部下级编码 */
+export function descendantsOf(rows: MallCategoryView[], code: string): string[] {
+  const kids = rows.filter((r) => r.parentCode === code).map((r) => r.categoryCode);
+  return kids.flatMap((k) => [k, ...descendantsOf(rows, k)]);
+}
+
+/** 「硬体设备 › 收银设备」这样的路径名 */
+export function categoryPath(rows: MallCategoryView[], code: string | undefined, locale: string): string {
+  const parts: string[] = [];
+  for (let r = rows.find((x) => x.categoryCode === code), hops = 0; r && hops < CATEGORY_MAX_DEPTH + 2; hops++) {
+    parts.unshift(categoryName(r.names, locale) ?? r.categoryCode);
+    r = r.parentCode ? rows.find((x) => x.categoryCode === r!.parentCode) : undefined;
+  }
+  return parts.length ? parts.join(" › ") : (code ?? "");
+}
 
 export const fmtAt = (s?: string | null) => (s ? new Date(s).toLocaleString() : "—");
 

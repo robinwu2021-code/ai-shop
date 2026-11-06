@@ -195,6 +195,62 @@ _无字段_
 | `products` | [`MallProductView`](#mallproductview)\[\] | 否 | 商品 |
 | `skuDefinitions` | [`MallSkuDefinitionView`](#mallskudefinitionview)\[\] | 否 | SKU 定义 |
 | `skuVersions` | [`MallSkuVersionView`](#mallskuversionview)\[\] | 否 | SKU 版本 |
+| `categories` | [`MallCategoryView`](#mallcategoryview)\[\] | 否 | 商品分类（扁平树） |
+
+
+#### GET `/ops/biz-mall/categories`
+
+商品分类（扁平，按 level、sortOrder、编码） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallCategoryView`](#mallcategoryview)\[\]
+
+
+#### POST `/ops/biz-mall/categories`
+
+新建分类（expectedVersion=0） */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### PUT `/ops/biz-mall/categories/{code}`
+
+改分类：上级 / 名称 / 图标 / 排序 / 启停 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `code` | path | `string` | 是 | 取货码 / 核销码 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
 
 
 #### GET `/ops/biz-mall/offline/claims`
@@ -2478,6 +2534,19 @@ getDashboardTrend
 **出参**（`data`）
 
 类型：[`MenuFunction`](#menufunction)\[\]
+
+
+#### POST `/ops/staffs/me/password`
+
+登录后改自己的密码（`POST /ops/staffs/me/password`）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 ### finance
@@ -14515,6 +14584,26 @@ Delivery state of an inventory/order synchronization event.
 | `products` | [`MallProductView`](#mallproductview)\[\] | 否 | 商品 |
 | `skuDefinitions` | [`MallSkuDefinitionView`](#mallskudefinitionview)\[\] | 否 | SKU 定义 |
 | `skuVersions` | [`MallSkuVersionView`](#mallskuversionview)\[\] | 否 | SKU 版本 |
+| `categories` | [`MallCategoryView`](#mallcategoryview)\[\] | 否 | 商品分类（扁平树） |
+
+### MallCategoryNames
+
+类型：`Partial<Record<MallCategoryLocale,string>>`
+
+### MallCategoryView
+
+分类行（扁平，按 level、sortOrder、categoryCode 排序）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryCode` | `string` | 是 | — |
+| `parentCode` | `string,null` | 是 | — |
+| `level` | `number` | 是 | 1..3，服务端按上级计算 |
+| `names` | [`MallCategoryNames`](#mallcategorynames) | 是 | — |
+| `icon` | `string,null` | 是 | — |
+| `sortOrder` | `number` | 是 | — |
+| `status` | `ENABLED` \| `DISABLED` | 是 | — |
+| `version` | `number` | 是 | — |
 
 ### MallComponentKind
 
@@ -16133,6 +16222,14 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 | `zh` | `string` | 否 | — |
 | `en` | `string` | 否 | — |
 | `ar` | `string` | 否 | — |
+
+### Partial<Record<MallCategoryLocale,string>>
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `zh-CN` | `string` | 否 | — |
+| `zh-TW` | `string` | 否 | — |
+| `en` | `string` | 否 | — |
 
 ### Partial<Record<Market,number>>
 

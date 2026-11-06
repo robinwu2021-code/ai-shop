@@ -53,6 +53,13 @@ PLANS = {
     ("FOOD", "CHAIN"): ("餐飲連鎖版（未開放）", "暫未開放", [BIZ], False),
 }
 
+CATEGORIES = [
+    # code, parent, names, sort —— 商品保存要求分类已存在且启用（V11 起）
+    ("subscriptions", None, {"zh-TW": "訂閱方案", "zh-CN": "订阅方案", "en": "Plans"}, 10),
+    ("hardware", None, {"zh-TW": "硬體設備", "zh-CN": "硬件设备", "en": "Hardware"}, 20),
+    ("bundles", None, {"zh-TW": "開店套餐", "zh-CN": "开店套餐", "en": "Bundles"}, 5),
+]
+
 PRODUCTS = [
     # productNo, category, kind, name, description, allowedTypes, sort
     ("tw-retail-pro", "subscriptions", "PLAN", "零售專業版", "商戶 App 全功能 + POS", ["RETAIL"], 10),
@@ -193,6 +200,23 @@ def step_plans(cat):
         write(f"方案草稿 {t}:{tier} {name} {ends}", "POST", f"/ops/industry-plans/{t}:{tier}/versions", {
             "planVersionNo": None, "typeCode": t, "tier": tier, "displayName": name, "summary": summary,
             "entitlementCodes": ends, "policyVersion": "tw-launch-1", "expectedVersion": 0, "reason": OP})
+
+
+def step_categories(cat):
+    print("3b. 商品分类")
+    have = {c["categoryCode"]: c for c in cat.get("categories", [])}
+    for code, parent, names, sort in CATEGORIES:
+        c = have.get(code)
+        body = {"parentCode": parent, "names": names, "icon": c and c["icon"], "sortOrder": sort,
+                "enabled": True, "expectedVersion": c["version"] if c else 0, "reason": OP}
+        if not c:
+            write(f"新建分类 {code} {names['zh-TW']}", "POST", "/ops/biz-mall/categories",
+                  dict(body, categoryCode=code))
+        elif (c["names"] != names or c["sortOrder"] != sort or c["parentCode"] != parent
+              or c["status"] != "ENABLED"):
+            write(f"分类 {code} → {names['zh-TW']}", "PUT", f"/ops/biz-mall/categories/{code}", body)
+        else:
+            print(f"  = 分类 {code}")
 
 
 def step_products(cat):
@@ -354,6 +378,7 @@ def main():
     step_types(overview())
     step_ends(overview())
     step_plans(overview())
+    step_categories(overview())
     step_products(overview())
     step_skus(overview())
     print("6. 发布")

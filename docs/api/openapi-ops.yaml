@@ -13114,6 +13114,134 @@ components:
         - "END_PACKAGE"
         - "HARDWARE"
       description: "组件种类"
+    MallCategoryLocale:
+      type: "string"
+      enum:
+        - "zh-CN"
+        - "zh-TW"
+        - "en"
+      description: "分类名称的语言键（zh-CN / zh-TW / en 的子集，至少一个）"
+    MallCategoryNames:
+      "$ref": "#/components/schemas/Partial%3CRecord%3CMallCategoryLocale%2Cstring%3E%3E"
+    "Partial<Record<MallCategoryLocale,string>>":
+      type: "object"
+      properties:
+        zh-CN:
+          type: "string"
+        zh-TW:
+          type: "string"
+        en:
+          type: "string"
+      additionalProperties: false
+    MallCategoryDraft:
+      type: "object"
+      properties:
+        categoryCode:
+          type: "string"
+        parentCode:
+          type:
+            - "string"
+            - "null"
+        names:
+          "$ref": "#/components/schemas/MallCategoryNames"
+        icon:
+          type:
+            - "string"
+            - "null"
+        sortOrder:
+          type: "number"
+        enabled:
+          type: "boolean"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+      required:
+        - "categoryCode"
+        - "parentCode"
+        - "names"
+        - "icon"
+        - "sortOrder"
+        - "enabled"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+      description: "新建分类（编码建后不可改；parentCode 为空 = 一级；最多 3 级）"
+    MallCategoryUpdate:
+      "$ref": "#/components/schemas/Omit%3CMallCategoryDraft%2C%22categoryCode%22%3E"
+      description: "改分类（路径编码为准）"
+    "Omit<MallCategoryDraft,\"categoryCode\">":
+      "$ref": "#/components/schemas/Pick%3CMallCategoryDraft%2CExclude%3C(%22categoryCode%22%7C%22parentCode%22%7C%22names%22%7C%22icon%22%7C%22sortOrder%22%7C%22enabled%22%7C%22expectedVersion%22%7C%22reason%22)%2C%22categoryCode%22%3E%3E"
+    "Pick<MallCategoryDraft,Exclude<(\"categoryCode\"|\"parentCode\"|\"names\"|\"icon\"|\"sortOrder\"|\"enabled\"|\"expectedVersion\"|\"reason\"),\"categoryCode\">>":
+      type: "object"
+      properties:
+        parentCode:
+          type:
+            - "string"
+            - "null"
+        names:
+          "$ref": "#/components/schemas/MallCategoryNames"
+        icon:
+          type:
+            - "string"
+            - "null"
+        sortOrder:
+          type: "number"
+        enabled:
+          type: "boolean"
+        expectedVersion:
+          type: "number"
+          description: "乐观锁：新建传 0"
+        reason:
+          type: "string"
+      required:
+        - "parentCode"
+        - "names"
+        - "icon"
+        - "sortOrder"
+        - "enabled"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+    MallCategoryView:
+      type: "object"
+      properties:
+        categoryCode:
+          type: "string"
+        parentCode:
+          type:
+            - "string"
+            - "null"
+        level:
+          type: "number"
+          description: "1..3，服务端按上级计算"
+        names:
+          "$ref": "#/components/schemas/MallCategoryNames"
+        icon:
+          type:
+            - "string"
+            - "null"
+        sortOrder:
+          type: "number"
+        status:
+          type: "string"
+          enum:
+            - "ENABLED"
+            - "DISABLED"
+        version:
+          type: "number"
+      required:
+        - "categoryCode"
+        - "parentCode"
+        - "level"
+        - "names"
+        - "icon"
+        - "sortOrder"
+        - "status"
+        - "version"
+      additionalProperties: false
+      description: "分类行（扁平，按 level、sortOrder、categoryCode 排序）"
     MallProductDraft:
       type: "object"
       properties:
@@ -13491,6 +13619,11 @@ components:
           items:
             "$ref": "#/components/schemas/MallSkuVersionView"
           description: "SKU 版本"
+        categories:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/MallCategoryView"
+          description: "商品分类（扁平树）"
       additionalProperties: false
       description: "目录总览（运营端一次读全量）"
     MallOrderStatus:
@@ -16218,6 +16351,103 @@ paths:
                   - "data"
       parameters:
         - name: "typeCode"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/categories":
+    get:
+      operationId: "mallCategories"
+      summary: "商品分类（扁平，按 level、sortOrder、编码） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MallCategoryView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "createMallCategory"
+      summary: "新建分类（expectedVersion=0） */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/categories/{code}":
+    put:
+      operationId: "updateMallCategory"
+      summary: "改分类：上级 / 名称 / 图标 / 排序 / 启停 */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MallDraftSaveResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "code"
           in: "path"
           required: true
           schema:

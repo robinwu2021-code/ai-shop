@@ -4,6 +4,7 @@ import ai.neargo.commerce.api.catalog.*;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.catalog.business.BusinessTypeService;
+import ai.neargo.commerce.core.catalog.category.CategoryService;
 import ai.neargo.commerce.core.catalog.end.BusinessEndService;
 import ai.neargo.commerce.core.catalog.plan.IndustryPublicationService;
 import ai.neargo.commerce.core.catalog.product.SkuPublicationService;
@@ -15,6 +16,7 @@ import java.util.*;
 public final class DefaultCatalogFacade implements CatalogFacade {
     private final CatalogQueryService queries;
     private final BusinessTypeService types;
+    private final CategoryService categories;
     private final BusinessEndService ends;
     private final IndustryPublicationService industries;
     private final SkuPublicationService skus;
@@ -36,6 +38,7 @@ public final class DefaultCatalogFacade implements CatalogFacade {
         var support = new CatalogSupport(r, u, a, readiness, events, clock, ids, moneyPolicies);
         queries = new CatalogQueryService(support);
         types = new BusinessTypeService(support);
+        categories = new CategoryService(support);
         ends = new BusinessEndService(support);
         skus = new SkuPublicationService(support);
         industries = new IndustryPublicationService(support, skus);
@@ -43,6 +46,14 @@ public final class DefaultCatalogFacade implements CatalogFacade {
 
     public DraftSaveResult saveBusinessType(ActorContext a, BusinessTypeDraft d) {
         return types.save(a, d);
+    }
+
+    public DraftSaveResult saveCategory(ActorContext a, CategoryDraft d) {
+        return categories.save(a, d);
+    }
+
+    public java.util.List<CategoryView> categories(ActorContext a) {
+        return categories.list(a);
     }
 
     public DraftSaveResult saveBusinessEnd(ActorContext a, BusinessEndDraft d) {

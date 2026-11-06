@@ -136,7 +136,8 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
                             currency,
                             type == null ? 0 : type.catalogVersion(),
                             canProcure,
-                            List.copyOf(products));
+                            List.copyOf(products),
+                            categories(state, products));
                 });
         return offline == null ? view : withOffline(ref, view);
     }
@@ -178,6 +179,37 @@ public final class DefaultStorefrontFacade implements StorefrontFacade {
                 view.currency(),
                 view.catalogVersion(),
                 view.canProcure(),
-                List.copyOf(products));
+                List.copyOf(products),
+                view.categories());
+    }
+
+    /** Enabled categories of the visible products plus all ancestors, (level, sort, code). */
+    static List<StorefrontView.Category> categories(
+            ai.neargo.commerce.core.catalog.CatalogState state,
+            List<StorefrontView.Product> products) {
+        var picked = new LinkedHashMap<String, ai.neargo.commerce.core.catalog.CatalogState.Category>();
+        for (var product : products) {
+            var c = state.categories.get(product.product().categoryCode());
+            while (c != null && c.draft().enabled() && !picked.containsKey(c.draft().categoryCode())) {
+                picked.put(c.draft().categoryCode(), c);
+                c = c.draft().parentCode() == null ? null : state.categories.get(c.draft().parentCode());
+            }
+        }
+        return picked.values().stream()
+                .sorted(
+                        Comparator.<ai.neargo.commerce.core.catalog.CatalogState.Category>comparingInt(
+                                        c -> c.level())
+                                .thenComparingInt(c -> c.draft().sortOrder())
+                                .thenComparing(c -> c.draft().categoryCode()))
+                .map(
+                        c ->
+                                new StorefrontView.Category(
+                                        c.draft().categoryCode(),
+                                        c.draft().parentCode(),
+                                        c.level(),
+                                        new TreeMap<>(c.draft().names()),
+                                        c.draft().icon(),
+                                        c.draft().sortOrder()))
+                .toList();
     }
 }

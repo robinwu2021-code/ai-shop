@@ -44,6 +44,14 @@ public final class CatalogState {
     public record SkuVersion(
             SkuDraft draft, int revision, String status, long version, Long publishedAt) {}
 
+    /** {@code level} is derived from the parent chain and persisted for ordering/queries. */
+    public record Category(CategoryDraft draft, int level, long version) {
+        public String status() {
+            return draft.enabled() ? "ENABLED" : "DISABLED";
+        }
+    }
+
+    public final Map<String, Category> categories = new LinkedHashMap<>();
     public final Map<String, Type> types = new LinkedHashMap<>();
     public final Map<String, End> ends = new LinkedHashMap<>();
     public final Map<String, Plan> plans = new LinkedHashMap<>();
@@ -54,6 +62,7 @@ public final class CatalogState {
 
     public CatalogState copy() {
         var s = new CatalogState();
+        s.categories.putAll(categories);
         s.types.putAll(types);
         s.ends.putAll(ends);
         s.plans.putAll(plans);

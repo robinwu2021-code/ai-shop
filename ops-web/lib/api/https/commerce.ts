@@ -5,7 +5,7 @@
 import { client } from "../http-client";
 import type { CommerceApi } from "../contracts/commerce";
 import type {
-  MallBusinessEndView, MallBusinessTypeView, MallCatalogOverview, MallDeploymentOption, MallDraftSaveResult,
+  MallBusinessEndView, MallBusinessTypeView, MallCatalogOverview, MallCategoryView, MallDeploymentOption, MallDraftSaveResult,
   MallOfflineActionView, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineEvidenceTicket,
   MallOfflineEvidenceUploaded, MallOfflineInstructionsView, MallOfflinePendingClaim, MallOfflineSignedRead,
   MallOrderDetailView, MallOrderSummary, MallOrderView, MallPlanDefinitionView, MallProductView, MallPublicationResult,
@@ -27,6 +27,9 @@ export const commerceHttp: CommerceApi = {
   saveMallPlanVersion: (planNo, v) => client.post<MallDraftSaveResult>(`/ops/industry-plans/${seg(planNo)}/versions`, v),
   publishMallIndustry: (typeCode, v) =>
     client.post<MallPublicationResult>(`/ops/business-types/${seg(typeCode)}/plan-publications`, v),
+  mallCategories: () => client.get<MallCategoryView[]>("/ops/biz-mall/categories"),
+  createMallCategory: (v) => client.post<MallDraftSaveResult>("/ops/biz-mall/categories", v),
+  updateMallCategory: (code, v) => client.put<MallDraftSaveResult>(`/ops/biz-mall/categories/${seg(code)}`, v),
   mallProducts: () => client.get<MallProductView[]>("/ops/biz-mall/products"),
   createMallProduct: (v) => client.post<MallDraftSaveResult>("/ops/biz-mall/products", v),
   updateMallProduct: (productNo, v) => client.put<MallDraftSaveResult>(`/ops/biz-mall/products/${seg(productNo)}`, v),

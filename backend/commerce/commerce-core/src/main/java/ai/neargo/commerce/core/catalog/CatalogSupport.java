@@ -68,6 +68,10 @@ public final class CatalogSupport {
                     "stale version: expected " + expected + ", current " + actual);
     }
 
+    public static void fail(CatalogErrorCode code, String message) {
+        throw new CatalogException(code, message);
+    }
+
     public static <T> T require(Map<String, T> map, String key) {
         var v = map.get(key);
         if (v == null)
@@ -187,6 +191,8 @@ public final class CatalogSupport {
             case "SKU" -> s.skus.containsKey(key) ? s.skus.get(key).version() : 0;
             case "SKU_VERSION" ->
                     s.skuVersions.containsKey(key) ? s.skuVersions.get(key).version() : 0;
+            case "CATEGORY" ->
+                    s.categories.containsKey(key) ? s.categories.get(key).version() : 0;
             case "PRODUCT" -> s.products.containsKey(key) ? s.products.get(key).version() : 0;
             default -> throw new IllegalArgumentException("unknown catalog aggregate kind");
         };

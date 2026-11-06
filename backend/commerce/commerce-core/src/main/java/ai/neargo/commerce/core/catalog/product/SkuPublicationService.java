@@ -32,6 +32,11 @@ public final class SkuPublicationService {
                 null,
                 state -> {
                     d.allowedBusinessTypes().forEach(t -> require(state.types, t));
+                    var category = state.categories.get(d.categoryCode());
+                    if (category == null || !category.draft().enabled())
+                        fail(
+                                CatalogErrorCode.CATEGORY_UNAVAILABLE,
+                                "product category missing or disabled");
                     var old = state.products.get(d.productNo());
                     expected(d.expectedVersion(), old == null ? 0 : old.version());
                     // Published metadata/target scope changes require a new SPU, so old contracts

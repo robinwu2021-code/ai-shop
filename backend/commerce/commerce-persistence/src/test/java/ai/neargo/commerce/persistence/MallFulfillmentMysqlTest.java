@@ -1225,6 +1225,17 @@ class MallFulfillmentMysqlTest {
         }
     }
 
+    static String categoryDdl() {
+        try (var in =
+                MallFulfillmentMysqlTest.class.getResourceAsStream(
+                        "/db/commerce/migration/V11__commerce_mall_category.sql")) {
+            var sql = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            return sql.substring(0, sql.indexOf(';'));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     void legacyTaskCannotBeIgnored(boolean cancel) {
         try (var db = new MysqlDatabase()) {
             org.flywaydb.core.Flyway.configure()
@@ -1234,6 +1245,9 @@ class MallFulfillmentMysqlTest {
                     .target("5")
                     .load()
                     .migrate();
+            // Current catalogue code reads mall_category (V11); borrow its DDL for the V5 fixture,
+            // then drop it so the real V11 recreates and seeds it from mall_product.
+            db.jdbc.execute(categoryDdl());
             var components =
                     List.of(
                             new ai.neargo.commerce.api.catalog.SkuComponent(
@@ -1270,7 +1284,13 @@ class MallFulfillmentMysqlTest {
                         + " VALUES"
                         + " ('tenant-a',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,'legacy-reserve',?,1,'RESERVE','UNKNOWN',1,0)",
                     part);
+            db.jdbc.execute("DROP TABLE mall_category");
             db.migrate();
+            assertEquals(
+                    1,
+                    db.jdbc.queryForObject(
+                            "select count(*) from mall_category where category_code='subscriptions'",
+                            Integer.class));
             assertNull(
                     db.jdbc.queryForObject(
                             "select order_no from mall_fulfillment_task", String.class));

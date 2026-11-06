@@ -65,7 +65,8 @@ shop:
 ## 稳定购买与审核流程
 
 1. OPS 读取 `/ops/biz-mall/catalog`，即使空目录也可用。建立行业、端草稿、FREE/PRO/CHAIN 版本、商品与 SKU；发布提交明确乐观锁版本及 operationNo。已发布快照不变，停售不改写已落单快照。
-2. B 端读取 `/biz/stores/{storeNo}/mall/products`。只返回当前已发布并在售内容和实际 readiness；不以管理目录接口代替。
+1a. 商品分类（2026-11-06，[TDD-商城商品分类](../technical/TDD-商城商品分类.md)，commerce V11 `mall_category`）：`GET /ops/biz-mall/categories` 扁平返回（按 level、sortOrder、code），`POST` 新建（`expectedVersion=0`），`PUT /ops/biz-mall/categories/{categoryCode}` 改上级/名称/图标/排序/启停（路径编码为准，编码不可改）。最多 3 级；`names` 为 zh-CN/zh-TW/en 子集。读 = `commerce:catalog:read`，写 = `commerce:catalog:edit`。拒绝原因：`CATEGORY_UNAVAILABLE`（上级或商品引用的分类不存在/已停用）、`CATEGORY_TOO_DEEP`、`CATEGORY_CYCLE`、`CATEGORY_HAS_CHILDREN`（还有启用的下级）、`CATEGORY_IN_USE`（在售商品引用），均为 400。**保存商品时 `categoryCode` 必须是已启用分类**；V11 已把存量商品的分类编码补成一级分类。`/ops/biz-mall/catalog` 增加 `categories`。
+2. B 端读取 `/biz/stores/{storeNo}/mall/products`。只返回当前已发布并在售内容和实际 readiness；不以管理目录接口代替。响应增加 `categories`：本店可见商品用到的启用分类及其全部上级（`code/parentCode/level/names/icon/sortOrder`），客户端按 `parentCode` 组树、按商品 `product.categoryCode` 归类。
 3. 普通或升级报价由服务器冻结明细与版本。升级 `creditBreakdown` 区分 newConversion C、historicalAvailable、applied U、reservedHistorical、remainingAfter 与 valuationAt。客户端不把历史余额抵扣误标为旧 Plan 价值。
 4. place 绑定路径门店、quoteNo、idempotencyKey、必要配送地址。订单详情提供独立 paymentStatus/fulfillmentStatus/refundStatus、冻结报价、实际付款尝试/发货/退款，客户端不从简化总状态推导商业事实。
 5. payment create 返回持久尝试与受限 checkoutParameters，不等于付款。GET payments 读取持久结果；POST payments/refresh（空 `{}`）先授权订单再查询可信原尝试。取消也可能保留 CANCEL_PENDING/UNKNOWN。

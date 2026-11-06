@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 481 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 491 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -24,15 +24,15 @@
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
-| `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
-| `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
-| `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
+| `PRINT_READ` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 15 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_CONFIG` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 15 | ✅ | ✅ | — | — | — | — |
+| `PRINT_RESOLVE` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 14 | ✅ | ✅ | — | — | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 13 | ✅ | ✅ | — | — | — | ✅ |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 9 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 10 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
-| `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
+| `PRINT_DEVICE` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 6 | ✅ | ✅ | — | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
@@ -40,7 +40,7 @@
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
-| `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_EXPORT` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
 | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
@@ -49,13 +49,13 @@
 | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
-| `PRINT_REPRINT` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
-| `PRINT_SIMULATE` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_REPRINT` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_SIMULATE` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
-| `PRINT_SUBMIT` | 角色 → 权限码 | 1 | ✅ | ✅ | ✅ | — | — | — |
-| `PRINT_EXTRA` | 角色 → 权限码 | 1 | ✅ | ✅ | — | — | — | — |
+| `PRINT_SUBMIT` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 1 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_EXTRA` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐  | 1 | ✅ | ✅ | — | — | — | — |
 | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
 | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
@@ -498,6 +498,7 @@
 - `/biz/order/worklist`
 - `/biz/order/{orderNo}/points-earning`
 - `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/full`
 - `/biz/order/{subOrderNo}/inventory-trace`
 - `/biz/order/{subOrderNo}/logistics-updates`
 - `/biz/order/{subOrderNo}/trace`

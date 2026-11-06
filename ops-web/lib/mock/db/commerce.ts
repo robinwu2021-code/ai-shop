@@ -11,7 +11,7 @@ import { ApiError } from "@/lib/api/error";
 import type {
   MallBusinessEndDraft, MallBusinessTypeDraft, MallDeploymentOption, MallEntitlementSource, MallAccessSegment,
   MallMoney, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineInstructionsView, MallPaymentAttempt,
-  MallPlanDraft, MallPlanTier, MallProductDraft, MallQuoteComponent, MallQuoteView, MallRefundView,
+  MallCategoryDraft, MallCategoryView, MallPlanDraft, MallPlanTier, MallProductDraft, MallQuoteComponent, MallQuoteView, MallRefundView,
   MallShipment, MallShippingAddress, MallSkuDraft, MallOrderStatus, MallComponentKind,
 } from "@/lib/types";
 
@@ -21,6 +21,8 @@ const STATUS: Record<string, number> = {
   NOT_FOUND: 404, FORBIDDEN: 403, VERSION_CONFLICT: 409, IMMUTABLE_VERSION: 409, IDEMPOTENCY_CONFLICT: 409,
   QUOTE_EXPIRED: 409, QUOTE_USED: 409, CLAIM_ALREADY_REVIEWED: 409, OFFLINE_ALREADY_PAID: 409,
   OFFLINE_BANK_REFERENCE_CONFLICT: 409, EVIDENCE_ALREADY_STORED: 409, OFFLINE_RECONCILIATION_CONFLICT: 409,
+  // 分类拒绝都是 400（宿主信封默认），不要被下面的「*_UNAVAILABLE → 503」吃掉
+  CATEGORY_UNAVAILABLE: 400,
 };
 
 /** 抛后端同款错误：code=10000+HTTP 状态，msg=原因码 */
@@ -109,6 +111,7 @@ interface QuoteRow { view: MallQuoteView; usedBy: string | null; currency: strin
 
 export interface MallState {
   deployments: MallDeploymentOption[];
+  categories: Record<string, MallCategoryView>;
   types: Record<string, TypeRow>;
   ends: Record<string, EndRow>;
   planDefs: Record<string, PlanDefRow>;
@@ -189,10 +192,17 @@ export function seedMall(): MallState {
   seq = 1000;
   const s: MallState = {
     deployments: DEV_DEPLOYMENTS.map((d) => ({ ...d })),
-    types: {}, ends: {}, planDefs: {}, planVersions: {}, products: {}, skuDefs: {}, skuVersions: {},
+    categories: {}, types: {}, ends: {}, planDefs: {}, planVersions: {}, products: {}, skuDefs: {}, skuVersions: {},
     publications: {}, orders: [], subscriptions: {}, profiles: {}, quotes: {}, bankRefs: new Set(),
     stores: new Set(["TW-STORE-001", "TW-STORE-002", "TW-STORE-003", "TW-STORE-004"]),
   };
+
+  // 分类：两级样例（硬件 › 收银设备）；商品只能挂启用中的分类
+  const cat = (categoryCode: string, parentCode: string | null, level: number, names: MallCategoryView["names"], sortOrder: number) =>
+    (s.categories[categoryCode] = { categoryCode, parentCode, level, names, icon: null, sortOrder, status: "ENABLED", version: 1 });
+  cat("PLAN", null, 1, { "zh-CN": "订阅方案", "zh-TW": "訂閱方案", en: "Plans" }, 10);
+  cat("HARDWARE", null, 1, { "zh-CN": "硬件设备", "zh-TW": "硬體設備", en: "Hardware" }, 20);
+  cat("POS", "HARDWARE", 2, { "zh-CN": "收银设备", "zh-TW": "收銀設備", en: "POS devices" }, 10);
 
   // 零售：已发布、已启用
   s.types.RETAIL = { draft: { typeCode: "RETAIL", name: "零售", sortOrder: 1, enabled: true }, catalogVersion: 1, version: 3 };
@@ -513,10 +523,73 @@ function publishSkuRow(no: string) {
   if (product && product.saleStatus !== "ON_SALE") { product.saleStatus = "ON_SALE"; product.version += 1; }
 }
 
+// ── 分类（与 commerce CategoryService 同规则）────────────────────────────
+
+export const CATEGORY_MAX_DEPTH = 3;
+const CODE = /^[A-Za-z0-9_.:-]{1,32}$/;
+const LOCALES = ["zh-CN", "zh-TW", "en"];
+
+/** candidate 是否在 root 的子树里 */
+function under(s: MallState, candidate: string, root: string): boolean {
+  for (let c = s.categories[candidate], hops = 0; c?.parentCode && hops < 10; c = s.categories[c.parentCode], hops++)
+    if (c.parentCode === root) return true;
+  return false;
+}
+
+/** 以 code 为根的子树层数（含自己；新节点 = 1） */
+function height(s: MallState, code: string): number {
+  return 1 + Math.max(0, ...Object.values(s.categories).filter((c) => c.parentCode === code).map((c) => height(s, c.categoryCode)));
+}
+
+function relevel(s: MallState, parent: string, level: number) {
+  for (const c of Object.values(s.categories))
+    if (c.parentCode === parent) {
+      s.categories[c.categoryCode] = { ...c, level: level + 1, version: c.version + 1 };
+      relevel(s, c.categoryCode, level + 1);
+    }
+}
+
+export function saveCategory(d: MallCategoryDraft, creating: boolean) {
+  const s = st();
+  const names = Object.entries(d.names ?? {});
+  need(CODE.test(d.categoryCode ?? "") && (d.parentCode == null || CODE.test(d.parentCode)) && text(d.reason, 1024)
+    && names.length > 0 && names.every(([k, v]) => LOCALES.includes(k) && text(v, 64))
+    && (d.icon == null || (d.icon.trim() !== "" && d.icon.length <= 512)), "INVALID_ARGUMENT");
+  const code = d.categoryCode;
+  const old = s.categories[code];
+  if (creating) need(!old, "VERSION_CONFLICT");
+  else need(old, "NOT_FOUND");
+  expected(d.expectedVersion, old?.version ?? 0);
+  let level = 1;
+  if (d.parentCode) {
+    need(d.parentCode !== code && !under(s, d.parentCode, code), "CATEGORY_CYCLE");
+    const parent = s.categories[d.parentCode];
+    need(parent && parent.status === "ENABLED", "CATEGORY_UNAVAILABLE");
+    level = parent!.level + 1;
+  }
+  need(level - 1 + height(s, code) <= CATEGORY_MAX_DEPTH, "CATEGORY_TOO_DEEP");
+  if (!d.enabled && (!old || old.status === "ENABLED")) {
+    need(!Object.values(s.categories).some((c) => c.parentCode === code && c.status === "ENABLED"), "CATEGORY_HAS_CHILDREN");
+    need(!Object.values(s.products).some((p) => p.saleStatus === "ON_SALE" && p.draft.categoryCode === code), "CATEGORY_IN_USE");
+  }
+  const version = (old?.version ?? 0) + 1;
+  s.categories[code] = { categoryCode: code, parentCode: d.parentCode ?? null, level, names: { ...d.names },
+    icon: d.icon ?? null, sortOrder: d.sortOrder, status: d.enabled ? "ENABLED" : "DISABLED", version };
+  if (old && old.level !== level) relevel(s, code, level);
+  return { entityNo: code, draftVersionNo: null, version };
+}
+
+/** 扁平列表，按 level、sortOrder、编码 */
+export function categoryList(): MallCategoryView[] {
+  return Object.values(st().categories).sort((a, b) =>
+    a.level - b.level || a.sortOrder - b.sortOrder || a.categoryCode.localeCompare(b.categoryCode));
+}
+
 export function saveProduct(d: MallProductDraft, creating: boolean) {
   const s = st();
   need(d.productNo && /^[A-Z][A-Z0-9_-]{1,63}$/.test(d.productNo) && text(d.name, 128) && text(d.reason, 1024)
     && text(d.categoryCode, 32) && d.kind && (d.allowedBusinessTypes ?? []).length > 0, "INVALID_ARGUMENT");
+  need(s.categories[d.categoryCode!]?.status === "ENABLED", "CATEGORY_UNAVAILABLE");
   for (const t of d.allowedBusinessTypes!) need(s.types[t], "INVALID_ARGUMENT");
   const old = s.products[d.productNo!];
   if (creating) need(!old, "VERSION_CONFLICT");

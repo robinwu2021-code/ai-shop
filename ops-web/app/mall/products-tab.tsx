@@ -8,6 +8,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { useLocaleStore } from "@/lib/stores/locale";
 import { fill } from "@/lib/use-copy";
 import { parseMajor, toMajorInput } from "@/lib/commerce-money";
 import type {
@@ -27,7 +28,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
-import { Money, newOpNo, saleMap, showErr, versionMap, type MallCopy } from "./shared";
+import { Money, categoryPath, categoryTree, newOpNo, saleMap, showErr, versionMap, type MallCopy } from "./shared";
 
 const KINDS: MallProductKind[] = ["PLAN", "END_ACCESS", "HARDWARE", "BUNDLE"];
 const CURRENCIES = ["TWD", "CNY"];
@@ -66,6 +67,8 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
   const [viewNo, setViewNo] = React.useState<string | null>(null);
 
   const types = (catalog.data?.businessTypes ?? []).map((t) => t.draft!);
+  const locale = useLocaleStore((st) => st.locale);
+  const categories = React.useMemo(() => categoryTree(catalog.data?.categories ?? []), [catalog.data?.categories]);
   const skuDefs = catalog.data?.skuDefinitions ?? [];
   const skuVersions = catalog.data?.skuVersions ?? [];
 
@@ -129,6 +132,7 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
   const productColumns: Column<MallProductView>[] = [
     { header: c.colProductNo, cell: (r) => <code className="txt-caption">{r.draft?.productNo}</code> },
     { header: c.colName, cell: (r) => r.draft?.name },
+    { header: c.fieldCategory, cell: (r) => categoryPath(categories, r.draft?.categoryCode, locale) },
     { header: c.colKind, cell: (r) => r.draft?.kind },
     { header: c.colTypes, cell: (r) => (r.draft?.allowedBusinessTypes ?? []).join(" / ") },
     { header: c.colSale, cell: (r) => <StatusBadge map={saleMap(c)} value={r.saleStatus ?? ""} /> },
@@ -216,7 +220,17 @@ export function ProductsTab({ c, canEdit, canPublish }: { c: MallCopy; canEdit: 
             </div>
             <div className="space-y-1">
               <Label htmlFor="pd-cat" required>{c.fieldCategory}</Label>
-              <Input id="pd-cat" value={pForm.categoryCode} onChange={(e) => setPForm((f) => f && { ...f, categoryCode: e.target.value.toUpperCase() })} />
+              {/* 只列启用中的分类；编辑时原分类已停用/不存在就提示重选（后端会拒 CATEGORY_UNAVAILABLE） */}
+              <Select id="pd-cat" className="w-full" value={pForm.categoryCode}
+                onChange={(e) => setPForm((f) => f && { ...f, categoryCode: e.target.value })}>
+                <option value="">{c.categoryPick}</option>
+                {categories.filter((x) => x.status === "ENABLED").map((x) => (
+                  <option key={x.categoryCode} value={x.categoryCode}>{categoryPath(categories, x.categoryCode, locale)}</option>
+                ))}
+              </Select>
+              {pForm.categoryCode && !categories.some((x) => x.categoryCode === pForm.categoryCode && x.status === "ENABLED") && (
+                <p className="txt-caption text-destructive">{fill(c.categoryMissing, { c: pForm.categoryCode })}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="pd-kind">{c.colKind}</Label>

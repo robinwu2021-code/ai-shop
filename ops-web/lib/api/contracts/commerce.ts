@@ -8,6 +8,7 @@
 // 不从登录态推断 —— 运营不属于任何门店。
 import type {
   MallApproveRequest, MallBusinessEndView, MallBusinessTypeDraft, MallBusinessTypeView, MallCatalogOverview,
+  MallCategoryDraft, MallCategoryUpdate, MallCategoryView,
   MallDeploymentOption, MallDraftSaveResult, MallEndRequest, MallEvidencePurpose, MallGrantRequest,
   MallIndustryPublish, MallOfflineActionView, MallOfflineClaimView, MallOfflineCollectionTerms,
   MallOfflineConfirmRequest, MallOfflineEvidenceTicket, MallOfflineEvidenceUploaded, MallOfflineInstructionsView,
@@ -44,6 +45,12 @@ export interface CommerceApi {
   saveMallPlanVersion(planNo: string, v: MallPlanRequest): Promise<MallDraftSaveResult>;
   /** 行业发布：三档 + 候选 SKU 一起冻结 */
   publishMallIndustry(typeCode: string, v: MallIndustryPublish): Promise<MallPublicationResult>;
+  /** 商品分类（扁平，按 level、sortOrder、编码） */
+  mallCategories(): Promise<MallCategoryView[]>;
+  /** 新建分类（expectedVersion=0） */
+  createMallCategory(v: MallCategoryDraft): Promise<MallDraftSaveResult>;
+  /** 改分类：上级 / 名称 / 图标 / 排序 / 启停 */
+  updateMallCategory(categoryCode: string, v: MallCategoryUpdate): Promise<MallDraftSaveResult>;
   /** 商品列表 */
   mallProducts(): Promise<MallProductView[]>;
   /** 新建商品（expectedVersion=0） */
