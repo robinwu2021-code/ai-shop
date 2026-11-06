@@ -124,6 +124,18 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 商家在 App 申请支付服务（POST）在新模型门店上能进门店（内嵌部署回依赖不可用，不是 70006）")
+    void payServiceApplyPassesAdmission() throws Exception {
+        String[] o = newModelOwner("15965020108");
+        String body = mvc.perform(post("/biz/merchant/pay-service/apply")
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"legalName\":\"x\",\"registrationNo\":\"1\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertNotEquals(70006, json.readTree(body).path("code").asInt(), body);
+    }
+
+    @Test
     @DisplayName("★★ 新店主给自己的店设货架类目（POST）：同样按门店成员放行")
     void ownerSetsStoreCategories() throws Exception {
         String[] o = newModelOwner("15965020104");

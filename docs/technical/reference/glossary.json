@@ -55839,6 +55839,14 @@
       "module": "shop-merchant"
     },
     {
+      "host": "NearPayStoreProfile",
+      "name": "PROFILE_VERSION",
+      "type": "long",
+      "value": "1",
+      "zh": "门店资料的结构版本，加在推给 near-pay 的修订号上。",
+      "module": "shop-merchant"
+    },
+    {
       "host": "ReportCsvWriter",
       "name": "MAX_BYTES",
       "type": "int",

@@ -146,3 +146,6 @@ c-app POST /mp/checkout/*/confirmations
 c-app POST /mp/checkout/*/orders
 c-app POST /mp/checkout/*/payments
 c-app POST /mp/checkout/*/payments/lookup
+
+# 2026-11-06 商家在 App 申请支付服务（TDD-运营端申请支付服务 §7）：入口做在 Flutter 商户端（ai-shop-bapp），uni-app b-app 不接。
+b-app POST /biz/merchant/pay-service/apply

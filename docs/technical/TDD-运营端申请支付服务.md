@@ -54,3 +54,12 @@ near-pay 的平台商户由来源系统「申请支付服务」时建立：`POST
 - 内嵌部署时返回通用的 `RESOURCE_DEPENDENCY_UNAVAILABLE`（10505），不另加错误码，免得新增三语文案。
 - near-pay 内部接口出错只回状态码：400 映射成 `BAD_REQUEST`，其余映射成依赖不可用。具体原因（比如门店投影的 `external_entity_id` 与主体对不上）要看 near-pay 的日志。
 - `StoreSnapshotReader` 新增的两条 SQL 没有用 H2 跑测试，在本机 MySQL 上手工执行核对过。
+
+## §7 补记 · 商家在 App 提交（2026-11-06）
+
+用户决定（原话「目前都暂时不做多人审核，商家在app端提交资料后，运营人员点击确认审核即可」）：
+
+- B 端 `POST /biz/merchant/pay-service/apply`（`BizPerms.FINANCE`，与提交进件同一个码）：请求体同运营端 Form；主体按当前账户与所选门店解析；`actorRef.realm = MERCHANT`，subject 为商家账号号。门店准入已登记（`ShopStoreMemberRoutes`）。
+- 运营确认：在 near-pay 运营端 `POST /pay-ops/v2/merchants/{merchantNo}/confirm` 一键通过（near-pay TDD-单人审批开关与确认审核）。
+- 入口在 Flutter 商户端（ai-shop-bapp）；uni-app b-app 不接，已登记进 known-app-backend-orphan.txt。
+- 测试：`StoreScopedDailyRoutesFlowTest.payServiceApplyPassesAdmission`（不是 70006）、`BizEndpointPermTest`（已登记）、`PayServiceApplyRequestsTest`（组装同一份逻辑）。

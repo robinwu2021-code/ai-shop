@@ -44,6 +44,8 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/qualifications(?:/recognize|/save)?"),
             HostRoute.of("POST", "/biz/merchant/agreement/accept"),
             HostRoute.of("GET", "/biz/merchant/pay-channel"),
+            // 申请支付服务（near-pay 平台商户，TDD-运营端申请支付服务 §7）
+            HostRoute.of("POST", "/biz/merchant/pay-service/apply"),
             // 地图选点（门店地址）
             HostRoute.of("GET", "/biz/geo/(?:tips|reverse)"),
             // 首页看板

@@ -30,8 +30,18 @@ public final class PayServiceApplyRequests {
     private PayServiceApplyRequests() {
     }
 
+    /** 运营代为申请（运营端「申请支付服务」） */
     public static PaySourceLinkApi.Apply build(StoreSnapshotReader.Entity entity, List<StoreSnapshotReader.Snapshot> stores,
                                                Form form, String operatorNo, StoreSyncProperties props) {
+        return build(entity, stores, form, "OPERATOR", operatorNo, props);
+    }
+
+    /**
+     * @param realm   OPERATOR（运营代办）/ MERCHANT（商家在 App 自己提交）
+     * @param subject 操作人：运营工号或商家账号号
+     */
+    public static PaySourceLinkApi.Apply build(StoreSnapshotReader.Entity entity, List<StoreSnapshotReader.Snapshot> stores,
+                                               Form form, String realm, String operatorNo, StoreSyncProperties props) {
         if (entity == null) throw BizException.of(ErrorCode.NOT_FOUND);
         if (form == null || blank(form.legalName()) || blank(form.registrationNo()) || blank(operatorNo)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -51,7 +61,7 @@ public final class PayServiceApplyRequests {
         String event = "ais-apply-" + entity.entityNo() + "-" + revision + "-" + digest(profile).substring(0, 8);
         return new PaySourceLinkApi.Apply(event, props.sourceScope(), entity.entityNo(), revision,
                 blank(entity.name()) ? legalName : entity.name(), storeInputs,
-                new PaySourceLinkApi.ActorRef("OPERATOR", operatorNo, "1", PERM), "FIAT", revision, profile);
+                new PaySourceLinkApi.ActorRef(realm, operatorNo, "1", PERM), "FIAT", revision, profile);
     }
 
     private static String digest(PaySourceLinkApi.Profile p) {
