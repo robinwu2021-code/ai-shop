@@ -37,15 +37,28 @@ class NearPayStoreSyncTest {
         assertThat(profile).containsEntry("name", "ume早餐店").containsEntry("entityName", "ume 股份有限公司")
                 .containsEntry("address", "台北市中山區 1樓").containsEntry("openHours", "07:00-14:00")
                 .containsEntry("logoUrl", "https://img.example/uploads/logo.png").containsEntry("storeCode", "ume-breakfast")
-                .containsEntry("status", "ACTIVE").containsEntry("market", "TW");
+                .containsEntry("status", "ACTIVE").containsEntry("market", "TW")
+                // 资金路径：near-pay 解析门店要求 DIRECT / AGGREGATED，空就拒绝收款（PAY_FORBIDDEN）。目前默认直付
+                .containsEntry("fundsPath", "DIRECT");
         assertThat(body).containsEntry("storeRef", "41").containsEntry("storeNo", "ST41").containsEntry("entityRef", "E41")
-                .containsEntry("revision", 1_762_300_000_000L).containsEntry("deleted", false)
-                .containsEntry("eventId", "ais-ST41-1762300000000").containsEntry("sourceScope", "MAIN");
+                // 修订号 = 变更时间毫秒 + 资料结构版本（V2 加了 fundsPath）：near-pay 对同修订不同内容判冲突
+                .containsEntry("revision", 1_762_300_000_001L).containsEntry("deleted", false)
+                .containsEntry("eventId", "ais-ST41-1762300000001").containsEntry("sourceScope", "MAIN");
         // near-pay Canonical: sorted keys, nulls dropped, compact Jackson JSON, SHA-256 hex
-        String canonical = "{\"address\":\"台北市中山區 1樓\",\"entityName\":\"ume 股份有限公司\",\"logoUrl\":\"https://img.example/uploads/logo.png\","
+        String canonical = "{\"address\":\"台北市中山區 1樓\",\"entityName\":\"ume 股份有限公司\",\"fundsPath\":\"DIRECT\",\"logoUrl\":\"https://img.example/uploads/logo.png\","
                 + "\"market\":\"TW\",\"name\":\"ume早餐店\",\"openHours\":\"07:00-14:00\",\"status\":\"ACTIVE\",\"storeCode\":\"ume-breakfast\"}";
         String expected = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8)));
         assertThat(body.get("profileHash")).isEqualTo(expected);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void fundsPathIsConfigurableAndValidated() {
+        var aggregated = new StoreSyncProperties(true, "http://x", null, "cred", null, null, null, null, null, "AGGREGATED");
+        var body = NearPayStoreProfile.request(snap(null, null, null, "ACTIVE", false), aggregated);
+        assertThat((Map<String, Object>) body.get("profile")).containsEntry("fundsPath", "AGGREGATED");
+        assertThatThrownBy(() -> new StoreSyncProperties(true, "http://x", null, "cred", null, null, null, null, null, "SPLIT"))
+                .hasMessageContaining("shop.nearpay.store-sync.funds-path");
     }
 
     @Test

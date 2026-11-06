@@ -18,6 +18,13 @@ public final class NearPayStoreProfile {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    /**
+     * 门店资料的结构版本，加在推给 near-pay 的修订号上。near-pay 对「同一修订号、不同资料摘要」一律判冲突，
+     * 所以资料里每多一个字段（摘要必然变），这个数就加一 —— 否则已同步过的门店再也推不过去。
+     * 1：2026-11-06 加 fundsPath。修订号对每家门店仍然单调递增（变更时间毫秒 + 常数）。
+     */
+    public static final long PROFILE_VERSION = 1;
+
     private NearPayStoreProfile() {
     }
 
@@ -31,13 +38,15 @@ public final class NearPayStoreProfile {
         put(profile, "logoUrl", logo(s, p));
         put(profile, "openHours", cut(s.openHours(), 128));
         put(profile, "storeCode", storeCode(s.slug()));
+        put(profile, "fundsPath", p.fundsPath());
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("eventId", ("ais-" + s.storeNo() + "-" + s.revision()));
+        long revision = s.revision() + PROFILE_VERSION;
+        body.put("eventId", ("ais-" + s.storeNo() + "-" + revision));
         body.put("sourceScope", p.sourceScope());
         body.put("storeRef", Long.toString(s.storeId()));
         body.put("storeNo", s.storeNo());
         body.put("entityRef", s.entityNo());
-        body.put("revision", s.revision());
+        body.put("revision", revision);
         body.put("deleted", s.deleted());
         body.put("profileHash", hash(profile));
         body.put("profile", profile);

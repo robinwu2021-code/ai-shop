@@ -45,3 +45,13 @@
 | A5/A6 | `OpsEndpointPermTest`、`OpsPermConfigFlowTest`、`SchemaDriftTest` 绿；`ArchitectureTest.controllersInDomainApiOrPortal` 由红转绿 | — |
 
 ArchitectureTest 仍有 5 条红、BizEndpointPermTest 1 条红，都来自进销存 / 餐饮那批合并（如 `ExecutionStockRetentionRecoveryJob#scan`、`FoodStockProjectionServiceImpl`），与本修复无关，未处理。前端 `ops-perm-matrix`（商城类目 4 个端点未登记）与 `check-ops-orphan`（commerce x 端点）也是原有欠账。
+
+## 补记 · 2026-11-06 门店同步带资金路径（fundsPath）
+
+near-pay 解析门店收款时，要求门店投影的 `funds_path` 是 DIRECT 或 AGGREGATED，为空就拒绝（PAY_FORBIDDEN）。而 ai-shop 的门店同步从来没发过这个字段，「台北早餐」申请支付服务之后仍然开通不了收款。
+
+- 新配置：`shop.nearpay.store-sync.funds-path`，默认 `DIRECT`，只接受 DIRECT / AGGREGATED，其他值启动时报错。用户决定（原话「目前默认都是直付」）：不读 ai-shop 主体的 `funds_mode`，因为那个字段还决定 B 端价格展示、结算单和售后。
+- 门店资料（profile）加上 `fundsPath`，参与 profileHash 计算，「申请支付服务」里的门店摘要也随之一致。
+- 修订号 = 变更时间毫秒 + `PROFILE_VERSION`（本次为 1）。near-pay 对同一修订号、不同摘要一律判冲突；资料结构每加一个字段，这个数就加一，否则已经同步过的门店再也推不过去。
+- 上线后要触发一次全量重推（运营 `POST /ops/stores/nearpay-sync`，超管；每次请求用独立事件号），已有门店才会带上 fundsPath。
+- 测试：`NearPayStoreSyncTest` 的规范摘要用例和 `fundsPathIsConfigurableAndValidated`。消融：去掉 fundsPath、把版本号改回 0，测试都会变红。
