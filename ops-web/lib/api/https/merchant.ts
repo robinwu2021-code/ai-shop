@@ -59,6 +59,7 @@ export const merchantHttp: MerchantApi = {
     client.post(`/ops/merchants/${merchantNo}/status`, { status, remark, communityNos }),
   setMerchantVerified: (merchantNo, verified) =>
     client.post(`/ops/merchants/${merchantNo}/verified`, { verified }),
+  applyPayService: (merchantNo, form) => client.post(`/ops/merchant/${encodeURIComponent(merchantNo)}/pay-service/apply`, form),
   archiveMerchant: (merchantNo) => client.post(`/ops/merchants/${merchantNo}/archive`),
   unarchiveMerchant: (merchantNo) => client.post(`/ops/merchants/${merchantNo}/unarchive`),
   listAuthCodes: () => client.get("/ops/merchants/auth-codes"),

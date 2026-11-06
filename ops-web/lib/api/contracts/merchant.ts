@@ -14,6 +14,23 @@ import type {
   AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow, MerchantNudgeReason, MerchantNudgeResult } from "@/lib/types";
 import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
+/** 申请支付服务表单：法定名称、统一编号必填 */
+export interface PayServiceApplyForm {
+  legalName: string;
+  registrationNo: string;
+  representativeName?: string;
+  contactPhone?: string;
+  registeredAddress?: string;
+}
+
+/** near-pay 的申请结果：平台商户号、申请单号、状态（新建为 VERIFY_PENDING） */
+export interface PayServiceApplyResult {
+  merchantRef: string;
+  applicationRef: string | null;
+  status: string;
+  storeLinks: unknown[];
+}
+
 export interface MerchantApi {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
@@ -274,6 +291,11 @@ export interface MerchantApi {
    * 挂在一个正在毁约的商家身上，赔的是平台的信用。
    */
   setMerchantVerified(merchantNo: string, verified: boolean): Promise<Merchant>;
+  /**
+   * 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联。
+   * 之后的核验、渠道账户、凭证、绑定门店在 near-pay 运营端完成。只有独立部署可用，内嵌部署后端报依赖不可用。
+   */
+  applyPayService(merchantNo: string, form: PayServiceApplyForm): Promise<PayServiceApplyResult>;
   archiveMerchant(merchantNo: string): Promise<Merchant>;
   unarchiveMerchant(merchantNo: string): Promise<Merchant>;
 

@@ -27,6 +27,12 @@ public class PayClientConfig {
     /** 与迁移前一致：pay 的内部调用读超时 5 秒 */
     private static final Duration PAY_READ_TIMEOUT = Duration.ofSeconds(5);
 
+    /** 来源申请支付服务（near-pay source-links/apply），运营端「申请支付服务」用 */
+    @Bean
+    PaySourceLinkApi paySourceLinkApi(InternalHttp http) {
+        return http.client(ServiceName.PAY, PaySourceLinkApi.class, PAY_READ_TIMEOUT);
+    }
+
     @Bean
     PayInternalApi payInternalApi(InternalHttp http) {
         return http.client(ServiceName.PAY, PayInternalApi.class, PAY_READ_TIMEOUT);

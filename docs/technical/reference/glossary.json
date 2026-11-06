@@ -53183,6 +53183,14 @@
       "module": "shop-app"
     },
     {
+      "host": "PayServiceApplyRequests",
+      "name": "PERM",
+      "type": "String",
+      "value": "\"merchant:merchant:pay-apply\"",
+      "zh": "",
+      "module": "shop-app"
+    },
+    {
       "host": "BizFoundationController",
       "name": "OTHER",
       "type": "String",
@@ -54780,6 +54788,14 @@
       "type": "String",
       "value": "\"merchant:store:nearpay-sync\"",
       "zh": "门店信息全量重推到支付系统（near-pay）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "MERCHANT_PAY_APPLY",
+      "type": "String",
+      "value": "\"merchant:merchant:pay-apply\"",
+      "zh": "为主体申请支付服务：在独立支付服务 near-pay 里建平台商户、来源链接与门店关联（TDD-运营端申请支付服务）。",
       "module": "shop-base-auth"
     },
     {

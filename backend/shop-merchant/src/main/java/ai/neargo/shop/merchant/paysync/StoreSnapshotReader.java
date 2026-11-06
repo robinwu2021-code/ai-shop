@@ -45,6 +45,27 @@ public class StoreSnapshotReader {
                 storeNo).stream().findFirst();
     }
 
+    /** 主体资料：申请支付服务时作 sourceEntityRef / entityName；revision = updated_at 毫秒（与门店修订号同一口径） */
+    public record Entity(String entityNo, String name, String market, long revision) {
+    }
+
+    public Optional<Entity> entity(String entityNo) {
+        return jdbc.query("SELECT entity_no, name, market, COALESCE(updated_at, created_at) AS changed_at FROM mch_entity"
+                        + " WHERE entity_no = ? AND deleted = 0",
+                (r, i) -> new Entity(r.getString("entity_no"), r.getString("name"), r.getString("market"),
+                        millis(r.getTimestamp("changed_at") == null ? null : r.getTimestamp("changed_at").toLocalDateTime())),
+                entityNo).stream().findFirst();
+    }
+
+    /** 主体名下全部门店的当前快照（未删除），按门店 id 排序 */
+    public List<Snapshot> storesOfEntity(String entityNo) {
+        return jdbc.query(SELECT + " WHERE s.entity_no = ? AND s.deleted = 0 ORDER BY s.id", (r, i) -> new Snapshot(r.getLong("id"),
+                r.getString("store_no"), r.getString("entity_no"), r.getString("entity_name"), r.getString("logo"),
+                r.getString("market"), r.getString("name"), r.getString("slug"), r.getString("banner_url"),
+                r.getString("open_hours"), r.getString("address"), r.getString("address_detail"), r.getString("status"),
+                r.getInt("deleted") != 0, millis(r.getTimestamp("changed_at").toLocalDateTime())), entityNo);
+    }
+
     /** 游标之后变化的门店（含已删除），按 (变更时间, 门店 id) 升序 */
     public List<Changed> changedAfter(Cursor after, int limit) {
         Timestamp at = Timestamp.valueOf(after.changedAt());

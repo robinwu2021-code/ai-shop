@@ -312,6 +312,12 @@ public final class Perms {
      */
     public static final String MERCHANT_STORE_NEARPAY_SYNC = "merchant:store:nearpay-sync";
 
+    /**
+     * 为主体申请支付服务：在独立支付服务 near-pay 里建平台商户、来源链接与门店关联（TDD-运营端申请支付服务）。
+     * 以平台名义替商家开通收款的第一步，单独一个码，只给超管。
+     */
+    public static final String MERCHANT_PAY_APPLY = "merchant:merchant:pay-apply";
+
     public static final String MERCHANT_CATEGORY_READ = "merchant:category:read";
 
     /**

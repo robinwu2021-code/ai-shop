@@ -528,6 +528,12 @@ export const merchantMock: MerchantApi = {
     return wait(m, 400);
   },
 
+  applyPayService: async (merchantNo, form) => {
+    find(merchantNo);
+    if (!form.legalName?.trim() || !form.registrationNo?.trim()) fail("法定名称与统一编号必填", "Legal name and registration no. are required");
+    return wait({ merchantRef: `PM-${merchantNo}`, applicationRef: `APP-${merchantNo}`, status: "VERIFY_PENDING", storeLinks: [] }, 400);
+  },
+
   setMerchantVerified: async (merchantNo, verified) => {
     const m = find(merchantNo);
     // 认证标只授予审核通过的商家 —— 这条规则在后端也存在，mock 放行的话

@@ -942,6 +942,7 @@
     "PUT /ops/merchant-plans/{merchantNo}/quota",
     "GET /ops/merchant-plans/upgrade-signals",
     "POST /ops/merchant/{entityNo}/nudge",
+    "POST /ops/merchant/{entityNo}/pay-service/apply",
     "POST /ops/merchant/{entityNo}/stock-doubt",
     "GET /ops/merchant/apply",
     "POST /ops/merchant/apply/{applyNo}/accept",

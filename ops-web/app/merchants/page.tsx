@@ -34,6 +34,7 @@ import { OnBehalfTab } from "./on-behalf-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
 import { FulfillmentBlock } from "./fulfillment-block";
+import { PayServiceBlock } from "./pay-service-block";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -381,6 +382,8 @@ function MerchantsInner() {
             <FulfillmentBlock merchantNo={current.merchantNo} />
             {/* 人员与授权：只读。为什么不给按钮见 staff-block.tsx 顶部 */}
             <StaffBlock merchantNo={current.merchantNo} />
+            {/* 支付服务：为主体申请 near-pay 平台商户（开通收款第一步）。只有持 merchant:merchant:pay-apply 的运营看得到 */}
+            <PayServiceBlock merchantNo={current.merchantNo} merchantName={current.name} c={c} />
             {/*
               门店入口（P-11.2.1a）。需求要两个入口：这里 + 独立检索页，
               **此前只有后者** —— 运营在商家详情里看不到这家有几个店，
