@@ -308,7 +308,7 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
             }
         }
         timeline.sort(Comparator.comparing(Event::at, Comparator.nullsLast(Comparator.naturalOrder())));
-        return new Detail(rows(List.of(o)).get(0), amounts, settlement, payer, refs, source, failure, refundItems, timeline);
+        return new Detail(rows(List.of(o)).get(0), amounts, settlement, payer, refs, source, failure, refundItems, timeline, null);
     }
 
     // ---------------------------------------------------------------- 组装
@@ -374,7 +374,7 @@ public class MerchantPaymentQueryServiceImpl implements MerchantPaymentQueryServ
                 .collect(Collectors.toMap(PayTerminal::getId, PayTerminal::getTerminalSn, (a, b) -> a));
         return page.stream().map(o -> new PaymentRow(o.getPayOrderNo(), sourceKind(o), o.getPayChannel(), o.getPayMethod(),
                 o.getCurrency(), nz(o.getAmountMinor()), nz(o.getPaidMinor()), nz(o.getRefundedMinor()), viewStatus(o.getStatus()),
-                o.getPayerMasked(), null, sns.get(o.getSourceId()), bizRef(o), epoch(o.getSucceededAt()),
+                o.getPayerMasked(), null, o.getSourceId() == null ? null : sns.get(o.getSourceId()), bizRef(o), epoch(o.getSucceededAt()),
                 auditEpoch(o.getCreatedAt()))).toList();
     }
 

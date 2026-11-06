@@ -103,7 +103,11 @@ public interface MerchantPaymentQueryService {
     record Event(Long at, String kind, Long amountMinor, String ref) {
     }
 
+    /**
+     * @param payerNote 顾客在扫码付款页填的备注。独立支付服务（near-pay，V67 pay_order.payer_note）才有；
+     *                  内嵌形态没有这一列，恒为 null
+     */
     record Detail(PaymentRow row, Amounts amounts, Settlement settlement, Payer payer, Refs refs, Source source,
-                  Failure failure, List<RefundItem> refunds, List<Event> timeline) {
+                  Failure failure, List<RefundItem> refunds, List<Event> timeline, String payerNote) {
     }
 }
