@@ -106,3 +106,43 @@ b-app GET /biz/order/*/full
 b-app GET /biz/payment/links
 b-app POST /biz/payment/links/*/reissue
 b-app POST /biz/payment/links/*/void
+
+# 2026-11-06 登记 35 条（推 codex/ai-shop-codex 时发现；此前两次推送用了 --no-verify，所以没被拦）。
+# 全部来自 10-21～10-29 的美业 / 餐饮 / 服务结账后端（1679a32b0 人员、6d675af2f 排班、6d5f83fa5 服务目录、
+# dbb635a7c 服务结账、741b38178 线下收据、c4b8eb364 柜台报价、fb8fc86d5 手工接单、59614f10d / b91bcc006 餐饮库存与渠道策略）。
+# 后端做好了、uni-app b-app / c-app 还没接；Flutter 商户端与这些行业页面另行排期。不是本次（商城、收款、付款链接）的改动。
+b-app GET /biz/checkout/*/offline-receipts/*
+b-app GET /biz/inventory/food-stock-projections
+b-app GET /biz/inventory/food-stock-projections/*
+b-app GET /biz/personnel
+b-app GET /biz/resources
+b-app GET /biz/schedules
+b-app GET /biz/service-orders/*/manual-admission
+b-app GET /biz/service-orders/*/manual-source
+b-app GET /biz/service-orders/counter-quotes/*
+b-app GET /biz/store-sales-catalog
+b-app GET /biz/stores/*/channel-order-policies
+b-app GET /biz/stores/*/channel-order-policies/*
+b-app POST /biz/checkout/*/offline-receipts
+b-app POST /biz/checkout/*/offline-receipts/lookup
+b-app POST /biz/personnel
+b-app POST /biz/personnel/*/account-links
+b-app POST /biz/personnel/*/assignments
+b-app POST /biz/personnel/*/status-changes
+b-app POST /biz/resources
+b-app POST /biz/schedule-rules
+b-app POST /biz/service-orders/*/manual-receipts
+b-app POST /biz/service-orders/counter-quotes
+b-app POST /biz/service-orders/counter-quotes/*/acceptances
+b-app POST /biz/service-orders/counter-quotes/*/orders
+b-app POST /biz/service-orders/manual-quotes
+b-app POST /biz/store-sales-catalog/versions
+b-app POST /biz/stores/*/channel-after-sale-decisions
+b-app POST /biz/stores/*/channel-after-sale-decisions/release-unissued
+b-app POST /biz/stores/*/channel-order-policies/*
+c-app GET /mp/checkout/*
+c-app GET /mp/checkout/*/payments/*
+c-app POST /mp/checkout/*/confirmations
+c-app POST /mp/checkout/*/orders
+c-app POST /mp/checkout/*/payments
+c-app POST /mp/checkout/*/payments/lookup
