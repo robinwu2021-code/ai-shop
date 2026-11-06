@@ -54,3 +54,9 @@ POST /ops/spec-values/merge
 # 改员工角色：**IAM 能力缺口，不是重复能力** —— 运营今天调不了别人的角色
 # （改自己的密码 2026-11-06 已接上：顶栏「修改密码」）
 POST /ops/staffs/{staffNo}/role
+# 门店信息重推支付系统（near-pay）：运维动作，超管用 curl 调，暂不做页面（2026-11-06 改为专用权限码 merchant:store:nearpay-sync）
+POST /ops/stores/nearpay-sync
+# 独立商城服务（commerce）的运维 / 支撑端点：健康检查与操作单查询给运维排障用；商品档案编辑页面待商城运营页排期
+PUT /ops/x/commerce/product-profiles/{profileNo}
+GET /ops/x/commerce/support/health
+GET /ops/x/commerce/support/operations/{operationNo}
