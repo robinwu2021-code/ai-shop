@@ -124,7 +124,10 @@ public final class CommerceRoutePolicy {
                     case "POST /biz/store/create" -> "biz:store:admin";
                     case "GET /biz/merchant/payment",
                                     "POST /biz/merchant/payment",
-                                    "GET /biz/merchant/pay-channel" ->
+                                    "GET /biz/merchant/pay-channel",
+                                    // 申请支付服务与查状态：控制器要主体级收款目标（FoundationTarget），只有 foundation 通道会绑定它
+                                    "GET /biz/merchant/pay-service",
+                                    "POST /biz/merchant/pay-service/apply" ->
                             "biz:finance";
                     case "GET /biz/qualifications",
                                     "POST /biz/qualifications/save",

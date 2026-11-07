@@ -48,9 +48,10 @@ public class BizPayServiceController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @org.springframework.web.bind.annotation.GetMapping("/biz/merchant/pay-service")
     public PaySourceLinkApi.Status status(HttpServletRequest request) {
+        // 先认人和门店，再看支付服务在不在：顺序反过来时，内嵌部署的测试永远走不到门店校验（2026-11-07 166 上 70006 漏网）
+        String entityNo = access.require(request, entities.requireOwned(SecurityUtils.currentUserNo(), null), null).entityNo();
         PaySourceLinkApi api = sourceLinks.getIfAvailable();
         if (api == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
-        String entityNo = access.require(request, entities.requireOwned(SecurityUtils.currentUserNo(), null), null).entityNo();
         try {
             return api.status(props.sourceScope(), entityNo);
         } catch (ServiceCallException e) {
@@ -61,10 +62,10 @@ public class BizPayServiceController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/pay-service/apply")
     public PaySourceLinkApi.Result apply(@RequestBody PayServiceApplyRequests.Form form, HttpServletRequest request) {
-        PaySourceLinkApi api = sourceLinks.getIfAvailable();
-        if (api == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         String user = SecurityUtils.currentUserNo();
         String entityNo = access.require(request, entities.requireOwned(user, null), null).entityNo();
+        PaySourceLinkApi api = sourceLinks.getIfAvailable();
+        if (api == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         var entity = stores.entity(entityNo).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         var body = PayServiceApplyRequests.build(entity, stores.storesOfEntity(entityNo), form, "MERCHANT", user, props);
         try {
