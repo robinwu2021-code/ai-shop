@@ -15,7 +15,59 @@ function findIndustry(industry: string) {
   return row;
 }
 
+const identityList = () => ({
+  switchOn: true,
+  items: db.testIdentities.map((r) => ({ ...r })),
+});
+
+function normIdentity(type: string, value: string): string | null {
+  if (type === "PHONE") {
+    const v = value.replace(/[\s-]/g, "");
+    return /^\+?\d{6,20}$/.test(v) ? v : null;
+  }
+  if (type === "EMAIL") {
+    const v = value.trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : null;
+  }
+  return null;
+}
+
 export const systemMock: SystemApi = {
+  // ── 测试身份白名单（与后端同口径：规范化、启用上限 10 条）──
+  listTestIdentities: async () => wait(identityList()),
+  saveTestIdentity: async (v) => {
+    const value = normIdentity(v.identityType, v.identityValue ?? "");
+    if (!value) fail("手机号（带国码）或邮箱格式不对", "Invalid phone (with country code) or email");
+    const row = db.testIdentities.find((x) => x.identityType === v.identityType && x.identityValue === value);
+    if (row) {
+      row.remark = v.remark || undefined;
+    } else {
+      if (db.testIdentities.filter((x) => x.enabled).length >= 10) {
+        fail("启用中的测试身份最多 10 条", "At most 10 active test identities");
+      }
+      db.testIdentities.push({
+        id: Math.max(0, ...db.testIdentities.map((x) => x.id)) + 1,
+        identityType: v.identityType, identityValue: value!, enabled: true, remark: v.remark || undefined,
+      });
+    }
+    return wait(identityList());
+  },
+  setTestIdentityEnabled: async (id, enabled) => {
+    const row = db.testIdentities.find((x) => x.id === id);
+    if (!row) notFound("测试身份", "Test identity", String(id));
+    if (enabled && !row!.enabled && db.testIdentities.filter((x) => x.enabled).length >= 10) {
+      fail("启用中的测试身份最多 10 条", "At most 10 active test identities");
+    }
+    row!.enabled = enabled;
+    return wait(identityList());
+  },
+  removeTestIdentity: async (id) => {
+    const i = db.testIdentities.findIndex((x) => x.id === id);
+    if (i < 0) notFound("测试身份", "Test identity", String(id));
+    db.testIdentities.splice(i, 1);
+    return wait(identityList());
+  },
+
   // ── 测试号固定验证码白名单 ──
   //
   // 后端那四条护栏里，**只有「已存在账号」这条 mock 演不出来**（mock 里没有账号表）。

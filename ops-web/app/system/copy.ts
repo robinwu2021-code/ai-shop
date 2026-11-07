@@ -248,6 +248,19 @@ const zh = {
   tpRemoveAct: "删除",
   tpRemoveConfirm: "删掉之后这个号可以重新录。要删吗？",
   tpEnabledNote: "停用即时生效，不用等部署 —— 出事在这里当场关掉就行。\n\n但停用与删除都是单向的：这个号只要名下有了账号（用它注册过就有），就再也录不回来、也启不回来 —— 拦住「已存在账号的号」那条护栏对它同样生效。所以别为了「用完清理」而停用，下次审核还要用同一个号。",
+
+  // ── 测试身份白名单（TDD-测试身份白名单登录）──
+  tiTitle: "测试身份白名单（统一验证码 / 统一密码）",
+  tiNotice: "名单里的手机号或邮箱请求验证码时不发短信、不发邮件，用服务器配置里的统一验证码登录或注册；密码登录也认统一密码（只登录已有账号，不会建户）。统一码与密码只在服务器配置里，这页不显示。\n\n这是联调期的工具：加进来的真实账号等于对知道统一密码的人敞开，正式运营前请清空名单并关掉服务器开关。",
+  tiSwitchOff: "服务器开关没开（shop.auth.test-identity.enabled=false）：名单可以维护，但现在不生效。",
+  tiColType: "类型",
+  tiColValue: "手机号 / 邮箱",
+  tiTypePhone: "手机号",
+  tiTypeEmail: "邮箱",
+  tiEmpty: "名单是空的 —— 不联调时它就该是空的。要用统一验证码登录某个手机号或邮箱，在上面加一条即可。",
+  tiFieldValuePh: "手机号带国码（如 +886900000102）或邮箱",
+  tiFieldRemarkPh: "为什么加这一条",
+  tiAdd: "加入",
 };
 
 const en: typeof zh = {
@@ -491,6 +504,19 @@ const en: typeof zh = {
   tpRemoveAct: "Delete",
   tpRemoveConfirm: "Once deleted the number can be added again. Delete it?",
   tpEnabledNote: "Disabling takes effect immediately, with no deploy \u2014 if something goes wrong, switch it off right here.\n\nBut disabling and deleting are one-way: once the number has an account (registering with it creates one), it can never be added back or re-enabled \u2014 the same guardrail that blocks numbers with existing accounts applies to it too. So do not disable it just to tidy up; the next review needs the same number.",
+
+  // ── Test identity allowlist ──
+  tiTitle: "Test identity allowlist (shared code / shared password)",
+  tiNotice: "Phones or emails on this list get no SMS or email when they request a code; the shared code from server config signs them in or up. Password sign-in also accepts the shared password (existing accounts only; it never creates one). The shared code and password live only in server config and are not shown here.\n\nThis is a tool for integration testing: a real account on this list is open to anyone who knows the shared password. Clear the list and turn the server switch off before real operations.",
+  tiSwitchOff: "The server switch is off (shop.auth.test-identity.enabled=false): the list can be edited but has no effect right now.",
+  tiColType: "Type",
+  tiColValue: "Phone / email",
+  tiTypePhone: "Phone",
+  tiTypeEmail: "Email",
+  tiEmpty: "The list is empty \u2014 that is the normal state outside integration testing. To let a phone or email sign in with the shared code, add it above.",
+  tiFieldValuePh: "Phone with country code (e.g. +886900000102) or email",
+  tiFieldRemarkPh: "Why this entry exists",
+  tiAdd: "Add",
 };
 
 export const SYSTEM_COPY: PageCopy<typeof zh> = { zh, en };

@@ -12565,6 +12565,86 @@ _无字段_
 类型：[`ServiceScopeConfig`](#servicescopeconfig)\[\]
 
 
+#### GET `/ops/test-identities`
+
+listTestIdentities
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`TestIdentityList`](#testidentitylist)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+
+
+#### POST `/ops/test-identities`
+
+加一条或改备注（按 类型 + 规范化后的值 认）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`TestIdentityList`](#testidentitylist)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+
+
+#### POST `/ops/test-identities/{id}/enabled`
+
+setTestIdentityEnabled
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`TestIdentityList`](#testidentitylist)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+
+
+#### POST `/ops/test-identities/{id}/remove`
+
+物理删，删掉之后可以重新加 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`TestIdentityList`](#testidentitylist)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+
+
 #### GET `/ops/test-phones`
 
 全量，**含停用的**
@@ -18337,6 +18417,25 @@ REJECTED 不是终态：商家改完可以重新提审。
 | `key` | [`SectionKey`](#sectionkey) | 是 | 板块标识 |
 | `enabled` | `boolean` | 是 | 是否启用。`required=true` 的板块不能停用 |
 | `required` | `boolean` | 是 | 必选板块不能停用 |
+
+### TestIdentity
+
+测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的 **统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `identityType` | `PHONE` \| `EMAIL` | 是 | — |
+| `identityValue` | `string` | 是 | 规范化后的值：手机号带国码去空格，邮箱小写 |
+| `enabled` | `boolean` | 是 | — |
+| `remark` | `string` | 否 | — |
+
+### TestIdentityList
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
 
 ### ThemeKey
 

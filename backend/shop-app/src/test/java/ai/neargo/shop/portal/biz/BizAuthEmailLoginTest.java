@@ -57,7 +57,7 @@ class BizAuthEmailLoginTest {
                         .content("{\"email\":\"" + email + "\",\"locale\":\"zh-Hant\"}"))
                 .andReturn().getResponse().getContentAsString();
         var data = json.readTree(body).path("data");
-        assertThat(data.path("expiresInSeconds").asLong()).as(body).isEqualTo(300);
+        assertThat(data.path("expiresInSeconds").asLong()).as(body).isEqualTo(600);
         assertThat(data.path("resendAfterSeconds").asInt()).as(body).isEqualTo(60);
         return otpStore.peek(EmailOtpService.key(EmailOtpService.normalize(email))).orElseThrow(
                 () -> new AssertionError("没有为邮箱生成验证码：" + body));

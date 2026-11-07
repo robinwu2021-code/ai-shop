@@ -9,6 +9,12 @@ export const systemHttp: SystemApi = {
   setTestPhoneEnabled: (id, enabled) => client.post(`/ops/test-phones/${id}/enabled`, { enabled }),
   removeTestPhone: (id) => client.post(`/ops/test-phones/${id}/remove`, {}),
 
+  // ── 测试身份白名单 ──
+  listTestIdentities: () => client.get("/ops/test-identities"),
+  saveTestIdentity: (v) => client.post("/ops/test-identities", v),
+  setTestIdentityEnabled: (id, enabled) => client.post(`/ops/test-identities/${id}/enabled`, { enabled }),
+  removeTestIdentity: (id) => client.post(`/ops/test-identities/${id}/remove`, {}),
+
   // 行业主数据是本文件里**唯一接了真后端**的一组（其余仍走 mock，见 Ops契约对账）
   listIndustries: () => client.get("/ops/industries"),
   setIndustryMicroAllowed: (industry, payChannel, allowed, remark) =>

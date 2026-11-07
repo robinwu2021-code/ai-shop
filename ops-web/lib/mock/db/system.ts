@@ -1,5 +1,5 @@
 // 系统配置 mock（P-17.1）。
-import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts } from "@/lib/types";
+import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts, TestIdentity } from "@/lib/types";
 
 export const appearance: AppearanceConfig = {
   // 与 packages/shared/src/design/tokens.ts 的 SKINS 同名同色
@@ -74,6 +74,12 @@ export const authCodeAdmins: AuthCodeAdmin[] = [
 export const otpTestPhones: OtpTestPhone[] = [
   { id: 1, phone: "13800000000", code: "123456", enabled: true, remark: "苹果审核演示账号（App Store Connect 审核资料里填的就是它）" },
   { id: 2, phone: "13900000001", code: "654321", enabled: false, remark: "上一轮回归用完已停用，留着是为了记住它被用过" },
+];
+
+/** 测试身份白名单（mock）。与 166 第一批同口径 */
+export const testIdentities: TestIdentity[] = [
+  { id: 1, identityType: "PHONE", identityValue: "+886900000102", enabled: true, remark: "B 端联调测试号" },
+  { id: 2, identityType: "EMAIL", identityValue: "robin@neargo.ai", enabled: true, remark: "联调期，上线运营前移除" },
 ];
 
 /** 经营范围三档（mock）。一期 PLATFORM 是关的 —— 没有商品形态支撑它。 */

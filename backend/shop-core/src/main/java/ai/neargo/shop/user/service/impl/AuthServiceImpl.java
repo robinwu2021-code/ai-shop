@@ -187,6 +187,11 @@ public class AuthServiceImpl implements AuthService {
             log.warn("[otp] 预设验证码已下发给 {}（未发短信）", mask(phone));
             return;
         }
+        if (testIdentity(ai.neargo.shop.user.service.TestIdentityService.PHONE, phone)) {
+            // 测试身份白名单：用配置里的统一码，不发短信、不存码（限流已在上面照旧算过）
+            log.warn("[test-identity] 白名单手机号 {} 发码请求已跳过（未发短信）", mask(phone));
+            return;
+        }
         /*
          * 测试号白名单（TDD-测试号固定验证码）。**位置有讲究**：
          *
@@ -231,6 +236,18 @@ public class AuthServiceImpl implements AuthService {
     public void setMockSmsPrefixes(String csv) {
         this.mockSmsPrefixes = csv == null ? List.of()
                 : java.util.Arrays.stream(csv.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
+    }
+
+    /** 测试身份白名单（TDD-测试身份白名单登录）。setter 注入，理由同 {@link #setMockSmsPrefixes}；没注入 = 关 */
+    private ai.neargo.shop.user.service.TestIdentityService testIdentities;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTestIdentities(ai.neargo.shop.user.service.TestIdentityService testIdentities) {
+        this.testIdentities = testIdentities;
+    }
+
+    private boolean testIdentity(String type, String value) {
+        return testIdentities != null && testIdentities.isTestIdentity(type, value);
     }
 
     private String defaultMarket = "CN";
@@ -555,21 +572,28 @@ public class AuthServiceImpl implements AuthService {
             // 查无此人也报 10456：分开说等于送一个账号探测接口（见 ErrorCode 注释）
             throw BizException.of(ErrorCode.PASSWORD_INVALID);
         }
-        UsrIdentity pwd = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+        /*
+         * 测试身份白名单：统一密码登录**已存在**的账号（没设过密码也行）；查无此人仍是上面的 10456，
+         * 不会因此建户。统一密码不对时照常走真实密码 —— robin 这类真实账号自己的密码不受影响。
+         */
+        boolean unified = testIdentities != null && testIdentities.acceptsPassword(
+                email ? ai.neargo.shop.user.service.TestIdentityService.EMAIL
+                        : ai.neargo.shop.user.service.TestIdentityService.PHONE, phone, raw);
+        UsrIdentity pwd = unified ? null : identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
                 .eq(UsrIdentity::getUserNo, phoneId.getUserNo())
                 .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)
                 .last("limit 1"));
-        if (pwd == null) {
+        if (!unified && pwd == null) {
             throw BizException.of(ErrorCode.PASSWORD_NOT_SET);
         }
-        if (!passwordHasher.matches(raw, pwd.getIdentityValue())) {
+        if (!unified && !passwordHasher.matches(raw, pwd.getIdentityValue())) {
             throw BizException.of(ErrorCode.PASSWORD_INVALID);
         }
         /*
          * 密码算法升级（如 bcrypt 轮数提高）时就地重写一次 —— 与运营端同一套做法。
          * 不做的话老用户的哈希永远停在旧强度上，而他们恰恰是存在最久的那批账号。
          */
-        if (passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
+        if (pwd != null && passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
             pwd.setIdentityValue(passwordHasher.encode(raw));
             identityMapper.updateById(pwd);
         }
@@ -707,6 +731,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void verifyOtp(String phone, String code) {
+        if (testIdentities != null && testIdentities.acceptsCode(
+                ai.neargo.shop.user.service.TestIdentityService.PHONE, phone, code)) {
+            return;
+        }
         if (!otpStore.verifyAndConsume(phone, code)) {
             // **不是 10400**：那句「请求参数有误」让用户去检查自己传了什么，
             // 而他要做的只是再看一眼短信、或者重新要一个码

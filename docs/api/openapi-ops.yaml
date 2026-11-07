@@ -12100,6 +12100,44 @@ components:
         - "enabled"
       additionalProperties: false
       description: "测试号固定验证码白名单的一条（TDD-测试号固定验证码）。\n\n命中的号请求验证码时**不发真实短信**，码恒为 `code`。唯一用途是苹果审核 —— 审核员在美国，收不到中国短信，而 App 的登录是手机号 + 验证码。\n\n**这里的每一行都是一把能登进那个手机号账号的钥匙。** 真正拦住「拿它登进别人的店」 的不是权限码，是后端那条「拒绝录入已存在账号的手机号」—— 页面上要把这件事说清楚， 否则运营会以为它只是一个普通的配置项。"
+    TestIdentity:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+        identityType:
+          type: "string"
+          enum:
+            - "PHONE"
+            - "EMAIL"
+        identityValue:
+          type: "string"
+          description: "规范化后的值：手机号带国码去空格，邮箱小写"
+        enabled:
+          type: "boolean"
+        remark:
+          type: "string"
+      required:
+        - "id"
+        - "identityType"
+        - "identityValue"
+        - "enabled"
+      additionalProperties: false
+      description: "测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的\n**统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。"
+    TestIdentityList:
+      type: "object"
+      properties:
+        switchOn:
+          type: "boolean"
+          description: "服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效"
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/TestIdentity"
+      required:
+        - "switchOn"
+        - "items"
+      additionalProperties: false
     AuthCodeAdmin:
       type: "object"
       properties:
@@ -33755,6 +33793,139 @@ paths:
                     type: "array"
                     items:
                       "$ref": "#/components/schemas/OtpTestPhone"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/test-identities":
+    get:
+      operationId: "listTestIdentities"
+      summary: "listTestIdentities"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/TestIdentityList"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "saveTestIdentity"
+      summary: "加一条或改备注（按 类型 + 规范化后的值 认）"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/TestIdentityList"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/test-identities/{id}/enabled":
+    post:
+      operationId: "setTestIdentityEnabled"
+      summary: "setTestIdentityEnabled"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/TestIdentityList"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/test-identities/{id}/remove":
+    post:
+      operationId: "removeTestIdentity"
+      summary: "物理删，删掉之后可以重新加 */"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/TestIdentityList"
                 required:
                   - "code"
                   - "msg"

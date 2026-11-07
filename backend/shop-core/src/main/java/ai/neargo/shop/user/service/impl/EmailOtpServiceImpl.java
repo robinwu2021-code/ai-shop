@@ -56,8 +56,31 @@ public class EmailOtpServiceImpl implements EmailOtpService {
      * @param locale App 当前界面语言（{@code zh-Hant} / {@code zh-Hans}）；为空按繁体（台湾一期）
      * @throws BizException 10450/10451 发码过频；10505 没有可用邮件通道或投递失败
      */
+    /** 测试身份白名单（TDD-测试身份白名单登录）。setter 注入：手工构造的测试不传它 = 关 */
+    private ai.neargo.shop.user.service.TestIdentityService testIdentities;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTestIdentities(ai.neargo.shop.user.service.TestIdentityService testIdentities) {
+        this.testIdentities = testIdentities;
+    }
+
+    private boolean isTest(String normalized) {
+        return testIdentities != null
+                && testIdentities.isTestIdentity(ai.neargo.shop.user.service.TestIdentityService.EMAIL, normalized);
+    }
+
     @Override
     public Delivery send(String email, String locale) {
+        if (isTest(EmailOtpService.normalize(email))) {
+            /*
+             * 白名单邮箱：限流照旧，但**不发信、不存码** —— 它用的是配置里的统一码，
+             * 发一封带随机码的真信只会让测试的人拿着信里的码去试（那也能过，但两套码并存只会让人糊涂）。
+             * 放在 mailStub 检查之前：166 没配邮件通道时白名单照样能用。
+             */
+            sendGuard.check(EmailOtpService.key(EmailOtpService.normalize(email)));
+            log.warn("[test-identity] 白名单邮箱 {} 发码请求已跳过（未发信）", Masks.email(EmailOtpService.normalize(email)));
+            return new Delivery(OtpStore.EMAIL_TTL.toSeconds(), resendAfterSeconds);
+        }
         if (mailStub && !stubOtpAllowed) {
             throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         }
@@ -85,6 +108,10 @@ public class EmailOtpServiceImpl implements EmailOtpService {
     @Override
     public String verify(String email, String code) {
         String normalized = EmailOtpService.normalize(email);
+        if (testIdentities != null && testIdentities.acceptsCode(
+                ai.neargo.shop.user.service.TestIdentityService.EMAIL, normalized, code)) {
+            return normalized;
+        }
         if (!otpStore.verifyAndConsume(EmailOtpService.key(normalized), code)) {
             throw BizException.of(ErrorCode.OTP_INVALID);
         }

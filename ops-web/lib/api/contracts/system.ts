@@ -2,7 +2,7 @@
 import type {
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
-  MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page,
+  MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
 } from "@/lib/types";
 
 export interface SystemApi {
@@ -28,6 +28,15 @@ export interface SystemApi {
    * 于是删过一次就再也录不回来。删掉之后这个号可以重新录。
    */
   removeTestPhone(id: number): Promise<OtpTestPhone[]>;
+
+  // ── 测试身份白名单（TDD-测试身份白名单登录）—— **已接真后端** `/ops/test-identities/**`
+  // 同样都回整份列表（启用上限 10 条），外加服务器总开关的状态。
+  listTestIdentities(): Promise<TestIdentityList>;
+  /** 加一条或改备注（按 类型 + 规范化后的值 认）。格式不对 10400，满 10 条 10462 */
+  saveTestIdentity(v: Pick<TestIdentity, "identityType" | "identityValue"> & { remark?: string }): Promise<TestIdentityList>;
+  setTestIdentityEnabled(id: number, enabled: boolean): Promise<TestIdentityList>;
+  /** 物理删，删掉之后可以重新加 */
+  removeTestIdentity(id: number): Promise<TestIdentityList>;
 
   // ── 授权码字典（TDD-一期主数据收敛 阶段二）—— **已接真后端** `/ops/auth-codes/**`
 

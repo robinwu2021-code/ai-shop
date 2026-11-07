@@ -35780,6 +35780,13 @@
       "zh": "用户逛过的门店（TDD-C端门店化与门店门户）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.user.entity"
+    },
+    {
+      "table": "usr_test_identity",
+      "class": "UsrTestIdentity",
+      "zh": "测试身份白名单（TDD-测试身份白名单登录）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.user.entity"
     }
   ],
   "dictionaries": {
@@ -53275,7 +53282,15 @@
       "name": "TTL",
       "type": "Duration",
       "value": "Duration.ofMinutes(5)",
-      "zh": "",
+      "zh": "短信验证码有效期",
+      "module": "shop-base"
+    },
+    {
+      "host": "OtpStore",
+      "name": "EMAIL_TTL",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(10)",
+      "zh": "邮箱验证码有效期：收信比短信慢，166 联调时 5 分钟不够用（2026-11-07 用户决定「改成 10 分钟」）",
       "module": "shop-base"
     },
     {

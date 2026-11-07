@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1153 个接口**：后端已实现 931（81%）· 前端在调 1014
+**合计 1157 个接口**：后端已实现 935（81%）· 前端在调 1018
 
 ---
 
@@ -1146,7 +1146,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **549** 个接口 ｜ 后端已实现 **435**（79%）｜ 前端在调 **412**
+共 **553** 个接口 ｜ 后端已实现 **439**（79%）｜ 前端在调 **416**
 
 ### aftersale（5）
 
@@ -1787,7 +1787,7 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（30）
+### system（34）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1817,6 +1817,10 @@
 | POST | `/ops/rule-texts` | 规则文案（P-17.1.4） | — | `RuleTexts` | — | ✅ | ✅ |
 | GET | `/ops/service-scopes` | listServiceScopes | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/service-scopes/{scope}/enabled` | 开关某一档，返回最新的三档全量 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/test-identities` | listTestIdentities | — | `TestIdentityList` | — | ✅ | ✅ |
+| POST | `/ops/test-identities` | 加一条或改备注（按 类型 + 规范化后的值 认） | — | `TestIdentityList` | — | ✅ | ✅ |
+| POST | `/ops/test-identities/{id}/enabled` | setTestIdentityEnabled | — | `TestIdentityList` | — | ✅ | ✅ |
+| POST | `/ops/test-identities/{id}/remove` | 物理删，删掉之后可以重新加 */ | — | `TestIdentityList` | — | ✅ | ✅ |
 | GET | `/ops/test-phones` | 全量，**含停用的** | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/test-phones` | 录一条或改一条（按手机号认，不按 id） | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/test-phones/{id}/enabled` | 开 / 关 | — | `数组` | — | ✅ | ✅ |

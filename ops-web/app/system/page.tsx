@@ -23,6 +23,7 @@ import { AuthCodeTab } from "./auth-code-tab";
 import { ServiceScopeTab } from "./service-scope-tab";
 import { StorageTab } from "./storage-tab";
 import { TestPhoneTab } from "./test-phone-tab";
+import { TestIdentitySection } from "./test-identity-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -280,7 +281,12 @@ function SystemInner() {
         * 测试号白名单：读与写各一个独立码，**都不并进 system:param:***
         * —— 这一页把固定验证码明文显示出来，能看它就等于知道那几个号的登录码。
         */}
-      {tab === "testPhone" && <TestPhoneTab c={c} canWrite={allow("system:testphone:update")} />}
+      {tab === "testPhone" && (
+        <>
+          <TestPhoneTab c={c} canWrite={allow("system:testphone:update")} />
+          <TestIdentitySection c={c} canWrite={allow("system:testphone:update")} />
+        </>
+      )}
 
       {tab === "flags" && (
         <>

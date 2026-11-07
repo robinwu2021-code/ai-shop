@@ -126,6 +126,25 @@ export interface OtpTestPhone {
   remark?: string;
 }
 
+/**
+ * 测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的
+ * **统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。
+ */
+export interface TestIdentity {
+  id: number;
+  identityType: "PHONE" | "EMAIL";
+  /** 规范化后的值：手机号带国码去空格，邮箱小写 */
+  identityValue: string;
+  enabled: boolean;
+  remark?: string;
+}
+
+export interface TestIdentityList {
+  /** 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 */
+  switchOn: boolean;
+  items: TestIdentity[];
+}
+
 export interface AuthCodeAdmin {
   /** 授权码，如 `FRESH_VEG`。**建成之后不可改** —— 改它等于换一张证 */
   code: string;
