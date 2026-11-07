@@ -130,18 +130,26 @@ export interface OtpTestPhone {
  * 测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的
  * **统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。
  */
+/** 测试身份类型 */
+export type TestIdentityType = "PHONE" | "EMAIL";
+
 export interface TestIdentity {
+  /** 库内自增 id，启停与删除按它定位 */
   id: number;
-  identityType: "PHONE" | "EMAIL";
+  /** 手机号或邮箱 */
+  identityType: TestIdentityType;
   /** 规范化后的值：手机号带国码去空格，邮箱小写 */
   identityValue: string;
+  /** 启用中；停用即时生效 */
   enabled: boolean;
+  /** 为什么加这一条；空 = 没写 */
   remark?: string;
 }
 
 export interface TestIdentityList {
   /** 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 */
   switchOn: boolean;
+  /** 名单，含停用的 */
   items: TestIdentity[];
 }
 

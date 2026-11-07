@@ -12580,7 +12580,7 @@ listTestIdentities
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
-| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | 名单，含停用的 |
 
 
 #### POST `/ops/test-identities`
@@ -12598,7 +12598,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
-| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | 名单，含停用的 |
 
 
 #### POST `/ops/test-identities/{id}/enabled`
@@ -12620,7 +12620,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
-| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | 名单，含停用的 |
 
 
 #### POST `/ops/test-identities/{id}/remove`
@@ -12642,7 +12642,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
-| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | 名单，含停用的 |
 
 
 #### GET `/ops/test-phones`
@@ -14687,20 +14687,29 @@ Delivery state of an inventory/order synchronization event.
 
 类型：`Partial<Record<MallCategoryLocale,string>>`
 
+### MallCategoryStatus
+
+分类状态
+
+枚举取值：
+
+- `ENABLED`
+- `DISABLED`
+
 ### MallCategoryView
 
 分类行（扁平，按 level、sortOrder、categoryCode 排序）
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `categoryCode` | `string` | 是 | — |
-| `parentCode` | `string,null` | 是 | — |
+| `categoryCode` | `string` | 是 | 分类编码 |
+| `parentCode` | `string,null` | 是 | 上级分类编码；null = 一级分类 |
 | `level` | `number` | 是 | 1..3，服务端按上级计算 |
-| `names` | [`MallCategoryNames`](#mallcategorynames) | 是 | — |
-| `icon` | `string,null` | 是 | — |
-| `sortOrder` | `number` | 是 | — |
-| `status` | `ENABLED` \| `DISABLED` | 是 | — |
-| `version` | `number` | 是 | — |
+| `names` | [`MallCategoryNames`](#mallcategorynames) | 是 | 各语言名称 |
+| `icon` | `string,null` | 是 | 图标地址；null = 无 |
+| `sortOrder` | `number` | 是 | 同级排序，小的在前 |
+| `status` | [`MallCategoryStatus`](#mallcategorystatus) | 是 | 启用状态 |
+| `version` | `number` | 是 | 乐观锁版本，改分类时作为 expectedVersion 传回 |
 
 ### MallComponentKind
 
@@ -18420,22 +18429,29 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 ### TestIdentity
 
-测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的 **统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
-| `identityType` | `PHONE` \| `EMAIL` | 是 | — |
+| `id` | `number` | 是 | 库内自增 id，启停与删除按它定位 |
+| `identityType` | [`TestIdentityType`](#testidentitytype) | 是 | 手机号或邮箱 |
 | `identityValue` | `string` | 是 | 规范化后的值：手机号带国码去空格，邮箱小写 |
-| `enabled` | `boolean` | 是 | — |
-| `remark` | `string` | 否 | — |
+| `enabled` | `boolean` | 是 | 启用中；停用即时生效 |
+| `remark` | `string` | 否 | 为什么加这一条；空 = 没写 |
 
 ### TestIdentityList
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `switchOn` | `boolean` | 是 | 服务器总开关 `shop.auth.test-identity.enabled`。关着时名单在也不生效 |
-| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | — |
+| `items` | [`TestIdentity`](#testidentity)\[\] | 是 | 名单，含停用的 |
+
+### TestIdentityType
+
+测试身份类型
+
+枚举取值：
+
+- `PHONE`
+- `EMAIL`
 
 ### ThemeKey
 

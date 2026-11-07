@@ -876,6 +876,8 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  // 测试身份白名单（TDD-测试身份白名单登录）：只在运营端「测试号」页签维护，端上类型 ops-web TestIdentityType 已登记
+  { key: "usr_test_identity.identity_type", why: "测试白名单身份类型（PHONE / EMAIL），只有运营端一页使用，具名类型 TestIdentityType 已进枚举登记表" },
   // 进销存独立服务平台层（V16，TDD-进销存独立服务与多业态 §2.4）：服务间内部取值，没有任何端上类型
   { key: "inv_client_system.status", why: "进销存独立服务的调用系统登记状态（ACTIVE / DISABLED），只给服务自己判是否放行，端上不展示" },
   { key: "inv_client_system.system_code", why: "调用系统码（SHOP / SHAREHUB / CHARGING）是开放集合，靠登记表管理而不是枚举；端上不展示" },

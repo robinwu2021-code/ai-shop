@@ -72,6 +72,12 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "ops-web:MallCategoryLocale", dom: "commerce", shape: "CLASS", verdict: "OK", words: ["zh-CN", "zh-TW", "en"],
+    note: "Language keys of a biz-mall category name; a subset of the platform locales." },
+  { decl: "ops-web:MallCategoryStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["ENABLED", "DISABLED"],
+    note: "Whether a biz-mall category is shown to merchants." },
+  { decl: "ops-web:TestIdentityType", dom: "core", shape: "CLASS", verdict: "OK", words: ["PHONE", "EMAIL"],
+    note: "Kind of a test-identity allowlist entry (usr_test_identity.identity_type)." },
   { decl: "ops-web:EarningRuleAction", dom: "finance", shape: "CLASS", verdict: "OK",
     note: "Reward rule audit actions; IMPORT records legacy ingestion and cannot be submitted by operators." },
   { decl: "shared:InventoryOnboardingState", dom: "inventory", shape: "STATUS", verdict: "OK", words: ["UNMANAGED", "INITIALIZING", "MAPPED"],

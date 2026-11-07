@@ -295,16 +295,26 @@ export type MallComponentKind = "PLAN" | "END_PACKAGE" | "HARDWARE";
 export type MallCategoryLocale = "zh-CN" | "zh-TW" | "en";
 export type MallCategoryNames = Partial<Record<MallCategoryLocale, string>>;
 
+/** 分类状态 */
+export type MallCategoryStatus = "ENABLED" | "DISABLED";
+
 /** 新建分类（编码建后不可改；parentCode 为空 = 一级；最多 3 级） */
 export interface MallCategoryDraft {
+  /** 分类编码，大写字母数字与下划线，建后不可改 */
   categoryCode: string;
+  /** 上级分类编码；null = 一级分类 */
   parentCode: string | null;
+  /** 各语言名称，至少一种 */
   names: MallCategoryNames;
+  /** 图标地址；null = 不显示图标 */
   icon: string | null;
+  /** 同级排序，小的在前 */
   sortOrder: number;
+  /** 建好后是否立即启用 */
   enabled: boolean;
   /** 乐观锁：新建传 0 */
   expectedVersion: number;
+  /** 操作原因，写入审计 */
   reason: string;
 }
 
@@ -313,14 +323,21 @@ export type MallCategoryUpdate = Omit<MallCategoryDraft, "categoryCode">;
 
 /** 分类行（扁平，按 level、sortOrder、categoryCode 排序） */
 export interface MallCategoryView {
+  /** 分类编码 */
   categoryCode: string;
+  /** 上级分类编码；null = 一级分类 */
   parentCode: string | null;
   /** 1..3，服务端按上级计算 */
   level: number;
+  /** 各语言名称 */
   names: MallCategoryNames;
+  /** 图标地址；null = 无 */
   icon: string | null;
+  /** 同级排序，小的在前 */
   sortOrder: number;
-  status: "ENABLED" | "DISABLED";
+  /** 启用状态 */
+  status: MallCategoryStatus;
+  /** 乐观锁版本，改分类时作为 expectedVersion 传回 */
   version: number;
 }
 

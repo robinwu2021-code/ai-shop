@@ -12100,30 +12100,36 @@ components:
         - "enabled"
       additionalProperties: false
       description: "测试号固定验证码白名单的一条（TDD-测试号固定验证码）。\n\n命中的号请求验证码时**不发真实短信**，码恒为 `code`。唯一用途是苹果审核 —— 审核员在美国，收不到中国短信，而 App 的登录是手机号 + 验证码。\n\n**这里的每一行都是一把能登进那个手机号账号的钥匙。** 真正拦住「拿它登进别人的店」 的不是权限码，是后端那条「拒绝录入已存在账号的手机号」—— 页面上要把这件事说清楚， 否则运营会以为它只是一个普通的配置项。"
+    TestIdentityType:
+      type: "string"
+      enum:
+        - "PHONE"
+        - "EMAIL"
+      description: "测试身份类型"
     TestIdentity:
       type: "object"
       properties:
         id:
           type: "number"
+          description: "库内自增 id，启停与删除按它定位"
         identityType:
-          type: "string"
-          enum:
-            - "PHONE"
-            - "EMAIL"
+          "$ref": "#/components/schemas/TestIdentityType"
+          description: "手机号或邮箱"
         identityValue:
           type: "string"
           description: "规范化后的值：手机号带国码去空格，邮箱小写"
         enabled:
           type: "boolean"
+          description: "启用中；停用即时生效"
         remark:
           type: "string"
+          description: "为什么加这一条；空 = 没写"
       required:
         - "id"
         - "identityType"
         - "identityValue"
         - "enabled"
       additionalProperties: false
-      description: "测试身份白名单（TDD-测试身份白名单登录）。名单里的手机号 / 邮箱用服务器配置里的\n**统一验证码与统一密码**登录注册 —— 码与密码只在服务器配置，这里不显示。"
     TestIdentityList:
       type: "object"
       properties:
@@ -12134,6 +12140,7 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/TestIdentity"
+          description: "名单，含停用的"
       required:
         - "switchOn"
         - "items"
@@ -13171,30 +13178,43 @@ components:
         en:
           type: "string"
       additionalProperties: false
+    MallCategoryStatus:
+      type: "string"
+      enum:
+        - "ENABLED"
+        - "DISABLED"
+      description: "分类状态"
     MallCategoryDraft:
       type: "object"
       properties:
         categoryCode:
           type: "string"
+          description: "分类编码，大写字母数字与下划线，建后不可改"
         parentCode:
           type:
             - "string"
             - "null"
+          description: "上级分类编码；null = 一级分类"
         names:
           "$ref": "#/components/schemas/MallCategoryNames"
+          description: "各语言名称，至少一种"
         icon:
           type:
             - "string"
             - "null"
+          description: "图标地址；null = 不显示图标"
         sortOrder:
           type: "number"
+          description: "同级排序，小的在前"
         enabled:
           type: "boolean"
+          description: "建好后是否立即启用"
         expectedVersion:
           type: "number"
           description: "乐观锁：新建传 0"
         reason:
           type: "string"
+          description: "操作原因，写入审计"
       required:
         - "categoryCode"
         - "parentCode"
@@ -13218,21 +13238,27 @@ components:
           type:
             - "string"
             - "null"
+          description: "上级分类编码；null = 一级分类"
         names:
           "$ref": "#/components/schemas/MallCategoryNames"
+          description: "各语言名称，至少一种"
         icon:
           type:
             - "string"
             - "null"
+          description: "图标地址；null = 不显示图标"
         sortOrder:
           type: "number"
+          description: "同级排序，小的在前"
         enabled:
           type: "boolean"
+          description: "建好后是否立即启用"
         expectedVersion:
           type: "number"
           description: "乐观锁：新建传 0"
         reason:
           type: "string"
+          description: "操作原因，写入审计"
       required:
         - "parentCode"
         - "names"
@@ -13247,28 +13273,32 @@ components:
       properties:
         categoryCode:
           type: "string"
+          description: "分类编码"
         parentCode:
           type:
             - "string"
             - "null"
+          description: "上级分类编码；null = 一级分类"
         level:
           type: "number"
           description: "1..3，服务端按上级计算"
         names:
           "$ref": "#/components/schemas/MallCategoryNames"
+          description: "各语言名称"
         icon:
           type:
             - "string"
             - "null"
+          description: "图标地址；null = 无"
         sortOrder:
           type: "number"
+          description: "同级排序，小的在前"
         status:
-          type: "string"
-          enum:
-            - "ENABLED"
-            - "DISABLED"
+          "$ref": "#/components/schemas/MallCategoryStatus"
+          description: "启用状态"
         version:
           type: "number"
+          description: "乐观锁版本，改分类时作为 expectedVersion 传回"
       required:
         - "categoryCode"
         - "parentCode"

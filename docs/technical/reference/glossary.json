@@ -48435,6 +48435,15 @@
         "zh": "分类名称的语言键（zh-CN / zh-TW / en 的子集，至少一个）"
       },
       {
+        "name": "MallCategoryStatus",
+        "client": "ops-web",
+        "values": [
+          "ENABLED",
+          "DISABLED"
+        ],
+        "zh": "分类状态"
+      },
+      {
         "name": "MallComponentKind",
         "client": "b-app",
         "values": [
@@ -50458,6 +50467,15 @@
           "21:00"
         ],
         "zh": ""
+      },
+      {
+        "name": "TestIdentityType",
+        "client": "ops-web",
+        "values": [
+          "PHONE",
+          "EMAIL"
+        ],
+        "zh": "测试身份类型"
       },
       {
         "name": "TicketStatus",

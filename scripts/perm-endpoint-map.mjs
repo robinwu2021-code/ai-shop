@@ -25,6 +25,9 @@
 export const RULES = [
   // 套餐商城（可移植 commerce starter）。码就是控制器 context.operator(...) 里写的那个，
   // 已是细码，由 V625/V627 播种、只授给 SUPER_ADMIN；改这里须与控制器同改。
+  // 商城分类（控制器 context.operator 里的码）
+  ["GET", /^\/ops\/biz-mall\/categories$/, "commerce:catalog:read"],
+  ["*", /^\/ops\/biz-mall\/categories(\/\{categoryCode\})?$/, "commerce:catalog:edit"],
   ["GET", /^\/ops\/(business-types|business-ends(\/deployment-options)?|industry-plans|biz-mall\/(catalog|products|sku-versions\/\{versionNo\}))$/, "commerce:catalog:read"],
   ["*", /^\/ops\/(business-types(\/\{typeCode\})?|business-ends|industry-plans\/\{planNo\}\/versions|biz-mall\/products(\/\{productNo\}(\/skus)?)?)$/, "commerce:catalog:edit"],
   ["POST", /^\/ops\/(business-types\/\{typeCode\}\/plan-publications|biz-mall\/sku-versions\/\{versionNo\}\/publish|industry-plans\/\{planNo\}\/off-sale|biz-mall\/skus\/\{skuNo\}\/off-sale)$/, "commerce:catalog:publish"],
@@ -80,6 +83,8 @@ export const RULES = [
   ["POST", /^\/ops\/inventory\/policy$/, "system:param:update"],
   ["POST", /^\/ops\/inventory\/repair-projection$/, "inventory:projection:repair"],
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/nudge$/, "merchant:merchant:nudge"],
+  // 为主体申请支付服务（TDD-运营端申请支付服务，V633）
+  ["POST", /^\/ops\/merchant\/\{entityNo\}\/pay-service\/apply$/, "merchant:merchant:pay-apply"],
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/stock-doubt$/, "inventory:stock:read"],
   ["GET", /^\/ops\/merchant\/chain$/, "merchant:merchant:read"],
   ["GET", /^\/ops\/points\/account$/, "finance:settle:read"],
@@ -264,6 +269,8 @@ export const RULES = [
   // 档案与经营数据挂商家治理的只读码：门店维度的端点按「这件事属于哪条业务线」归码，
   // 不按 URL 前缀归码（business-mode 挂 merchant:mode:* 是同一个道理）。
   // store:page:audit 不能借 —— 那是店招审核动作的钥匙，塞进只读档案等于「能查店 = 能审店」。
+  // 全量同步门店到 near-pay（Perms.MERCHANT_STORE_NEARPAY_SYNC）
+  ["POST", /^\/ops\/stores\/nearpay-sync$/, "merchant:store:nearpay-sync"],
   // 必须排在 /ops/stores/audits 与 business-mode 之后：规则第一条命中生效
   ["GET", /^\/ops\/stores(\/|$)/, "merchant:merchant:read"],
 
@@ -611,8 +618,9 @@ export const RULES = [
   // 别处「读码比写码宽」是因为看配置无害；这一页不是那个形状：
   // 它把固定验证码明文列出来，能看这一页就等于知道那几个号的登录码。
   // 用 param:read 的话，持有它的 TECH_OPS 立刻就拿到了那几把钥匙。
-  ["GET", /^\/ops\/test-phones/, "system:testphone:read"],
-  ["*", /^\/ops\/test-phones/, "system:testphone:update"],
+  // 测试身份白名单（TDD-测试身份白名单登录）与测试号同页、同码
+  ["GET", /^\/ops\/(test-phones|test-identities)/, "system:testphone:read"],
+  ["*", /^\/ops\/(test-phones|test-identities)/, "system:testphone:update"],
 
   // ── 会员与人档（P-13）──────────────────────────────────────────────────
   ["GET", /^\/ops\/members/, "member:member:read"],
