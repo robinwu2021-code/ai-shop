@@ -1250,6 +1250,7 @@
     "POST /ops/staffs/{staffNo}/role",
     "POST /ops/staffs/{staffNo}/roles",
     "POST /ops/staffs/{staffNo}/scope",
+    "POST /ops/staffs/{staffNo}/second-factor-exempt",
     "POST /ops/staffs/me/password",
     "GET /ops/stores",
     "POST /ops/stores/{merchantNo}/qrcode/issue",

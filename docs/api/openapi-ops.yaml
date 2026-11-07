@@ -10732,6 +10732,9 @@ components:
         mustChangePassword:
           type: "boolean"
           description: "首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。"
+        secondFactorExempt:
+          type: "boolean"
+          description: "免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。"
         lastLoginAt:
           type: "string"
           description: "最近登录时间。从未登录为空"
@@ -24073,6 +24076,44 @@ paths:
     post:
       operationId: "setStaffEnabled"
       summary: "停用/启用（软删除语义，不删账号 —— 审计要能追溯到人）"
+      tags:
+        - "iam"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/Staff"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/staffs/{no}/second-factor-exempt":
+    post:
+      operationId: "setStaffSecondFactorExempt"
+      summary: "免二次验证白名单（`POST /ops/staffs/{staffNo}/second-factor-exempt`）"
       tags:
         - "iam"
       responses:

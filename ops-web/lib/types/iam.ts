@@ -38,6 +38,11 @@ export interface Staff {
    * 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。
    */
   mustChangePassword?: boolean;
+  /**
+   * 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。
+   * 理由必填、不能给自己勾，变更与每次免验证登录都进审计。
+   */
+  secondFactorExempt?: boolean;
   /** 最近登录时间。从未登录为空 */
   lastLoginAt?: string;
   /** 建档时间 */

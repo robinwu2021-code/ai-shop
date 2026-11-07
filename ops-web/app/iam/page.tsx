@@ -146,6 +146,8 @@ function IamInner() {
   const [checked, setChecked] = useState<string[]>([]);
 
   const canGrant = allow("iam:role:grant");
+  // 免二次验证白名单：与后端同一个码（iam:staff:update），不借用 role:grant
+  const canExempt = allow("iam:staff:update");
   const canReadAudit = allow("iam:audit:read");
 
   const staffQ = { keyword, role, enabled, page, size };
@@ -169,6 +171,19 @@ function IamInner() {
     qc.invalidateQueries({ queryKey: ["roles"] });
     qc.invalidateQueries({ queryKey: ["audit-logs"] });
   };
+
+  /*
+   * 免二次验证：打开要写理由（进审计），关掉也要写 —— 两个方向都是安全配置的变更。
+   * 走 confirm 的 action：弹窗自己跑完请求，失败留在原地看得到原因。
+   */
+  const toggleExempt = (s: Staff, on: boolean) => confirm({
+    title: fill(on ? c.exemptOnTitle : c.exemptOffTitle, { name: s.name }),
+    desc: on ? c.exemptOnDesc : c.exemptOffDesc,
+    danger: on,
+    requireReason: true,
+    action: (reason) => api.setStaffSecondFactorExempt(s.staffNo, on, reason)
+      .then(() => { invalidate(); notify.success(on ? c.toastExemptOn : c.toastExemptOff); }),
+  });
 
   const setEnabledMut = useMutation({
     mutationFn: (v: { staffNo: string; enabled: boolean }) => api.setStaffEnabled(v.staffNo, v.enabled),
@@ -418,6 +433,19 @@ function IamInner() {
       },
     },
     { header: c.colLastLogin, cell: (s) => fmtTime(s.lastLoginAt) },
+    {
+      header: c.colExempt,
+      cell: (s) => (
+        <Switch
+          checked={!!s.secondFactorExempt}
+          // 自己那行提前拦：后端会拒（10420），别让人填完理由才被告知
+          disabled={!canExempt || s.username === myUsername}
+          title={s.username === myUsername ? c.cannotExemptSelf : c.exemptHint}
+          aria-label={fill(c.ariaExemptSwitch, { name: s.name })}
+          onChange={(v) => { void toggleExempt(s, v); }}
+        />
+      ),
+    },
     {
       header: c.colEnabled,
       cell: (s) => (

@@ -1455,6 +1455,7 @@ CREATE TABLE IF NOT EXISTS sys_ops_staff
     pickup_no VARCHAR(64) DEFAULT NULL,
     last_login_at BIGINT(20) DEFAULT NULL,
     must_change_password TINYINT(4) NOT NULL DEFAULT 0,
+    second_factor_exempt TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_ops_staff_no UNIQUE (staff_no),
     CONSTRAINT uk_ops_staff_username UNIQUE (username)

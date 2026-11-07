@@ -23,6 +23,7 @@ interface BackendStaff {
   pickupNo?: string;
   lastLoginAt?: number;
   mustChangePassword?: boolean;
+  secondFactorExempt?: boolean;
 }
 
 interface StaffPage {
@@ -50,6 +51,7 @@ function toStaff(s: BackendStaff): Staff {
     pickupNo: s.pickupNo || undefined,
     enabled: s.status !== "DISABLED",
     mustChangePassword: s.mustChangePassword === true,
+    secondFactorExempt: s.secondFactorExempt === true,
     lastLoginAt: s.lastLoginAt ? new Date(s.lastLoginAt).toISOString() : undefined,
     createdAt: "",
   };
@@ -69,6 +71,8 @@ export const iamHttp: IamApi = {
   },
   setStaffEnabled: async (no, enabled) =>
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/enabled`, { enabled })),
+  setStaffSecondFactorExempt: async (no, exempt, reason) =>
+    toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/second-factor-exempt`, { exempt, reason })),
   createStaff: async (username, realName, roles) => {
     const r = await client.post<{ staff: BackendStaff; initialPassword: string }>(
       "/ops/staffs", { username, realName, roles });

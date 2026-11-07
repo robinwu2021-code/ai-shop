@@ -8,6 +8,11 @@ export interface IamApi {
   /** 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人）。 */
   setStaffEnabled(staffNo: string, enabled: boolean): Promise<Staff>;
   /**
+   * 免二次验证白名单（`POST /ops/staffs/{staffNo}/second-factor-exempt`）。
+   * 理由必填（进审计）；不能给自己勾（后端 10420）。
+   */
+  setStaffSecondFactorExempt(staffNo: string, exempt: boolean, reason: string): Promise<Staff>;
+  /**
    * 新建员工。**返回的初始密码只出现这一次** —— 关掉抽屉就再也取不到。
    *
    * 密码由后端生成而不是界面传：收明文的问题不是加密与否，

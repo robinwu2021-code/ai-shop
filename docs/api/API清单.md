@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1157 个接口**：后端已实现 935（81%）· 前端在调 1018
+**合计 1158 个接口**：后端已实现 935（81%）· 前端在调 1018
 
 ---
 
@@ -1146,7 +1146,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **553** 个接口 ｜ 后端已实现 **439**（79%）｜ 前端在调 **416**
+共 **554** 个接口 ｜ 后端已实现 **439**（79%）｜ 前端在调 **416**
 
 ### aftersale（5）
 
@@ -1435,7 +1435,7 @@
 | POST | `/ops/fission-campaigns` | 邀请有礼（P-9.2.1） | — | `FissionCampaign` | — | ✅ | ✅ |
 | POST | `/ops/fission-campaigns/{no}/enabled` | setFissionEnabled | — | `FissionCampaign` | — | ⬜ | ✅ |
 
-### iam（18）
+### iam（19）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1457,6 +1457,7 @@
 | POST | `/ops/staffs/{no}/enabled` | 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
+| POST | `/ops/staffs/{no}/second-factor-exempt` | 免二次验证白名单（`POST /ops/staffs/{staffNo}/second-factor-exempt`） | — | `Staff` | — | ⬜ | ⬜ |
 
 ### inventory（14）
 
