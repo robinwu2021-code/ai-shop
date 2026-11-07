@@ -90,9 +90,12 @@ public class PayBizFacade {
                               String currency, String subject, String storeName) {
     }
 
-    /** @param url 顾客扫的链接（前端据此出二维码） */
+    /**
+     * @param url          顾客扫的链接（前端据此出二维码）
+     * @param storeCodeUrl 整店码的立牌链接 {@code /h5/s/{门店代码}}（独立部署由 near-pay 给出；内嵌部署没有门店代码，恒为 null）
+     */
     public record QrView(String qrCode, String kind, String tableRef, String currency, long singleLimitMinor,
-                         long dailyLimitMinor, String status, String url) {
+                         long dailyLimitMinor, String status, String url, String storeCodeUrl) {
     }
 
     public record RefundView(String payRefundNo, Long payOrderId, long amountMinor, String currency, String status,
@@ -287,6 +290,6 @@ public class PayBizFacade {
 
     private QrView view(PayQrCode c) {
         return new QrView(c.getQrCode(), c.getKind(), c.getTableRef(), c.getCurrency(), c.getSingleLimitMinor(),
-                c.getDailyLimitMinor(), c.getStatus(), checkoutBase + "/q/" + c.getQrCode());
+                c.getDailyLimitMinor(), c.getStatus(), checkoutBase + "/q/" + c.getQrCode(), null);
     }
 }
