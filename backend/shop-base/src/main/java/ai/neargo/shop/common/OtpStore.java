@@ -29,7 +29,11 @@ public class OtpStore {
 
     private static final Logger log = LoggerFactory.getLogger(OtpStore.class);
 
+    /** 短信验证码有效期 */
     public static final Duration TTL = Duration.ofMinutes(5);
+
+    /** 邮箱验证码有效期：收信比短信慢，166 联调时 5 分钟不够用（2026-11-07 用户决定「改成 10 分钟」） */
+    public static final Duration EMAIL_TTL = Duration.ofMinutes(10);
 
     /**
      * 验码失败闸（安全整改方案 §2.2 的第 ④ 道）。
@@ -67,7 +71,12 @@ public class OtpStore {
     private final Map<String, Entry> cache = new ConcurrentHashMap<>();
 
     public void save(String phone, String code) {
-        cache.put(phone, new Entry(code, Instant.now().plus(TTL)));
+        save(phone, code, TTL);
+    }
+
+    /** 指定有效期保存（邮箱码用 {@link #EMAIL_TTL}） */
+    public void save(String key, String code, Duration ttl) {
+        cache.put(key, new Entry(code, Instant.now().plus(ttl)));
     }
 
     /**

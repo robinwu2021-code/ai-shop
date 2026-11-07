@@ -98,7 +98,9 @@ class EmailOtpAuthTest {
     @Test
     void sendsThroughExistingMailAndReturnsRealExpiryAndResendMetadata() {
         var result = email.send("Person@Example.COM", null);
-        assertThat(result.expiresInSeconds()).isEqualTo(OtpStore.TTL.toSeconds());
+        // 邮箱码 10 分钟（收信比短信慢，2026-11-07 用户决定「改成 10 分钟」）；短信码仍是 5 分钟
+        assertThat(result.expiresInSeconds()).isEqualTo(600);
+        assertThat(OtpStore.TTL).isEqualTo(java.time.Duration.ofMinutes(5));
         assertThat(result.resendAfterSeconds()).isEqualTo(60);
         String code = store.peek(EmailOtpService.key("person@example.com")).orElseThrow();
         assertThat(code).matches("[0-9]{6}");
@@ -151,9 +153,9 @@ class EmailOtpAuthTest {
     @Test
     void bodyFollowsRequestedScriptAndDefaultsToTraditional() {
         email.send("hant@example.com", null);
-        verify(mail).send(eq("hant@example.com"), contains("登入驗證碼"), contains("分鐘"), eq("OTP"), isNull());
+        verify(mail).send(eq("hant@example.com"), contains("登入驗證碼"), contains("10 分鐘內有效"), eq("OTP"), isNull());
         email.send("hans@example.com", "zh-Hans");
-        verify(mail).send(eq("hans@example.com"), contains("登录验证码"), contains("分钟"), eq("OTP"), isNull());
+        verify(mail).send(eq("hans@example.com"), contains("登录验证码"), contains("10 分钟内有效"), eq("OTP"), isNull());
         email.send("cn@example.com", "zh-CN");
         verify(mail).send(eq("cn@example.com"), contains("登录验证码"), anyString(), eq("OTP"), isNull());
     }
@@ -197,12 +199,25 @@ class EmailOtpAuthTest {
     @Test
     void expiredEmailCodeCannotAuthenticate() {
         Instant initial = Instant.now();
-        Instant expired = initial.plus(OtpStore.TTL).plusSeconds(1);
+        Instant expired = initial.plus(java.time.Duration.ofMinutes(10)).plusSeconds(1);
         try (var clock = mockStatic(Instant.class, CALLS_REAL_METHODS)) {
             clock.when(Instant::now).thenReturn(initial);
             String code = send();
             clock.when(Instant::now).thenReturn(expired);
             assertThatThrownBy(() -> email.verify("person@example.com", code)).isInstanceOf(BizException.class);
+        }
+    }
+
+    @Test
+    void emailCodeIsStillValidAfterFiveMinutes() {
+        // 166 上 2026-11-07 第二次登录晚了 31 秒被拒；邮箱码改为 10 分钟有效
+        Instant initial = Instant.now();
+        Instant nineMinutesLater = initial.plus(java.time.Duration.ofMinutes(9));
+        try (var clock = mockStatic(Instant.class, CALLS_REAL_METHODS)) {
+            clock.when(Instant::now).thenReturn(initial);
+            String code = send();
+            clock.when(Instant::now).thenReturn(nineMinutesLater);
+            assertThat(email.verify("person@example.com", code)).isNotNull();
         }
     }
 

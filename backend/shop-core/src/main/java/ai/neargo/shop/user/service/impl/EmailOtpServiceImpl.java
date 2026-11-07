@@ -74,11 +74,11 @@ public class EmailOtpServiceImpl implements EmailOtpService {
             throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         }
         // 发信成功才存码：发不出去的码不该能用来登录
-        otpStore.save(key, code);
+        otpStore.save(key, code, OtpStore.EMAIL_TTL);
         if (mailStub) {
             log.debug("[mail-stub] otp to {} = {}", Masks.email(normalized), code);
         }
-        return new Delivery(OtpStore.TTL.toSeconds(), resendAfterSeconds);
+        return new Delivery(OtpStore.EMAIL_TTL.toSeconds(), resendAfterSeconds);
     }
 
     /** @return 归一化后的地址；码不对 10455，连错锁定 10454 */
@@ -99,10 +99,10 @@ public class EmailOtpServiceImpl implements EmailOtpService {
         static Content of(String locale, String code) {
             if (simplified(locale)) {
                 return new Content("NearGo 商户登录验证码",
-                        "您的登录验证码是 " + code + "，5 分钟内有效。\n请勿将验证码提供给任何人；如非本人操作，请忽略本邮件。");
+                        "您的登录验证码是 " + code + "，10 分钟内有效。\n请勿将验证码提供给任何人；如非本人操作，请忽略本邮件。");
             }
             return new Content("NearGo 商戶登入驗證碼",
-                    "您的登入驗證碼是 " + code + "，5 分鐘內有效。\n請勿將驗證碼提供給任何人；如非本人操作，請忽略本郵件。");
+                    "您的登入驗證碼是 " + code + "，10 分鐘內有效。\n請勿將驗證碼提供給任何人；如非本人操作，請忽略本郵件。");
         }
 
         private static boolean simplified(String locale) {
