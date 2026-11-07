@@ -6032,6 +6032,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
 | `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
+| `secondFactorExempt` | `boolean` | 否 | 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -6063,6 +6064,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
 | `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
+| `secondFactorExempt` | `boolean` | 否 | 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -6094,6 +6096,39 @@ _无字段_
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
 | `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
+| `secondFactorExempt` | `boolean` | 否 | 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。 |
+| `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
+| `createdAt` | `string` | 是 | 建档时间 |
+
+
+#### POST `/ops/staffs/{no}/second-factor-exempt`
+
+免二次验证白名单（`POST /ops/staffs/{staffNo}/second-factor-exempt`）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Staff`](#staff)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `staffNo` | `string` | 是 | 员工单号 |
+| `username` | `string` | 是 | 登录名 |
+| `name` | `string` | 是 | 姓名 |
+| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
+| `communityNo` | `string` | 否 | 社区运营的社区数据域 |
+| `pickupNo` | `string` | 否 | 自提点数据域 |
+| `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
+| `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
+| `secondFactorExempt` | `boolean` | 否 | 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 
@@ -18185,6 +18220,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 | `pickupNo` | `string` | 否 | 自提点数据域 |
 | `enabled` | `boolean` | 是 | 是否启用。停用后立即无法登录，历史操作留痕保留 |
 | `mustChangePassword` | `boolean` | 否 | 首登必须改密。 建号时后端生成的一次性初始密码只是「拿到账号」的凭据，不是长期口令。 |
+| `secondFactorExempt` | `boolean` | 否 | 免二次验证白名单。第二因子（邮件验证码）开着时，勾了的账号只凭密码登录。 理由必填、不能给自己勾，变更与每次免验证登录都进审计。 |
 | `lastLoginAt` | `string` | 否 | 最近登录时间。从未登录为空 |
 | `createdAt` | `string` | 是 | 建档时间 |
 

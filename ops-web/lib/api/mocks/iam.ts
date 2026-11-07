@@ -8,6 +8,7 @@ import { fail, notFound } from "@/lib/biz-error";
 import { NAV } from "@/lib/nav";
 import { UI_PERM_MAP, UNIMPLEMENTED } from "@/lib/perm-map";
 import { wait } from "./_wait";
+import { currentAuth } from "@/lib/auth";
 
 function findStaff(staffNo: string): Staff {
   const s = db.staffs.find((x) => x.staffNo === staffNo);
@@ -41,6 +42,15 @@ export const iamMock: IamApi = {
       ),
     ),
 
+  /* 与后端同口径：理由必填、不能给自己勾，每次变更都写审计（标为高危） */
+  setStaffSecondFactorExempt: async (staffNo, exempt, reason) => {
+    const s = findStaff(staffNo);
+    if (!reason?.trim()) fail("请写明理由：免二次验证是有意打开的缺口，审计要能说清为什么", "Give a reason — skipping the second factor is a deliberate gap and the audit log must say why");
+    if (currentAuth()?.username === s.username) fail("不能给自己设置免二次验证", "You cannot exempt your own account from the second factor");
+    s.secondFactorExempt = exempt;
+    audit(exempt ? "加入免二次验证白名单" : "移出免二次验证白名单", `${s.staffNo} ${s.name}`, reason.trim(), true);
+    return wait(s, 400);
+  },
   setStaffEnabled: async (staffNo, enabled) => {
     const s = findStaff(staffNo);
     // 停用最后一个启用中的超管 = 把系统锁死，之后没人能再开权限

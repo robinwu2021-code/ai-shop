@@ -18,11 +18,12 @@ public final class OpsVOs {
      * @param mustChangePassword 首登必须改密。**要透给前端** ——
      *     不透的话新员工拿一次性密码登进来就能一直用，
      *     而那个密码经过了建号人的屏幕与剪贴板。
+     * @param secondFactorExempt 免二次验证白名单：第二因子开着时这个账号只凭密码登录
      */
     public record StaffVO(String staffNo, String username, String realName,
                           List<String> roles, List<String> perms, String status,
                           String merchantNo, String communityNo, String pickupNo,
-                          Long lastLoginAt, boolean mustChangePassword) {
+                          Long lastLoginAt, boolean mustChangePassword, boolean secondFactorExempt) {
     }
 
     /**

@@ -174,6 +174,16 @@ public class OpsPlatformController {
     }
 
     /**
+     * 免二次验证白名单。第二因子整体开着（生产只能开着）时，勾了的账号只凭密码登录。
+     * 理由必填、不能给自己勾，变更与每次免验证登录都进审计。
+     */
+    @PostMapping("/ops/staffs/{staffNo}/second-factor-exempt")
+    @PreAuthorize("@perm.can('" + Perms.IAM_STAFF_UPDATE + "')")
+    public StaffVO setStaffSecondFactorExempt(@PathVariable String staffNo, @RequestBody SecondFactorExemptReq req) {
+        return opsService.setStaffSecondFactorExempt(staffNo, Boolean.TRUE.equals(req.exempt()), req.reason());
+    }
+
+    /**
      * 新建员工。**返回一次性初始密码**，之后再也取不到。
      *
      * <p>密码由后端生成而不是让界面传：收明文的问题不是加密与否，
@@ -386,6 +396,9 @@ public class OpsPlatformController {
 
     /** @param reason 必填 —— 关掉一档等于把一类商家挡在门外 */
     public record ScopeEnabledReq(Boolean enabled, String reason) {
+    }
+
+    public record SecondFactorExemptReq(Boolean exempt, String reason) {
     }
 
     public record EnabledReq(Boolean enabled) {

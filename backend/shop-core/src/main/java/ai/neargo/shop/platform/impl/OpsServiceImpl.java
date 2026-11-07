@@ -221,10 +221,18 @@ public class OpsServiceImpl implements OpsService {
             staff.setPassword(passwordHasher.encode(password));
         }
         if ("email".equals(secondFactor)) {
-            if (upgraded) {
-                staffMapper.updateById(staff);   // 会话要等第二步，升级后的哈希先落库
+            if (!Boolean.TRUE.equals(staff.getSecondFactorExempt())) {
+                if (upgraded) {
+                    staffMapper.updateById(staff);   // 会话要等第二步，升级后的哈希先落库
+                }
+                return challenge(staff);
             }
-            return challenge(staff);
+            /*
+             * 白名单账号：第二因子开着也只凭密码放行。**每一次都记审计** ——
+             * 白名单本身是一道被有意打开的缺口，谁、什么时候走了这道缺口必须查得到。
+             */
+            log.warn("[ops] 免二次验证登录 staff={} ip={}", staff.getStaffNo(), ip);
+            audit("STAFF_LOGIN_2FA_EXEMPT", staff.getStaffNo(), "白名单账号免二次验证登录 ip=" + ip, true, null, null);
         }
         return issue(staff);
     }
@@ -936,7 +944,7 @@ public class OpsServiceImpl implements OpsService {
         return new StaffVO(s.getStaffNo(), s.getUsername(), s.getRealName(),
                 roles, perms, s.getStatus(),
                 s.getMerchantNo(), s.getCommunityNo(), s.getPickupNo(), s.getLastLoginAt(),
-                Boolean.TRUE.equals(s.getMustChangePassword()));
+                Boolean.TRUE.equals(s.getMustChangePassword()), Boolean.TRUE.equals(s.getSecondFactorExempt()));
     }
 
     // ---------------------------------------------------------------- 员工写侧
@@ -993,6 +1001,30 @@ public class OpsServiceImpl implements OpsService {
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "DISABLED" : "ACTIVE")),
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "ACTIVE" : "DISABLED")));
+        List<String> roles = readList(staff.getRoles());
+        return toVO(staff, roles, rolePermResolver.of(roles));
+    }
+
+    @Override
+    @Transactional
+    public StaffVO setStaffSecondFactorExempt(String staffNo, boolean exempt, String reason) {
+        if (!notBlank(reason)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);   // 打开一道缺口必须说清为什么，理由进审计
+        }
+        SysOpsStaff staff = requireStaff(staffNo);
+        /*
+         * 不能给自己勾。「能管员工的人」本来就是权限最大的那批，
+         * 允许自助的话等于他们可以随时给自己去掉第二因子 —— 那第二因子防的正是这批账号被盗。
+         */
+        if (staffNo.equals(SecurityUtils.currentUserNo())) {
+            throw BizException.of(ErrorCode.STAFF_SELF_OPERATION);
+        }
+        boolean before = Boolean.TRUE.equals(staff.getSecondFactorExempt());
+        staff.setSecondFactorExempt(exempt);
+        staffMapper.updateById(staff);
+        audit("STAFF_2FA_EXEMPT", staffNo, (exempt ? "加入" : "移出") + "免二次验证白名单：" + reason.trim(), true,
+                objectMapper.writeValueAsString(Map.of("secondFactorExempt", before)),
+                objectMapper.writeValueAsString(Map.of("secondFactorExempt", exempt)));
         List<String> roles = readList(staff.getRoles());
         return toVO(staff, roles, rolePermResolver.of(roles));
     }

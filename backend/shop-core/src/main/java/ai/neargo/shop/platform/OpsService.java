@@ -36,6 +36,12 @@ public interface OpsService {
     StaffVO setStaffEnabled(String staffNo, boolean enabled);
 
     /**
+     * 免二次验证白名单（员工账号页逐个勾选）。第二因子开着时，勾了的账号只凭密码登录。
+     * 理由必填、不能给自己勾；变更与每次免验证登录都进审计。
+     */
+    StaffVO setStaffSecondFactorExempt(String staffNo, boolean exempt, String reason);
+
+    /**
      * 改角色。
      *
      * <p><b>必须校验角色码真实存在于 {@code Perms.ROLE_PERMS}</b>：

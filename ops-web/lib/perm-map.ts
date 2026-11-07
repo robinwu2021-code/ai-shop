@@ -237,6 +237,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "finance:recon:resolve": "finance:recon:resolve",
   "finance:settle:read": "finance:settle:read",
   "iam:staff:read": "iam:staff:read",
+  // 员工写（启停 / 角色 / 数据域 / 免二次验证白名单）。后端这几条都判 iam:staff:update
+  "iam:staff:update": "iam:staff:update",
   "content:material:read": "content:material:read",
   "fulfillment:logistics:read": "fulfillment:logistics:read",
   "fulfillment:logistics:replay": "fulfillment:logistics:replay",
