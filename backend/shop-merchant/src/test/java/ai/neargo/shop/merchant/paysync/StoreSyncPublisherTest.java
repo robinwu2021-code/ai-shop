@@ -83,6 +83,23 @@ class StoreSyncPublisherTest {
     }
 
     @Test
+    @DisplayName("★★ 追平后回看窗口反复读到同一家店的同一修订号：不再入队、不再计数（166 每分钟「scanned 1 store change」误报）")
+    void lookbackRereadOfSameRevisionIsNotRequeued() {
+        var reader = mock(StoreSnapshotReader.class);
+        var outbox = mock(OutboxEventBus.class);
+        when(reader.dbNow()).thenReturn(T);
+        when(reader.changedAfter(any(), anyInt())).thenReturn(List.of(row(7, T.minusSeconds(2))));
+        var p = new StoreSyncPublisher(reader, outbox, NearPayStoreSyncTest.PROPS, (LockingTaskExecutor) null);
+        assertThat(p.scanCount()).isEqualTo(1);
+        assertThat(p.scanCount()).isZero();
+        assertThat(p.scanCount()).isZero();
+        verify(outbox, org.mockito.Mockito.times(1)).publish(any(), any());
+        // 同一家店有了新修订号，照常入队
+        when(reader.changedAfter(any(), anyInt())).thenReturn(List.of(row(7, T.minusSeconds(1))));
+        assertThat(p.scanCount()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★★ 定时扫描在分布式锁里跑：多实例只有拿到锁的那个扫描")
     void timedScanRunsUnderDistributedLock() throws Throwable {
         var locks = mock(LockingTaskExecutor.class);

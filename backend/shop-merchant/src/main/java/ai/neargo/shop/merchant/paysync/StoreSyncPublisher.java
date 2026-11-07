@@ -49,6 +49,12 @@ public class StoreSyncPublisher {
     private final LockingTaskExecutor locks;
     /** 进程内游标；为空时从数据库时间往前一天开始（已入队的修订不会重复入队） */
     private volatile Cursor cursor;
+    /**
+     * 本实例增量扫描已入队的「门店 → 修订号」。追平后游标回看 LOOKBACK 秒，最近变更的门店每轮都会被重新读到；
+     * 事件号相同、outbox 去重，不会真的重推，但会被计数、打日志（166 上每分钟一条误报）。这里跳过同一修订号。
+     * 只在本实例内存里：重启后第一次照常入队，由 outbox 去重兜底。
+     */
+    private final java.util.Map<String, Long> published = new java.util.concurrent.ConcurrentHashMap<>();
     private ScheduledExecutorService timer;
 
     @Autowired
@@ -104,6 +110,11 @@ public class StoreSyncPublisher {
     }
 
     public void scan() {
+        scanCount();
+    }
+
+    /** 一轮增量扫描；返回本轮真正新入队的门店数（测试用） */
+    int scanCount() {
         Cursor from = cursor != null ? cursor : new Cursor(reader.dbNow().minusDays(1), 0);
         List<Changed> changed = reader.changedAfter(from, BATCH);
         int queued = enqueue(changed, null);
@@ -118,6 +129,7 @@ public class StoreSyncPublisher {
         if (queued > 0) {
             log.info("[nearpay-store-sync] scanned {} store change(s)", queued);
         }
+        return queued;
     }
 
     /** 全量（或指定门店）同步；返回入队数。每次请求一个新请求号，事件号不与历史重复。 */
@@ -130,8 +142,10 @@ public class StoreSyncPublisher {
     int enqueue(List<Changed> changed, String fullRequest) {
         int n = 0;
         for (var c : changed) {
+            if (fullRequest == null && Long.valueOf(c.revision()).equals(published.get(c.storeNo()))) continue;
             String no = "NPS:" + c.storeNo() + ":" + c.revision() + (fullRequest == null ? "" : ":FULL:" + fullRequest);
             outbox.publish(fit(no), new StoreChanged(c.storeNo(), c.entityNo(), c.revision()));
+            if (fullRequest == null) published.put(c.storeNo(), c.revision());
             n++;
         }
         return n;
