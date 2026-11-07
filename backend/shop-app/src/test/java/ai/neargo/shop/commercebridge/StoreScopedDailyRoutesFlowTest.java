@@ -136,6 +136,23 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 新模型门店店主设门店代码（立牌链接 /h5/s/{代码}）：能进门店，且 updated_at 前进，门店同步会把它推到 near-pay")
+    void ownerSetsStoreSlugAndTriggersPaySync() throws Exception {
+        String[] o = newModelOwner("15965020109");
+        jdbc.update("update mch_store set updated_at='2026-01-01 00:00:00' where store_no=?", o[1]);
+        String body = mvc.perform(post("/biz/store/" + o[1] + "/slug")
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"slug\":\"daily-routes-shop\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals(0, json.readTree(body).path("code").asInt(), body);
+        assertEquals("daily-routes-shop", jdbc.queryForObject("select slug from mch_store where store_no=?", String.class, o[1]));
+        java.time.LocalDateTime at = jdbc.queryForObject("select updated_at from mch_store where store_no=?",
+                java.time.LocalDateTime.class, o[1]);
+        org.junit.jupiter.api.Assertions.assertTrue(at.isAfter(java.time.LocalDateTime.of(2026, 1, 2, 0, 0)),
+                "改了门店代码 updated_at 没动 —— 门店同步扫不到，near-pay 的立牌码拿不到 store_code：" + at);
+    }
+
+    @Test
     @DisplayName("★★ 新店主给自己的店设货架类目（POST）：同样按门店成员放行")
     void ownerSetsStoreCategories() throws Exception {
         String[] o = newModelOwner("15965020104");

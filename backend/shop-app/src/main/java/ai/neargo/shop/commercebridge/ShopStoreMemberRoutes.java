@@ -31,6 +31,8 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET", "/biz/entity/[A-Za-z0-9_-]{1,64}"),
             // 本店的分类、发货设置、运费模板、线上售卖规则、库存同步
             HostRoute.of("GET,POST,PUT", STORE + "(?:categories|ship-setting|freight-template|sell-rules|stock-sync)"),
+            // 本店门店代码（立牌链接 /h5/s/{代码}；2026-11-07 台北早餐 166 上 70006）
+            HostRoute.of("POST", STORE + "slug"),
             // 本店开通收款：把收款商户挂到这家店
             HostRoute.of("POST", STORE + "payment"),
             // 店员与角色（「我的 › 店员管理」）：权限码由控制器判，这里只放进门店上下文

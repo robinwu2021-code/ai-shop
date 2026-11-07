@@ -231,6 +231,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         DataScopeContext.executeWithoutScope(() -> storeMapper.update(null,
                 Wrappers.<MchStore>lambdaUpdate()
                         .set(MchStore::getSlug, slug)
+                        // 不带实体的 update 不走自动填充：不手动推 updated_at，门店同步（StoreSyncPublisher 按 updated_at 扫）
+                        // 看不到这次改动，near-pay 的立牌码就拿不到 store_code（2026-11-07 台北早餐）
+                        .set(MchStore::getUpdatedAt, java.time.LocalDateTime.now())
                         .eq(MchStore::getId, s.getId())));
         s.setSlug(slug);
         return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
