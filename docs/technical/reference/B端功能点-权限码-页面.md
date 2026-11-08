@@ -11,8 +11,8 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 443 个受控功能点**
-（另有 0 个登录即可、17 个「任一权限即可」）。
+统计：**50 个权限码 × 6 个角色 × 447 个受控功能点**
+（另有 0 个登录即可、19 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -29,13 +29,13 @@
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:print:read` | `PRINT_READ` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 15 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:print:config` | `PRINT_CONFIG` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 15 | ✅ | ✅ | — | — | — | — |
+| `biz:print:read` | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:config` | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 12 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 10 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| `biz:print:resolve` | `PRINT_RESOLVE` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 9 | ✅ | ✅ | — | — | — | — |
-| `biz:print:device` | `PRINT_DEVICE` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 6 | ✅ | ✅ | — | — | — | — |
+| `biz:print:resolve` | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 9 | ✅ | ✅ | — | — | — | — |
+| `biz:print:device` | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
@@ -44,20 +44,20 @@
 | `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
-| `biz:print:export` | `PRINT_EXPORT` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 3 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:export` | `PRINT_EXPORT` | 更正与作废 App 外收款记录（原因必填、留痕） | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:pricing:tax:update` | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
 | `biz:pricing:config:read` | `PRICING_CONFIG_READ` | Shared pricing configuration: read | 2 | ✅ | — | — | — | — | — |
 | `biz:pricing:config:update` | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:plan:read` | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:plan:manage` | `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
-| `biz:print:reprint` | `PRINT_REPRINT` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 2 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:print:simulate` | `PRINT_SIMULATE` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:reprint` | `PRINT_REPRINT` | 更正与作废 App 外收款记录（原因必填、留痕） | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:simulate` | `PRINT_SIMULATE` | 更正与作废 App 外收款记录（原因必填、留痕） | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `pay:cash:receive` | `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue` | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 1 | ✅ | — | — | — | — | — |
-| `biz:print:submit` | `PRINT_SUBMIT` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 1 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:print:extra` | `PRINT_EXTRA` | 看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商 | 1 | ✅ | ✅ | — | — | — | — |
+| `biz:print:submit` | `PRINT_SUBMIT` | 更正与作废 App 外收款记录（原因必填、留痕） | 1 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:print:extra` | `PRINT_EXTRA` | 更正与作废 App 外收款记录（原因必填、留痕） | 1 | ✅ | ✅ | — | — | — | — |
 | `biz:pricing:tax:read` | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
 | `biz:report:export` | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
@@ -452,7 +452,7 @@
 | —（b-app 未接） | — | `/biz/x/food/service-entitlements/confirm-attendance` | — | — |
 | —（b-app 未接） | — | `/biz/x/food/service-entitlements/list` | — | — |
 
-### `biz:print:read`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:read`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长、店员
 
@@ -474,7 +474,7 @@
 | —（b-app 未接） | — | `/biz/print/requests/{}` | — | — |
 | —（b-app 未接） | — | `/biz/print/scenes` | — | — |
 
-### `biz:print:config`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:config`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长
 
@@ -550,7 +550,7 @@
 | —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
 | —（b-app 未接） | — | `/biz/order/{}/full` | — | — |
 
-### `biz:print:resolve`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:resolve`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长
 
@@ -566,7 +566,7 @@
 | —（b-app 未接） | — | `/biz/print/jobs/{}/retries` | — | — |
 | —（b-app 未接） | — | `/biz/print/jobs/{}/stale-releases` | — | — |
 
-### `biz:print:device`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:device`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长
 
@@ -665,7 +665,7 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}/cancel` | — | — |
 
-### `biz:print:export`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:export`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长、店员
 
@@ -730,7 +730,7 @@
 | 独立储值进度 | GET | `/biz/stored-value/plan-recharges/{rechargeNo}` | `mSvRecharge` | stored-value-recharge |
 | —（b-app 未接） | — | `/biz/stored-value/recharges/{}` | — | — |
 
-### `biz:print:reprint`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:reprint`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长、店员
 
@@ -739,7 +739,7 @@
 | —（b-app 未接） | — | `/biz/print/jobs/{}/reprints` | — | — |
 | —（b-app 未接） | — | `/biz/print/reprints` | — | — |
 
-### `biz:print:simulate`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:simulate`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长、店员
 
@@ -772,7 +772,7 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-templates` | — | — |
 
-### `biz:print:submit`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:submit`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长、店员
 
@@ -780,7 +780,7 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/print/jobs/{}/cancellations` | — | — |
 
-### `biz:print:extra`　看本店「收款」Tab 的支付订单列表与详情（TDD-B端收款订单与商城接口对齐 P1）
+### `biz:print:extra`　更正与作废 App 外收款记录（原因必填、留痕）
 
 **可用角色**：老板、店长
 
@@ -930,6 +930,8 @@
 | `/biz/payment/links` | `undefined` | 老板 |
 | `/biz/payment/links/{}/reissue` | `undefined` | 老板 |
 | `/biz/payment/links/{}/void` | `undefined` | 老板 |
+| `/biz/payment/offline-records/{}/correct` | `undefined` | 老板 |
+| `/biz/payment/offline-records/{}/void` | `undefined` | 老板 |
 | `/biz/payment/orders` | `undefined` | 老板 |
 | `/biz/payment/orders/lookup` | `undefined` | 老板 |
 | `/biz/payment/orders/summary` | `undefined` | 老板 |
@@ -1097,6 +1099,9 @@
 | 给自建维度改名 | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | `biz:goods` |
 | 叫快递上门取件 | `/biz/order/:orderNo/express` | `mBookExpress` | `biz:ship` |
 | 快递报价 | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | `biz:ship` |
+| 记一笔 App 外收款 | `/biz/payment/offline-records` | `mPayRecordOffline` | `undefined` |
+| App 外收款记录 | `/biz/payment/offline-records` | `mPayOfflineRecords` | `undefined` |
+| App 外收款合计 | `/biz/payment/offline-records/summary` | `mPayOfflineSummary` | `undefined` |
 | 自建自提点（待运营核实） | `/biz/pickup-points` | `mSelfBuildPickup` | `biz:store` |
 | 门店可引用的取货点候选 | `/biz/pickup-points/candidates` | `mPickupCandidates` | `biz:store` |
 | 主体属主签署当前门店积分协议 | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | `biz:finance` |
@@ -1137,6 +1142,8 @@
 - `/biz/example/guarded-after`　
 - `/biz/example/guarded-before`　
 - `/biz/express/companies`　本店可选快递公司
+- `/biz/feedback`　提交问题回报（回报号即工单号）
+- `/biz/feedback/mine`　我的回报（最近 50 条，带客服回复）
 - `/biz/merchant/store-setup`　
 - `/biz/stores/{}/context`　
 - `/biz/stores/{}/end-access`　

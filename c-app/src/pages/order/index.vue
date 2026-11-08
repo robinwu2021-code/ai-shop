@@ -19,7 +19,7 @@ import { orderNoOf } from "@/shared/order-no";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
 import { expressOrderStatusKey } from "@shared/strategies/trace-step";
 import { refundProgressKey, canWithdrawAfterSale } from "@shared/strategies/order-phase1";
-import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
+import { expressCompanyName as carrierNameOf } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
 /**
@@ -184,7 +184,8 @@ const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
 const expressCompanyName = computed(() => {
   const code = order.value?.expressCompany;
   if (!code) return "";
-  return EXPRESS_COMPANIES.find((c) => c.code === code)?.name ?? code;
+  // 跨市场查名：台湾单的承运商码（TCAT 等）也要显示名称，不是原码
+  return carrierNameOf(code) ?? code;
 });
 
 const order = ref<Order | null>(null);
