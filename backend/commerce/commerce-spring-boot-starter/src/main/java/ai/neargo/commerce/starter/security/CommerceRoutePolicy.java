@@ -84,7 +84,11 @@ public final class CommerceRoutePolicy {
                     "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
                     "GET /biz/merchant/store-setup",
-                    "GET /biz/business-types");
+                    "GET /biz/business-types",
+                    // 账号本人的设置：按登录人定位，与门店无关；推送注册在登录后、选店前就会调
+                    "POST /biz/merchant/display-name",
+                    "POST /biz/push-token",
+                    "POST /biz/push-token/unregister");
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
     private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/([^/]+)/(.+)");
 

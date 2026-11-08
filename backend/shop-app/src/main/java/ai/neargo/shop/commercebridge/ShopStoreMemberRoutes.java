@@ -46,11 +46,48 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/qualifications(?:/recognize|/save)?"),
             HostRoute.of("POST", "/biz/merchant/agreement/accept"),
             HostRoute.of("GET", "/biz/merchant/pay-channel"),
+            // 出款账户（App F06 收款账户；按选中门店所属主体取数，权限码 biz:finance 由控制器判）
+            HostRoute.of("GET,POST", "/biz/payout-account"),
             // 申请支付服务不在这里：它要主体级收款目标，登记在 CommerceRoutePolicy 的 foundation 通道（同 pay-channel）
             // 地图选点（门店地址）
             HostRoute.of("GET", "/biz/geo/(?:tips|reverse)"),
             // 首页看板
-            HostRoute.of("GET", "/biz/dashboard/(?:todo|stats)"));
+            HostRoute.of("GET", "/biz/dashboard/(?:todo|stats)"),
+
+            // —— App 第二批（2026-11-08 台北早餐 166 上 70006；TDD-账户登录与选店校验 §2 第三步）——
+            // 门店资料、公告、分享物料。/biz/store 不按族登记：/{门店}/pay-setting 要业务端权益，整族会绕过它
+            HostRoute.of("GET,POST", "/biz/store"),
+            HostRoute.of("POST", "/biz/store/(?:announcement|announcement/recent/remove|scope-preview)"),
+            HostRoute.of("GET", "/biz/store/(?:share-kit|poster|qrcode)"),
+            HostRoute.of("POST", STORE + "(?:rename|status)"),
+            // 方案（含试用）
+            HostRoute.of("GET", "/biz/plan"),
+            HostRoute.of("POST", "/biz/plan/trial"),
+            // 评价
+            HostRoute.of("GET,POST", "/biz/review(?:/.*)?"),
+            // 列印：打印机、任务、模板、场景、监控
+            HostRoute.of("GET,POST,PUT", "/biz/print/.+"),
+            // 通知设置
+            HostRoute.of("GET,PUT", "/biz/notify/(?:setting|sms-phones|email|wecom)"),
+            // 自提与自提点
+            HostRoute.of("GET,POST", "/biz/pickup(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/pickup-points(?:/candidates)?"),
+            // 进销存，及本店线下销售、库存总览 / 对齐 / 对账（sell-rules、stock-sync 见上）
+            HostRoute.of("GET,POST,PUT", "/biz/inventory/.+"),
+            HostRoute.of("GET,POST", STORE + "(?:offline-sale|stock-overview|stock-alignment|stock-reconcile)(?:/.*)?"),
+            // 会员、标签、分群、设置、触达
+            HostRoute.of("GET,POST,PUT", "/biz/(?:members|member-tags|member-segments|member-reach)(?:/.*)?"),
+            HostRoute.of("GET,PUT", "/biz/member-settings"),
+            // 优惠券与核销、门店积分
+            HostRoute.of("GET,POST,PUT", "/biz/coupons(?:/.*)?"),
+            HostRoute.of("GET", "/biz/coupon-issues"),
+            HostRoute.of("GET,POST", "/biz/coupon-redeem(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/points/store-[a-z-]+(?:/[a-z-]+)?"),
+            // 团购 / 接龙 / 报价、账期
+            HostRoute.of("GET,POST", "/biz/(?:groups|group|group-request|quote|period)(?:/.*)?"),
+            // 平台活动与营销活动
+            HostRoute.of("GET,POST", "/biz/(?:platform-activity|activities|campaign)(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/(?:activity-presets|activity-conflicts|marketing-summary|marketing/summary)"));
 
     private ShopStoreMemberRoutes() {
     }
