@@ -1,6 +1,6 @@
 # TDD-商户App外部记账
 
-状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
+状态：已实现（2026-11-08；「已拍板」各条按建议落地，偏差见 §6）
 档位：1 · 依据：商户 App 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`（main `31a56c1`）） §7（7-20～7-23、接口表「外部收款」四行、待决第 1、5 条）、附录 B · 产出：本文
 （若「已拍板」D1 定成放进支付域 / pay-svc，或 D6 定成进报表与看板口径，本方案升为 2 档，要另开 ADR，见文末「升档条件」）
 关联需求：本仓库没有外部记账的 PRD；AC 由交接文档整理（§0），PRD-支付域 AC-3.6 / AC-6.3 与 PRD-商家资金到账与对账 AC-5 约束「线下的钱不进通道对账」
@@ -104,7 +104,11 @@
 
 - `BizPerms`：加两个码、两条说明、`MANAGER` / `CLERK` 模板各加码。**影响**：所有用模板的店长、店员下次读权限时多出这两项；
   自定义角色的勾选列表（`/biz/roles` 下发 `LABELS`）多两项。`BizRoleSeedTest` 会盯「每个码都有说明」。
-- `BizEndpointPermTest` 判权表：加四行。
+- `BizEndpointPermTest` 判权表：加四行（表按路径一行，`/biz/payment/offline-records` 的 GET / POST 共用一行，见 §6）。
+- 预置角色模板 `mch_role`（实现时发现，见 §6 偏差 1）：判权读的是库里 `mch_role.perms`，不是代码里的 `BizPerms.ROLE_PERMS`。
+  所以新码要随迁移追加进 `MANAGER` / `CLERK` 两行；**且「读复用 `mch:pay:order:view`（店长、店员模板已有）」在库里不成立** ——
+  从没有迁移把它写进 `mch_role`，线上店长、店员调 `/biz/payment/orders` 与本组列表都是 70006（`BizRoleSeedTest` 在基线上就为此红）。
+  V637 一并补上 `mch:pay:order:view`。**影响**：所有用预置模板的店长、店员从此能看本店收款订单列表与外部记录列表（与 `BizPerms` 的声明一致）。
 
 ### 明确不受影响的
 
@@ -121,8 +125,8 @@
 
 ### 契约变更
 
-- 端点（4 条新，全部在 trade 域 `BizOfflineRecordController`）：见下方「关键接口」。
-- 库表：新增 `ord_offline_record`、`ord_offline_record_event`；迁移 `V6xx__ord_offline_record.sql`（号待定，当前最大 `V635`）。
+- 端点（5 条新，全部在 trade 域 `BizOfflineRecordController`）：见下方「关键接口」；第 5 条汇总是「已拍板」D6-B 加的。
+- 库表：新增 `ord_offline_record`、`ord_offline_record_event`；迁移 `V637__ord_offline_record.sql`（含预置角色模板追加，见 §1）。
 - 权限码：新增 `mch:pay:offline:record`（记一笔）、`mch:pay:offline:manage`（更正 / 作废）；读复用 `mch:pay:order:view`。
 - i18n：后端无；`BizPerms.LABELS` 两条中文说明（随 `/biz/roles` 下发）。
 - 配置项：无。
@@ -270,6 +274,23 @@ App 收款 Tab **已经**在客户端把支付单与外部记录合并显示（`
 | 响应 | `OfflineRecordView`（`status=VOIDED`，`history` 追加 `VOID`） |
 | 错误 | 10404 不存在或不是本店；10409 已作废，或版本不符；70006 |
 
+#### 5. `GET /biz/payment/offline-records/summary` —— 合计（已拍板 D6-B）
+
+| 项 | 内容 |
+|---|---|
+| 权限 | `mch:pay:order:view`（与列表同码：列表本来就逐行带金额） |
+| 查询串 | `from?`、`to?`（同列表，跨度 `to − from ≤ 93`） |
+| 响应 | `{ from, to, currency, count, amountMinor }`：区间内（按 `receivedAt` 落日期）**未作废**记录的笔数与合计。报表页单列「外部記帳（商家自報）」，不并入渠道营业额 |
+| 错误 | 10400 日期格式 / 跨度；70006 |
+
+#### 已拍板各条落到契约上的地方
+
+- **D3-D**：列表加 `orderNo?`（精确匹配），订单详情据此判断「已有外部記錄」、隐藏 / 置灰「記一筆」。C（记完再问是否标已付、调已有 `confirm-offline-pay`）全在 App 侧，后端不改。
+- **D7-C**：更正 / 作废只在「记账时刻（`recordedAt`）不早于门店市场时区今天 − 31 天 00:00」时允许；越界回 **10409**（状态不允许，不是参数错）。App 按 `recordedAt` 自己判断、超窗隐藏按钮。
+- **D10-B**：更正请求体加 `receivedAt?`（不传 = 不改；上下界同接口 1）；事件表加 `from_received_at` / `to_received_at`，`history[]` 加 `fromReceivedAt` / `toReceivedAt`（只在这一步改了实收时间时有值）。「新值与旧值完全相同」把实收时间也算进去。
+- **D4-A / D9**：`receivedAt` 31 天窗口、备注 / 原因 ≤ 100 字，照接口 1–4 原文。
+- 实收时间按**秒**存与回显（响应格式 `2026-11-08T08:12:00+08:00`），App 原样带回更正时不会因毫秒差被当成「改了」。
+
 **不提供**：删除接口（作废即终态，行不删）；详情接口（App 没调，列表带全）；「把外部记录转成支付单 / 退款」的任何入口。
 
 ### 与 App 建议契约的差异
@@ -291,7 +312,7 @@ App 收款 Tab **已经**在客户端把支付单与外部记录合并显示（`
 
 ### 库表与迁移
 
-`backend/shop-app/src/main/resources/db/migration/V6xx__ord_offline_record.sql`（号待定）：
+`backend/shop-app/src/main/resources/db/migration/V637__ord_offline_record.sql`（DDL 摘要；`COMMENT` 实际用英文，末尾另有 `mch_role` 追加，见 §1）：
 
 ```sql
 CREATE TABLE ord_offline_record (
@@ -332,6 +353,8 @@ CREATE TABLE ord_offline_record_event (
     to_amount_minor   BIGINT       NULL,
     from_method       VARCHAR(16)  NULL,
     to_method         VARCHAR(16)  NULL,
+    from_received_at  DATETIME(3)  NULL,              -- 已拍板 D10-B：更正改了实收时间才有
+    to_received_at    DATETIME(3)  NULL,
     reason            VARCHAR(400) NULL,
     actor_no          VARCHAR(64)  COLLATE utf8mb4_bin NOT NULL,
     occurred_at       DATETIME(3)  NOT NULL,
@@ -356,7 +379,181 @@ CREATE TABLE ord_offline_record_event (
 | 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/OfflineRecordMappers.java` | `RecordMapper`（含 `lockByNo` 的 `FOR UPDATE`）、`EventMapper`；照 `CheckoutMappers` 的收拢写法 |
 | 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/BizKey.java` | 加 `OFFLINE_RECORD = "OFR"`（前缀唯一性有守卫） |
 | 修改 | `backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java` | 加 `PAY_OFFLINE_RECORD`、`PAY_OFFLINE_MANAGE`；`LABELS` 加「记录 App 外收款」「更正与作废 App 外收款」；`MANAGER` 加两个，`CLERK` 加 `PAY_OFFLINE_RECORD` |
-| 新增 | `backend/shop-app/src/main/resources/db/migration/V6xx__ord_offline_record.sql` | 上面两张表 |
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V637__ord_offline_record.sql` | 上面两张表 + 预置角色模板追加 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/CashStepPolicy.java` | 「金额与小数位」要的那张 trade 域小表（TWD 现金小数位 0） |
+| 生成 | `backend/shop-app/src/test/resources/schema-test.sql` | `backend/scripts/gen-test-schema.py` 重放迁移 |
+| 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java` | 判权表加四行 |
+| 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/StoreScopedDailyRoutesFlowTest.java` | 加新模型门店访问外部记录的用例（锁住路由覆盖，见 AC9） |
+| 新增 | `backend/shop-app/src/test/java/ai/neargo/shop/scenario/BizOfflineRecordFlowTest.java` | §5 的场景用例 |
+| 生成 | `docs/api/openapi-b.yaml`、`docs/api/API清单.md`、`docs/api/API详情-B端.md` | 用仓库生成器重新生成（`b-app/scripts/gen-openapi.mjs` 那一套），不手改 |
+| 不改 | `ShopStoreMemberRoutes.java`、`CommerceRoutePolicy.java`、`backend/pay/**`、`payclient/**` | 见 §1 |
+
+App 侧（ai-shop-bapp，不在本仓库）：按「差异」表改 `features/collect/offline_records.dart`，冻结后从 `features/v5/contracts.dart` 删 `^/biz/payment/offline-records`（与删 `requestId` 同一版本，见 §2），交接文档附录 B 删一行。评审列的其余 App 改动（收款 Tab 两路游标归并、更正 / 作废按钮按 `mch:pay:offline:manage` 显示、店员看到「請店長更正」提示、10409 后重读）不需要后端再改什么，以评审第三组二 §1 为准。
+
+---
+
+## §5 对账三 · 实现 → 需求（测试）
+
+先写测试跑出红（控制器不存在：28 条全错，`code` 为空），再实现到绿。命令：
+`cd backend && mvn -o -pl shop-app -am test -Dtest=BizOfflineRecordFlowTest,StoreScopedDailyRoutesFlowTest,...`（2026-11-08，提交 `3ef450a2d`）。
+
+| AC | 测试方法 | 跑过 | 消融验证 |
+|---|---|---|---|
+| AC1 | `BizOfflineRecordFlowTest#clerk_records_cash_receipt_and_gets_full_record` | ✓ | — |
+| AC1 / AC10 | `BizOfflineRecordFlowTest#record_rejects_currency_other_than_store_market` | ✓ | — |
+| AC1 | `BizOfflineRecordFlowTest#record_rejects_unknown_field_and_non_positive_amount`（含 `requestId`、`storeNo`、旧方式码 `POS`、缺幂等键、备注 101 字） | ✓ | — |
+| AC1 | `BizOfflineRecordFlowTest#record_rejects_received_at_in_future_or_older_than_31_days` | ✓ | — |
+| AC1 | `BizOfflineRecordFlowTest#record_with_order_of_another_store_is_not_found` | ✓ | — |
+| AC1 | `BizOfflineRecordFlowTest#received_at_lower_bound_uses_store_market_zone` | ✓ | — |
+| AC2 | `BizOfflineRecordFlowTest#same_idempotency_key_same_body_returns_first_record` | ✓ | — |
+| AC2 | `BizOfflineRecordFlowTest#same_idempotency_key_different_body_conflicts` | ✓ | — |
+| AC2 | `BizOfflineRecordFlowTest#concurrent_same_key_creates_one_row`（4 路并发同键） | ✓ | — |
+| AC3 | `BizOfflineRecordFlowTest#offline_record_absent_from_payment_orders_summary_and_statement`（另核 `pay_order` / `pay_refund` 行数不变） | ✓ | — |
+| AC3 | `BizOfflineRecordFlowTest#refund_by_offline_record_no_is_not_found`（实为 70083，见 §6 偏差 4） | ✓ | — |
+| AC3 | `BizOfflineRecordFlowTest#record_with_order_no_leaves_order_status_unchanged` | ✓ | — |
+| AC4 | `BizOfflineRecordFlowTest#list_shows_only_current_store_newest_first_with_cursor` | ✓ | — |
+| AC4 | `BizOfflineRecordFlowTest#list_filters_by_received_date_method_and_status` | ✓ | — |
+| AC4 | `BizOfflineRecordFlowTest#list_range_to_minus_from_93_ok_94_rejected` | ✓ | — |
+| AC4 | `BizOfflineRecordFlowTest#list_q_matches_order_no_or_note`（含 `%` 不当通配） | ✓ | — |
+| D3-D | `BizOfflineRecordFlowTest#list_filters_by_order_no` | ✓ | — |
+| D6-B | `BizOfflineRecordFlowTest#summary_counts_recorded_only` | ✓ | — |
+| AC5 / D10-B | `BizOfflineRecordFlowTest#manager_corrects_amount_and_method_history_keeps_old_values`（含改实收时间） | ✓ | — |
+| AC5 | `BizOfflineRecordFlowTest#correct_requires_reason_and_a_real_change` | ✓ | — |
+| AC6 | `BizOfflineRecordFlowTest#manager_voids_record_row_kept_with_void_event` | ✓ | — |
+| AC7 | `BizOfflineRecordFlowTest#correct_or_void_after_void_conflicts` | ✓ | — |
+| AC7 | `BizOfflineRecordFlowTest#stale_expected_version_conflicts` | ✓ | — |
+| AC7 | `BizOfflineRecordFlowTest#record_of_another_store_is_not_found` | ✓ | — |
+| D7-C | `BizOfflineRecordFlowTest#correct_or_void_outside_31_day_window_conflicts` | ✓ | — |
+| AC8 | `BizOfflineRecordFlowTest#clerk_cannot_correct_or_void`（真实店员 / 店长令牌，判权读 `mch_role`） | ✓ | — |
+| AC8 | `BizEndpointPermTest`（判权表 4 行；`everyBizEndpointHasADecision` 仍红，清单与基线逐条相同、不含本组端点） | ✓ | — |
+| AC8 | `BizRoleSeedTest#seedMatchesBizPerms`（CLERK 对齐；MANAGER 仍差基线就缺的 `mch:pay:collect`） | 红（基线同） | — |
+| AC8 | `MerchantRoleFlowTest#assignablePermsComeFromBackend`（期望集加两码；仍红，多出项与基线相同、不含新码） | 红（基线同） | — |
+| AC9 | `StoreScopedDailyRoutesFlowTest#new_model_store_member_reaches_offline_records` | ✓ | — |
+| AC10 | `BizOfflineRecordFlowTest#twd_store_records_480_dollars_as_48000_minor` | ✓ | — |
+| AC10 | `BizOfflineRecordFlowTest#twd_amount_not_whole_dollar_rejected_on_record_and_correct` | ✓ | 未做（按 java.md §八不强制） |
+
+真实输出（surefire 摘要）：
+
+```
+Tests run: 28, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.BizOfflineRecordFlowTest
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.commercebridge.StoreScopedDailyRoutesFlowTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.BizPaymentLinkFlowTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.infra.SchemaDriftTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.ControllerProfileTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.FunctionPointPermAlignmentTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.arch.CrossDomainWriteConventionTest
+Tests run: 12, Failures: 1 -- in ai.neargo.shop.arch.BizEndpointPermTest        （everyBizEndpointHasADecision，基线同 15 条）
+Tests run: 22, Failures: 5, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest （基线同 5 条，报告不含本次文件）
+Tests run: 3, Failures: 1 -- in ai.neargo.shop.arch.BizKeyConventionTest         （基线同 5 处，不含本次文件）
+Tests run: 3, Failures: 1 -- in ai.neargo.shop.arch.BizRoleSeedTest              （基线即红；MANAGER 只差 mch:pay:collect）
+Tests run: 10, Failures: 1 -- in ai.neargo.shop.scenario.MerchantRoleFlowTest    （assignablePermsComeFromBackend，基线即红）
+Tests run: 1, Failures: 1 -- in ai.neargo.shop.arch.MapperSmokeTest             （基线同 10 个 mapper；总数 450 → 452）
+Tests run: 1, Failures: 1 -- in ai.neargo.shop.arch.SchemaParityTest            （基线即红；两侧都多了本次两张表，差异不变）
+Tests run: 2, Failures: 1 -- in ai.neargo.shop.arch.TableHasProducerTest        （基线同 4 张 mch_resource_occupation*）
+```
+
+端与生成物：`b-app`、`c-app` `npx vue-tsc --noEmit` 均无输出退出 0；`node scripts/check-generated-docs.mjs --check` →「26 个生成器的产物都是最新的」；
+`packages/shared` vitest `api-path-naming`、`type-alignment` 11/11；`check-app-backend-orphan`、`check-sql-portability`、`check-controller-cohesion` 与基线一致。
+
+## 已拍板各条落到契约上的地方
+
+- **D3-D**：列表加 `orderNo?`（精确匹配），订单详情据此判断「已有外部記錄」、隐藏 / 置灰「記一筆」。C（记完再问是否标已付、调已有 `confirm-offline-pay`）全在 App 侧，后端不改。
+- **D7-C**：更正 / 作废只在「记账时刻（`recordedAt`）不早于门店市场时区今天 − 31 天 00:00」时允许；越界回 **10409**（状态不允许，不是参数错）。App 按 `recordedAt` 自己判断、超窗隐藏按钮。
+- **D10-B**：更正请求体加 `receivedAt?`（不传 = 不改；上下界同接口 1）；事件表加 `from_received_at` / `to_received_at`，`history[]` 加 `fromReceivedAt` / `toReceivedAt`（只在这一步改了实收时间时有值）。「新值与旧值完全相同」把实收时间也算进去。
+- **D4-A / D9**：`receivedAt` 31 天窗口、备注 / 原因 ≤ 100 字，照接口 1–4 原文。
+- 实收时间按**秒**存与回显（响应格式 `2026-11-08T08:12:00+08:00`），App 原样带回更正时不会因毫秒差被当成「改了」。
+
+**不提供**：删除接口（作废即终态，行不删）；详情接口（App 没调，列表带全）；「把外部记录转成支付单 / 退款」的任何入口。
+
+### 与 App 建议契约的差异
+
+| 项 | App 建议（mock） | 本文最终建议 | 理由 | App 要改什么 |
+|---|---|---|---|---|
+| 金额 | `amount{currency, minor}`，`minor` 是字符串 | `amountMinor`(数字) + `currency` 平铺 | 与同一 Tab 的 `/biz/payment/*` 全部接口一致（交接文档 §7 待决第 1 条要求定稿时统一）；台湾 TWD 用 `long` 足够，不需要字符串 | 改序列化与模型 |
+| 幂等 | 请求体 `requestId`（每次调用按微秒生成，重试也换新值，等于没有幂等） | 请求头 `Idempotency-Key`；请求体再带 `requestId` → 10400 | 仓库线下实收接口（`BizOfflineReceiptController`、`BizStoredValuePlanRechargeController`）都用这个头；§3 两种都允许，选已有的那种。不兼容旧字段的理由与上线顺序见「未知字段与 `requestId` 的过渡」 | 请求体删 `requestId`；打开表单时生成一次键（`Uuid().v4()`），重送沿用；**与删 `contracts.dart` 拦截同一版本** |
+| 金额小数位 | `offlineMinor` 写死 ×100 | 按门店 `currencyScale`（TWD = 2）解释，TWD 只收整元 | 见「金额与小数位」 | 换算改用 `minorOf` / `money`；TWD 输入框禁小数 |
+| `orderNo` | 可手填任意号 | 只认本店子单号 | 见接口 1「`orderNo` 是什么」 | 10404 时提示可不填订单号 |
+| 列表搜索 | 客户端过滤已加载记录 | 后端 `q` | 分页后客户端只能搜已加载页 | 搜索框改传 `q` |
+| 方式枚举 | `CASH / POS / TRANSFER / OTHER` | `CASH / BANK_TRANSFER / EXTERNAL_POS / OTHER` | `POS` 在 `/biz/payment/orders` 的 `source` 里已表示平台自己的 POS 收款，同名会混；`BANK_TRANSFER` 与 `OfflineReceiptReq` 的已有码一致 | 改两个枚举值 |
+| 列表返回 | 直接数组，无筛选 | `{items, nextCursor}` + `from/to/method/status/cursor/size` | 与 `/biz/payment/orders`、`/biz/payment/links` 同形（App 已有解析）；不分页的话一家现金店一个月就上千行 | 改列表读取与分页 |
+| 留痕 | `history[{at, by, text}]`，文字由服务端给 | `history[{at, by, byName, action, reason, from*/to*}]` | 服务端拼文字就得按 `Accept-Language` 本地化三语；给结构化事件由 App 渲染，与 `timeline.kind` 一致 | 按 `action` 渲染 |
+| 记录人 | `recordedBy`（显示用） | `recordedBy`（用户号）+ `recordedByName` | 号是稳定身份，名字会变；与 `/biz/payment/links` 的 `operatorNo` 同做法 | 显示改读 `recordedByName` |
+| 实收时间 | 无（只有 `recordedAt`） | 加 `receivedAt?` | 「昨天的现金今天补记」很常见，不加的话按日期看的列表就错天；「已拍板」D4 | 表单加一个可选时间 |
+| 并发保护 | 无 | 更正 / 作废带 `expectedVersion` | 店主与店长同时改同一条，后到的会盖掉先到的而不自知；10409 后 App 已有「重读再试」 | 带上列表里的 `version` |
+| 更正的币种 | 随 `amount` 一起 | 必传且必须等于原记录币种 | 不允许借更正换币种 | 无（照传） |
+
+### 库表与迁移
+
+`backend/shop-app/src/main/resources/db/migration/V637__ord_offline_record.sql`（DDL 摘要；`COMMENT` 实际用英文，末尾另有 `mch_role` 追加，见 §1）：
+
+```sql
+CREATE TABLE ord_offline_record (
+    id               BIGINT       NOT NULL AUTO_INCREMENT,
+    tenant_no        VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    record_no        VARCHAR(64)  COLLATE utf8mb4_bin NOT NULL,
+    entity_no        VARCHAR(32)  COLLATE utf8mb4_bin NOT NULL,
+    store_no         VARCHAR(32)  COLLATE utf8mb4_bin NOT NULL,
+    amount_minor     BIGINT       NOT NULL,
+    currency         CHAR(3)      NOT NULL,
+    method           VARCHAR(16)  NOT NULL,             -- CASH / BANK_TRANSFER / EXTERNAL_POS / OTHER
+    order_no         VARCHAR(64)  COLLATE utf8mb4_bin NULL,
+    note             VARCHAR(400) NULL,
+    received_at      DATETIME(3)  NOT NULL,             -- UTC
+    status           VARCHAR(16)  NOT NULL,             -- RECORDED / VOIDED
+    corrected        TINYINT      NOT NULL DEFAULT 0,
+    recorded_by      VARCHAR(64)  COLLATE utf8mb4_bin NOT NULL,
+    idem_key_hash    CHAR(64)     NOT NULL,             -- SHA-256(Idempotency-Key)，原文不落库
+    request_hash     CHAR(64)     NOT NULL,             -- 首次请求体摘要，判「同键不同体」
+    created_at       DATETIME(3)  NOT NULL,
+    created_by       VARCHAR(64)  NULL,
+    updated_at       DATETIME(3)  NOT NULL,
+    updated_by       VARCHAR(64)  NULL,
+    version          BIGINT       NOT NULL DEFAULT 1,
+    deleted          INT          NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_offline_record_no   (tenant_no, record_no),
+    UNIQUE KEY uk_offline_record_idem (tenant_no, entity_no, store_no, idem_key_hash),
+    KEY idx_offline_record_store_time (tenant_no, store_no, received_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商家自报的 App 外收款：不进支付台账、不进通道对账、不可退款';
+
+CREATE TABLE ord_offline_record_event (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    tenant_no         VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    record_no         VARCHAR(64)  COLLATE utf8mb4_bin NOT NULL,
+    action            VARCHAR(16)  NOT NULL,            -- CREATE / CORRECT / VOID
+    from_amount_minor BIGINT       NULL,
+    to_amount_minor   BIGINT       NULL,
+    from_method       VARCHAR(16)  NULL,
+    to_method         VARCHAR(16)  NULL,
+    from_received_at  DATETIME(3)  NULL,              -- 已拍板 D10-B：更正改了实收时间才有
+    to_received_at    DATETIME(3)  NULL,
+    reason            VARCHAR(400) NULL,
+    actor_no          VARCHAR(64)  COLLATE utf8mb4_bin NOT NULL,
+    occurred_at       DATETIME(3)  NOT NULL,
+    created_at        DATETIME(3)  NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_offline_record_event (tenant_no, record_no, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='外部收款记录的留痕：只增不改';
+```
+
+- 事件表**只插不改**：记录表保存当前值，事件表保存每一步的前后值；`deleted` 列只为与仓库实体基类对齐，业务上不软删。
+- 写迁移前查 `backend/known-sql-dialect.txt` 的守卫规则（pre-push 的 SQL 方言闸门），场景测试跑在 H2 上，`COLLATE` / `COMMENT` 写法照 `V600__checkout_payment_operation.sql`。
+- 166 应用库账号无建表权限：交接时标明「带 DDL，需 root 先执行」。
+
+### 模块设计
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizOfflineRecordController.java` | 四个端点；`@Profile("api")`；请求 record 带 `@JsonAnySetter` 拒未知字段；只取 `BizContext` 的门店与主体 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/OfflineRecordService.java` | 接口 + `RecordCmd` / `CorrectCmd` / `VoidCmd` / `ListQuery` / `OfflineRecordView` / `HistoryView` |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineRecordServiceImpl.java` | 校验、取币种、幂等、锁行比版本、写事件；`orderNo` 只校验归属本店 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOfflineRecord.java`、`OrdOfflineRecordEvent.java` | 两张表的实体 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/OfflineRecordMappers.java` | `RecordMapper`（含 `lockByNo` 的 `FOR UPDATE`）、`EventMapper`；照 `CheckoutMappers` 的收拢写法 |
+| 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/BizKey.java` | 加 `OFFLINE_RECORD = "OFR"`（前缀唯一性有守卫） |
+| 修改 | `backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java` | 加 `PAY_OFFLINE_RECORD`、`PAY_OFFLINE_MANAGE`；`LABELS` 加「记录 App 外收款」「更正与作废 App 外收款」；`MANAGER` 加两个，`CLERK` 加 `PAY_OFFLINE_RECORD` |
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V637__ord_offline_record.sql` | 上面两张表 + 预置角色模板追加 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/CashStepPolicy.java` | 「金额与小数位」要的那张 trade 域小表（TWD 现金小数位 0） |
+| 生成 | `backend/shop-app/src/test/resources/schema-test.sql` | `backend/scripts/gen-test-schema.py` 重放迁移 |
 | 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java` | 判权表加四行 |
 | 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/commercebridge/StoreScopedDailyRoutesFlowTest.java` | 加新模型门店访问外部记录的用例（锁住路由覆盖，见 AC9） |
 | 新增 | `backend/shop-app/src/test/java/ai/neargo/shop/scenario/BizOfflineRecordFlowTest.java` | §5 的场景用例 |
@@ -437,7 +634,61 @@ D3、D6 两条评审列为最需要先定（评审开头表第 7 行），D10 �
 
 ## §6 对账二 · 设计 → 实现
 
-未实现，留空（实现后贴 `git show --stat`，与 §2 模块设计逐行比，写偏差说明）。
+实现提交 `3ef450a2d`（`git show --stat`）：
+
+```
+ b-app/scripts/gen-openapi.mjs                      |   8 +-
+ b-app/src/api/endpoints.ts                         |   6 +
+ b-app/src/api/mocks/pay.ts                         |  29 +-
+ b-app/src/api/pay-http.ts                          |   5 +
+ b-app/src/api/pay.ts                               |  94 +++
+ b-app/src/api/requests.ts                          |  62 ++
+ b-app/src/api/response-types.ts                    |   5 +-
+ .../db/migration/V637__ord_offline_record.sql      |  64 ++
+ .../ai/neargo/shop/arch/BizEndpointPermTest.java   |   5 +
+ .../StoreScopedDailyRoutesFlowTest.java            |  28 +
+ .../shop/scenario/BizOfflineRecordFlowTest.java    | 675 +++++++++++++++++++++
+ .../neargo/shop/scenario/MerchantRoleFlowTest.java |   4 +-
+ .../shop-app/src/test/resources/schema-test.sql    |  53 ++
+ .../main/java/ai/neargo/shop/auth/BizPerms.java    |  13 +-
+ .../main/java/ai/neargo/shop/common/BizKey.java    |   2 +
+ .../trade/api/biz/BizOfflineRecordController.java  | 166 +++++
+ .../neargo/shop/trade/entity/OrdOfflineRecord.java |  66 ++
+ .../shop/trade/entity/OrdOfflineRecordEvent.java   |  41 ++
+ .../shop/trade/mapper/OfflineRecordMappers.java    |  44 ++
+ .../neargo/shop/trade/policy/CashStepPolicy.java   |  38 ++
+ .../shop/trade/service/OfflineRecordService.java   | 110 ++++
+ .../service/impl/OfflineRecordServiceImpl.java     | 463 ++++++++++++++
+ "docs/api/API\346\270\205\345\215\225.md"          |   9 +-
+ .../API\350\257\246\346\203\205-B\347\253\257.md"  | 195 ++++++
+ docs/api/openapi-b.yaml                            | 483 +++++++++++++++
+ ...252\214\346\224\266\346\270\205\345\215\225.md" |   3 +-
+ ...31\220\347\240\201-\351\241\265\351\235\242.md" |  43 +-
+ ...30\265-\346\214\211\350\247\222\350\211\262.md" |  20 +-
+ docs/technical/reference/glossary.json             | 104 +++-
+ ...214\211\344\270\232\345\212\241\345\237\237.md" |  10 +-
+ ...275\223\344\270\216\345\255\227\345\205\270.md" |  37 +-
+ ...210\206\345\261\202\346\270\205\345\215\225.md" |   5 +-
+ ...272\223\350\241\250\346\270\205\345\215\225.md" |   6 +-
+ ...270\270\351\207\217\346\270\205\345\215\225.md" |   8 +-
+ known-app-backend-orphan.txt                       |   6 +
+ 35 files changed, 2852 insertions(+), 58 deletions(-)
+```
+
+与 §2 模块设计逐行比：§2 列的新增 / 修改文件全部落地；`docs/api/*` 与 `docs/technical/reference/*` 是生成物（按 `check-generated-docs` 的名单逐个重跑）。
+多出、或与设计不同的：
+
+1. **迁移里追加预置角色模板（含 `mch:pay:order:view`）**。设计以为改 `BizPerms.ROLE_PERMS` 即可，实际判权读库里 `mch_role.perms`。
+   V637 末尾给 `MANAGER` 追加两码、`CLERK` 追加 `mch:pay:offline:record`；并补上从没进过库的 `mch:pay:order:view`（`MANAGER`、`CLERK`），
+   否则 AC8「店员能看」在真实令牌下是 70006。这一条同时改变了预置店长 / 店员对 `/biz/payment/orders*` 的可见性（与 `BizPerms` 声明一致）。`mch:pay:collect` 的同类缺口不在本次范围，未补。
+2. **新增 `trade/policy/CashStepPolicy.java`**：「金额与小数位」要求的 trade 域小表，§2 模块表原先没列。
+3. **b-app 契约只登记了 3 条**（记一笔、列表、汇总）。更正 / 作废的路径是「复数资源 + id」，登进 `endpoints.ts` 会撞 `/biz` 单数约定（`known-plural-paths` 两份基线只准变短）；
+   照 `/biz/payment/links/*/void` 的先例，登记进 `known-app-backend-orphan.txt`（出口在 Flutter 商户端）。请求体类型 `OfflineRecordCorrectReq` / `OfflineRecordVoidReq` 仍在 `requests.ts`、进了 `openapi-b.yaml` 的 schema。
+4. **AC3 退款查不到回的是支付域自己的 70083「支付单不存在」**，不是 10404。语义相同（按 `payOrderNo` 查不到、不产生退款），测试按实际码断言。
+5. **`BizEndpointPermTest` 判权表按路径一行**：`/biz/payment/offline-records` 的 GET（`PAY_ORDER_VIEW`）与 POST（`PAY_OFFLINE_RECORD`）只能登一个码，登的是 POST 那个；注解上两者各自正确。
+6. **幂等摘要包含操作人**：同一键换了操作人也算「不同体」→ 10409（设计只说「请求体」）。
+7. **时间存储**：`received_at`、事件 `occurred_at` 存 UTC；`created_at` 沿仓库审计填充用 JVM 本地时间（`recordedAt` 从它换算）。实收时间按秒存。
+8. 已拍板 D3-D / D6-B / D7-C / D10-B 的契约增量写进 §2「关键接口」第 5 条与「已拍板各条落到契约上的地方」。
 
 ## §7 确认与完成
 
@@ -446,3 +697,4 @@ D3、D6 两条评审列为最需要先定（评审开头表第 7 行），D10 �
 | 2026-11-08 | 草稿；待「已拍板」 |
 | 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：写明 TWD `currencyScale` = 2（NT$480 存 `48000`）与整元规则（§1、§2「金额与小数位」、AC10）；写清拒收旧字段 `requestId` 与上线顺序（§2「未知字段与 `requestId` 的过渡」）；改正「App 收款列表不混入外部记录」的说法（AC3、§2「与收款 Tab 的合并」）；查询跨度改为与 `/biz/payment/orders`、资金草案同一条 `to − from ≤ 93` 并写清数法（§2「查询跨度」；原写「≤ 92 天」）；列表加 `q`；写明 `orderNo` 只认本店子单号、`receivedAt` 下限按门店时区、10409 的区分方式；§5 加对应用例；「待决」改为「已拍板」，各条补后果，D3 / D6 / D7 按评审改建议，新增 D10。状态仍为草稿 |
 | 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |
+| 2026-11-08 | 实现（`3ef450a2d`）：五个端点、V637、两个权限码与预置模板、b-app 契约与生成物；§5 测试已跑，§6 写明 8 条偏差。状态改为已实现 |
