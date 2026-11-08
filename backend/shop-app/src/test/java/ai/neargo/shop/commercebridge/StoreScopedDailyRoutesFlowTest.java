@@ -124,6 +124,50 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ App 第二批（门店资料 / 方案 / 评价 / 列印 / 通知 / 自提 / 进销存 / 会员营销 / 团购 / 平台活动）读接口在新模型门店上能进门店（2026-11-08 台北早餐 166 上 70006）")
+    void appSecondBatchReadsPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020110");
+        String s = "/biz/store/" + o[1] + "/";
+        for (String path : new String[] {
+                "/biz/store", "/biz/store/share-kit", "/biz/store/poster", "/biz/store/qrcode", "/biz/plan",
+                "/biz/review", "/biz/print/printers", "/biz/print/health", "/biz/print/jobs", "/biz/print/scene-policies",
+                "/biz/notify/setting", "/biz/pickup/overview", "/biz/pickup/orders", "/biz/pickup-points/candidates",
+                "/biz/inventory/summary", "/biz/inventory/balances", "/biz/inventory/ledger",
+                "/biz/inventory/category-setting", "/biz/inventory/report/monthly",
+                s + "offline-sale", s + "stock-overview", s + "stock-alignment", s + "stock-reconcile/records",
+                "/biz/members", "/biz/members/stats", "/biz/member-tags", "/biz/member-segments", "/biz/member-settings",
+                "/biz/member-reach/task", "/biz/coupons", "/biz/coupon-issues", "/biz/points/store-account",
+                "/biz/points/store-statements", "/biz/groups", "/biz/group/pickups", "/biz/group-request/pool",
+                "/biz/period", "/biz/platform-activity", "/biz/activity-presets", "/biz/marketing-summary"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ App 第二批写接口（门店公告、改店名、评价回复、加打印机）在新模型门店上能进门店（不是 70006）")
+    void appSecondBatchWritesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020111");
+        for (String path : new String[] {"/biz/store/announcement", "/biz/store/" + o[1] + "/rename",
+                "/biz/review/R1/reply", "/biz/print/printers", "/biz/coupons", "/biz/member-tags"}) {
+            String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertNotEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 逐条登记、不放开兜底：本店下未登记的子路径仍然 70006")
+    void unregisteredStoreSubpathStillDenied() throws Exception {
+        String[] o = newModelOwner("15965020112");
+        for (String path : new String[] {"/biz/store/" + o[1] + "/not-registered", "/biz/store/not-registered"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+    }
+
+    @Test
     @DisplayName("★★ 商家在 App 申请支付服务（POST）在新模型门店上能进门店（内嵌部署回依赖不可用，不是 70006）")
     void payServiceApplyPassesAdmission() throws Exception {
         String[] o = newModelOwner("15965020108");

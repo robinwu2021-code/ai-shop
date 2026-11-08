@@ -1,6 +1,6 @@
 # TDD-账户登录与选店校验
 
-状态：第一步已实现（2026-11-05）；第二步（登录语义收口）为草稿
+状态：第一步已实现（2026-11-05）；第三步（App 第二批经营路由补登记）已实现（2026-11-08）；第二步（登录语义收口）为草稿
 档位：1（动了路由准入规则与拒绝时的下一步码，没有动表）
 关联：`docs/superpowers/specs/2026-11-03-commerce-portable-design.md` §164（未登记的受保护命名空间默认拒绝）；TDD-B端收款订单与商城接口对齐
 
@@ -13,6 +13,8 @@
 | A1 | 新模型（STORE_V1）门店的店主选了门店之后，商品、订单、主体、收款、售后等日常经营接口能用 | `ShopStoreMemberRoutes` 登记为 BOOTSTRAP 通道：令牌 + 该门店成员（`resolveStrict`）+ 接口自己的权限码（控制器 `@PreAuthorize`），不要求业务端权益 |
 | A2 | 没选门店时，告诉端上去选店，而不是「联系管理员」 | `ShopCommerceEndContextAdapter.select`：非账户通道、没带 `X-Store-No` → 70006 + `nextAction=SELECT_STORE` |
 | A3 | 默认拒绝不变：未登记的受保护路由（尤其 `/biz/stores/**` 新命名空间）照旧拒绝 | `CommerceRoutePolicy` 只多一个主机登记表，兜底仍是 DENY |
+| A4 | 新模型门店的店主选了门店之后，App 第二批功能（门店资料 / 方案、评价、列印、通知设置、自提、进销存、会员营销、优惠券 / 积分、团购 / 接龙、平台活动）的接口能进门店，不再 70006 | `ShopStoreMemberRoutes` 按功能族补登记（§2 第三步） |
+| A5 | 补登记不放开兜底：本店下未登记的子路径、`/biz/store/` 下未登记的裸路径仍然 70006；`/biz/store/{门店}/pay-setting` 仍走 END_PROTECTED | `/biz/store` 只登记裸路径和具名子路径，不登记 `/biz/store/.*` |
 
 ## §1 现状与根因
 
@@ -38,6 +40,20 @@
 | 修改 | `shop-app/.../commercebridge/ShopCommerceEndContextAdapter.java` | 用登记表构造策略；非账户通道、没选门店 → `SELECT_STORE` |
 | 新增 | `shop-app/src/test/.../commercebridge/StoreScopedDailyRoutesFlowTest.java` | 见 §5 |
 
+### 第三步（本次实现，2026-11-08）：App 第二批经营路由补登记
+
+现象：166 预发布联调，店主（`perms=['*']`）在新模型门店 台北早餐（ST261106T585CY14HG）上，`/biz/store`、`/biz/plan`、`/biz/review`、`/biz/print/*`、`/biz/notify/setting`、`/biz/pickup/*`、`/biz/inventory/summary`、`/biz/member-*`、`/biz/coupons`、`/biz/groups`、`/biz/period`、`/biz/platform-activity` 全部 `70006 / CONTACT_ADMIN`。根因同 §1：路由没登记，落到 DENY。
+
+- **端点 / 库表 / 权限码 / 配置**：都不变。只扩大「能进门店上下文」的路由范围，权限码仍由控制器的 `@PreAuthorize` 判。
+- **登记粒度**：功能族各自有独立前缀的，按族登记（与第一步的 `/biz/order(?:/.*)?` 同一写法）；`/biz/store` 不按族：
+  它下面还有 `/{门店}/pay-setting`（END_PROTECTED，要业务端权益），登记表在它之前匹配，整族登记会绕过权益检查。所以只登记裸路径、具名子路径和 `STORE + (offline-sale|stock-overview|stock-alignment|stock-reconcile|rename|status)`。
+- **方法**：只登记控制器真实存在的方法。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-app/.../commercebridge/ShopStoreMemberRoutes.java` | 补登记：门店资料与公告、方案、评价、列印、通知设置、自提与自提点、进销存（含本店线下销售 / 库存对齐 / 对账）、会员 / 标签 / 分群 / 设置 / 触达、优惠券与核销、门店积分、团购 / 接龙 / 报价、账期、平台活动与营销活动 |
+| 修改 | `shop-app/src/test/.../commercebridge/StoreScopedDailyRoutesFlowTest.java` | 见 §5 A4、A5 |
+
 ### 第二步（待用户确认）：登录语义收口
 
 用户要求「登录后一定要选择门店」。目前还有三处与此不一致：
@@ -59,9 +75,14 @@
 | A1 | `StoreScopedDailyRoutesFlowTest#selectedStoreOpensDailyRoutes`（goods、order?caller=RETAIL、entities、payment/collect-status、after-sale/worklist 均 code 0） | ✅ | 登记表换成空表 → 变红 ✅ |
 | A2 | `#noSelectionAsksToSelectStore`（不带 X-Store-No → 70006 + SELECT_STORE） | ✅ | |
 | A3 | `#unregisteredStillDenied`（`/biz/stores/{no}/not-registered` 仍 70006） | ✅ | |
+| A4 | `#appSecondBatchReadsPassAdmission`（40 个读接口均不是 70006）、`#appSecondBatchWritesPassAdmission`（6 个写接口均不是 70006） | ✅ | 补登记前两条均红：`/biz/store → 70006 CONTACT_ADMIN`、`/biz/store/announcement → 70006 CONTACT_ADMIN` |
+| A5 | `#unregisteredStoreSubpathStillDenied`（`/biz/store/{门店}/not-registered`、`/biz/store/not-registered` 仍 70006） | ✅ | |
+| 第三步回归（2026-11-08） | `StoreScopedDailyRoutesFlowTest` 10/10、`CommerceAccessSecurityFlowTest` 5（跳过 2）、`BizFoundationJourneyFlowTest` 7、`MallRecoveryRoutePolicyTest` 2 | ✅ | |
 | 回归 | `CommerceAccessSecurityFlowTest`（5，跳过 2）、`BizFoundationJourneyFlowTest` 7、`MallRecoveryRoutePolicyTest` 2；`BizPaymentOrdersFlowTest` 7、`BizRetailOrderDetailFlowTest` 3、`BizPayFlowTest` 7、`BizOrderFulfillFlowTest` 15 | ✅ | |
 
 ## §6 偏差
 
 - 登记表放在主机（shop-app），而不是写进商城 starter。starter 是可移植模块，不应知道主机有哪些经营接口；它只提供登记的入口。
 - 登记表只决定能不能进入门店上下文，权限码仍由控制器判断。这样同一个权限码不会在两处各写一份。
+- 第三步：A4 的测试只断言「不是 70006」（能进门店上下文），不断言业务成功。各接口的业务结果由它们自己的测试覆盖；空请求体的写接口回参数错误是预期的。
+- 第三步：`/biz/plan/trial` 按 App 实际调用一并登记。试用写的是旧套餐，与新模型门店的业务端订阅是否冲突，由控制器自己的权限码和业务校验把关，路由层不判断。
