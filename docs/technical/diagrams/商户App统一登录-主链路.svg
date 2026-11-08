@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="13">
+  <title>商户 App 统一登录主链路（草案）</title>
+  <desc>左列是登录前：验证码或密码先换一张 5 分钟一次性票据，列出这个人能进的身份；零个进新开商户，一个直接进入，多个让用户选。进入时按身份签会话：店主与新开商户签个人账号会话（USR），员工签员工会话（MCH）。右列是登录后：已登录的人凭当前会话取一张换身份票据，进入新身份后旧会话作废。灰框是后端已有组件，蓝框是本 TDD 新增。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="960" height="470" fill="#ffffff"/>
+  <text x="24" y="30" font-size="16" font-weight="600" fill="#0f172a">商户 App 统一登录主链路（草案）</text>
+  <text x="24" y="50" fill="#64748b">灰 = 后端已有　蓝 = 本 TDD 新增</text>
+
+  <!-- left column: before login -->
+  <rect x="24" y="72" width="250" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="36" y="94" fill="#0f172a">发码（已有）</text>
+  <text x="36" y="113" fill="#475569" font-size="12">/biz/auth/otp/send · email-otp/send</text>
+
+  <rect x="24" y="150" width="250" height="64" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="36" y="172" fill="#0f172a">POST /biz/auth/identities</text>
+  <text x="36" y="191" fill="#475569" font-size="12">验码 / 验密码，不建账号、不签会话</text>
+  <text x="36" y="207" fill="#475569" font-size="12">→ ticket + identities[]</text>
+
+  <rect x="24" y="244" width="76" height="46" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="34" y="264" fill="#0f172a">0 个</text>
+  <text x="34" y="281" fill="#475569" font-size="12">NEW_OWNER</text>
+  <rect x="111" y="244" width="76" height="46" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="121" y="264" fill="#0f172a">1 个</text>
+  <text x="121" y="281" fill="#475569" font-size="12">直接进入</text>
+  <rect x="198" y="244" width="76" height="46" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="208" y="264" fill="#0f172a">多个</text>
+  <text x="208" y="281" fill="#475569" font-size="12">用户选</text>
+
+  <rect x="24" y="320" width="250" height="56" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="36" y="342" fill="#0f172a">POST /biz/auth/identities/enter</text>
+  <text x="36" y="361" fill="#475569" font-size="12">ticket + identityNo → token, merchant</text>
+
+  <line x1="149" y1="124" x2="149" y2="148" stroke="#475569" marker-end="url(#a)"/>
+  <line x1="62" y1="214" x2="62" y2="242" stroke="#475569" marker-end="url(#a)"/>
+  <line x1="149" y1="214" x2="149" y2="242" stroke="#475569" marker-end="url(#a)"/>
+  <line x1="236" y1="214" x2="236" y2="242" stroke="#475569" marker-end="url(#a)"/>
+  <line x1="149" y1="290" x2="149" y2="318" stroke="#475569" marker-end="url(#a)"/>
+
+  <!-- middle: session issuance -->
+  <rect x="340" y="300" width="270" height="96" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="352" y="322" fill="#0f172a">签会话（已有组件）</text>
+  <text x="352" y="342" fill="#475569" font-size="12">OWNER / NEW_OWNER → USR 会话（user_no）</text>
+  <text x="352" y="360" fill="#475569" font-size="12">STAFF-{mchAccountNo} → MCH 会话</text>
+  <text x="352" y="378" fill="#475569" font-size="12">TokenStore · MERCHANT 池 · LoginAuditor</text>
+  <line x1="274" y1="348" x2="338" y2="348" stroke="#475569" marker-end="url(#a)"/>
+
+  <rect x="340" y="150" width="270" height="110" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="352" y="172" fill="#0f172a">usr_login_ticket（V6xx 待定）</text>
+  <text x="352" y="192" fill="#475569" font-size="12">只存哈希 · 5 分钟 · 一次性</text>
+  <text x="352" y="210" fill="#475569" font-size="12">记：已验证的手机 / 邮箱、userNo（可空）、</text>
+  <text x="352" y="228" fill="#475569" font-size="12">agreed、marketCode、来源会话哈希</text>
+  <text x="352" y="246" fill="#475569" font-size="12">列身份：mch_account（user_no / login_phone）</text>
+  <line x1="274" y1="182" x2="338" y2="182" stroke="#475569" stroke-dasharray="4 3" marker-end="url(#a)"/>
+
+  <!-- right column: after login -->
+  <rect x="680" y="150" width="256" height="64" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="692" y="172" fill="#0f172a">GET /biz/auth/identities/mine</text>
+  <text x="692" y="191" fill="#475569" font-size="12">已登录：凭当前会话取换身份票据</text>
+  <text x="692" y="207" fill="#475569" font-size="12">「我的 › 切换身份」</text>
+  <line x1="678" y1="190" x2="612" y2="190" stroke="#475569" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <path d="M808,214 L808,420 L149,420 L149,378" fill="none" stroke="#475569" marker-end="url(#a)"/>
+  <text x="560" y="438" fill="#475569" font-size="12">换身份同样走 enter；成功后来源会话作废</text>
+
+  <rect x="680" y="72" width="256" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="692" y="94" fill="#0f172a">POST /biz/auth/login（已有，保留）</text>
+  <text x="692" y="113" fill="#475569" font-size="12">旧版 App 与 uni-app：店主优先、不让选</text>
+</svg>
