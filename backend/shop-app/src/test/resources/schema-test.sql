@@ -12315,6 +12315,54 @@ CREATE TABLE IF NOT EXISTS usr_test_identity
     CONSTRAINT uk_test_identity UNIQUE (identity_type, identity_value)
 );
 
+CREATE TABLE IF NOT EXISTS ord_offline_record
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    record_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency CHAR(3) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    note VARCHAR(400) NULL,
+    received_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    corrected TINYINT NOT NULL DEFAULT 0,
+    recorded_by VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    idem_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_offline_record_no UNIQUE (tenant_no,record_no),
+    CONSTRAINT uk_offline_record_idem UNIQUE (tenant_no,entity_no,store_no,idem_key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ord_offline_record_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    record_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(16) NOT NULL,
+    from_amount_minor BIGINT NULL,
+    to_amount_minor BIGINT NULL,
+    from_method VARCHAR(16) NULL,
+    to_method VARCHAR(16) NULL,
+    from_received_at DATETIME(3) NULL,
+    to_received_at DATETIME(3) NULL,
+    reason VARCHAR(400) NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -19124,6 +19172,11 @@ SELECT 'ACT__MERCHANT_MERCHANT_PAY_APPLY', 'OPS_MERCHANT', '申请支付服务',
 INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_MERCHANT_PAY_APPLY', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MERCHANT_MERCHANT_PAY_APPLY');
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:record"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:offline:record"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:manage"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:offline:manage"',perms)=0;
+UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:record"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:offline:record"',perms)=0;
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

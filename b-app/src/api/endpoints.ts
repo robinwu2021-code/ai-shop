@@ -382,6 +382,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPayAppGrants: { method: "GET", path: "/biz/payment/app-grant", auth: true, summary: "已授权的第三方" },
   mPayGrantApp: { method: "POST", path: "/biz/payment/app-grant", auth: true, summary: "授权第三方" },
   mPayRevokeGrant: { method: "DELETE", path: "/biz/payment/app-grant/{id}", auth: true, summary: "撤销第三方授权" },
+  // App 外收款记录（TDD-商户App外部记账）：商家自报流水，不进支付域；读复用收款查看码。
+  // 更正 / 作废（POST /biz/payment/offline-records/{recordNo}/correct|void）是 Flutter 商户 App 已定的路径，
+  // 「复数资源 + id」撞 /biz 单数约定且基线只准变短，本端也不调，所以不登记在这里；请求体类型仍在 requests.ts
+  mPayRecordOffline: { method: "POST", path: "/biz/payment/offline-records", auth: true, summary: "记一笔 App 外收款" },
+  mPayOfflineRecords: { method: "GET", path: "/biz/payment/offline-records", auth: true, summary: "App 外收款记录" },
+  mPayOfflineSummary: { method: "GET", path: "/biz/payment/offline-records/summary", auth: true, summary: "App 外收款合计" },
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
 
   // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：

@@ -240,7 +240,9 @@ class MerchantRoleFlowTest {
                 "biz:print:read","biz:print:submit","biz:print:reprint","biz:print:extra",
                 "biz:print:device","biz:print:config","biz:print:resolve","biz:print:simulate","biz:print:export",
                 // 商家端支付（TDD-支付服务-I5接入层 S8）：默认只有属主有，老板给收银员建角色时勾这几项
-                "mch:pay:collect","mch:pay:refund","mch:pay:statement","mch:pay:app-grant","mch:pay:qr"));
+                "mch:pay:collect","mch:pay:refund","mch:pay:statement","mch:pay:app-grant","mch:pay:qr",
+                // App 外收款记录（TDD-商户App外部记账）：记一笔 / 更正与作废
+                "mch:pay:offline:record","mch:pay:offline:manage"));
     }
 
     @Test
