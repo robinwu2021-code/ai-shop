@@ -333,6 +333,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mDelivered: { method: "POST", path: "/biz/order/:orderNo/delivered", auth: true, summary: "自送已送达" },
   mPrepare: { method: "POST", path: "/biz/order/:orderNo/prepare", auth: true, summary: "开始备货" },
   mConfirmOfflinePay: { method: "POST", path: "/biz/order/:orderNo/confirm-offline-pay", auth: true, summary: "确认线下收款" },
+  mExpressCompanies: { method: "GET", path: "/biz/express/companies", auth: true, summary: "本店可选快递公司" },
   mExpressQuotes: { method: "GET", path: "/biz/order/:orderNo/express/quotes", auth: true, summary: "快递报价" },
   mBookExpress: { method: "POST", path: "/biz/order/:orderNo/express", auth: true, summary: "叫快递上门取件" },
   mExpressPickup: { method: "GET", path: "/biz/order/:orderNo/express", auth: true, summary: "取件单" },

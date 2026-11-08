@@ -175,8 +175,13 @@ public class LogisticsPortImpl implements LogisticsPort {
     }
 
     private boolean hasK100(LgsWaybill w) {
-        return precheckProviders.stream().anyMatch(p -> "kuaidi100".equals(p.name())
-                && p.available() && p.covers(w.getCarrier()));
+        return traceCovers(w.getCarrier());
+    }
+
+    @Override
+    public boolean traceCovers(String carrier) {
+        return carrier != null && precheckProviders.stream().anyMatch(p -> "kuaidi100".equals(p.name())
+                && p.available() && p.covers(carrier));
     }
 
     private void fallbackK100(LgsWaybill w, String phone, long now) {

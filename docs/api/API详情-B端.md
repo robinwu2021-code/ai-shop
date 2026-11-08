@@ -1374,6 +1374,19 @@ _无字段_
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
 
 
+### express
+
+#### GET `/biz/express/companies`
+
+本店可选快递公司　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ExpressCompanyList`](#expresscompanylist)
+
+
 ### freight-template
 
 #### GET `/biz/freight-template/list`

@@ -24,6 +24,8 @@ final class ShopStoreMemberRoutes {
             // 订单与售后
             HostRoute.of("GET,POST", "/biz/order(?:/.*)?"),
             HostRoute.of("GET,POST", "/biz/after-sale(?:/.*)?"),
+            // 本店可选快递公司（发货页 / 改运单 / 发货设置的承运商清单，TDD-商户App快递公司 E7）
+            HostRoute.of("GET", "/biz/express/companies"),
             // 收款（「收款」Tab、收款码、退款、代客收款）
             HostRoute.of("GET,POST,PUT,DELETE", "/biz/payment(?:/.*)?"),
             // 商户主体（「我的门店 › 商户」）
