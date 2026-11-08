@@ -158,6 +158,39 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 账号级接口（改显示名、推送注册 / 解绑）在新模型门店账号上不选门店也能调（ACCOUNT 通道，不是 70006）")
+    void accountScopedRoutesWorkWithoutStoreSelection() throws Exception {
+        String[] o = newModelOwner("15965020113");
+        String[][] calls = {
+                {"/biz/merchant/display-name", "{\"displayName\":\"Robin\"}"},
+                {"/biz/push-token", "{\"platform\":\"android\",\"clientId\":\"cid-daily-routes\"}"},
+                {"/biz/push-token/unregister", "{\"clientId\":\"cid-daily-routes\"}"}};
+        for (String[] c : calls) {
+            for (String store : new String[] {null, o[1]}) {
+                var b = post(c[0]).header("Authorization", "Bearer " + o[0])
+                        .contentType(MediaType.APPLICATION_JSON).content(c[1]);
+                if (store != null) {
+                    b.header("X-Store-No", store);
+                }
+                String body = mvc.perform(b).andReturn().getResponse().getContentAsString();
+                assertEquals(0, json.readTree(body).path("code").asInt(), c[0] + " store=" + store + " → " + body);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 出款账户（收款账户 F06）在新模型门店上能进门店（不是 70006）")
+    void payoutAccountPassesAdmission() throws Exception {
+        String[] o = newModelOwner("15965020114");
+        JsonNode r = call(o[0], o[1], "/biz/payout-account");
+        assertNotEquals(70006, r.path("code").asInt(), r.toString());
+        String body = mvc.perform(post("/biz/payout-account").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn().getResponse().getContentAsString();
+        assertNotEquals(70006, json.readTree(body).path("code").asInt(), body);
+    }
+
+    @Test
     @DisplayName("★★ 逐条登记、不放开兜底：本店下未登记的子路径仍然 70006")
     void unregisteredStoreSubpathStillDenied() throws Exception {
         String[] o = newModelOwner("15965020112");

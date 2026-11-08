@@ -1,6 +1,6 @@
 # TDD-账户登录与选店校验
 
-状态：第一步已实现（2026-11-05）；第三步（App 第二批经营路由补登记）已实现（2026-11-08）；第二步（登录语义收口）为草稿
+状态：第一步已实现（2026-11-05）；第三步（App 第二批经营路由补登记）、第四步（账号级与出款账户补登记）已实现（2026-11-08）；第二步（登录语义收口）为草稿
 档位：1（动了路由准入规则与拒绝时的下一步码，没有动表）
 关联：`docs/superpowers/specs/2026-11-03-commerce-portable-design.md` §164（未登记的受保护命名空间默认拒绝）；TDD-B端收款订单与商城接口对齐
 
@@ -14,6 +14,7 @@
 | A2 | 没选门店时，告诉端上去选店，而不是「联系管理员」 | `ShopCommerceEndContextAdapter.select`：非账户通道、没带 `X-Store-No` → 70006 + `nextAction=SELECT_STORE` |
 | A3 | 默认拒绝不变：未登记的受保护路由（尤其 `/biz/stores/**` 新命名空间）照旧拒绝 | `CommerceRoutePolicy` 只多一个主机登记表，兜底仍是 DENY |
 | A4 | 新模型门店的店主选了门店之后，App 第二批功能（门店资料 / 方案、评价、列印、通知设置、自提、进销存、会员营销、优惠券 / 积分、团购 / 接龙、平台活动）的接口能进门店，不再 70006 | `ShopStoreMemberRoutes` 按功能族补登记（§2 第三步） |
+| A6 | 账号本人的设置（改显示名、推送注册 / 解绑）在新模型门店账号上不选门店也能调；出款账户在选了门店后能进门店 | §2 第四步 |
 | A5 | 补登记不放开兜底：本店下未登记的子路径、`/biz/store/` 下未登记的裸路径仍然 70006；`/biz/store/{门店}/pay-setting` 仍走 END_PROTECTED | `/biz/store` 只登记裸路径和具名子路径，不登记 `/biz/store/.*` |
 
 ## §1 现状与根因
@@ -54,6 +55,19 @@
 | 修改 | `shop-app/.../commercebridge/ShopStoreMemberRoutes.java` | 补登记：门店资料与公告、方案、评价、列印、通知设置、自提与自提点、进销存（含本店线下销售 / 库存对齐 / 对账）、会员 / 标签 / 分群 / 设置 / 触达、优惠券与核销、门店积分、团购 / 接龙 / 报价、账期、平台活动与营销活动 |
 | 修改 | `shop-app/src/test/.../commercebridge/StoreScopedDailyRoutesFlowTest.java` | 见 §5 A4、A5 |
 
+### 第四步（本次实现，2026-11-08）：账号级接口与出款账户
+
+起草商户 App 交接 TDD 时查出三处同类漏登记，App 都在用：`POST /biz/merchant/display-name`（改用户名）、`POST /biz/push-token`（含 `/unregister`，推送注册）、`GET|POST /biz/payout-account`（收款账户 F06）。
+
+- 前两个按登录人定位（`SecurityUtils.currentUserNo()`），与门店无关；推送注册在登录后、选店前就会调。登记进 `CommerceRoutePolicy` 的 ACCOUNT 集合，与已有的 `/biz/auth/password`、`/biz/merchant/quick-start` 同一类。不进 `ShopStoreMemberRoutes`：那里要求先选门店，不选会回 `SELECT_STORE`。
+- 出款账户按 `BizContext.requireMerchantNo()` 取数，权限码 `biz:finance` 由控制器判，登记进 `ShopStoreMemberRoutes`。
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `commerce/commerce-spring-boot-starter/.../security/CommerceRoutePolicy.java` | ACCOUNT 集合加 3 条 |
+| 修改 | `shop-app/.../commercebridge/ShopStoreMemberRoutes.java` | 加 `GET,POST /biz/payout-account` |
+| 修改 | `shop-app/src/test/.../commercebridge/StoreScopedDailyRoutesFlowTest.java` | 见 §5 A6 |
+
 ### 第二步（待用户确认）：登录语义收口
 
 用户要求「登录后一定要选择门店」。目前还有三处与此不一致：
@@ -77,6 +91,8 @@
 | A3 | `#unregisteredStillDenied`（`/biz/stores/{no}/not-registered` 仍 70006） | ✅ | |
 | A4 | `#appSecondBatchReadsPassAdmission`（40 个读接口均不是 70006）、`#appSecondBatchWritesPassAdmission`（6 个写接口均不是 70006） | ✅ | 补登记前两条均红：`/biz/store → 70006 CONTACT_ADMIN`、`/biz/store/announcement → 70006 CONTACT_ADMIN` |
 | A5 | `#unregisteredStoreSubpathStillDenied`（`/biz/store/{门店}/not-registered`、`/biz/store/not-registered` 仍 70006） | ✅ | |
+| A6 | `#accountScopedRoutesWorkWithoutStoreSelection`（3 个账号级接口，带不带 `X-Store-No` 都是 code 0）、`#payoutAccountPassesAdmission`（GET/POST 不是 70006） | ✅ | 登记前两条均红：`/biz/merchant/display-name store=null → 70006`、`/biz/payout-account → 70006` |
+| 第四步回归（2026-11-08） | `StoreScopedDailyRoutesFlowTest` 12/12、`CommerceAccessSecurityFlowTest` 5（跳过 2）、`BizFoundationJourneyFlowTest` 7、`MallRecoveryRoutePolicyTest` 2；commerce starter 49 个中 6 个缺真实 MySQL 未跑，其余通过 | ✅ | |
 | 第三步回归（2026-11-08） | `StoreScopedDailyRoutesFlowTest` 10/10、`CommerceAccessSecurityFlowTest` 5（跳过 2）、`BizFoundationJourneyFlowTest` 7、`MallRecoveryRoutePolicyTest` 2 | ✅ | |
 | 回归 | `CommerceAccessSecurityFlowTest`（5，跳过 2）、`BizFoundationJourneyFlowTest` 7、`MallRecoveryRoutePolicyTest` 2；`BizPaymentOrdersFlowTest` 7、`BizRetailOrderDetailFlowTest` 3、`BizPayFlowTest` 7、`BizOrderFulfillFlowTest` 15 | ✅ | |
 

@@ -46,6 +46,8 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/qualifications(?:/recognize|/save)?"),
             HostRoute.of("POST", "/biz/merchant/agreement/accept"),
             HostRoute.of("GET", "/biz/merchant/pay-channel"),
+            // 出款账户（App F06 收款账户；按选中门店所属主体取数，权限码 biz:finance 由控制器判）
+            HostRoute.of("GET,POST", "/biz/payout-account"),
             // 申请支付服务不在这里：它要主体级收款目标，登记在 CommerceRoutePolicy 的 foundation 通道（同 pay-channel）
             // 地图选点（门店地址）
             HostRoute.of("GET", "/biz/geo/(?:tips|reverse)"),
