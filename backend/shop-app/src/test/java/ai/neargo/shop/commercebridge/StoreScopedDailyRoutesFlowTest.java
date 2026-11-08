@@ -114,7 +114,7 @@ class StoreScopedDailyRoutesFlowTest {
     @Test
     @DisplayName("★★★ App 外收款记录（/biz/payment/offline-records*）在新模型门店上能进门店：记一笔、列表、汇总都是 0，不是 70006")
     void new_model_store_member_reaches_offline_records() throws Exception {
-        String[] o = newModelOwner("15965020116");
+        String[] o = newModelOwner("15965020117");
         jdbc.update("update mch_entity set market='TW' where entity_no=(select entity_no from mch_store where store_no=?)",
                 o[1]);
         String body = mvc.perform(post("/biz/payment/offline-records").header("Authorization", "Bearer " + o[0])
@@ -210,7 +210,7 @@ class StoreScopedDailyRoutesFlowTest {
     @Test
     @DisplayName("★★★ 问题回报（提交 / 我的回报）是账号级：新模型门店账号不选门店也能调（ACCOUNT 通道，不是 70006）")
     void feedbackRoutesWorkWithoutStoreSelection() throws Exception {
-        String[] o = newModelOwner("15965020116");
+        String[] o = newModelOwner("15965020118");
         for (String store : new String[] {null, o[1]}) {
             var b = post("/biz/feedback").header("Authorization", "Bearer " + o[0])
                     .contentType(MediaType.APPLICATION_JSON)
@@ -283,7 +283,7 @@ class StoreScopedDailyRoutesFlowTest {
     @Test
     @DisplayName("★★★ 台湾主体：加员工、建会员收 +886 号码（此前只认 11 位大陆号，台湾店主加不了员工）；大陆主体口径不变")
     void taiwanEntityAcceptsTaiwanPhones() throws Exception {
-        String[] o = newModelOwner("15965020116");
+        String[] o = newModelOwner("15965020119");
         String entity = jdbc.queryForObject("select entity_no from mch_store where store_no=?", String.class, o[1]);
         String staffBody = "{\"loginPhone\":\"+886912345678\",\"displayName\":\"阿明\"}";
         String memberBody = "{\"phone\":\"+886912345679\"}";
