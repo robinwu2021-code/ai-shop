@@ -1,6 +1,7 @@
 # TDD-商户App资金
 
-状态：草稿（2026-11-08，已按商户 App 评审修订一轮；待用户拍板「待用户拍板」各条后再定稿；未实现、测试未跑）
+状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
+ADR：[ADR-052](./ADR/ADR-052-台湾直连拨款模式下商户资金视图的数据归属.md)
 档位：2 · 依据：跨服务（资金数据的真源在独立支付服务 near-pay，要它新增查询；渠道拨款与渠道账单在 near-pay 是待建表族）+ 跨端（商户 App 契约）。**需要另开 ADR**（本文不写，见 §3 末）。
 关联需求：
 - 商户 App 交接文档《商户 App 功能矩阵与 API 交接文档》第 8 模块「资金」、§3 通用约定、附录 B `/biz/funds/` 行（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`（main `31a56c1`））；原型 v11 F01–F07；App 代码 ai-shop-bapp `apps/merchant_app/lib/features/funds/funds_pages.dart`
@@ -31,7 +32,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | F07 渠道费率与周期 | `GET /biz/funds/rates` | **新增**；本市场未开通的渠道也列一行 | 支付服务 `sys_pay_channel_rate` + 渠道 / 收款商户的账期 |
 
 调用链（独立部署形态，166 与生产）：App → shop-app `BizFundsController`（`biz:finance`、门店上下文）→ `BizFundsAppService`（远程实现）→ near-pay `/internal/pay/v1/biz/stores/{storeNo}/funds/*` → near-pay pay 域查询。
-内嵌形态（本仓库测试、`shop.pay.deployment=embedded`）走本仓库 `backend/pay` 的同名查询。两处要实现同一份查询（见待用户拍板 D2）。
+内嵌形态（本仓库测试、`shop.pay.deployment=embedded`）走本仓库 `backend/pay` 的同名查询。两处要实现同一份查询（见已拍板 D2）。
 
 ---
 
@@ -44,7 +45,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | AC1（8-01） | Given 店主选了一家门店 When 打开资金总览 Then 看到所选期间（默认本月）的收款笔数与金额、退款、手续费（标是否估算）、已拨款、待拨款、对账差异数、**数据的计算时间**，以及按渠道的收款 / 待拨 / 账期 / **本期用到的支付方式** | 新 `GET /biz/funds/overview`；pay 域新 `MerchantFundsQueryService#overview` |
 | AC2（8-02） | Given 一个月份**或一段自定义区间（本月 / 上月 / 自訂）** When 看每日流水（本店或整个主体）Then 每个有发生额的业务日一行：收款笔数、收款金额、退款笔数、退款金额、手续费（标估算）；日期按门店时区切 | 新 `GET /biz/funds/daily`；`MerchantFundsQueryService#daily`；`scope=ENTITY` 由 shop-app 按门店扇出后相加 |
 | AC3（8-03） | Given 每日流水某一天 When 点进去 Then 列出当天收款明细并可进收款详情 | **复用** `GET /biz/payment/orders?from=D&to=D`（`BizPaymentController.java:137-151`），后端不改 |
-| AC4（8-04） | Given 拨款记录页 When 按渠道或状态筛选 Then 每条拨款一行，状态 `EXPECTED / PAID / MISMATCH`；渠道没回报的只出「预计」，并且明确标出是预计 | 新 `GET /biz/funds/payouts`；`MerchantFundsQueryService#payouts`；一期只有 `source=ESTIMATED` 行（AC4 的 PAID / MISMATCH 依赖待用户拍板 D3） |
+| AC4（8-04） | Given 拨款记录页 When 按渠道或状态筛选 Then 每条拨款一行，状态 `EXPECTED / PAID / MISMATCH`；渠道没回报的只出「预计」，并且明确标出是预计 | 新 `GET /biz/funds/payouts`；`MerchantFundsQueryService#payouts`；一期只有 `source=ESTIMATED` 行（AC4 的 PAID / MISMATCH 依赖已拍板 D3） |
 | AC5（8-05） | Given 一条拨款 When 看详情 Then 有收款总额、退款、手续费、实拨、账户掩码、费率、笔数、期间起止 | 同 AC4 的行字段（不另开详情接口，与 App 现状一致） |
 | AC6（8-06） | Given 一条拨款 When 看期间内的交易 Then 列出该期间收款 | **复用** `GET /biz/payment/orders?from=periodFrom&to=periodTo`，后端不改 |
 | AC7（8-07） | Given 对账页与一个期间 When 打开 Then 有平台笔数、渠道笔数、差异列表（每条带发生时间与交易号）；**看不到的那一类要写明看不到**（没有渠道账单时不能显示「没有差异」） | 新 `GET /biz/funds/reconcile`；响应带 `coverage`；差异来自 `stl_recon_diff` 按本店支付单过滤 |
@@ -58,7 +59,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 
 **孤立项**
 - 没落点的 AC：
-  - AC4 / AC5 里的 **`PAID` 与 `MISMATCH`**、AC7 里的**渠道笔数与渠道侧差异**：要渠道回报拨款与账单。ai-shop 和 near-pay 都没有这份数据（见 §1「后端没有」）。一期这两块只能给「预计」与「平台自查」，并在响应里标出来。是否等它、谁来建，见待用户拍板 D3。
+  - AC4 / AC5 里的 **`PAID` 与 `MISMATCH`**、AC7 里的**渠道笔数与渠道侧差异**：要渠道回报拨款与账单。ai-shop 和 near-pay 都没有这份数据（见 §1「后端没有」）。一期这两块只能给「预计」与「平台自查」，并在响应里标出来。是否等它、谁来建，见已拍板 D3。
   - AC1 的「差异数」一期只计平台自查差异。
 - 挂不上 AC 的设计：
   - `GET /biz/funds/payouts` 的游标分页：App 现在按不分页的数组读。分页挂在 AC4 上（拨款按天累积，一年几百行），算对 App 的契约变更，见 §2 差异表。
@@ -116,8 +117,8 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 
 ### 1.5 发现的不一致（顺手记下，影响本设计）
 
-1. **手续费估算两套来源**：收款汇总用配置 `shop.pay.fee.estimate-rate-bps`（默认 0，`MerchantPaymentQueryServiceImpl.java:89,470-472`），而费率表 `sys_pay_channel_rate` 有按市场的分版本费率却没人用来估算。如果 F07 显示费率表、F01 用配置估算，两页对不上。本设计让两者都改用费率表、配置只兜底（待用户拍板 D5）。
-2. **账期两套词表**：`pay_merchant.settle_cycle` 是 `T1 / T2 / WEEKLY`（`MerchantPaymentQueryServiceImpl.java:459-468`）；`mch_payment_merchant.settle_cycle` 注释是 `T+1 / T+N / WEEKLY / SEMI_MONTHLY / MONTHLY`（`MchPaymentMerchant.java:150-162`）。资金接口统一回支付服务的值（F06 改读支付服务后也是）；支付服务内部渠道默认账期又是另一种写法（`PayChannelMasterService.java:47-48` 注释举例 `T+1`）。App 暂按「码 → 文字」两套都翻；词表要合一（待用户拍板 D6）。
+1. **手续费估算两套来源**：收款汇总用配置 `shop.pay.fee.estimate-rate-bps`（默认 0，`MerchantPaymentQueryServiceImpl.java:89,470-472`），而费率表 `sys_pay_channel_rate` 有按市场的分版本费率却没人用来估算。如果 F07 显示费率表、F01 用配置估算，两页对不上。本设计让两者都改用费率表、配置只兜底（已拍板 D5）。
+2. **账期两套词表**：`pay_merchant.settle_cycle` 是 `T1 / T2 / WEEKLY`（`MerchantPaymentQueryServiceImpl.java:459-468`）；`mch_payment_merchant.settle_cycle` 注释是 `T+1 / T+N / WEEKLY / SEMI_MONTHLY / MONTHLY`（`MchPaymentMerchant.java:150-162`）。资金接口统一回支付服务的值（F06 改读支付服务后也是）；支付服务内部渠道默认账期又是另一种写法（`PayChannelMasterService.java:47-48` 注释举例 `T+1`）。App 暂按「码 → 文字」两套都翻；词表要合一（已拍板 D6）。
 3. **F06 读错了接口**（评审后改写本条）。App 的 F06 读 `/biz/merchant/payment`（ai-shop-bapp `features/merchant/merchant_api.dart:247`），还读了后端没有的 `settleCycle`、`enabledStores`（同文件 `:87,90`；`PaymentApplymentVO.java:37-42` 无这两个字段）。但更根本的是：台湾店的账户根本不在这张表，补字段也读不到。F06 改读新 `/biz/funds/accounts` + 已有 `/biz/merchant/pay-service`（§2.3⑥）。
 4. **支付服务不可用时回什么码，初稿写错了**。初稿写「沿用收款接口的远程错误映射」，但 `RemoteBizPaymentAppService#unwrap`（`RemoteBizPaymentAppService.java:191-197`）只翻译支付服务**回了**的错误码；连不上时 `ServiceCalls` 抛 `ServiceCallException`（`backend/svc-client/src/main/java/ai/neargo/svc/client/ServiceCalls.java:27-39`），没人接，落到 `GlobalExceptionHandler` 的兜底 10500（`backend/shop-base-auth/src/main/java/ai/neargo/shop/common/GlobalExceptionHandler.java:234-241`）。资金接口改为与 `BizPayServiceController` 一样接住转 10505（AC14）。
 5. **期间上限「93 天」的实际含义是 `to − from ≤ 93`**：`checkRange` 写的是 `from.plusDays(MAX_DAYS).isBefore(to)` 才拒（`MerchantPaymentQueryServiceImpl.java:60,483-487`），所以含两端最多 94 个日历日。初稿与外部记账草案都没说清是哪种数法，§2.2 写死。
@@ -128,7 +129,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 
 ### 2.0 按商户 App 评审的修订（2026-11-08）
 
-评审：ai-shop-bapp `docs/implementation/TDD评审-商户App.md`「第三组 · 一」。技术问题逐条对过后端代码，属实的直接改进正文；产品问题不在这里定，进「待用户拍板」。
+评审：ai-shop-bapp `docs/implementation/TDD评审-商户App.md`「第三组 · 一」。技术问题逐条对过后端代码，属实的直接改进正文；产品问题不在这里定，进「已拍板」。
 
 **已改**
 
@@ -150,7 +151,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | R14 | F04 交易明细无法按收款商户号过滤 | 核对后**一期实际不会混**：门店 × 渠道同时最多一条 `ACTIVE` 绑定（`V10__pay_merchant_tables.sql:142,153`），同一预计日同渠道只会有两个收款商户的情况仅出现在「当天换绑」 | ③ 口径里写明 F04 用 `periodFrom / periodTo + channel` 调 `/biz/payment/orders`（`channel` 已支持）；换绑当天的少数混行接受，不给 orders 加收款商户过滤 |
 | R15 | `payoutNo` 一期 `E-…`、一期 B 换渠道号，跨期会断 | 属实 | ③ 一期 B 的渠道回报行带 `estimateNo`（被它取代的那条预计行编号），App 可据此把缓存或深链映射过去；同时说明 `E-…` 不保证跨期存活 |
 | R16 | reconcile `from / to` 不传时默认本月还是上月 | 技术约定 | ④ 与其他资金接口一致：默认本月 1 日到今天；原型「對帳 · 10 月」由 App 显式传上月起止 |
-| R17 | D8：App 入口写死 `if (owner)`，应改按 `can('biz:finance')`；后端确认口径 | 属实：`@perm.canBiz` 判的是权限码，不是角色（`backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/PermChecker.java:98-110`），把 `biz:finance` 授给自定义角色的人能调 `/biz/funds/*`；只有 `scope=ENTITY` 另要求 `owner` | 待用户拍板 D8 写入此口径；App 侧照评审改 |
+| R17 | D8：App 入口写死 `if (owner)`，应改按 `can('biz:finance')`；后端确认口径 | 属实：`@perm.canBiz` 判的是权限码，不是角色（`backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/PermChecker.java:98-110`），把 `biz:finance` 授给自定义角色的人能调 `/biz/funds/*`；只有 `scope=ENTITY` 另要求 `owner` | 已拍板 D8 写入此口径；App 侧照评审改 |
 
 **没照改的**
 
@@ -164,11 +165,11 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 ### 2.1 契约变更
 
 - **端点**：新增 6 个 `GET /biz/funds/{overview|daily|payouts|reconcile|rates|accounts}`。~~修改 `GET /biz/merchant/payment`（加 `settleCycle`）~~ 评审后撤回（§2.0 R7）。内部接口新增 near-pay `/internal/pay/v1/biz/stores/{storeNo}/funds/{overview|daily|payouts|reconcile|rates|accounts}`（本仓库 `pay-svc` 镜像一份）。
-- **库表 / 迁移（ai-shop）**：推荐方案**无**。如果待用户拍板 D1 选了「ai-shop 自己存渠道拨款」，则要 `V6xx 待定__funds_channel_payout.sql`（新表 `fnd_channel_payout`、`fnd_channel_payout_line`），见 §3 方案 B。
+- **库表 / 迁移（ai-shop）**：推荐方案**无**。如果已拍板 D1 选了「ai-shop 自己存渠道拨款」，则要 `V6xx 待定__funds_channel_payout.sql`（新表 `fnd_channel_payout`、`fnd_channel_payout_line`），见 §3 方案 B。
 - **库表（near-pay，由 near-pay 侧实现与编号）**：一期 A 无；一期 B 要落 near-pay 已设计的 `pay_channel_bill`、`pay_channel_bill_line`、`pay_reconciliation_run`，另需一张「渠道拨款」表（near-pay 设计里没有，建议名 `pay_channel_payout`，由 near-pay TDD 定），以及 `stl_recon_diff` 加 `store_id`（或在差异生成时冗余）。
 - **权限码**：不新增。全部 `/biz/funds/*` 用 `biz:finance`（`BizPerms.FINANCE`，`backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java:99`），与 F06 同页同码。默认只有店主（`OWNER` = `*`）有；店长、店员没有（`BizPerms.java:192-203`）。
 - **i18n**：新增 1 个错误码 `FUNDS_ENTITY_TOO_MANY_STORES`（`err.pay.funds_entity_too_many_stores`，编号实现时在 `ErrorCode` 支付段 `PAY_*`（700xx）末号后顺延），三语 `messages.properties` / `messages_en.properties` / `messages_ar.properties` 各加一条，文案意思「本主体门店太多，请改看单店」。其余沿用已有：参数不合法 `BAD_REQUEST(10400)`、合并范围越权 `FORBIDDEN(10403)`、未登记 / 无权 70006、支付服务不可用 `RESOURCE_DEPENDENCY_UNAVAILABLE(10505)`（`ErrorCode.java` 中 `10505, "err.resource.dependency_unavailable"`）。
-- **配置项**：不新增。`shop.pay.fee.estimate-rate-bps` 语义改为「费率表查不到时的兜底」（待用户拍板 D5）。
+- **配置项**：不新增。`shop.pay.fee.estimate-rate-bps` 语义改为「费率表查不到时的兜底」（已拍板 D5）。
 - **门店准入登记**：`ShopStoreMemberRoutes.ALL` 加
   `HostRoute.of("GET", "/biz/funds/(?:overview|daily|payouts|reconcile|rates|accounts)")`。
   不加的后果：新模型门店全部 70006 `CONTACT_ADMIN`（类注释 `ShopStoreMemberRoutes.java:7-12` 记的就是这个坑）。F06 的另一半 `/biz/merchant/pay-service` 不用登记（foundation 通道已放行，`CommerceRoutePolicy.java:129`）。
@@ -199,7 +200,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | 权限 | `biz:finance`；登记 `ShopStoreMemberRoutes`：是 |
 | 请求 | query `from?`、`to?`（见 2.2） |
 | 响应 | `{ currency, from, to, generatedAt, collected:{count, amountMinor}, refunded:{count, amountMinor}, netMinor, feeMinor, feeEstimated, paidOutMinor, pendingMinor, payoutSource, diffCount, reconcileCoverage, channels:[{ channel, payMethods[], count, collectedMinor, refundedMinor, feeMinor, feeEstimated, paidOutMinor, pendingMinor, settleCycle?, nextPayoutDate? }] }` |
-| 口径 | `collected / refunded / feeMinor / feeEstimated` 与 `/biz/payment/orders/summary` 同一查询（按成功时间落在期间内）。`pendingMinor = netMinor − feeMinor − paidOutMinor`。`payoutSource`：`CHANNEL_REPORTED`（有渠道拨款数据）或 `ESTIMATED`（一期：`paidOutMinor` 恒为 0，所有净额都算待拨）。`diffCount` = 本店期间内 `stl_recon_diff.status=PENDING` 条数。`reconcileCoverage`：`CHANNEL_BILL` / `SELF_CHECK_ONLY`。`generatedAt`：UTC 毫秒，本次计算时刻（R1）。`channels[]` = 本店 `ACTIVE` 绑定的渠道 ∪ 期间内有收款的渠道；`payMethods[]` = 期间内该渠道有收款的 `pay_order.pay_method` 原码，按金额倒序，没有收款为空数组（R2）。`settleCycle` 取本店该渠道收款商户的账期，查不到为 `null`；`nextPayoutDate` 为 `null` 表示没有待拨或账期未知（R11）。**`paidOutMinor` / `pendingMinor` 在一期的显示口径待用户拍板 D10**，本行写的是初稿口径 |
+| 口径 | `collected / refunded / feeMinor / feeEstimated` 与 `/biz/payment/orders/summary` 同一查询（按成功时间落在期间内）。`pendingMinor = netMinor − feeMinor − paidOutMinor`。`payoutSource`：`CHANNEL_REPORTED`（有渠道拨款数据）或 `ESTIMATED`（一期：`paidOutMinor` 恒为 0，所有净额都算待拨）。`diffCount` = 本店期间内 `stl_recon_diff.status=PENDING` 条数。`reconcileCoverage`：`CHANNEL_BILL` / `SELF_CHECK_ONLY`。`generatedAt`：UTC 毫秒，本次计算时刻（R1）。`channels[]` = 本店 `ACTIVE` 绑定的渠道 ∪ 期间内有收款的渠道；`payMethods[]` = 期间内该渠道有收款的 `pay_order.pay_method` 原码，按金额倒序，没有收款为空数组（R2）。`settleCycle` 取本店该渠道收款商户的账期，查不到为 `null`；`nextPayoutDate` 为 `null` 表示没有待拨或账期未知（R11）。**`paidOutMinor` / `pendingMinor` 在一期的显示口径已拍板 D10**，本行写的是初稿口径 |
 | 错误 | 10400 期间不合法；70006 无权或未登记；支付服务不可用沿用收款接口映射 |
 
 与 App 建议的差异：
@@ -231,7 +232,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | `day`（展示文字）+ `date` | 只给 `date` | 展示交给 App |
 | `amount{…}` | `collectedMinor`，另加 `refundedMinor` | 只有退款笔数没有退款金额，当天净额算不出来 |
 | 只有月份（原型 F02 有「自訂」） | `month` 或 `from/to` | 评审 R3 |
-| `scope: STORE|MERCHANT` | `STORE|ENTITY` | 账户与账期是「主体 × 渠道」的（`MchPaymentMerchant.java:150-162`），跨主体相加没有对账意义；一个账号可有多个主体（`GET /biz/entities`）。见待用户拍板 D7 |
+| `scope: STORE|MERCHANT` | `STORE|ENTITY` | 账户与账期是「主体 × 渠道」的（`MchPaymentMerchant.java:150-162`），跨主体相加没有对账意义；一个账号可有多个主体（`GET /biz/entities`）。见已拍板 D7 |
 
 #### ③ `GET /biz/funds/payouts`（AC4、AC5）
 
@@ -240,7 +241,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | 权限 | `biz:finance`；登记：是 |
 | 请求 | query `status?`（`EXPECTED|PAID|MISMATCH`，可多值，写法见 §2.2）、`channel?`、`from? / to?`（按 `expectedDate` 过滤，含两端，跨度同 §2.2；不传 = 不限期间）、`cursor?`、`size?`（≤50，默认 20） |
 | 响应 | `{ currency, payoutSource, items:[{ payoutNo, estimateNo?, channel, status, source, periodFrom, periodTo, expectedDate, paidDate?, count, grossMinor, refundedMinor, feeMinor, feeEstimated, feeRateBps?, netMinor, reportedMinor?, accountMasked }], nextCursor? }`，按 `expectedDate` 倒序 |
-| 口径 | **一期（`source=ESTIMATED`）**：按（渠道 × 收款商户 × 预计拨款日）把本店成功收款分组，预计拨款日 = 业务日 + 账期（与收款详情 `expectedDate` 同一函数，`MerchantPaymentQueryServiceImpl.java:459-468`）；`status` 恒为 `EXPECTED`；`payoutNo` 为确定性编号 `E-{channel}-{payMerchantNo 末 6 位}-{yyyyMMdd}`，同一组每次算出来相同。**一期 B（`source=CHANNEL_REPORTED`）**：取渠道回报的拨款行，`reportedMinor` 是渠道实拨，`netMinor ≠ reportedMinor` 时 `status=MISMATCH`；该行的 `estimateNo` = 它取代的那条预计行的 `E-…` 编号（没有对应预计行为 `null`），预计行随之不再返回。App 不应把 `E-…` 当长期标识存，深链与缓存遇到失效的 `E-…` 时按 `estimateNo` 找回（R15）。**F04「查看这期的每一笔交易」**：App 用 `periodFrom / periodTo + channel` 调 `/biz/payment/orders`（`channel` 已支持，`BizPaymentController.java:142`）。门店 × 渠道同时只有一条 `ACTIVE` 收款商户绑定（`V10__pay_merchant_tables.sql:142,153`），所以只有「期间内换绑」时会混入另一个收款商户的单；一期接受，不给 orders 加收款商户过滤（R14）。**预计行的分组粒度与原型 F03 不一致，待用户拍板 D11** |
+| 口径 | **一期（`source=ESTIMATED`）**：按（渠道 × 收款商户 × 预计拨款日）把本店成功收款分组，预计拨款日 = 业务日 + 账期（与收款详情 `expectedDate` 同一函数，`MerchantPaymentQueryServiceImpl.java:459-468`）；`status` 恒为 `EXPECTED`；`payoutNo` 为确定性编号 `E-{channel}-{payMerchantNo 末 6 位}-{yyyyMMdd}`，同一组每次算出来相同。**一期 B（`source=CHANNEL_REPORTED`）**：取渠道回报的拨款行，`reportedMinor` 是渠道实拨，`netMinor ≠ reportedMinor` 时 `status=MISMATCH`；该行的 `estimateNo` = 它取代的那条预计行的 `E-…` 编号（没有对应预计行为 `null`），预计行随之不再返回。App 不应把 `E-…` 当长期标识存，深链与缓存遇到失效的 `E-…` 时按 `estimateNo` 找回（R15）。**F04「查看这期的每一笔交易」**：App 用 `periodFrom / periodTo + channel` 调 `/biz/payment/orders`（`channel` 已支持，`BizPaymentController.java:142`）。门店 × 渠道同时只有一条 `ACTIVE` 收款商户绑定（`V10__pay_merchant_tables.sql:142,153`），所以只有「期间内换绑」时会混入另一个收款商户的单；一期接受，不给 orders 加收款商户过滤（R14）。**预计行的分组粒度与原型 F03 不一致，已拍板 D11** |
 | 错误 | 10400 状态值、日期或游标不合法、跨度超限；70006 同上；10505 |
 
 与 App 建议的差异：
@@ -310,7 +311,7 @@ ai-shop 在这里只当 BFF（认人、判权、定门店、转发）；**数字
 | 新增 | `backend/shop-app/src/main/java/ai/neargo/shop/payclient/BizFundsAppService.java` + `impl/BizFundsAppServiceImpl.java`（内嵌）+ `impl/RemoteBizFundsAppService.java`（独立） | 与 `BizPaymentAppService` 同一对条件装配（`shop.pay.deployment`） |
 | 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopStoreMemberRoutes.java` | 加一行 `HostRoute`（§2.1） |
 | 新增 | `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/acquiring/service/MerchantFundsQueryService.java` + `impl/MerchantFundsQueryServiceImpl.java` | overview / daily / payouts / reconcile / rates / accounts；收款汇总部分与期间校验 `checkRange` 抽公共方法与 `MerchantPaymentQueryServiceImpl` 共用，**不复制 SQL、不另写跨度上限** |
-| 修改 | `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/acquiring/service/impl/MerchantPaymentQueryServiceImpl.java` | 抽出「期间收款 / 退款 / 手续费」公共查询；手续费估算改为先查费率表、再用配置兜底（待用户拍板 D5 定了才动） |
+| 修改 | `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/acquiring/service/impl/MerchantPaymentQueryServiceImpl.java` | 抽出「期间收款 / 退款 / 手续费」公共查询；手续费估算改为先查费率表、再用配置兜底（已拍板 D5 定了才动） |
 | 修改 | `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/biz/PayBizFacade.java` | 暴露 6 个查询 |
 | 修改 | `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/PayBizInternalApi.java` | 加 6 个 `@GetExchange(PREFIX + "/funds/…")` |
 | 修改 | `backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/InternalPayBizEndpoint.java` | 镜像端点 |
@@ -342,14 +343,14 @@ GET  PREFIX/funds/rates?operatorNo
 GET  PREFIX/funds/accounts?operatorNo
 ```
 
-`scope=ENTITY` 不下沉到支付服务：支付服务只认门店（`PayBizInternalApi` 全部按 `{storeNo}`），「哪些门店属于这个主体、这个人看得见哪些」是 ai-shop 的知识（ADR-045 G9：支付只记、不认人）。
+`scope=ENTITY` 不下沉到支付服务：支付服务只认门店（`PayBizInternalApi` 全部按 `{storeNo}`），「哪些门店属于这个主体、这个人看得见哪些」是 ai-shop 的知识（[TDD-支付服务-接入守卫模块pay-guard](./TDD-支付服务-接入守卫模块pay-guard.md) G9：支付只记、不认人）。
 
 ### 2.6 分期
 
 | 期 | 内容 | 前提 |
 |---|---|---|
 | 一期 A | ①②④⑤⑥ 全部；③ 只出 `ESTIMATED` 行；④ 只有 `SELF_CHECK_ONLY`；① 的已拨 / 待拨显示口径按 D10 拍板结果 | D10、D11 拍板（影响 ①③ 的字段）；near-pay 侧要同步实现查询 |
-| 一期 B | ③ 出 `CHANNEL_REPORTED` 行与 `PAID / MISMATCH`；④ 出 `channelCount` 与 `CHANNEL_BILL` 差异；① `paidOutMinor` 有真值 | 蓝新、LINE Pay 回传拨款 / 对账文件（交接文档后端清单 3-3）；near-pay 建渠道账单与拨款表（待用户拍板 D3） |
+| 一期 B | ③ 出 `CHANNEL_REPORTED` 行与 `PAID / MISMATCH`；④ 出 `channelCount` 与 `CHANNEL_BILL` 差异；① `paidOutMinor` 有真值 | 蓝新、LINE Pay 回传拨款 / 对账文件（交接文档后端清单 3-3）；near-pay 建渠道账单与拨款表（已拍板 D3） |
 
 App 侧：一期 A 上线即可从 `contracts.dart` 删 `^/biz/funds/`（附录 B）；页面靠 `payoutSource` / `coverage` 显示「预计」「仅平台自查」；F06 改读 `/biz/funds/accounts` + `/biz/merchant/pay-service`。
 
@@ -359,14 +360,14 @@ App 侧：一期 A 上线即可从 `contracts.dart` 删 `^/biz/funds/`（附录 
 
 | 问题 | 方案 | 优点 | 缺点 | 结论 |
 |---|---|---|---|---|
-| 资金数据从哪取 | **A. 支付服务（near-pay）为真源，ai-shop 只转发** | 收款、退款、手续费、账期本来就在那；渠道账单在 near-pay 设计里已有位置（FI09）；一份口径 | near-pay 要排期；两仓库同构代码要各写一次（待用户拍板 D2） | ✅ 采用 |
+| 资金数据从哪取 | **A. 支付服务（near-pay）为真源，ai-shop 只转发** | 收款、退款、手续费、账期本来就在那；渠道账单在 near-pay 设计里已有位置（FI09）；一份口径 | near-pay 要排期；两仓库同构代码要各写一次（已拍板 D2） | ✅ 采用 |
 | | B. ai-shop 自建 `fnd_channel_payout` 等表，自己拉渠道账单 | 不等 near-pay | 违反 ADR-021（支付域独立为服务与独立库）与 ADR-043（进件与收款商户归支付域）；渠道凭据在 near-pay，ai-shop 拉不到账单；两边对账结果会分叉 | ❌ |
 | | C. App 自己拼：调 summary 与 31 次 statement | 后端零改动 | 一月 31 次请求；手续费、拨款、对账仍没有；口径在端上散开 | ❌ |
 | 一期没有渠道拨款数据时怎么显示 | **A. 按账期估算「预计」行，并带 `source` / `coverage` 标识** | 页面能用；不冒充实拨 | 估算可能与渠道实拨有出入 | ✅ 采用 |
-| | B. 一期不上 F03–F05 | 不会误导 | 资金页三屏空着；App 已做好 | ❌（但若产品要求「没真数就不显示」，退回此方案，见待用户拍板 D3） |
+| | B. 一期不上 F03–F05 | 不会误导 | 资金页三屏空着；App 已做好 | ❌（但若产品要求「没真数就不显示」，退回此方案，见已拍板 D3） |
 | 权限码 | **A. 复用 `biz:finance`** | 与 F06 同页同码；无迁移 | 店长看不到资金（要看就得给他 `biz:finance`，同时也给了进件权限） | ✅ 采用 |
-| | B. 新码 `mch:pay:funds` | 能单独授权店长 | 要迁移、i18n、角色模板改动；交接文档只说「店主、有资金权限者」 | ❌（待用户拍板 D8 若要给店长，再改为 B） |
-| 提现 | **A. 不做** | 台湾模式平台不经手资金，没有可提的余额；PRD §2、§7 已定提现退役 | — | ✅ 采用（待用户拍板 D4 确认） |
+| | B. 新码 `mch:pay:funds` | 能单独授权店长 | 要迁移、i18n、角色模板改动；交接文档只说「店主、有资金权限者」 | ❌（已拍板 D8 若要给店长，再改为 B） |
+| 提现 | **A. 不做** | 台湾模式平台不经手资金，没有可提的余额；PRD §2、§7 已定提现退役 | — | ✅ 采用（已拍板 D4 确认） |
 
 **需要 ADR**（本文不写，建议编号顺延到 ADR-052）：「台湾直连拨款模式下商户资金视图的数据归属」——定死三件事：① 资金视图的真源是支付服务，ai-shop 不存资金数字；② 平台不提供余额与提现；③ 没有渠道回报时只显示「预计」，并强制带覆盖范围标识。理由：这三条一旦让 App 和运营形成习惯就很难收回（尤其是「余额」一旦出现，就会被要求「提现」）。
 
@@ -375,12 +376,12 @@ App 侧：一期 A 上线即可从 `contracts.dart` 删 `^/biz/funds/`（附录 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
 | 渠道不回传拨款 / 账单，或格式迟迟定不下来 | 「已拨款」永远是 0，「对账」永远只有自查 | `payoutSource` / `coverage` 让页面诚实；一期 B 单独排期，不阻塞一期 A |
-| 估算费率与真实费率不符（配置默认 0） | 总览手续费显示 0、待拨偏高 | 待用户拍板 D5：估算改读费率表；上线前运营在 `sys_pay_channel_rate` 配台湾费率；费率页标 `DEFAULT_ESTIMATE` |
-| near-pay 与本仓库 `backend/pay` 两份代码不同步 | 166 上与本地测试结果不同 | 待用户拍板 D2；`PayBizInternalApiRoundTripTest` 只证明本仓库那份；near-pay 侧要有同名测试 |
+| 估算费率与真实费率不符（配置默认 0） | 总览手续费显示 0、待拨偏高 | 已拍板 D5：估算改读费率表；上线前运营在 `sys_pay_channel_rate` 配台湾费率；费率页标 `DEFAULT_ESTIMATE` |
+| near-pay 与本仓库 `backend/pay` 两份代码不同步 | 166 上与本地测试结果不同 | 已拍板 D2；`PayBizInternalApiRoundTripTest` 只证明本仓库那份；near-pay 侧要有同名测试 |
 | `scope=ENTITY` 扇出 | 门店多时慢（每店一次远程调用） | 一期限主体内门店 ≤ 50（超出回 `FUNDS_ENTITY_TOO_MANY_STORES`，App 提示改按店看）；以后再给支付服务加多门店查询 |
 | `stl_recon_diff` 没有门店列 | 按店过滤要反查 `pay_order`，差异多时慢 | 期间上限 `to − from ≤ 93`；一期 B 在 near-pay 给差异表加 `store_id` |
 | 「预计拨款日」与渠道真实拨款日不一致（节假日、渠道自定周期） | 商户按预计日去银行查，查不到 | 预计行明确标「预计」；文案由 App 写「以渠道入账为准」 |
-| 账期词表不一致（§1.5-2） | 同一个资金 Tab 里账期写法不同：收款商户账期 `T1/T2/WEEKLY`（`MerchantPaymentQueryServiceImpl.java:459-468`），渠道默认账期注释举例 `T+1`（`PayChannelMasterService.java:47-48`） | 待用户拍板 D6；定之前 App 两套都翻 |
+| 账期词表不一致（§1.5-2） | 同一个资金 Tab 里账期写法不同：收款商户账期 `T1/T2/WEEKLY`（`MerchantPaymentQueryServiceImpl.java:459-468`），渠道默认账期注释举例 `T+1`（`PayChannelMasterService.java:47-48`） | 已拍板 D6；定之前 App 两套都翻 |
 | TWD 精度被端上误解（按 0 位） | 金额差 100 倍，且不报错 | §2.2 写死 `currencyScale = 2`；AC13 往返测试用 NT$480 = 48000 断言 |
 
 ---
@@ -430,11 +431,14 @@ near-pay 侧要有与 `MerchantFundsQueryServiceImplTest` 同名的测试（不�
 | 日期 | 事件 |
 |---|---|
 | 2026-11-08 | 草稿；待「待决」拍板 |
-| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：概览加 `generatedAt` 与渠道 `payMethods`；每日流水加自定义区间；跨度上限统一为 `to − from ≤ 93`；TWD `currencyScale = 2` 写明；费率列未开通渠道；F06 改读 `/biz/funds/accounts` + `/biz/merchant/pay-service`（撤回给 `/biz/merchant/payment` 补字段）；对账差异加 `occurredAt`；payouts 加期间与 `estimateNo`；新增错误码 `FUNDS_ENTITY_TOO_MANY_STORES`；支付服务不可用固定 10505。产品问题并入「待用户拍板」（新增 D10、D11）。仍为草稿 |
+| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：概览加 `generatedAt` 与渠道 `payMethods`；每日流水加自定义区间；跨度上限统一为 `to − from ≤ 93`；TWD `currencyScale = 2` 写明；费率列未开通渠道；F06 改读 `/biz/funds/accounts` + `/biz/merchant/pay-service`（撤回给 `/biz/merchant/payment` 补字段）；对账差异加 `occurredAt`；payouts 加期间与 `estimateNo`；新增错误码 `FUNDS_ENTITY_TOO_MANY_STORES`；支付服务不可用固定 10505。产品问题并入「已拍板」（新增 D10、D11）。仍为草稿 |
+| 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认；ADR 见文首 |
 
 ---
 
-## 待用户拍板
+## 已拍板
+
+> 2026-11-08 用户按建议全部接受：下列各条一律按「建议」执行；「选项」与「后果」保留作决策记录。
 
 本节原名「待决」。2026-11-08 按商户 App 评审并入两条产品问题（D10、D11），D8 补了后端口径；其余为初稿各条，补写了每个选项的后果。技术问题已在 §2.0 直接改，不在这里。
 

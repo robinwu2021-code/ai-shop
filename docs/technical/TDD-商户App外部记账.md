@@ -1,8 +1,8 @@
 # TDD-商户App外部记账
 
-状态：草稿（契约待后端与 App 确认；未实现，§5 的测试都还没写、没跑）
+状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
 档位：1 · 依据：商户 App 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`（main `31a56c1`）） §7（7-20～7-23、接口表「外部收款」四行、待决第 1、5 条）、附录 B · 产出：本文
-（若「待用户拍板」D1 定成放进支付域 / pay-svc，或 D6 定成进报表与看板口径，本方案升为 2 档，要另开 ADR，见文末「升档条件」）
+（若「已拍板」D1 定成放进支付域 / pay-svc，或 D6 定成进报表与看板口径，本方案升为 2 档，要另开 ADR，见文末「升档条件」）
 关联需求：本仓库没有外部记账的 PRD；AC 由交接文档整理（§0），PRD-支付域 AC-3.6 / AC-6.3 与 PRD-商家资金到账与对账 AC-5 约束「线下的钱不进通道对账」
 评审：ai-shop-bapp `docs/implementation/TDD评审-商户App.md`「第三组 · 二」及开头表第 6、7 行（2026-11-08，对照 App `feat/core-flow-ui` `58a3995`）；按它修订的内容见 §7
 创建：2026-11-08 · 最后更新：2026-11-08（按商户 App 评审修订）
@@ -52,7 +52,7 @@
 **孤立项**：
 - 没落点的 AC：无。
 - 挂不上 AC 的设计：
-  - `receivedAt`（实际收款时间，可补记过去的）—— App 建议契约里没有，是本文加的，挂在 AC1 下；要不要见「待用户拍板」D4。
+  - `receivedAt`（实际收款时间，可补记过去的）—— App 建议契约里没有，是本文加的，挂在 AC1 下；要不要见「已拍板」D4。
   - `expectedVersion`（更正 / 作废的并发保护）—— App 没有，挂在 AC5 / AC6 / AC7 下；理由见 §2 差异表。
   - 列表的日期 / 方式 / 状态筛选与游标分页 —— App mock 一次回全部数组，本文按同 Tab 的 `/biz/payment/orders` 补上，挂 AC4。
   - 列表关键字 `q`（按订单号、备注搜）—— App 现在在客户端对已拉到的全部记录搜（`collect_pages.dart:167`），分页后只能搜已加载页；评审要求后端承接，挂 AC4。
@@ -66,14 +66,14 @@
 
 | 现有能力 | 出处 | 做什么 | 能否承载外部记账 | 结论 |
 |---|---|---|---|---|
-| 线下卖出 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizOfflineSaleController.java`（`/biz/store/{storeNo}/offline-sale`）、`backend/shop-app/src/main/java/ai/neargo/shop/invbridge/OfflineSaleService.java` | 一笔 = 一张 `OFFLINE_SALE` 出库单直接过账；撤销 = `OFFLINE_RETURN` 入库单 | **不能**。类注释写明「不记售价、不收款……这里只回答货少了几件」；单据在进销存独立库（`@ConditionalOnInventory`），按 SKU 行记件数，没有金额字段；进销存没开的门店整个控制器不存在 | 不复用。可在「待用户拍板」D5 里决定是否让外部记录**引用**一张线下卖出单号 |
-| 订单线下实收（商城订单） | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizOrderController.java` `POST /biz/order/{subOrderNo}/confirm-offline-pay`（权限 `BizPerms.RECEIVE`） | 把 `WAIT_OFFLINE_PAY` 子单推成已付 | **不能**。必须有一张待线下付款的订单；外部记账大多没有订单 | 不复用；`orderNo` 只作引用，不触发它（「待用户拍板」D3） |
+| 线下卖出 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizOfflineSaleController.java`（`/biz/store/{storeNo}/offline-sale`）、`backend/shop-app/src/main/java/ai/neargo/shop/invbridge/OfflineSaleService.java` | 一笔 = 一张 `OFFLINE_SALE` 出库单直接过账；撤销 = `OFFLINE_RETURN` 入库单 | **不能**。类注释写明「不记售价、不收款……这里只回答货少了几件」；单据在进销存独立库（`@ConditionalOnInventory`），按 SKU 行记件数，没有金额字段；进销存没开的门店整个控制器不存在 | 不复用。可在「已拍板」D5 里决定是否让外部记录**引用**一张线下卖出单号 |
+| 订单线下实收（商城订单） | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizOrderController.java` `POST /biz/order/{subOrderNo}/confirm-offline-pay`（权限 `BizPerms.RECEIVE`） | 把 `WAIT_OFFLINE_PAY` 子单推成已付 | **不能**。必须有一张待线下付款的订单；外部记账大多没有订单 | 不复用；`orderNo` 只作引用，不触发它（「已拍板」D3） |
 | 收银台线下实收（服务业） | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizOfflineReceiptController.java` `POST /biz/checkout/{operationNo}/offline-receipts`、`backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineReceiptServiceImpl.java` | 绑结账操作单，校验金额等于原报价，经 `PaymentOperationPort#confirmOffline` 写支付台账（`ledger.settle(... "OFFLINE" ...)`） | **不能**。绑订单与报价；会进 pay 域台账；`OfflineReceiptReq` 只收 `CASH` / `BANK_TRANSFER` 且**写死 `CNY`**（`backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/OfflineReceiptPort.java` 第 46–48 行），台湾 TWD 直接 10400 | 不复用。**借用**它的两样做法：`Idempotency-Key` 头 + 「同键不同体 → 冲突」；方式码 `CASH` / `BANK_TRANSFER` 命名 |
 | 人工确认服务收款 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizManualServiceAdmissionController.java`（`/biz/service-orders/{orderNo}/manual-receipts` 等） | 柜台服务单的人工收款准入（`admission_kind=MANUAL_OFFLINE`） | **不能**。同样绑服务订单 | 不复用 |
 | 储值线下实收 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoredValuePlanRechargeController.java` `/biz/stored-value/plan-recharges/confirm-offline` | 储值充值的线下到账 | **不能**。储值专用 | 不复用 |
 | 商城线下转账 | `backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/http/CommerceOfflineBuyerHttpController.java`（`/biz/stores/{storeNo}/mall/offline/*`）、`CommerceOfflineOpsHttpController.java`（`/ops/biz-mall/offline/*`） | 商家向平台买东西、银行转账付款，运营确认 | **不能**。钱的方向是商家 → 平台 | 不复用 |
 | 收款 Tab / 收银台 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/pay/BizPaymentController.java` 经 `backend/shop-app/src/main/java/ai/neargo/shop/payclient/BizPaymentAppService.java` 调支付域（内嵌直调，独立形态走 `/internal/pay/v1/biz/**`） | 渠道收款的支付单、链接、退款 | **不应该**。外部记录不是支付单；塞进支付域要改 pay-domain、pay-svc 内部端点、payclient 两种形态，且违背 PRD-支付域 AC-6.3「线下单排除在通道对账之外」 | 只共用 URL 前缀 `/biz/payment`（App 已定、路由已登记），实现不进支付域 |
-| 「外部收款」一词 | `docs/technical/design/TDD-B端报表库与日结.md` 第 881、1124 行 `EXTERNAL_NET_CASHFLOW_AMOUNT` | 报表里的「外部」指**经渠道确认的真实现金流入**（相对储值、积分等内部抵用） | — | **名词撞车**：本文的记录在代码与表名里一律叫 `offline record`，不叫 external receipt；报表口径见「待用户拍板」D6 |
+| 「外部收款」一词 | `docs/technical/design/TDD-B端报表库与日结.md` 第 881、1124 行 `EXTERNAL_NET_CASHFLOW_AMOUNT` | 报表里的「外部」指**经渠道确认的真实现金流入**（相对储值、积分等内部抵用） | — | **名词撞车**：本文的记录在代码与表名里一律叫 `offline record`，不叫 external receipt；报表口径见「已拍板」D6 |
 
 **取舍**：外部记账是「商家自报的、平台无从核实的流水」。挂到任何一种已有单据上，都会把它带进那种单据的后果
 （减库存、推订单状态、进支付台账、进通道对账）。所以新建一张只属于它的表，放在 trade 域
@@ -249,14 +249,14 @@ App 收款 Tab **已经**在客户端把支付单与外部记录合并显示（`
 | 查询串 | `from?`、`to?`（`yyyy-MM-dd`，含两端，不传 = 今天；`to − from ≤ 93`，见「查询跨度」）· `method[]?` · `status[]?`（`RECORDED` / `VOIDED`，不传 = 全部）· `q?`（1–32 字，`order_no` 或 `note` 包含它即命中；参数绑定，不拼 SQL）· `cursor?` · `size?`（1–50，默认 20） |
 | 响应 | `{ items: OfflineRecordView[], nextCursor: string \| null }`；按 `receivedAt` 倒序、同时刻按 `id` 倒序；按 `receivedAt` 落日期 |
 | 错误 | 10400 日期格式错 / 跨度超限 / 枚举值未知 / `q` 超长；70006 |
-| 说明 | 列表里的 `history` 照带（单条事件少，不另开详情接口）；没有汇总字段（见「待用户拍板」D6）。`q` 不沿用 `/biz/payment/orders` 的 `[A-Za-z0-9*-]` 限制（那边因 `inSql` 拼串才限，`MerchantPaymentQueryServiceImpl.java` 第 61、136 行），因为备注多是中文；App 对支付单那一路仍按 `payQueryAllowed` 判断发不发 |
+| 说明 | 列表里的 `history` 照带（单条事件少，不另开详情接口）；没有汇总字段（见「已拍板」D6）。`q` 不沿用 `/biz/payment/orders` 的 `[A-Za-z0-9*-]` 限制（那边因 `inSql` 拼串才限，`MerchantPaymentQueryServiceImpl.java` 第 61、136 行），因为备注多是中文；App 对支付单那一路仍按 `payQueryAllowed` 判断发不发 |
 
 #### 3. `POST /biz/payment/offline-records/{recordNo}/correct` —— 更正
 
 | 项 | 内容 |
 |---|---|
 | 权限 | `mch:pay:offline:manage` |
-| 请求体 | `amountMinor`(必填) · `currency`(必填，必须等于原记录币种) · `method`(必填) · `reason`(必填，1–100 字) · `expectedVersion`(必填)。能改哪些字段见「待用户拍板」D10 |
+| 请求体 | `amountMinor`(必填) · `currency`(必填，必须等于原记录币种) · `method`(必填) · `reason`(必填，1–100 字) · `expectedVersion`(必填)。能改哪些字段见「已拍板」D10 |
 | 响应 | `OfflineRecordView`（`corrected=true`，`history` 追加 `CORRECT`） |
 | 错误 | 10400 参数 / 金额不在币种步长上 / 新值与旧值完全相同（App 两项都没改时禁用保存）；10404 不存在或不是本店；10409 已作废，或 `expectedVersion` 与当前不符；70006 |
 | 并发 | `SELECT … FOR UPDATE` 锁记录行再比版本，与事件插入同一事务 |
@@ -285,7 +285,7 @@ App 收款 Tab **已经**在客户端把支付单与外部记录合并显示（`
 | 列表返回 | 直接数组，无筛选 | `{items, nextCursor}` + `from/to/method/status/cursor/size` | 与 `/biz/payment/orders`、`/biz/payment/links` 同形（App 已有解析）；不分页的话一家现金店一个月就上千行 | 改列表读取与分页 |
 | 留痕 | `history[{at, by, text}]`，文字由服务端给 | `history[{at, by, byName, action, reason, from*/to*}]` | 服务端拼文字就得按 `Accept-Language` 本地化三语；给结构化事件由 App 渲染，与 `timeline.kind` 一致 | 按 `action` 渲染 |
 | 记录人 | `recordedBy`（显示用） | `recordedBy`（用户号）+ `recordedByName` | 号是稳定身份，名字会变；与 `/biz/payment/links` 的 `operatorNo` 同做法 | 显示改读 `recordedByName` |
-| 实收时间 | 无（只有 `recordedAt`） | 加 `receivedAt?` | 「昨天的现金今天补记」很常见，不加的话按日期看的列表就错天；「待用户拍板」D4 | 表单加一个可选时间 |
+| 实收时间 | 无（只有 `recordedAt`） | 加 `receivedAt?` | 「昨天的现金今天补记」很常见，不加的话按日期看的列表就错天；「已拍板」D4 | 表单加一个可选时间 |
 | 并发保护 | 无 | 更正 / 作废带 `expectedVersion` | 店主与店长同时改同一条，后到的会盖掉先到的而不自知；10409 后 App 已有「重读再试」 | 带上列表里的 `version` |
 | 更正的币种 | 随 `amount` 一起 | 必传且必须等于原记录币种 | 不允许借更正换币种 | 无（照传） |
 
@@ -407,7 +407,9 @@ App 侧（ai-shop-bapp，不在本仓库）：按「差异」表改 `features/co
 
 ---
 
-## 待用户拍板
+## 已拍板
+
+> 2026-11-08 用户按建议全部接受：下列各条一律按「建议」执行；「选项」与「后果」保留作决策记录。
 
 产品口径与范围，本文不自行定。每条给出选项、各自后果和建议；**拍板前 §2 按每条标「（本文）」的选项写**。
 D3、D6 两条评审列为最需要先定（评审开头表第 7 行），D10 是评审新提的。
@@ -441,5 +443,6 @@ D3、D6 两条评审列为最需要先定（评审开头表第 7 行），D10 �
 
 | 日期 | 事件 |
 |---|---|
-| 2026-11-08 | 草稿；待「待用户拍板」 |
-| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：写明 TWD `currencyScale` = 2（NT$480 存 `48000`）与整元规则（§1、§2「金额与小数位」、AC10）；写清拒收旧字段 `requestId` 与上线顺序（§2「未知字段与 `requestId` 的过渡」）；改正「App 收款列表不混入外部记录」的说法（AC3、§2「与收款 Tab 的合并」）；查询跨度改为与 `/biz/payment/orders`、资金草案同一条 `to − from ≤ 93` 并写清数法（§2「查询跨度」；原写「≤ 92 天」）；列表加 `q`；写明 `orderNo` 只认本店子单号、`receivedAt` 下限按门店时区、10409 的区分方式；§5 加对应用例；「待决」改为「待用户拍板」，各条补后果，D3 / D6 / D7 按评审改建议，新增 D10。状态仍为草稿 |
+| 2026-11-08 | 草稿；待「已拍板」 |
+| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：写明 TWD `currencyScale` = 2（NT$480 存 `48000`）与整元规则（§1、§2「金额与小数位」、AC10）；写清拒收旧字段 `requestId` 与上线顺序（§2「未知字段与 `requestId` 的过渡」）；改正「App 收款列表不混入外部记录」的说法（AC3、§2「与收款 Tab 的合并」）；查询跨度改为与 `/biz/payment/orders`、资金草案同一条 `to − from ≤ 93` 并写清数法（§2「查询跨度」；原写「≤ 92 天」）；列表加 `q`；写明 `orderNo` 只认本店子单号、`receivedAt` 下限按门店时区、10409 的区分方式；§5 加对应用例；「待决」改为「已拍板」，各条补后果，D3 / D6 / D7 按评审改建议，新增 D10。状态仍为草稿 |
+| 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |

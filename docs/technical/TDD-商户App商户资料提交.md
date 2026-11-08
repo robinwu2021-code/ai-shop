@@ -1,6 +1,7 @@
 # TDD-商户App商户资料提交
 
-状态：草稿（2026-11-08 起草，同日按商户 App 评审修订；「待用户拍板」一节未定；未实现、未跑任何测试）
+状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
+ADR：[ADR-055](./ADR/ADR-055-门店改挂主体限于占位认领.md) · [ADR-056](./ADR/ADR-056-商户自带渠道商户号的录入与核实路径.md)
 档位：**2**。N3（一次提交资料）、N4（主体读接口补审核字段）、N1 预检单看都是 1 档（新端点或响应加字段、复用已有权限码、ai-shop 不加表）；
 N1（门店改挂主体）改门店与主体的关系、牵动 near-pay 门店投影与商城订阅，N2（绑定已有渠道商户号）决定商户渠道凭据从哪条路进系统 —— 两者都不可逆，按 2 档写 §3 §4。**需要两份 ADR（本文不写）**：「门店改挂主体（占位认领）」「商户自带渠道商户号的录入路径」。
 关联需求：
@@ -37,8 +38,8 @@ N2、N3 都是**主体级**动作，要主体级收款目标（`FoundationTarget
 
 | 评审条目 | 核对结果 | 处理 | 改在哪 |
 |---|---|---|---|
-| 跨草案 4 / R1：无门店新建商户资料（M04）回 10409，或被静默挂到 `merchantScope()` 随手拿到的那家占位店 | 属实且更具体：不带门店头时，新模型（`commerce.store-creation.enabled=true`，166 与本机已开）直接 70198（§1 第 21 行）；带了一家已认证主体的门店头，底层抛 10403（§1 第 1 行）；带了占位店则挂到那家店 | 契约改为 **N3 必带门店头，缺则 70198**，`entityNo/storeNo` 一律以门店头为准；服务端无从判断 App 选的那家店是不是用户本意，所以「M04 留不留、怎么留」是产品取舍 | §0 A1、A8；§2 N3「分流」；待用户拍板 1 |
-| 跨草案 4 / R2：改已核准资料、J02 补件都 10409 | 属实：已核准主体没有任何改资料入口（§1 第 22 行）；而 near-pay 补件（`NEED_MORE`）重提又会撞同修订号冲突（§1 第 25 行） | N3 对 **ACTIVE 主体** 改为「只补收款资料」：主体类型、名称、统编须与已核准一致，其余（负责人、电话、地址、证照、结算账户）送 near-pay 进新修订；J02 = near-pay `NEED_MORE`/`REJECTED` 后用 N3 重提。改已核准的名称 / 主体类型仍 10409，是否开放见待用户拍板 2 | §0 A8、A11；§2 N3「分流」「near-pay 修订号」 |
+| 跨草案 4 / R1：无门店新建商户资料（M04）回 10409，或被静默挂到 `merchantScope()` 随手拿到的那家占位店 | 属实且更具体：不带门店头时，新模型（`commerce.store-creation.enabled=true`，166 与本机已开）直接 70198（§1 第 21 行）；带了一家已认证主体的门店头，底层抛 10403（§1 第 1 行）；带了占位店则挂到那家店 | 契约改为 **N3 必带门店头，缺则 70198**，`entityNo/storeNo` 一律以门店头为准；服务端无从判断 App 选的那家店是不是用户本意，所以「M04 留不留、怎么留」是产品取舍 | §0 A1、A8；§2 N3「分流」；已拍板 1 |
+| 跨草案 4 / R2：改已核准资料、J02 补件都 10409 | 属实：已核准主体没有任何改资料入口（§1 第 22 行）；而 near-pay 补件（`NEED_MORE`）重提又会撞同修订号冲突（§1 第 25 行） | N3 对 **ACTIVE 主体** 改为「只补收款资料」：主体类型、名称、统编须与已核准一致，其余（负责人、电话、地址、证照、结算账户）送 near-pay 进新修订；J02 = near-pay `NEED_MORE`/`REJECTED` 后用 N3 重提。改已核准的名称 / 主体类型仍 10409，是否开放见已拍板 2 | §0 A8、A11；§2 N3「分流」「near-pay 修订号」 |
 | 跨草案 4 / R3 / M3：提交后主体仍 `PENDING_LICENSE`、不建渠道行，C08 出不来 | 属实：N3 不写 `mch_payment_merchant`；`EntityVO.status` 只有主体生命周期，没有审核态（§1 第 13 行） | 新增 **N4**：主体读接口加 `review` 等字段（App 读 `review`，不再拿 `status` 推）；C08 渠道一格读已有的 `GET /biz/merchant/pay-service`；明确 N3 **不会**出现 `source=APPLY` 的 APPLYING 行 | §0 A12、D1–D4；§2 N4 |
 | R4：`EntityVO` 缺字段不能拖到另一份 TDD | 属实：C02 列表靠 `review` 过滤，没字段就全是 `none` | 采纳：并入本文 N4，与 N1 同批交付；《TDD-商户App接口字段对齐》不再接这一条 | §0 孤立项；§2 N4 |
 | 「App 在 N3 之前就调 bind 会被 10409」（N2 入口在表单里） | 属实：B4 要求支付服务状态不是 `NONE` | 契约不放宽（未申请支付服务就核实已有商户号，near-pay 没有可挂的平台商户）；写明 N2 的前置与 App 入口位置；`evidenceUrl` 改 `evidenceAssetKey`（near-pay 只收 `file:` 引用） | §0 B4、B8；§2 N2 |
@@ -47,14 +48,14 @@ N2、N3 都是**主体级**动作，要主体级收款目标（`FoundationTarget
 | R10：v5 表单不知道行业与主体的可选集 | 属实，但后端**已有**：`GET /common/master-data` 一次回行业（`microAllowed`）与主体（`industryGated`、`needLicense`），就是为这一屏做的（§1 第 23 行） | 不加端点；契约写明 App 读它置灰，判据与 `requireSubjectAllowedByIndustry` 同一份 | §2 N3「字段」 |
 | 「App 需要改的」：`profile.industry` 改送 `store.industryCode / subIndustryCode`（M1） | **与后端不符，不照改**：入驻申请的 `industry` 是 `sys_industry.industry`（餐饮 / 零售等七类，`MchEntityApply.industry` 注释），门店的 `industryCode` 是经营类型目录，必须等于 `businessTypeCode`（`BizMerchantController#requireIndustry`）——两套码。送门店码会让小微主体查不到行业行而 70001，其余主体落一个不在 `sys_industry` 里的值 | 契约改为送 `/common/master-data` 的 `industries[].industry`；`OTHER` 时带 `industryNote`（≤64，V360 列宽） | §2 N3「字段」 |
 | 草案自查（评审未提，修订 N3/J02 时核出） | near-pay `materials[].ref` 只收 `file:`/`cipher:` 引用、`kind` 只收四种（§1 第 24 行），草案写的「`ref` = 图片 URL」会被 near-pay 400 | 证照改送上传返回的 `assetKey`，服务端映射为 `file:<assetKey>`；`kind` 映射到 near-pay 值域 | §0 A3、A4；§2 N3 |
-| M2 结算户名与银行清单 | 后端两侧都没有银行清单接口（ai-shop、near-pay 均无 `bank` 相关商户端点）；户名规则归 near-pay 渠道进件 | 产品取舍 | 待用户拍板 4 |
+| M2 结算户名与银行清单 | 后端两侧都没有银行清单接口（ai-shop、near-pay 均无 `bank` 相关商户端点）；户名规则归 near-pay 渠道进件 | 产品取舍 | 已拍板 4 |
 | M4 地址是否必填 | 后端不要求：入驻申请没有地址列，near-pay `registeredAddress` 可空（`PayServiceApplyRequests.java` 59 行 `trimOrNull`） | 契约：可空 | §2 N3「字段」 |
 | M5 将失效人数 | 见 R9 | 预检回 `revokedStaff` | §2 N1 |
 | M6 `evidenceUrl` 用哪个 `bizType` | `QUAL`：落 `_ENTITY` 档、私有路径；上传本身不进 `mch_qualification`（只有 `/biz/qualifications/save` 才写） | 契约写明；字段改 `evidenceAssetKey` | §2 N2 |
 | M7 是否收 `Idempotency-Key` | N3 按内容判重放，不读该头 | 契约写明：App 不必发；发了忽略 | §2 N3「幂等」 |
 | M8 驳回后重提是新单还是改原单 | 新单（`MchEntityApply` 43 行：REJECTED 是终态，重提新开一张），`applyNo` 会变 | 契约写明；App 进度按主体 `review` 显示，不按 `applyNo` | §2 N3、N4 |
 | M9 改挂响应能否直接带新分组 | 可以：`/biz/stores/mine` 的组装（`MerchantEntityService#myStores`）可在同一请求末尾调用 | 响应加 `stores`（与 `/biz/stores/mine` 同形） | §2 N1 |
-| R5 / R6 / R7（原型与文案要改、需要产品签字） | 产品取舍 | 并入待用户拍板 5、6、7，写明原型要同步改的屏 | 待用户拍板 |
+| R5 / R6 / R7（原型与文案要改、需要产品签字） | 产品取舍 | 并入已拍板 5、6、7，写明原型要同步改的屏 | 已拍板 |
 
 ---
 
@@ -62,7 +63,7 @@ N2、N3 都是**主体级**动作，要主体级收款目标（`FoundationTarget
 
 需求来自交接文档 4-05 / 4-06 / 4-07、App 的 mock 行为（`mock_v5.dart` 486–537 行）与商户 App 评审。App 现在只认 `code=0`、响应体丢弃（`merchant_api.dart` 三处 `(_) => true`）；评审已确认 App 会改为解析本文的响应对象。
 
-### N3 一次提交商户资料（v5 C04–C07；J02 补件；M04 见待用户拍板 1）
+### N3 一次提交商户资料（v5 C04–C07；J02 补件；M04 见已拍板 1）
 
 | AC | 需求（Given / When / Then） | 落点 |
 |---|---|---|
@@ -73,7 +74,7 @@ N2、N3 都是**主体级**动作，要主体级收款目标（`FoundationTarget
 | A5 | Given 任何时候 When 提交 Then 结算帐号明文**不落 ai-shop 库、不进日志、不进事件号摘要**，响应只回掩码 | `SettleAccountInput#toString` 掩码；`PayServiceApplyRequests.digest` 不含新增字段 |
 | A6 | Given near-pay 不可用（内嵌部署或调用失败） When 提交 Then 本地申请与协议照常提交，HTTP 200，`payService.status=UNAVAILABLE`；When 原样重发 Then 不新建第二张申请，只补发 near-pay | 编排先本地事务后远程调用；重放判据见 §2 N3「幂等」 |
 | A7 | Given 本门店主体已有一张 `PENDING` 申请 When 内容相同 Then 重放（A6，`replayed=true`）；When 内容不同 Then **修改这张申请**（含证照），`applyNo` 不变，`revised=true`，并按新资料重送 near-pay。Given 申请已 `REVIEWING` Then 10467（已有码 `APPLY_NOT_EDITABLE`）。Given 本人在**另一个**主体上有进行中申请 Then 10409 | `OpsService#reviseMerchantApply`（新）；`OpsServiceImpl` 已有的「一人一份进行中」与 `uk_apply_active_owner` 不变 |
-| A8 | Given 门店主体已核准（`ACTIVE`） When 提交 Then **不碰入驻申请**，只把收款资料送 near-pay（J02 补件、已认证主体首次申请收款都走这里），`applyStatus=APPROVED`；Given 请求的主体类型、名称或统编与已核准的不一致 Then 10409（改已核准资料见待用户拍板 2）；Given near-pay 状态是 `PENDING` 或 `APPROVED` Then 10409（审核中不叠修订；已通过后改资料同属待用户拍板 2）；Given 主体 `SUSPENDED`/`BANNED` Then 10409 | 编排层按门店主体状态分流（§2 N3「分流」） |
+| A8 | Given 门店主体已核准（`ACTIVE`） When 提交 Then **不碰入驻申请**，只把收款资料送 near-pay（J02 补件、已认证主体首次申请收款都走这里），`applyStatus=APPROVED`；Given 请求的主体类型、名称或统编与已核准的不一致 Then 10409（改已核准资料见已拍板 2）；Given near-pay 状态是 `PENDING` 或 `APPROVED` Then 10409（审核中不叠修订；已通过后改资料同属已拍板 2）；Given 主体 `SUSPENDED`/`BANNED` Then 10409 | 编排层按门店主体状态分流（§2 N3「分流」） |
 | A9 | Given 新模型（STORE_V1）门店的店主 When 调 N3 Then 通过门店准入（不是 70006），权限码 `biz:finance` | `CommerceRoutePolicy` foundation 通道加 `POST /biz/merchant/onboarding` |
 | A10 | Given 请求体 `entityNo`/`storeNo` 与 `X-Entity-No`/`X-Store-No` 不一致 When 提交 Then 拒绝（`AccessDenied(FORBIDDEN)`，经 `backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/CommerceAccessErrors.java` 回包，与 `pay-service/apply` 同一行为） | `FoundationPaymentAccess#require` + `FoundationTarget#check` |
 | A11 | Given 资料变了（修改路径、驳回后新建、A8 补件、只改了结算账户） When 送 near-pay Then near-pay 收到更高的主体修订号、进新的资料修订，**不会**因同修订号内容不同而冲突；Given 原样重放 Then 修订号不变、near-pay 幂等 | 本地写入时刷新主体修订号；near-pay 回 409 时刷新后重发一次（§2 N3「near-pay 修订号」） |
@@ -97,7 +98,7 @@ N2、N3 都是**主体级**动作，要主体级收款目标（`FoundationTarget
 | B3 | Given 该主体该渠道已有 `ACTIVE` 行或在途申请 When 绑定 Then 10409 | 绑定服务先查 `mch_payment_merchant` |
 | B4 | Given 主体还没申请支付服务（状态 `NONE`，含 N3 返回 `UNAVAILABLE`/`NOT_ELIGIBLE` 的情况） When 绑定 Then 10409。**App 不能在 N3 表单提交之前调 N2**：入口放在 N3 成功之后或 M02 / C01 的渠道行上 | 同上，查 `PaySourceLinkApi#status` |
 | B5 | Given 运营在 near-pay 核实通过（已有 `POST /pay-ops/v2/channel-accounts/{payMerchantNo}/verify`） When 店主刷新 `POST /biz/merchant/payment/{payChannel}/refresh` Then 该行 `ACTIVE`，带 `payMerchantNo` | `MerchantPaymentServiceImpl#refresh` 对 `source=BIND` 行改查 near-pay 认领状态 |
-| B6 | Given 请求带 `credential` When 绑定 Then 10400（v1 不经 App 收密钥，见待用户拍板 6） | 请求 record **显式保留** `credential` 字段、非空即 10400 —— 不能指望 Jackson 拒未知字段（本仓库只在个别控制器手动开了 `FAIL_ON_UNKNOWN_PROPERTIES`，默认是静默丢弃，密钥会被悄悄吞掉而 App 以为绑上了） |
+| B6 | Given 请求带 `credential` When 绑定 Then 10400（v1 不经 App 收密钥，见已拍板 6） | 请求 record **显式保留** `credential` 字段、非空即 10400 —— 不能指望 Jackson 拒未知字段（本仓库只在个别控制器手动开了 `FAIL_ON_UNKNOWN_PROPERTIES`，默认是静默丢弃，密钥会被悄悄吞掉而 App 以为绑上了） |
 | B7 | Given 新模型门店 When 调 N2 Then 不是 70006 | `CommerceRoutePolicy` foundation 通道 |
 | B8 | Given 带 `evidenceAssetKey` When 绑定 Then 它必须属于本主体 `_ENTITY/qual/` 目录，否则 10400；送 near-pay 时是 `file:<assetKey>` | `MerchantChannelBindService#bind` |
 
@@ -121,7 +122,7 @@ App 只在「本店还没有已审核的商户资料」时打开 C02（`store_pa
 **孤立项**
 - 没落点的 AC：
   - 签约 `signRequired` / `signUrl`：near-pay 进件单有 `signUrl`（near-pay `backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsOnboardingDtos.java` 20–23 行），ai-shop 没有转出来。不在本文范围。
-  - 原型 M04「新建商戶資料（不預填門店資訊）」：本文 N3 必带门店头，M04 怎么留见待用户拍板 1。
+  - 原型 M04「新建商戶資料（不預填門店資訊）」：本文 N3 必带门店头，M04 怎么留见已拍板 1。
 - 挂不上 AC 的设计：
   - App 的 N3 `channels[].channelMerchantNo`（「新建资料时顺便绑已有商户号」）：本文不在 N3 里收，改为 N3 成功后逐个调 N2。理由见 §2 N3「与 App 的差异」。
 - 起草时的孤立项「`EntityVO` 缺 `taxNo/owner/rejectReason`，建议并入《TDD-商户App接口字段对齐》」已按评审 R4 并入本文 N4。
@@ -159,7 +160,7 @@ App 只在「本店还没有已审核的商户资料」时打开 C02（`store_pa
 | 23 | 主数据快照：行业（`industry, name, microAllowed`）与主体（`subjectType, needLicense, industryGated`）一次返回，就是给「选行业 → 过滤主体 → 要不要执照」这一屏用的 | `backend/shop-core/src/main/java/ai/neargo/shop/platform/api/common/CommonMetaController.java` 37–38 行 `GET /common/master-data`；`backend/shop-core/src/main/java/ai/neargo/shop/platform/dto/MasterDataVO.java` 36、59 行；服务端判据 `OpsServiceImpl.java` 767 行 `requireSubjectAllowedByIndustry` | 评审 R10、M1：`industry` 送这里的码 |
 | 24 | near-pay 资料材料只收 `kind ∈ {BUSINESS_LICENSE, ID_DOCUMENT, BANK_ACCOUNT, OTHER}`、`ref` 匹配 `^(file\|cipher):[\w./:#@-]{1,249}$`，最多 20 个；材料计入资料摘要 | near-pay `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/profile/ProfileMasking.java` 22–23、57–80 行 | N3 不能送图片 URL，只能送 `file:<assetKey>` |
 | 25 | near-pay 按来源修订号判重：同一 `entityRevision` 载荷不同 → 冲突；同一 `profileRevision` 资料摘要不同 → 冲突；修订号更低 → `STALE`、资料不提交；同一事件号参数不同 → 冲突。冲突回 409 | near-pay `SourceLinkService.java` 121、157–162 行；`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/profile/ProfileRevisionService.java` 51–55 行；状态码 `backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalServiceResponses.java` 75–80 行（`CONFLICT → 409`） | ai-shop 送的两个修订号都 = `mch_entity.updated_at` 毫秒（`backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/paysync/StoreSnapshotReader.java` 48–53 行）。主体不变而资料变了（改错字、补件）就会撞冲突 —— 评审 R2、R8 的另一半 |
-| 26 | near-pay 已批准的资料修订在新修订待审期间保留 | near-pay `ProfileRevisionService.java` 83 行 `latestApproved`（送件前置读它） | 待用户拍板 2 的后果分析 |
+| 26 | near-pay 已批准的资料修订在新修订待审期间保留 | near-pay `ProfileRevisionService.java` 83 行 `latestApproved`（送件前置读它） | 已拍板 2 的后果分析 |
 | 27 | 业务异常统一回 `ApiResult<Void>`：只有 `code` 与文案，不带数据 | `backend/shop-base-auth/src/main/java/ai/neargo/shop/common/GlobalExceptionHandler.java` 48–60 行；`backend/shop-base/src/main/java/ai/neargo/shop/common/BizException.java`（只有 `errorCode`、`args`） | 评审 R9 的 `data.reason` 不照改，改预检端点 |
 
 **后端没有**：一次提交资料的端点；绑定已有渠道商户号的任何入口（ai-shop 与 near-pay 商户端都没有）；门店换主体的任何入口（`入驻进件建店-需求与四层对齐.md` 277 行「换主体 ⬜」，`门店注册到进件-流程节点与代码对齐.md` 158 行「产品明确暂不做」）；`ID 证件`类资质码（`qual_type` 值域只有 `BUSINESS_LICENSE/FOOD_PERMIT/FOOD_WORKSHOP/OTHER`，见 `V202__auth_code_qual_type.sql` 11 行）；改已核准主体名称 / 主体类型的入口；银行代码清单接口（ai-shop 与 near-pay 都没有商户端 `bank` 相关端点）。
@@ -183,7 +184,7 @@ App 只在「本店还没有已审核的商户资料」时打开 C02（`store_pa
 | `settleAccount` | **无** | 见 §1 第 9、16 行 |
 | `entityNo` / `storeNo` | ① 体内 `entityNo`、`storeNo`（与门店头一致校验） | |
 
-**本文仍建议新增 N3 端点**（§3 方案 A），理由：结算帐号明文只该出现在一次请求里，拆给 App 串接就要 App 持有并多次发送；`SOLE` 映射、证照拆分、near-pay 材料引用与修订号（§1 第 24、25 行）是服务端规则，放 App 会和 C 端入驻走偏；三步之间失败时（例如申请成功、near-pay 失败）由服务端给一个统一的「哪步成了」比 App 自己拼更可靠。组合方案作为后备写在待用户拍板 9。
+**本文仍建议新增 N3 端点**（§3 方案 A），理由：结算帐号明文只该出现在一次请求里，拆给 App 串接就要 App 持有并多次发送；`SOLE` 映射、证照拆分、near-pay 材料引用与修订号（§1 第 24、25 行）是服务端规则，放 App 会和 C 端入驻走偏；三步之间失败时（例如申请成功、near-pay 失败）由服务端给一个统一的「哪步成了」比 App 自己拼更可靠。组合方案作为后备写在已拍板 9。
 
 **N4：不能。** `EntityVO` 没有审核态（§1 第 13 行），App 只能另读 `/biz/merchant/apply` —— 而那个只回本人最近一张，不分主体（`OpsServiceImpl.java` 858 行 `myApply`），多主体时对不上。
 
@@ -226,7 +227,7 @@ App 只在「本店还没有已审核的商户资料」时打开 C02（`store_pa
 | 权限码 | `biz:finance`（`@PreAuthorize("@perm.canBiz('biz:finance')")`，与 `pay-service/apply`、`/biz/merchant/payment` 同码） |
 | 路由登记 | **`CommerceRoutePolicy` foundation 通道**：`case "POST /biz/merchant/onboarding" -> "biz:finance"`。**不登记 `ShopStoreMemberRoutes`**（登记在那里不会绑定 `FoundationTarget`，新模型门店会 70006 `CONTACT_ADMIN`，同 11/07 事故） |
 
-门店头必带，是因为服务端判断不了「App 用哪家店当头」是不是用户本意：评审 R1 指出 App 的 M04 用 `merchantScope()` 随手取一家店，带到占位店就会把新资料挂到那家无关的店上。必带之后，**选哪家店是 App 在界面上让用户明确选出来的事**；M04 怎么留见待用户拍板 1。
+门店头必带，是因为服务端判断不了「App 用哪家店当头」是不是用户本意：评审 R1 指出 App 的 M04 用 `merchantScope()` 随手取一家店，带到占位店就会把新资料挂到那家无关的店上。必带之后，**选哪家店是 App 在界面上让用户明确选出来的事**；M04 怎么留见已拍板 1。
 
 请求：
 
@@ -321,7 +322,7 @@ near-pay 按来源修订号判重（§1 第 25 行），ai-shop 送的修订号 
 |---|---|---|
 | 1 | 响应从「无」改为上面的对象 | 给出 `payService` 才能让 App 直接显示「审核中 / 未送达 / 暂不可申请」而不是再读一次 |
 | 2 | `settleAccount` 从 `{bank, account}` 改为 `{bankCode, accountName, account}` | 渠道进件要户名；`bank` 是显示名不是代码（App 现在送的是界面上选的银行名） |
-| 3 | `channels` 从 `[{payChannel, channelMerchantNo?}]` 改为字符串数组，且 `channelMerchantNo` 不收 | near-pay 申请不分渠道（`capabilityType=FIAT`）；已有商户号走 N2，是另一种审核（核实已有号 vs 新开户），混在一张单里失败时说不清是哪一半。v1 `channels` 只校验在本市场启用列表内并作为偏好透传，`JKOPAY` 直接 70045（文案见待用户拍板 7） |
+| 3 | `channels` 从 `[{payChannel, channelMerchantNo?}]` 改为字符串数组，且 `channelMerchantNo` 不收 | near-pay 申请不分渠道（`capabilityType=FIAT`）；已有商户号走 N2，是另一种审核（核实已有号 vs 新开户），混在一张单里失败时说不清是哪一半。v1 `channels` 只校验在本市场启用列表内并作为偏好透传，`JKOPAY` 直接 70045（文案见已拍板 7） |
 | 4 | `entityNo`/`storeNo` 可空，门店头必带 | 由门店头决定，与 `/biz/merchant/apply` 一致；给了就必须一致 |
 | 5 | `licenses[].imageUrl` 改 `assetKey` | near-pay 材料只收 `file:` 引用（§1 第 24 行）；`assetKey` 还带主体前缀，能校验归属 |
 | 6 | `profile.industry` 送入驻行业码，不送门店的经营类型码；加 `industryNote` | 见上「字段规则」 |
@@ -366,7 +367,7 @@ App 侧：`MerchantEntity.fromJson` 的 `review` 改读 `review`（不再拿 `st
 
 near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-account-claims {sourceScope, sourceEntityRef, requestNo, payChannel, channelMerchantId, evidenceRef, actorRef}` → `{claimRef, status: PENDING_VERIFY}`，以及 `GET …/channel-account-claims/{claimRef}`。运营在 near-pay 核实时建渠道账户、录密钥、`verify`（已有端点）。
 
-与 App 建议的差异：去掉 `credential`（待用户拍板 6）；加 `requestNo`（§3 通用约定的幂等要求）；`evidenceUrl` 改 `evidenceAssetKey`；结果是「待核实」不是 mock 里的立即 `ACTIVE`；App mock 用的拒绝码 10422 在后端是 `STAFF_SCOPE_ON_FULL_ACCESS`（`backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java` 244 行），**不能用**，改为 10400 / near-pay 审核拒绝后行上的 `rejectReason`。
+与 App 建议的差异：去掉 `credential`（已拍板 6）；加 `requestNo`（§3 通用约定的幂等要求）；`evidenceUrl` 改 `evidenceAssetKey`；结果是「待核实」不是 mock 里的立即 `ACTIVE`；App mock 用的拒绝码 10422 在后端是 `STAFF_SCOPE_ON_FULL_ACCESS`（`backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java` 244 行），**不能用**，改为 10400 / near-pay 审核拒绝后行上的 `rejectReason`。
 
 ### N1 `POST /biz/store/{storeNo}/entity` 与预检
 
@@ -410,7 +411,7 @@ near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-ac
 
 同一事务里做：改 `mch_store.entity_no`、`is_default=false`、`pay_merchant_no=null`、`payment_changed_at`；FREE 订阅账户的 `entity_no` 跟着改（经 commerce 端口）；删除该门店非店主的 `mch_store_role`；占位主体下没有门店了则逻辑删除占位主体并停用其成员行；`OpsService#audit(…, critical=true, …)` 记 A→B；提交后 `payMirror.changed` 触发门店同步。
 
-与 App 建议的差异：App 允许选「审核中 / 被驳回」的主体（`store_payment_page.dart` 选项过滤 `e.review != MerchantReview.none`），本文只允许 `ACTIVE`（待用户拍板 5）；App 改挂前先调预检，确认弹框写明将失效人数；改挂后用响应里的 `stores` 按新 `entityNo` 重新选店（光调 `reloadStores()` 不刷新 `controller.selected`，后续主体级请求仍带旧 `X-Entity-No`，会被 `FoundationTarget` 拒绝）。
+与 App 建议的差异：App 允许选「审核中 / 被驳回」的主体（`store_payment_page.dart` 选项过滤 `e.review != MerchantReview.none`），本文只允许 `ACTIVE`（已拍板 5）；App 改挂前先调预检，确认弹框写明将失效人数；改挂后用响应里的 `stores` 按新 `entityNo` 重新选店（光调 `reloadStores()` 不刷新 `controller.selected`，后续主体级请求仍带旧 `X-Entity-No`，会被 `FoundationTarget` 拒绝）。
 
 ### 模块设计
 
@@ -447,7 +448,7 @@ near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-ac
 |---|---|---|---|
 | A 透传给 near-pay `source-links/apply`，ai-shop 不落库 | 明文只在一次请求里（ADR-002 §5 同一原则）；渠道直清本来就要它 | 依赖 near-pay 加字段；near-pay 失败要商家重提一次 | ✅ 采用 |
 | B 存 ai-shop `mch_payout_account` | 已有加密、掩码、审核 | 语义是平台代付卡、要求户名 = 主体名；台湾渠道直清用不上，等于造一份没人读的数据 | ❌ |
-| C 先不收，审核通过后再补 | 不依赖 near-pay | App 四步表单要拆，商家多跑一趟 | ❌（作为 near-pay 赶不上时的后备，见待用户拍板 4） |
+| C 先不收，审核通过后再补 | 不依赖 near-pay | App 四步表单要拆，商家多跑一趟 | ❌（作为 near-pay 赶不上时的后备，见已拍板 4） |
 
 ### N3 资料变了怎么让 near-pay 收（评审 R2、R8 引出）
 
@@ -470,7 +471,7 @@ near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-ac
 | 方案 | 优点 | 缺点 | 结论 |
 |---|---|---|---|
 | A App 收商户号 + 密钥，经 ai-shop 转 near-pay | 一步到位 | 密钥经过 App 与 ai-shop 两跳，日志、抓包、错误回显任何一处漏了就是渠道密钥泄露；近一半商户拿不准哪个是密钥 | ❌ |
-| B 只收商户号 + 证明，运营在 near-pay 核实时录密钥 | 密钥只在 near-pay 运营端出现，复用已有 `verify` | 要运营动手，开通慢一天 | ✅ 采用（待用户拍板 6） |
+| B 只收商户号 + 证明，运营在 near-pay 核实时录密钥 | 密钥只在 near-pay 运营端出现，复用已有 `verify` | 要运营动手，开通慢一天 | ✅ 采用（已拍板 6） |
 | C App 直连 near-pay 商户端 `BizChannelAccountController` | 不经 ai-shop | 那是 near-pay 自己的商户鉴权域（`X-Merchant-No`），App 没有那套登录；且它也只能绑已有账户、不能建 | ❌ |
 
 ### N1 改挂的范围
@@ -549,12 +550,15 @@ near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-ac
 
 | 日期 | 事件 |
 |---|---|
-| 2026-11-08 | 草稿；待「待用户拍板」 |
-| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：N3 必带门店头（无门店 70198）并按门店主体状态分流——占位主体的进行中申请可修改（10467 拦已进审核）、已核准主体只补收款资料（J02）；补 near-pay 修订号规则（变了才刷新、409 刷新重发一次）；证照改送 `assetKey`、near-pay 材料用 `file:` 引用；`industry` 改为入驻行业码、可选集读 `/common/master-data`；新增 N4 主体读接口补 `review/applyNo/rejectReason/taxNo/owner`；N1 加只读预检回 `blockers[]` 与将失效人数，改挂响应带新门店分组；N2 前置与入口写明、证明改 `evidenceAssetKey`；`data.reason` 与 `industryCode` 两条按后端事实未照改；原待决与新产品问题并入「待用户拍板」 |
+| 2026-11-08 | 草稿；待「已拍板」 |
+| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：N3 必带门店头（无门店 70198）并按门店主体状态分流——占位主体的进行中申请可修改（10467 拦已进审核）、已核准主体只补收款资料（J02）；补 near-pay 修订号规则（变了才刷新、409 刷新重发一次）；证照改送 `assetKey`、near-pay 材料用 `file:` 引用；`industry` 改为入驻行业码、可选集读 `/common/master-data`；新增 N4 主体读接口补 `review/applyNo/rejectReason/taxNo/owner`；N1 加只读预检回 `blockers[]` 与将失效人数，改挂响应带新门店分组；N2 前置与入口写明、证明改 `evidenceAssetKey`；`data.reason` 与 `industryCode` 两条按后端事实未照改；原待决与新产品问题并入「已拍板」 |
+| 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认；ADR 见文首 |
 
 ---
 
-## 待用户拍板
+## 已拍板
+
+> 2026-11-08 用户按建议全部接受：下列各条一律按「建议」执行；「选项」与「后果」保留作决策记录。
 
 | # | 问题 | 选项与后果 | 建议 |
 |---|---|---|---|
@@ -566,7 +570,7 @@ near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-ac
 | 6 | **N2 要不要在 App 收渠道密钥（`credential`）？**（评审 R6） | ①不收：只收商户号 + 可选证明，运营在 near-pay 核实时录密钥；C09 原型的 HashKey 输入框、「驗證失敗：商戶編號與密鑰不匹配」、当场「已綁定」都要重画为「送出核實 → 商戶號核實中」，原型待定 ⑤ 的上线时间顺延到运营核实流程就绪；②收：密钥经 App、ai-shop 两跳，任何一处日志或错误回显漏了就是渠道密钥泄露 | ①，需要一份 ADR；同步改 C09 原型与上线时间 |
 | 7 | **`channels` 勾选是承诺还是偏好？**（评审 R7）near-pay 按市场开渠道，不按申请勾选 | ①偏好：v1 只校验、透传；原型 C03「勾選後隨商戶資料送件」与 C06 文案改为「希望開通（以平台核定為準）」；`JKOPAY` 后端无代码，选了 70045，App 应不展示；②承诺「只开勾选的」：需 near-pay 支持按渠道开通 | ①，并同步原型文案 |
 | 8 | **门店改挂主体做不做？** 文档互相矛盾：`账号主体门店-关系定稿` §3 定「可切换」，`门店注册到进件-流程节点与代码对齐` 158 行写「产品明确暂不做」，`多门店与分享激励-需求` 四节列为「不做」 | ①一期只做「占位主体门店认领本账号已有主体」（§3 N1 方案 B）；②通用换主体：动纳税主体与 near-pay 关联，一期做不完；③不做：已有执照的老板开第二家店要再交一遍 | ①，需要一份 ADR 记下这个边界 |
-| 9 | **要不要新端点？还是 App 串已有接口** | ①新端点（§1「组合」小节末的理由）；②App 串 `apply → agreement/accept → pay-service/apply`：结算帐户无处可去、改进行中申请改不了证照、补件重提撞 near-pay 修订号冲突（§1 第 22、25 行），这几条 App 侧补不上 | ①；后端排期不够时以 ② 先交付首次提交，结算帐户按待用户拍板 4 后补 |
+| 9 | **要不要新端点？还是 App 串已有接口** | ①新端点（§1「组合」小节末的理由）；②App 串 `apply → agreement/accept → pay-service/apply`：结算帐户无处可去、改进行中申请改不了证照、补件重提撞 near-pay 修订号冲突（§1 第 22、25 行），这几条 App 侧补不上 | ①；后端排期不够时以 ② 先交付首次提交，结算帐户按已拍板 4 后补 |
 | 10 | **身份证正反面是否进 `mch_qualification`？** | ①不进：只放申请单 `licenses` 与 near-pay `materials`（`ID_DOCUMENT`）；②进：它不是经营资质，会被上架闸门、过期扫描当成资质处理 | ① |
 | 11 | **占位主体被认领后怎么处理？** | ①逻辑删除（`deleted=1`，`ShopCommerceStoreAdapter` 的 SQL 已按 `m.deleted=0` 过滤），成员行停用；②新增主体状态值：要改 B 端状态映射 `bizStatus` 与 App 枚举 | ① |
 | 12 | **N1 撤销员工授权要不要先确认？** | ①要：App 先调预检拿 `revokedStaff`，确认页写明「本店 n 名員工的授權會失效，需在新商戶下重新授權」，后端只执行不询问；②不确认：员工突然进不了店，店主不知道原因 | ① |

@@ -1,6 +1,6 @@
 # TDD-商户 App 问题回报与版本
 
-状态：草稿（未实现，未拍板；2026-11-08 已按商户 App 评审修订一轮）
+状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
 档位：1（新增端点 3 个 B/公共 + 3 个运营；`notify_ticket` 加列、新表 `sys_app_version`；新错误码 1 个；运营端一个新 tab）
 关联需求：
 - 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`）第 6 模块「系统状态」6-08、6-09，附录 B 第 8 行（`/biz/feedback`、`/app/version` 被正式包拦下）
@@ -20,7 +20,7 @@
 
 | AC | 需求（一句话，Given/When/Then 压成一句） | 落点 |
 |---|---|---|
-| F1 | 已登录的商户账号（店主或店员，**不选门店也行**）提交分类 + 描述，得到回报号；**未登录 → 401**（首期不做匿名回报，见待用户拍板 P1） | `POST /biz/feedback` → 新 `BizFeedbackController#submit` → `MessageService#createMerchantFeedback` → `notify_ticket`（`source=B_MERCHANT`） |
+| F1 | 已登录的商户账号（店主或店员，**不选门店也行**）提交分类 + 描述，得到回报号；**未登录 → 401**（首期不做匿名回报，见已拍板 P1） | `POST /biz/feedback` → 新 `BizFeedbackController#submit` → `MessageService#createMerchantFeedback` → `notify_ticket`（`source=B_MERCHANT`） |
 | F2 | **正文严、附带资料宽**：描述为空或超过 1000 字、分类不认得、缺 `appVersion` → 10400，**不落库**；附带资料（`errorCode`/`page`/`appVersion` 超长、`platform` 不认得、诊断超过 300 条、诊断单条字段超长或 `at` 不带时区）**一律不拒单**，按 §2 接口一的规则截断或归一后照常落库 | 请求记录上的 Bean Validation（只管正文）+ `createMerchantFeedback` 入口的归一（`FeedbackDiagnostics#sanitize` 管诊断） |
 | F3 | 请求带 `storeNo` 时，核对是这个账号进得去的门店：是 → 存进 `store_no`；**不是 → 丢弃门店号、照常落库**（`store_no` 为空，`store_dropped=1`），不回 10403；不带也能提交 | `BizFeedbackController` 用 `MerchantEntityService#myStores` 核对 |
 | F4 | 诊断资料只存 `at/method/path/outcome` 四个字段（`at` 的时区处理见 §2 接口一）；`path` 去掉查询串、8 位以上数字只留后 4 位（与 App 端 `redactPath` 同规则）；其它字段丢弃 | 新 `FeedbackDiagnostics#sanitize`，结果存 `notify_ticket.diagnostics` |
@@ -28,7 +28,7 @@
 | F6 | C 端 `/mp/ticket` 看不到商户回报，商户也看不到 C 端工单（两套账号号段只是「恰好不撞」） | `MessageServiceImpl#myTickets` / `#ticket` 加 `source=C_USER` 条件；商户侧固定 `source=B_MERCHANT` |
 | F7 | 新回报进有权处理工单的客服收件箱；运营端工单页能看出来源、分类、门店、版本、平台，并能展开看诊断 | 复用 `createTicket` 的推送；`TicketVO` 加字段；新 `GET /ops/tickets/{ticketNo}/diagnostics`；`ops-web/app/messages/page.tsx` 工单 tab |
 | F8 | 客服回复商户回报后，商户「我的回报」显示已回复与回复内容，并收到一条站内信；**无论 App 当前选的是哪家门店，消息列表里都看得到** | `MessageServiceImpl#replyTicket` 对 `B_MERCHANT` 单调 `pushTo(RECEIVER_STAFF, userNo, …)`；`GET /biz/message` 只按收件人查、不按门店过滤（§1） |
-| F9 | 同一账号短时间连发被拒 10429（阈值见待用户拍板 P3，建议 10 分钟 5 条），被拒那次不计数；**响应不带等待秒数**（§2 接口一说明） | `RateLimiter#tryAcquire("feedback:submit:" + userNo, …)` |
+| F9 | 同一账号短时间连发被拒 10429（阈值见已拍板 P3，建议 10 分钟 5 条），被拒那次不计数；**响应不带等待秒数**（§2 接口一说明） | `RateLimiter#tryAcquire("feedback:submit:" + userNo, …)` |
 | F10 | 新模型门店的账号调用这两个接口不被 70006 拒 | `CommerceRoutePolicy.ACCOUNT` 加两行 |
 
 ### 版本检查（6-09，原型 v22 Y10–Y11）
@@ -127,9 +127,9 @@
 | 端点（新增） | `POST /biz/feedback`、`GET /biz/feedback/mine`、`GET /common/app/version`、`GET /ops/app-versions`、`PUT /ops/app-versions/{appCode}/{platform}`、`GET /ops/tickets/{ticketNo}/diagnostics` |
 | 端点（改响应） | `GET /ops/tickets` 等返回的 `TicketVO` 尾部加可空字段 |
 | 库表 | `notify_ticket` 加 9 列 + 1 个索引；新表 `sys_app_version`。迁移号 **V6xx 待定**（当前最新 `V635__ops_staff_second_factor_exempt.sql`） |
-| 权限码 | **不新增**（回报用 `@perm.merchantAccount()`；版本策略用 `system:param:read/update`。是否另立一个码见「待用户拍板」P5） |
+| 权限码 | **不新增**（回报用 `@perm.merchantAccount()`；版本策略用 `system:param:read/update`。是否另立一个码见「已拍板」P5） |
 | i18n | 新错误码 `err.client.upgrade_required` 三语（`backend/shop-app/src/main/resources/i18n/messages*.properties`）；`BackendI18nParityTest` 会盯 |
-| 配置项 | 无（频率阈值写常量；如要可调见「待用户拍板」P3） |
+| 配置项 | 无（频率阈值写常量；如要可调见「已拍板」P3） |
 | 请求头（新约定） | `X-App-Platform`、`X-App-Version`（App 端新增发送，服务端只读） |
 
 ### 接口一 · `POST /biz/feedback` 提交问题回报
@@ -137,7 +137,7 @@
 | 项 | 契约 |
 |---|---|
 | 范围 | **账号范围**。不要求 `X-Store-No`；带了也不作为门店上下文使用 |
-| 鉴权 | `Authorization: Bearer btk_…`（`merchantChain`）；`@PreAuthorize("@perm.merchantAccount()")`，不要求任何 `BizPerms` 码。**未登录 → 401**：App 挂在通用错误条上的「回报这个错误」（ai-shop-bapp `onboarding_widgets.dart` 第 222 行）在登录、注册页也会出现，未登录时 App 应隐藏这个入口；要不要开匿名回报见待用户拍板 P1 |
+| 鉴权 | `Authorization: Bearer btk_…`（`merchantChain`）；`@PreAuthorize("@perm.merchantAccount()")`，不要求任何 `BizPerms` 码。**未登录 → 401**：App 挂在通用错误条上的「回报这个错误」（ai-shop-bapp `onboarding_widgets.dart` 第 222 行）在登录、注册页也会出现，未登录时 App 应隐藏这个入口；要不要开匿名回报见已拍板 P1 |
 | 路由登记 | `CommerceRoutePolicy.ACCOUNT` 加 `"POST /biz/feedback"`；**不登记** `ShopStoreMemberRoutes`；`BizEndpointPermTest` 登记为账号级判权（与 `FOUNDATION_READS` 里 `@perm.merchantAccount()` 同类） |
 | 幂等 | 不要求 `Idempotency-Key`（见「评审修订说明」已定·原 D5）；重复提交靠 F9 频率闸兜底 |
 
@@ -145,7 +145,7 @@
 
 | 字段 | 类型 | 必填 | 规则 |
 |---|---|---|---|
-| `category` | string | 是 | `BUG \| PAYMENT \| IDEA \| OTHER`；不认得 → 10400（以后加分类见待用户拍板 P4） |
+| `category` | string | 是 | `BUG \| PAYMENT \| IDEA \| OTHER`；不认得 → 10400（以后加分类见已拍板 P4） |
 | `description` | string | 是 | 去首尾空白后 **1**–1000 字（`notify_ticket.content` 是 `VARCHAR(1024)`）。服务端下限是 1；App 输入框的「至少 4 字、最多 500 字」是端上更严的约束，OpenAPI 里两个数都写明，免得以后对不上 |
 | `errorCode` | string | 否 | **≤ 64，超长截断不拒单**；App 从错误提示进来时带 `AppFailure.code`，形如 `business_70006`，最长的已知值 `business_CONTEXT_REFRESH_REQUIRED` 是 33 字（ai-shop-bapp `packages/foundation/lib/src/network.dart` 第 175、268 行） |
 | `page` | string | 否 | ≤ 128，超长截断；App 页面标识 |
@@ -393,7 +393,7 @@
 | 三 · 10429 读不到 `data.retryAfterSeconds` | 删掉「`data` 带 `retryAfterSeconds`」，10429 不带秒数 | **评审建议的两条路都没照走**：后端业务异常响应没有 `data`（`GlobalExceptionHandler#onBiz` 返回 `ApiResult<Void>`）；10429 的文案无占位符且多处共用，往 `msg` 里塞秒数会改到别的接口。App 已把 10429 当 `rateLimited`，显示通用提示即可 |
 | 三 · `upgradeRequired` 不读也不影响 | 接口三改为「建议 App 以 `upgradeRequired` 为准」；版本比较改为取 `数字(.数字){0,2}` 前缀，不再照抄 App | 核对时发现 App `compareVersions` 把 `1.4.2 (20261108.1)` 当成 `1.4.0`（`APP_VERSION` 注释示例就是这种格式），照抄会连 bug 一起抄 |
 | 三 · F8 账号级站内信在门店消息列表里不一定看得到 | **没有照改**，F8 补写依据与一条测试 | 与后端事实不符：`GET /biz/message` 只按收件人查（`MessageServiceImpl#rows` 第 424–429 行），`X-Store-No` 只用来算售后待办标记，选哪家店都看得到 |
-| 三 · F1 未登录怎么办 | F1、接口一写明未登录 401、App 隐藏入口；是否开匿名回报列入待用户拍板 P1 | 匿名回报牵涉产品取舍（防刷、谁来收回复） |
+| 三 · F1 未登录怎么办 | F1、接口一写明未登录 401、App 隐藏入口；是否开匿名回报列入已拍板 P1 | 匿名回报牵涉产品取舍（防刷、谁来收回复） |
 | 三 · 最少字数 | 接口一写明服务端下限 1、App 下限 4 是端上约束 | 免得以后 OpenAPI 与 App 对不上 |
 | 三 · `Accept-Language` 匹配 | 接口三补写 BCP 47 归并规则 | 原稿只写「按 `Accept-Language`」，`zh-Hant-TW`、`zh-TW` 会不会命中没说 |
 | 关联需求里的交接文档路径 | 改为 ai-shop-bapp `docs/implementation/功能矩阵与API交接文档.md` | 原路径在本仓库不存在 |
@@ -409,7 +409,9 @@
 
 ---
 
-## 待用户拍板
+## 已拍板
+
+> 2026-11-08 用户按建议全部接受：下列各条一律按「建议」执行；「选项」与「后果」保留作决策记录。
 
 | # | 问题 | 选项与各自后果 | 建议 |
 |---|---|---|---|
@@ -434,3 +436,4 @@
 |---|---|
 | 2026-11-08 | 起草（草稿，未拍板） |
 | 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：见上方「评审修订说明」；状态仍为草稿 |
+| 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |

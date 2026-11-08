@@ -1,6 +1,6 @@
 # TDD-商户 App 快递公司
 
-状态：草稿（未实现，未拍板；2026-11-08 已按商户 App 评审修订一轮）
+状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
 档位：1（新增端点 `GET /biz/express/companies`；`ExpressCompanies` 按市场分表，影响 `ship` / 发货设置的校验口径；`LogisticsPort` 加一个只读方法；无库表变更）
 关联需求：
 - 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`）第 12 模块「订单与履约」12-05（填运单发货）、12-17（发货设置的默认承运商）及该模块「待决与注意」第 2 条；附录 B「`/biz/express/companies` · 没有时可先用叫快递」
@@ -31,9 +31,9 @@
 **孤立项**
 
 - 没落点的 AC：
-  - **台湾承运商的轨迹查询**——快递100 是否覆盖、编码是什么，本仓库里没有核验记录（`Kuaidi100TraceProvider.CODES` 与 `lgs_carrier_code` 只有大陆 14 家）。首期台湾承运商 `traceSupported=false`，轨迹另开（见待用户拍板 X3）。
-  - **台湾「叫快递上门」**——叫快递走快递100 商家寄件（`Kuaidi100PickupGateway`），承运商只有大陆快递，台湾门店报价会是空的。交接文档说的「没有承运商列表时可先用叫快递顶上」**在台湾门店不成立**。不在本 TDD 范围（入口怎么处理见待用户拍板 X7）。
-  - **超商取货（7-11 交貨便、全家店到店）**——是「寄到门市、买家到门市取」的另一种履约，要收件门市，不是填一个承运商码能表达的。不在本 TDD 范围（见待用户拍板 X2）。
+  - **台湾承运商的轨迹查询**——快递100 是否覆盖、编码是什么，本仓库里没有核验记录（`Kuaidi100TraceProvider.CODES` 与 `lgs_carrier_code` 只有大陆 14 家）。首期台湾承运商 `traceSupported=false`，轨迹另开（见已拍板 X3）。
+  - **台湾「叫快递上门」**——叫快递走快递100 商家寄件（`Kuaidi100PickupGateway`），承运商只有大陆快递，台湾门店报价会是空的。交接文档说的「没有承运商列表时可先用叫快递顶上」**在台湾门店不成立**。不在本 TDD 范围（入口怎么处理见已拍板 X7）。
+  - **超商取货（7-11 交貨便、全家店到店）**——是「寄到门市、买家到门市取」的另一种履约，要收件门市，不是填一个承运商码能表达的。不在本 TDD 范围（见已拍板 X2）。
 - 挂不上 AC 的设计：无。
 
 ---
@@ -103,7 +103,7 @@
 | 端点（新增） | `GET /biz/express/companies` |
 | 端点（口径变化） | `ship` / `ship-setting` 的承运商按订单 / 门店所属市场校验（码或本市场名称，名称归一成码）；`waybill` 不改承运商一律放行、改成清单内的值归一、清单外的值照旧写入（E9，**不收紧**） |
 | 库表 | **无**。清单是代码里的内置表（与 `ExpressCompanies` 现有取舍一致：十几家、改了要发版、换来的是每个码都核验过） |
-| 迁移 | **无**（V6xx 不需要）。若待用户拍板 X4 选「运营端可配」，才需要新表与迁移 |
+| 迁移 | **无**（V6xx 不需要）。若已拍板 X4 选「运营端可配」，才需要新表与迁移 |
 | 权限码 | 不新增；用 `biz:ship`、`biz:store` 任一 |
 | i18n | 无（承运商名是专有名词，按市场原文给，见 X5） |
 | 配置项 | 无（复用 `shop.merchant.default-market`） |
@@ -135,7 +135,7 @@
 ```
 
 - `market`：**已按 `shop.merchant.default-market` 回落**的经营市场。
-- `courierPickupAvailable`：这家店能不能「叫快递」= `ExpressPickupPort#enabled()`，且 `carriers()` 与本市场清单有交集。台湾门店恒为 `false`（叫快递的承运商全是大陆码）；大陆门店在快递100 桩环境下也是 `false`。App 据此决定显示不显示叫快递入口；**台湾门店在接口为 `false` 时要不要隐藏入口，是产品决定（待用户拍板 X7）**，这个字段只如实报告能力。
+- `courierPickupAvailable`：这家店能不能「叫快递」= `ExpressPickupPort#enabled()`，且 `carriers()` 与本市场清单有交集。台湾门店恒为 `false`（叫快递的承运商全是大陆码）；大陆门店在快递100 桩环境下也是 `false`。App 据此决定显示不显示叫快递入口；**台湾门店在接口为 `false` 时要不要隐藏入口，是产品决定（已拍板 X7）**，这个字段只如实报告能力。
 - 大陆门店得到的就是现有 14 家，`traceSupported` 按快递100 覆盖情况为 `true`（现有 14 家都在 `Kuaidi100TraceProvider.CODES` 里）。
 
 错误：10403 / 70006（不是该店成员、角色没有这两个码之一）· 70006 + `SELECT_STORE`（没带店号）· 401。
@@ -152,7 +152,7 @@
 public final class ExpressCompanies {
     public record Company(String code, String name) { }          // 形状不变：对账测试的正则依赖它
     private static final List<Company> CN = List.of(/* 现有 14 家，原样、原顺序 */);
-    private static final List<Company> TW = List.of(/* 见待用户拍板 X1 */);
+    private static final List<Company> TW = List.of(/* 见已拍板 X1 */);
     private static final Map<String, List<Company>> BY_MARKET = Map.of("CN", CN, "TW", TW);
 
     public static List<Company> forMarket(String market);         // 不认得的市场 → 空表（不回落 CN）
@@ -237,7 +237,7 @@ public final class ExpressCompanies {
 
 ## 评审修订说明（2026-11-08，按 ai-shop-bapp `docs/implementation/TDD评审-商户App.md`）
 
-技术问题核对属实的，已直接改进 §0 / §1 / §2 / §5；产品问题合进下方「待用户拍板」。
+技术问题核对属实的，已直接改进 §0 / §1 / §2 / §5；产品问题合进下方「已拍板」。
 
 | 评审条目 | 改了什么 | 为什么 |
 |---|---|---|
@@ -248,12 +248,14 @@ public final class ExpressCompanies {
 | （评审未提，核对时发现）· 发货校验的市场取调用方门店号 | 校验口径表改为取订单自己的 `OrdSubOrder.storeNo` | 叫快递取件回填运单时以空门店号调 `ship`（`ExpressPickupServiceImpl` 第 360 行），按调用方取市场会取不到 |
 | 二 · 关联需求里的交接文档路径不对 | 改为 ai-shop-bapp `docs/implementation/功能矩阵与API交接文档.md` | 原路径在本仓库不存在 |
 | 二 · `OrderVO` / `/trace` 带 `expressCompanyName` | **没有照改**，答复见 §2「评审提问的答复」 | `OrderVO` 共用、构造点多，改动面与本 TDD 不相称；App 用清单映射即可 |
-| 二 · X7 台湾隐藏叫快递、X3 台湾首期不查轨迹与原型冲突 | 不自己定，合进「待用户拍板」X7、X3，写明与原型 v15 R10、v6 R03 / R06 的冲突 | 这是砍原型功能，要产品决定并同步改原型 |
-| 二 · X1 首批名单谁拍板、何时定 | 合进「待用户拍板」X1 | 同上 |
+| 二 · X7 台湾隐藏叫快递、X3 台湾首期不查轨迹与原型冲突 | 不自己定，合进「已拍板」X7、X3，写明与原型 v15 R10、v6 R03 / R06 的冲突 | 这是砍原型功能，要产品决定并同步改原型 |
+| 二 · X1 首批名单谁拍板、何时定 | 合进「已拍板」X1 | 同上 |
 
 ---
 
-## 待用户拍板
+## 已拍板
+
+> 2026-11-08 用户按建议全部接受：下列各条一律按「建议」执行；「选项」与「后果」保留作决策记录。
 
 | # | 问题 | 选项与各自后果 | 建议 |
 |---|---|---|---|
@@ -273,3 +275,4 @@ public final class ExpressCompanies {
 |---|---|
 | 2026-11-08 | 起草（草稿，未拍板） |
 | 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：见上方「评审修订说明」；状态仍为草稿 |
+| 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |
