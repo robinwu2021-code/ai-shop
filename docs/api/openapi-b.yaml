@@ -6924,6 +6924,141 @@ components:
         - "read"
         - "at"
       additionalProperties: false
+    FeedbackCategory:
+      type: "string"
+      enum:
+        - "BUG"
+        - "PAYMENT"
+        - "IDEA"
+        - "OTHER"
+      description: "回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。"
+    FeedbackStatus:
+      type: "string"
+      enum:
+        - "OPEN"
+        - "REPLIED"
+        - "CLOSED"
+      description: "回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」"
+    FeedbackDiagnostic:
+      type: "object"
+      properties:
+        at:
+          type:
+            - "string"
+            - "null"
+          description: "请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null"
+        method:
+          type: "string"
+          description: "HTTP 方法"
+        path:
+          type: "string"
+          description: "请求路径（已脱敏）"
+        outcome:
+          type: "string"
+          description: "结果摘要，如 `ok`、`error 70006`"
+      required:
+        - "at"
+        - "method"
+        - "path"
+        - "outcome"
+      additionalProperties: false
+      description: "回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。"
+    MerchantFeedback:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类"
+        description:
+          type: "string"
+          description: "描述原文"
+        status:
+          "$ref": "#/components/schemas/FeedbackStatus"
+          description: "处理状态"
+        reply:
+          type:
+            - "string"
+            - "null"
+          description: "客服回复；没回复为 null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "提交时所在门店（核对属于本账号才存）"
+        createdAt:
+          type: "string"
+          description: "提交时间（ISO-8601 UTC）"
+        repliedAt:
+          type:
+            - "string"
+            - "null"
+          description: "回复时间（ISO-8601 UTC）；没回复为 null"
+      required:
+        - "feedbackNo"
+        - "category"
+        - "description"
+        - "status"
+        - "reply"
+        - "storeNo"
+        - "createdAt"
+        - "repliedAt"
+      additionalProperties: false
+      description: "「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数"
+    FeedbackReceipt:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+      required:
+        - "feedbackNo"
+      additionalProperties: false
+      description: "提交回报的回执"
+    AppPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致"
+    AppVersionInfo:
+      type: "object"
+      properties:
+        platform:
+          "$ref": "#/components/schemas/AppPlatform"
+          description: "归一后的平台"
+        latest:
+          type: "string"
+          description: "最新版；空串 = 不提示更新"
+        minSupported:
+          type: "string"
+          description: "最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED"
+        notes:
+          type: "array"
+          items:
+            type: "string"
+          description: "按 Accept-Language 取的更新说明，没填回落繁中"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+          description: "商店地址（只会是 App Store 或 Google Play 的 https 地址）"
+        upgradeRequired:
+          type:
+            - "boolean"
+            - "null"
+          description: "只在请求带了 build 时有值；端上应以它为准"
+      required:
+        - "platform"
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "upgradeRequired"
+      additionalProperties: false
+      description: "版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。"
     SpecValueAdded:
       type: "object"
       properties:
@@ -11983,6 +12118,54 @@ components:
     MerchantApplyReqBody:
       "$ref": "#/components/schemas/MerchantApplyReq"
       description: "入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名"
+    SubmitFeedbackReq:
+      type: "object"
+      properties:
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类：BUG / PAYMENT / IDEA / OTHER"
+        description:
+          type: "string"
+          description: "描述，去首尾空白后 1–1000 字"
+        errorCode:
+          type: "string"
+          description: "从哪个错误进来（≤64，超长截断）"
+        page:
+          type: "string"
+          description: "从哪一页进来（≤128，超长截断）"
+        storeNo:
+          type: "string"
+          description: "当前门店号；不属于本账号会被丢弃（照常落库）"
+        appVersion:
+          type: "string"
+          description: "App 版本（必填，≤32）"
+        platform:
+          type: "string"
+          description: "android / ios；其它值归 OTHER"
+        diagnostics:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/FeedbackDiagnostic"
+          description: "诊断，最多留最后 300 条"
+      required:
+        - "category"
+        - "description"
+        - "appVersion"
+      additionalProperties: false
+      description: "提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400； 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。"
+    AppVersionQuery:
+      type: "object"
+      properties:
+        platform:
+          type: "string"
+          description: "android / ios，不分大小写"
+        build:
+          type: "string"
+          description: "当前版本号；带了才回 upgradeRequired"
+      required:
+        - "platform"
+      additionalProperties: false
+      description: "版本检查的查询参数"
     SaveStoreReqBody:
       "$ref": "#/components/schemas/StoreProfile"
     ShareKitQuery:
@@ -33854,6 +34037,109 @@ paths:
                   data:
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/feedback":
+    post:
+      operationId: "mSubmitFeedback"
+      summary: "提交问题回报（回报号即工单号）"
+      tags:
+        - "feedback"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/FeedbackReceipt"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SubmitFeedbackReq"
+  "/biz/feedback/mine":
+    get:
+      operationId: "mMyFeedback"
+      summary: "我的回报（最近 50 条，带客服回复）"
+      tags:
+        - "feedback"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MerchantFeedback"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/common/app/version":
+    get:
+      operationId: "mAppVersion"
+      summary: "版本检查（最新版 / 最低支持版 / 更新说明）"
+      tags:
+        - "app"
+      security: []
+      parameters:
+        - name: "platform"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "android / ios，不分大小写"
+        - name: "build"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "当前版本号；带了才回 upgradeRequired"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/AppVersionInfo"
                 required:
                   - "code"
                   - "msg"

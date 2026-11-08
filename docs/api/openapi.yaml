@@ -6925,6 +6925,141 @@ components:
         - "read"
         - "at"
       additionalProperties: false
+    FeedbackCategory:
+      type: "string"
+      enum:
+        - "BUG"
+        - "PAYMENT"
+        - "IDEA"
+        - "OTHER"
+      description: "回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。"
+    FeedbackStatus:
+      type: "string"
+      enum:
+        - "OPEN"
+        - "REPLIED"
+        - "CLOSED"
+      description: "回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」"
+    FeedbackDiagnostic:
+      type: "object"
+      properties:
+        at:
+          type:
+            - "string"
+            - "null"
+          description: "请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null"
+        method:
+          type: "string"
+          description: "HTTP 方法"
+        path:
+          type: "string"
+          description: "请求路径（已脱敏）"
+        outcome:
+          type: "string"
+          description: "结果摘要，如 `ok`、`error 70006`"
+      required:
+        - "at"
+        - "method"
+        - "path"
+        - "outcome"
+      additionalProperties: false
+      description: "回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。"
+    MerchantFeedback:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类"
+        description:
+          type: "string"
+          description: "描述原文"
+        status:
+          "$ref": "#/components/schemas/FeedbackStatus"
+          description: "处理状态"
+        reply:
+          type:
+            - "string"
+            - "null"
+          description: "客服回复；没回复为 null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "提交时所在门店（核对属于本账号才存）"
+        createdAt:
+          type: "string"
+          description: "提交时间（ISO-8601 UTC）"
+        repliedAt:
+          type:
+            - "string"
+            - "null"
+          description: "回复时间（ISO-8601 UTC）；没回复为 null"
+      required:
+        - "feedbackNo"
+        - "category"
+        - "description"
+        - "status"
+        - "reply"
+        - "storeNo"
+        - "createdAt"
+        - "repliedAt"
+      additionalProperties: false
+      description: "「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数"
+    FeedbackReceipt:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+      required:
+        - "feedbackNo"
+      additionalProperties: false
+      description: "提交回报的回执"
+    AppPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致"
+    AppVersionInfo:
+      type: "object"
+      properties:
+        platform:
+          "$ref": "#/components/schemas/AppPlatform"
+          description: "归一后的平台"
+        latest:
+          type: "string"
+          description: "最新版；空串 = 不提示更新"
+        minSupported:
+          type: "string"
+          description: "最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED"
+        notes:
+          type: "array"
+          items:
+            type: "string"
+          description: "按 Accept-Language 取的更新说明，没填回落繁中"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+          description: "商店地址（只会是 App Store 或 Google Play 的 https 地址）"
+        upgradeRequired:
+          type:
+            - "boolean"
+            - "null"
+          description: "只在请求带了 build 时有值；端上应以它为准"
+      required:
+        - "platform"
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "upgradeRequired"
+      additionalProperties: false
+      description: "版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。"
     SpecValueAdded:
       type: "object"
       properties:

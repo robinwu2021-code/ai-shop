@@ -1,5 +1,5 @@
 // 覆盖范围：消息触达（P-14.1）与客服（P-14.2）。
-import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, PushDevice, SceneChannelCell, Ticket, WxTemplates } from "@/lib/types";
+import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, PushDevice, SceneChannelCell, Ticket, TicketDiagnostic, WxTemplates } from "@/lib/types";
 import type { PageQ, TicketQ } from "../query";
 
 export interface MessageApi {
@@ -133,6 +133,11 @@ export interface MessageApi {
   /** 记录代客操作（P-14.2.3）：谁、对什么、做了什么。 */
   addProxyAction(ticketNo: string, action: string): Promise<Ticket>;
   closeTicket(ticketNo: string): Promise<Ticket>;
+  /**
+   * 商户 App 回报附带的诊断资料（TDD-商户App问题回报与版本 F7）。抽屉里点开才调 ——
+   * 一张单最多 300 条，不跟列表一起下发。C 端工单与 90 天后已清空的回报回空数组。
+   */
+  ticketDiagnostics(ticketNo: string): Promise<TicketDiagnostic[]>;
 
   // ---- 运营自己的通知收件箱（顶栏铃铛，TDD-通知与消息推送 §二期）
   listInbox(): Promise<InboxMessage[]>;

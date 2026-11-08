@@ -507,6 +507,15 @@ CREATE TABLE IF NOT EXISTS notify_ticket
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     assigned_to  VARCHAR(64)  DEFAULT NULL,
     assigned_at  BIGINT(20)   DEFAULT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'C_USER',
+    category VARCHAR(16) DEFAULT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    store_dropped TINYINT(1) NOT NULL DEFAULT 0,
+    client_version VARCHAR(32) DEFAULT NULL,
+    client_platform VARCHAR(16) DEFAULT NULL,
+    error_code VARCHAR(64) DEFAULT NULL,
+    page VARCHAR(128) DEFAULT NULL,
+    diagnostics TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ticket_no UNIQUE (ticket_no)
 );
@@ -12363,6 +12372,26 @@ CREATE TABLE IF NOT EXISTS ord_offline_record_event
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS sys_app_version
+(
+    id                    BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    app_code              VARCHAR(32)  NOT NULL,
+    platform              VARCHAR(16)  NOT NULL,
+    latest_version        VARCHAR(32)  DEFAULT NULL,
+    min_supported_version VARCHAR(32)  DEFAULT NULL,
+    notes                 TEXT         DEFAULT NULL,
+    store_url             VARCHAR(255) DEFAULT NULL,
+    tenant_no             VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at            DATETIME     NOT NULL,
+    created_by            VARCHAR(64)  DEFAULT NULL,
+    updated_at            DATETIME     NOT NULL,
+    updated_by            VARCHAR(64)  DEFAULT NULL,
+    version               BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted               TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_app_version UNIQUE (tenant_no, app_code, platform)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -19177,6 +19206,21 @@ UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CA
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:record"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:offline:record"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:manage"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:offline:manage"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:offline:record"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:offline:record"',perms)=0;
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'OPS_SYSTEM__TAB_APPVERSION', 'OPS_IAM', 'App 版本', '运行配置', '/system?tab=appVersion', 'system:param:read', 'system:param:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', NULL, 105, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_SYSTEM__TAB_APPVERSION');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_SYSTEM__TAB_APPVERSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_SYSTEM__TAB_APPVERSION');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'TECH_OPS', 'OPS_SYSTEM__TAB_APPVERSION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='TECH_OPS' AND x.point_code='OPS_SYSTEM__TAB_APPVERSION');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'ACT__SYSTEM_APP_VERSION_UPDATE', 'OPS_IAM', 'system:app-version:update', '页面内操作', NULL, 'system:app-version:update', 'system:app-version:update', 'IMPLEMENTED', 1, NULL, 'ACTION', NULL, 922, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__SYSTEM_APP_VERSION_UPDATE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_APP_VERSION_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_APP_VERSION_UPDATE');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

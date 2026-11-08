@@ -102,6 +102,41 @@ export interface MerchantLoginReqBody {
 /** 入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名 */
 export type MerchantApplyReqBody = MerchantApplyReq;
 
+// ---------------------------------------------------------------- 问题回报与版本（TDD-商户App问题回报与版本）
+
+import type { FeedbackCategory, FeedbackDiagnostic } from "@shared/types";
+
+/**
+ * 提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400；
+ * 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。
+ */
+export interface SubmitFeedbackReq {
+  /** 分类：BUG / PAYMENT / IDEA / OTHER */
+  category: FeedbackCategory;
+  /** 描述，去首尾空白后 1–1000 字 */
+  description: string;
+  /** 从哪个错误进来（≤64，超长截断） */
+  errorCode?: string;
+  /** 从哪一页进来（≤128，超长截断） */
+  page?: string;
+  /** 当前门店号；不属于本账号会被丢弃（照常落库） */
+  storeNo?: string;
+  /** App 版本（必填，≤32） */
+  appVersion: string;
+  /** android / ios；其它值归 OTHER */
+  platform?: string;
+  /** 诊断，最多留最后 300 条 */
+  diagnostics?: FeedbackDiagnostic[];
+}
+
+/** 版本检查的查询参数 */
+export interface AppVersionQuery {
+  /** android / ios，不分大小写 */
+  platform: string;
+  /** 当前版本号；带了才回 upgradeRequired */
+  build?: string;
+}
+
 // ---------------------------------------------------------------- 店铺
 
 export type SaveStoreReqBody = StoreProfile;

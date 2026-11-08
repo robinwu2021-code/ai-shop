@@ -15,6 +15,7 @@ import { BroadcastTab } from "./broadcast-tab";
 import { ChannelTab } from "./channel-tab";
 import { ChannelOverviewTab } from "./channel-overview-tab";
 import { TestSendDrawer } from "./test-send-drawer";
+import { TicketDiagnostics } from "./ticket-diagnostics";
 import { channelLabel } from "@/lib/notify-label";
 import { usePaging } from "@/lib/use-paging";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
@@ -63,11 +64,12 @@ function MessagesInner() {
   const allow = useCan();
   const [inappTestOpen, setInappTestOpen] = useState(false);
 
-  const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); });
+  const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); setSource(""); });
 
   const { page, setPage, size, setSize } = usePaging();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
+  const [source, setSource] = useState("");
   const [current, setCurrent] = useState<Ticket | null>(null);
   const [assignee, setAssignee] = useState("");
   const [proxyAction, setProxyAction] = useState("");
@@ -82,7 +84,7 @@ function MessagesInner() {
 
   const templates = useQuery({ queryKey: ["msg-templates"], queryFn: () => api.listMsgTemplates({ size: 100 }), enabled: tab === "inapp" });
   const quota = useQuery({ queryKey: ["notify-quota"], queryFn: () => api.getNotifyQuota(), enabled: tab === "inapp" });
-  const ticketQ = { keyword, status, page, size };
+  const ticketQ = { keyword, status, source, page, size };
   const tickets = useQuery({ queryKey: ["tickets", ticketQ], queryFn: () => api.listTickets(ticketQ), enabled: tab === "tickets" });
   const faqs = useQuery({ queryKey: ["faqs"], queryFn: () => api.listFaqs({ size: 100 }), enabled: tab === "faq" });
 
@@ -162,10 +164,25 @@ function MessagesInner() {
     },
   ];
 
+  /** 分类码冻结四个（已拍板 P4）；读到不认识的按「其他」显示，以后加码不用改这里也不会露出生码 */
+  const categoryLabel = (code: string) =>
+    ({ BUG: c.categoryBUG, PAYMENT: c.categoryPAYMENT, IDEA: c.categoryIDEA }[code] ?? c.categoryOTHER);
+  const sourceOptions = [
+    { value: "C_USER", label: c.sourceConsumer },
+    { value: "B_MERCHANT", label: c.sourceMerchant },
+  ];
+
   const ticketColumns: Column<Ticket>[] = [
     { header: c.colTicketNo, cell: (t) => t.ticketNo, numeric: true, align: "start" },
     { header: c.colTitle, cell: (t) => t.title, className: "whitespace-normal", width: "20rem" },
     { header: c.colUser, cell: (t) => t.userNickname },
+    // 来源 / 分类 / 门店 / 版本·平台：商户 App 回报才有后三列（TDD-商户App问题回报与版本 F7）
+    { header: c.colSource, cell: (t) => (t.source === "B_MERCHANT"
+      ? <Badge tone="info">{c.sourceMerchant}</Badge> : <span className="text-muted-foreground">{c.sourceConsumer}</span>) },
+    { header: c.colCategory, cell: (t) => (t.category ? categoryLabel(t.category) : "—") },
+    { header: c.colStore, cell: (t) => (t.storeDropped
+      ? <Badge tone="warning">{c.storeDroppedBadge}</Badge> : t.storeNo ?? "—") },
+    { header: c.colClient, cell: (t) => (t.clientVersion ? `${t.clientVersion} · ${t.clientPlatform ?? "—"}` : "—") },
     { header: c.colOrder, cell: (t) => t.orderNo ?? "—" },
     { header: c.colAssignee, cell: (t) => t.assignee ?? <span className="text-[var(--warning)]">{c.unassigned}</span> },
     {
@@ -279,6 +296,7 @@ function MessagesInner() {
           {!canHandleTicket && <ReadOnlyNotice what={c.ticketReadOnlyWhat} perm="message:ticket:handle" className="mb-3" />}
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchTickets}>
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={ticketStatusMap} allLabel={c.filterStatusAll} />
+            <FilterSelect aria-label={c.colSource} value={source} onChange={(v) => { setSource(v); setPage(1); }} options={sourceOptions} allLabel={c.filterSourceAll} />
           </Toolbar>
           <DataTable
             columns={ticketColumns} rows={tickets.data?.records} loading={tickets.isLoading}
@@ -344,7 +362,24 @@ function MessagesInner() {
             <FieldGrid>
               <Field className="mb-3" label={c.colStatus}><TicketStatusBadge value={current.status} /></Field>
               <Field className="mb-3" label={c.colOrder}>{current.orderNo ?? "—"}</Field>
+              {current.source === "B_MERCHANT" && (
+                <>
+                  <Field className="mb-3" label={c.colCategory}>{current.category ? categoryLabel(current.category) : "—"}</Field>
+                  <Field className="mb-3" label={c.colStore}>
+                    {current.storeDropped ? <Badge tone="warning">{c.storeDroppedBadge}</Badge> : current.storeNo ?? "—"}
+                  </Field>
+                  <Field className="mb-3" label={c.colClient}>
+                    {current.clientVersion ? `${current.clientVersion} · ${current.clientPlatform ?? "—"}` : "—"}
+                  </Field>
+                </>
+              )}
             </FieldGrid>
+
+            {current.source === "B_MERCHANT" && (
+              <Field className="mb-4" label={c.fieldDiagnostics}>
+                <TicketDiagnostics key={current.ticketNo} ticketNo={current.ticketNo} c={c} />
+              </Field>
+            )}
 
             {current.status !== "CLOSED" && canHandleTicket && (
               <>

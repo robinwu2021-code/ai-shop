@@ -274,6 +274,8 @@ export const CRITICAL_PERMS = [
    * 「谁持有高危码」那一份清单数得到它。
    */
   "system:testphone:update",
+  // 抬高 App 最低支持版 = 低于它的全部商户 App 立刻停写（TDD-商户App问题回报与版本 P5）
+  "system:app-version:update",
   "merchant:merchant:ban",
   "finance:settle:execute",
   "risk:blacklist:update",

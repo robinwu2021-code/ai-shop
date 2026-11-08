@@ -145,6 +145,121 @@ class OpsTicketFlowTest {
                 .andExpect(jsonPath("$.code").value(10403));
     }
 
+    // ---------------------------------------------------------------- 商户问题回报（TDD-商户App问题回报与版本 F7、F8）
+
+    @Test
+    @DisplayName("★★ F7 商户回报进工单池：看得出来源、分类、门店、版本、平台")
+    void merchant_feedback_shows_source_category_store_and_version() throws Exception {
+        String owner = merchant("13766200301");
+        String no = feedback(owner, "{\"category\":\"PAYMENT\",\"description\":\"收款没到账\","
+                + "\"appVersion\":\"0.1.0\",\"platform\":\"ios\"}");
+        String support = opsLogin("support", "support123");
+        String body = mvc().perform(get("/ops/tickets").param("status", "OPEN").param("size", "100")
+                        .header("Authorization", "Bearer " + support))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode hit = null;
+        for (JsonNode t : json.readTree(body).path("data").path("records")) {
+            if (no.equals(t.path("ticketNo").asString())) {
+                hit = t;
+            }
+        }
+        assertThat(hit).as(body).isNotNull();
+        assertThat(hit.path("source").asString()).isEqualTo("B_MERCHANT");
+        assertThat(hit.path("category").asString()).isEqualTo("PAYMENT");
+        assertThat(hit.path("clientVersion").asString()).isEqualTo("0.1.0");
+        assertThat(hit.path("clientPlatform").asString()).isEqualTo("IOS");
+        assertThat(hit.path("storeDropped").asBoolean()).isFalse();
+    }
+
+    @Test
+    @DisplayName("★★ F7 诊断抽屉：只回清洗后的四个字段；C 端工单回空数组")
+    void diagnostics_endpoint_returns_sanitized_entries() throws Exception {
+        String owner = merchant("13766200302");
+        String no = feedback(owner, "{\"category\":\"BUG\",\"description\":\"转圈\",\"appVersion\":\"0.1.0\","
+                + "\"diagnostics\":[{\"at\":\"2026-11-08T17:20:00+08:00\",\"method\":\"POST\","
+                + "\"path\":\"/biz/refund/12345678901?x=1\",\"outcome\":\"error 70006\",\"token\":\"btk_x\"}]}");
+        String support = opsLogin("support", "support123");
+        JsonNode d = json.readTree(mvc().perform(get("/ops/tickets/" + no + "/diagnostics")
+                        .header("Authorization", "Bearer " + support))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(d.path("code").asInt()).as(d.toString()).isZero();
+        JsonNode e = d.path("data").get(0);
+        assertThat(e.path("at").asString()).isEqualTo("2026-11-08T09:20:00Z");
+        assertThat(e.path("method").asString()).isEqualTo("POST");
+        assertThat(e.path("path").asString()).isEqualTo("/biz/refund/…8901");
+        assertThat(e.path("outcome").asString()).isEqualTo("error 70006");
+        assertThat(e.has("token")).isFalse();
+
+        String user = login("13766200303");
+        String consumerTicket = createTicket(user, "C 端的单");
+        JsonNode empty = json.readTree(mvc().perform(get("/ops/tickets/" + consumerTicket + "/diagnostics")
+                        .header("Authorization", "Bearer " + support))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(empty.path("data").isArray()).isTrue();
+        assertThat(empty.path("data").size()).isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ F8 客服回复商户回报：「我的回报」显示已回复，并收到一条站内信")
+    void reply_to_merchant_feedback_pushes_staff_message() throws Exception {
+        String owner = merchant("13766200304");
+        String no = feedback(owner, "{\"category\":\"IDEA\",\"description\":\"字太小\",\"appVersion\":\"0.1.0\"}");
+        reply(no, "列印时选 A5 即可放大");
+
+        JsonNode mine = json.readTree(mvc().perform(get("/biz/feedback/mine").header("Authorization", "Bearer " + owner))
+                .andReturn().getResponse().getContentAsString()).path("data").get(0);
+        assertThat(mine.path("feedbackNo").asString()).isEqualTo(no);
+        assertThat(mine.path("status").asString()).isEqualTo("REPLIED");
+        assertThat(mine.path("reply").asString()).isEqualTo("列印时选 A5 即可放大");
+        assertThat(mine.path("repliedAt").asString()).endsWith("Z");
+
+        String inbox = mvc().perform(get("/biz/message").header("Authorization", "Bearer " + owner))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(inbox).contains(no);
+    }
+
+    @Test
+    @DisplayName("★★ F8 回复通知是账号级的：选了哪家店，消息列表里都看得到")
+    void reply_message_is_listed_whichever_store_is_selected() throws Exception {
+        String owner = merchant("13766200305");
+        String store = json.readTree(mvc().perform(post("/biz/merchant/quick-start")
+                        .header("Authorization", "Bearer " + owner).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeName\":\"Reply shop\"}"))
+                .andReturn().getResponse().getContentAsString()).path("data").path("currentStoreNo").asString();
+        String no = feedback(owner, "{\"category\":\"BUG\",\"description\":\"切店后\",\"appVersion\":\"0.1.0\"}");
+        reply(no, "已处理");
+        for (String header : new String[] {null, store}) {
+            var b = get("/biz/message").header("Authorization", "Bearer " + owner);
+            if (header != null) {
+                b.header("X-Store-No", header);
+            }
+            assertThat(mvc().perform(b).andReturn().getResponse().getContentAsString())
+                    .as("X-Store-No=" + header).contains(no);
+        }
+    }
+
+    private String merchant(String phone) throws Exception {
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
+    }
+
+    private String feedback(String token, String body) throws Exception {
+        String resp = mvc().perform(post("/biz/feedback").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode r = json.readTree(resp);
+        assertThat(r.path("code").asInt()).as(resp).isZero();
+        return r.path("data").path("feedbackNo").asString();
+    }
+
+    private void reply(String ticketNo, String text) throws Exception {
+        String support = opsLogin("support", "support123");
+        mvc().perform(post("/ops/tickets/" + ticketNo + "/reply")
+                        .header("Authorization", "Bearer " + support)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reply\":\"" + text + "\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private String createTicket(String token, String subject) throws Exception {

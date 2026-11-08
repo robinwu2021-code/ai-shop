@@ -67,6 +67,11 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // 商户问题回报与 App 版本（TDD-商户App问题回报与版本，V638）
+  { concept: "notify_ticket.category（回报分类）", field: "notify_ticket.category", backend: { ddl: ["notify_ticket", "category"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "FeedbackCategory" }] },
+  { concept: "notify_ticket.source（工单来源）", field: "notify_ticket.source", backend: { ddl: ["notify_ticket", "source"] }, clients: [{ file: "ops-web/lib/types/message.ts", type: "TicketSource" }] },
+  { concept: "notify_ticket.client_platform（回报平台）", field: "notify_ticket.client_platform", backend: { ddl: ["notify_ticket", "client_platform"] }, clients: [] },
+  { concept: "sys_app_version.platform（版本策略平台）", field: "sys_app_version.platform", backend: { ddl: ["sys_app_version", "platform"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "AppPlatform" }, { file: "ops-web/lib/types/system.ts", type: "AppVersionPlatform" }] },
   // Business owner attachments expose the same closed printability domain as paid-order facts.
   { concept: "biz_print_fact.printability（打印取值域）", field: "biz_print_fact.printability", backend: { ddl: ["biz_print_fact", "printability"] }, clients: [] },
   // Print API status fields are open strings except PrintOperation.status; keep each DDL domain explicit.

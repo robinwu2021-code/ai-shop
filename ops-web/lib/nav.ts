@@ -606,6 +606,12 @@ export const NAV: NavSection[] = [
        * 两个码都不配给任何角色，只有超管的通配能到（Perms.SYSTEM_TESTPHONE_UPDATE）。
        */
       { href: "/system?tab=testPhone", label: "测试号固定验证码", perm: "system:testphone:read", group: "运行配置", matrix: "P-17.1", ready: true },
+      /*
+       * App 版本策略（TDD-商户App问题回报与版本 V6；菜单点 V639）。perm 用 param:read：能看策略的人比能改的多；
+       * 改用单独的 system:app-version:update（一个角色都不配，超管通配），页面内部判 ——
+       * 抬高最低支持版会让低于它的所有旧包立刻停写，不跟 param:update 一起发给技术运维。
+       */
+      { href: "/system?tab=appVersion", label: "App 版本", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
       // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
       // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
       // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。

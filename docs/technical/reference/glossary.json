@@ -31029,6 +31029,12 @@
           "ar": "الفئات مستويان كحد أقصى، لا يمكن إنشاء فئة فرعية تحت المستوى الثاني"
         },
         {
+          "key": "err.client.upgrade_required",
+          "zh-CN": "App 版本过旧，请升级后再操作",
+          "en": "This app version is no longer supported. Please update the app to continue",
+          "ar": "إصدار التطبيق هذا لم يعد مدعومًا، يرجى تحديث التطبيق للمتابعة"
+        },
+        {
           "key": "err.community.already_open",
           "zh-CN": "「{0}」已经开通了，直接在列表里勾选即可，不用提报",
           "en": "\"{0}\" is already open — just tick it in the list, no need to submit a request",
@@ -35528,6 +35534,13 @@
       "zh": "",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sys_app_version",
+      "class": "SysAppVersion",
+      "zh": "App 版本策略：一个 App、一个平台一行（TDD-商户App问题回报与版本 V2–V7）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.platform.entity"
     },
     {
       "table": "sys_audit_log",
@@ -40412,6 +40425,48 @@
         "module": "shop-core"
       },
       {
+        "host": "MsgTicket",
+        "name": "SOURCE_C_USER",
+        "value": "C_USER",
+        "zh": "C 端用户提的工单（存量行的默认值）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "SOURCE_B_MERCHANT",
+        "value": "B_MERCHANT",
+        "zh": "商户 App 的问题回报（TDD-商户App问题回报与版本）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_BUG",
+        "value": "BUG",
+        "zh": "商户回报分类：冻结这四个（已拍板 P4），以后加分类要服务端与 App 同发",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_PAYMENT",
+        "value": "PAYMENT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_IDEA",
+        "value": "IDEA",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_OTHER",
+        "value": "OTHER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "NotifyChannel",
         "name": "TYPE_SMS",
         "value": "SMS",
@@ -44619,6 +44674,7 @@
           "NOT_FOUND",
           "CONFLICT",
           "TOO_MANY_REQUESTS",
+          "CLIENT_UPGRADE_REQUIRED",
           "GEO_UNAVAILABLE",
           "RESOURCE_DEPENDENCY_UNAVAILABLE",
           "OTP_TOO_FREQUENT",
@@ -47592,6 +47648,35 @@
         "zh": "售后类型。"
       },
       {
+        "name": "AppPlatform",
+        "client": "shared",
+        "values": [
+          "ANDROID",
+          "IOS"
+        ],
+        "zh": "App 平台（版本策略按它分行）。"
+      },
+      {
+        "name": "AppVersionLang",
+        "client": "ops-web",
+        "values": [
+          "zh-Hant",
+          "zh-Hans",
+          "en",
+          "ar"
+        ],
+        "zh": "更新说明的四种语言"
+      },
+      {
+        "name": "AppVersionPlatform",
+        "client": "ops-web",
+        "values": [
+          "ANDROID",
+          "IOS"
+        ],
+        "zh": "版本策略按平台分行（sys_app_version.platform）"
+      },
+      {
         "name": "AppealStatus",
         "client": "ops-web",
         "values": [
@@ -48073,6 +48158,27 @@
           "PLATFORM"
         ],
         "zh": "费率适用的流量来源。"
+      },
+      {
+        "name": "FeedbackCategory",
+        "client": "shared",
+        "values": [
+          "BUG",
+          "PAYMENT",
+          "IDEA",
+          "OTHER"
+        ],
+        "zh": "回报分类。"
+      },
+      {
+        "name": "FeedbackStatus",
+        "client": "shared",
+        "values": [
+          "OPEN",
+          "REPLIED",
+          "CLOSED"
+        ],
+        "zh": "回报状态。"
       },
       {
         "name": "FieldType",
@@ -50563,6 +50669,15 @@
           "EMAIL"
         ],
         "zh": "测试身份类型"
+      },
+      {
+        "name": "TicketSource",
+        "client": "ops-web",
+        "values": [
+          "C_USER",
+          "B_MERCHANT"
+        ],
+        "zh": "工单来源。"
       },
       {
         "name": "TicketStatus",
@@ -55352,6 +55467,14 @@
     },
     {
       "host": "Perms",
+      "name": "SYSTEM_APP_VERSION_UPDATE",
+      "type": "String",
+      "value": "\"system:app-version:update\"",
+      "zh": "改 App 版本策略（最新版、最低支持版、更新说明、商店地址。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SYSTEM_TESTPHONE_READ",
       "type": "String",
       "value": "\"system:testphone:read\"",
@@ -55503,6 +55626,14 @@
       "module": "shop-core"
     },
     {
+      "host": "FeedbackDiagnostics",
+      "name": "MAX_ENTRIES",
+      "type": "int",
+      "value": "300",
+      "zh": "App 内存里最多 300 条（system_status.dart）。",
+      "module": "shop-core"
+    },
+    {
       "host": "NotifyScene",
       "name": "ALL",
       "type": "Set<String>",
@@ -55588,6 +55719,14 @@
       "type": "String",
       "value": "\"zh-CN\"",
       "zh": "默认语言。",
+      "module": "shop-core"
+    },
+    {
+      "host": "MsgTicket",
+      "name": "CATEGORY_PATTERN",
+      "type": "String",
+      "value": "\"BUG|PAYMENT|IDEA|OTHER\"",
+      "zh": "请求体校验用（编译期常量，可放进 @Pattern）",
       "module": "shop-core"
     },
     {

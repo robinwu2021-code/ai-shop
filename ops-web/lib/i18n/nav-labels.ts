@@ -231,6 +231,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   开关与灰度: { en: "Flags & rollout" },
   存储空间治理: { en: "Storage governance" },
   测试号固定验证码: { en: "Test numbers with fixed codes" },
+  "App 版本": { en: "App versions" },
   打印运营: { en: "Print operations" },
   定时任务: { en: "Scheduled jobs" },
   任务与执行日志: { en: "Jobs & run log" },
