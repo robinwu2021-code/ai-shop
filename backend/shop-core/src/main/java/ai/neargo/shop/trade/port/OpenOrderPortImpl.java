@@ -39,4 +39,17 @@ public class OpenOrderPortImpl implements OpenOrderPort {
                 .notIn(OrdSubOrder::getStatus, SETTLED));
         return n != null && n > 0;
     }
+
+    @Override
+    public long countOpenByStore(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return 0;
+        }
+        // 套餐页按门店点名，不受当前请求的数据域收窄（店主看的是主体下全部被压的店）
+        Long n = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getStoreNo, storeNo)
+                        .notIn(OrdSubOrder::getStatus, SETTLED)));
+        return n == null ? 0 : n;
+    }
 }

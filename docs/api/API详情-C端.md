@@ -5760,12 +5760,13 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 ### StoreStatus
 
-门店状态。READONLY = 已停用（不再接新单，已有单照常履约）
+门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。
 
 枚举取值：
 
 - `ACTIVE`
 - `READONLY`
+- `SUSPENDED`
 
 ### StoreVisitSource
 

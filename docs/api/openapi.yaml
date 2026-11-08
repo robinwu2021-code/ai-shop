@@ -5569,7 +5569,8 @@ components:
       enum:
         - "ACTIVE"
         - "READONLY"
-      description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+        - "SUSPENDED"
+      description: "门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。"
     BusinessMode:
       type: "string"
       enum:
@@ -5618,7 +5619,7 @@ components:
           description: "门店名快照，列表直接显示，省一次查询"
         role:
           "$ref": "#/components/schemas/StaffRole"
-          description: "MANAGER 店长 / CLERK 店员"
+          description: "角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码"
       required:
         - "storeNo"
         - "storeName"
@@ -6451,6 +6452,16 @@ components:
           items:
             "$ref": "#/components/schemas/PlanTier"
           description: "三档对比，顺序即展示顺序（后端按 sort 排好）"
+        suspendedStoreDetails:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SuspendedStore"
+          description: "同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。"
+        graceUntil:
+          type:
+            - "number"
+            - "null"
+          description: "宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。\n**后端算好给**，端上不要再按「到期 + 7 天」自己推。"
       required:
         - "planCode"
         - "planName"
@@ -6499,6 +6510,24 @@ components:
         - "current"
       additionalProperties: false
       description: "档位对比的一行。"
+    SuspendedStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "门店号"
+        name:
+          type: "string"
+          description: "门店名"
+        openOrders:
+          type: "number"
+          description: "还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约"
+      required:
+        - "storeNo"
+        - "name"
+        - "openOrders"
+      additionalProperties: false
+      description: "被方案降级压成只读的一家店。"
     MerchantApplyStatus:
       type: "object"
       properties:
@@ -8197,7 +8226,7 @@ components:
           description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
         geometry:
           type: "string"
-          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。"
+          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。\n**请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。"
       required:
         - "level"
         - "refCode"
@@ -8818,10 +8847,35 @@ components:
           type:
             - "number"
             - "null"
-          description: "经度 ×1e6。**全站坐标一律 gcj02**"
+          description: "经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636）"
         bannerUrl:
           type: "string"
           description: "门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉"
+        name:
+          type:
+            - "string"
+            - "null"
+          description: "门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename`"
+        slug:
+          type:
+            - "string"
+            - "null"
+          description: "门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug`"
+        status:
+          anyOf:
+            - "$ref": "#/components/schemas/StoreStatus"
+            - type: "null"
+          description: "门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。"
+        isDefault:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是主体的默认门店（只读）"
+        planSuspended:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」"
       required:
         - "announcement"
         - "openHours"

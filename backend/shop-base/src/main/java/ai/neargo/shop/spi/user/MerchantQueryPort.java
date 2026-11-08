@@ -125,8 +125,10 @@ public interface MerchantQueryPort {
      * <p>{@code EXCLUDE} 的减法用的也是传进来的这一份（不掺库里的旧行）：
      * 预览要回答的是「改成这样之后」，不是「改成这样再叠上旧的」。
      *
-     * @param areas 端上正要保存的那一份，每条是 {@code [level, refCode, mode]}；
-     *              {@code mode} 空按 INCLUDE
+     * @param areas 端上正要保存的那一份，每条是 {@code [level, refCode, mode, geometry?]}；
+     *              {@code mode} 空按 INCLUDE。{@code level=POLYGON} 时第 4 项是顶点 JSON
+     *              {@code [[lngE6,latE6],…]}，refCode 可空（服务端用几何指纹）；
+     *              图形不合法抛 {@code SERVICE_AREA_POLYGON_INVALID}（10473），与保存同一个码
      */
     java.util.List<String> previewReachable(String merchantNo, java.util.List<String[]> areas);
 

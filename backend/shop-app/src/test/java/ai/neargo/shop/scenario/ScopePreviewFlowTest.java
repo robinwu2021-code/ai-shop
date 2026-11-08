@@ -166,6 +166,42 @@ class ScopePreviewFlowTest {
         }
     }
 
+    /** 约 2 km × 2 km，把 (30.64, 120.64) 附近框进去；顶点经度在前、整数 E6（ADR-034） */
+    private static final String SQUARE =
+            "[[120630000,30630000],[120650000,30630000],[120650000,30650000],[120630000,30650000]]";
+
+    @Test
+    @DisplayName("★★★ 自画范围要算进预览（商户 App 字段对齐 A2），且预览 = 保存之后真查出来的")
+    void polygonIsCountedInPreviewAndMatchesSave() {
+        String inside = community(null, 30_640_000, 120_640_000, 300);
+        String outside = community(null, 30_700_000, 120_700_000, 300);
+        String m = merchant();
+
+        var preview = merchantQuery.previewReachable(m,
+                List.<String[]>of(new String[]{"POLYGON", null, "INCLUDE", SQUARE}));
+        assertThat(preview)
+                .as("画了范围预览却是空的 = geometry 在半路被丢掉了")
+                .contains(inside).doesNotContain(outside);
+
+        save(m, new MerchantStoreService.AreaCommand("POLYGON", null, "INCLUDE", SQUARE));
+        assertThat(merchantQuery.reachableCommunities(m)).containsExactlyInAnyOrderElementsOf(preview);
+    }
+
+    @Test
+    @DisplayName("★★ 预览里图形不合法回 10473，与保存同一个码（纬度在前、顶点不足）")
+    void invalidPolygonInPreviewIs10473() {
+        String m = merchant();
+        String latFirst = "[[30630000,120630000],[30650000,120630000],[30650000,120650000]]";
+        String twoPoints = "[[120630000,30630000],[120650000,30630000]]";
+        for (String bad : new String[]{latFirst, twoPoints}) {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> merchantQuery.previewReachable(m,
+                            List.<String[]>of(new String[]{"POLYGON", null, "INCLUDE", bad})))
+                    .isInstanceOf(ai.neargo.shop.common.BizException.class)
+                    .satisfies(e -> assertThat(((ai.neargo.shop.common.BizException) e).errorCode().code())
+                            .isEqualTo(10473));
+        }
+    }
+
     @Test
     @DisplayName("★★ 只自提 + 预览成空范围 = 谁也看不到，预览要如实给 0")
     void previewOfAnEmptyScopeForPickupOnlyIsZero() {

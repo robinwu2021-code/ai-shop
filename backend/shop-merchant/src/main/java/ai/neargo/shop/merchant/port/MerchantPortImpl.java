@@ -333,12 +333,29 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 所有粒度都自选即生效（2026-08-24 起），预览没有「待审」这一档。
          */
         List<MchServiceArea> rows = areas == null ? List.<MchServiceArea>of() : areas.stream()
-                .filter(a -> a != null && a.length >= 2 && a[0] != null && a[1] != null && !a[1].isBlank())
+                .filter(a -> a != null && a.length >= 2 && a[0] != null
+                        && (a[1] != null && !a[1].isBlank() || isPolygon(a)))
                 .map(a -> {
                     var r = new MchServiceArea();
                     r.setEntityNo(merchantNo);
                     r.setLevel(a[0]);
                     r.setRefCode(a[1]);
+                    if (isPolygon(a)) {
+                        /*
+                         * 自画范围（商户 App 字段对齐 A2）：与保存同一道解析与同一个错误码 10473。
+                         * 此前这里不收 geometry，画出来的范围在预览里整片消失，
+                         * 商家看着「覆盖 0」不敢保存，或者保存了才发现预览从来不算它。
+                         */
+                        ai.neargo.shop.geo.GeoPolygon g;
+                        try {
+                            g = ai.neargo.shop.geo.GeoPolygon.parse(a[3], geoProps.getPolygonMaxVertices());
+                        } catch (IllegalArgumentException e) {
+                            throw ai.neargo.shop.common.BizException.of(
+                                    ai.neargo.shop.common.ErrorCode.SERVICE_AREA_POLYGON_INVALID, e.getMessage());
+                        }
+                        r.setRefCode(g.fingerprint());
+                        r.setGeometry(a[3]);
+                    }
                     r.setStatus(AREA_ACTIVE);
                     r.setMode(a.length > 2 && MchServiceArea.MODE_EXCLUDE.equals(a[2])
                             ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
@@ -351,6 +368,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
          */
         return reachMatcher.previewReachable(m, storeNo, rows);
+    }
+
+    /** 预览项是不是带了几何的多边形：{@code [POLYGON, refCode?, mode, geometry]} */
+    private static boolean isPolygon(String[] a) {
+        return MchServiceArea.LEVEL_POLYGON.equals(a[0]) && a.length > 3 && a[3] != null && !a[3].isBlank();
     }
 
     @Override

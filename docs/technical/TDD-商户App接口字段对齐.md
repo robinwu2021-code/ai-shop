@@ -1,6 +1,6 @@
 # TDD-商户App接口字段对齐
 
-状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
+状态：已实现（2026-11-08；「已拍板 2」履约方式因新发现重开，未实现，见 §6）
 档位：1（已有端点补字段；不新增端点、不改权限码；只有一条数据回填迁移，不改表结构）
 关联需求：商户 App 交接文档《功能矩阵与API交接文档》附录 A（ai-shop-bapp `docs/implementation/功能矩阵与API交接文档.md`，main `31a56c1`）；ADR-034（可见范围模型）；TDD-双地图提供方与门店选点（AC5 坐标系）
 创建：2026-11-08 · 最后更新：2026-11-08
@@ -110,21 +110,61 @@ GET /biz/plan → 现有字段 + {
   graceUntil: long|null }
 ```
 
-## §5 对账三 · 实现 → 需求（测试，计划）
+## §5 对账三 · 实现 → 需求（测试）
 
-| AC | 测试方法（计划） | 跑过 | 消融验证 |
+| AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| A1 | `BizStoreProfileFieldsFlowTest#profileCarriesNameSlugStatusAndDefault`：同一门店 `/biz/store` 与 `/biz/stores/mine` 的这 5 个字段逐一相等；方案压店的门店 `status=READONLY` 且 `planSuspended=true`，商家自己暂停的 `status=READONLY` 且 `planSuspended=false` | | 去掉填充 → 字段为 null 变红 |
-| A2 | `ScopePreviewPolygonTest#polygonAreaCountsBuyersInside`：画一个只包住某社区的多边形，预估社区数从 0 变 1；同一多边形改成 `EXCLUDE` 后被扣除 | | 忽略 geometry → 仍为 0 变红 |
-| A3 | `ScopePreviewPolygonTest#rejectsInvalidPolygonWith10473`：纬度在前的顶点、201 个顶点各回 10473；`BizStoreProfileFieldsFlowTest#polygonRoundTripsInSameFormat`：保存后 `GET /biz/store` 回读的 `geometry` 与请求同格式、点数一致 | | 预估改回 10400 → 变红 |
-| 回填 | `StoreCoordSysBackfillMigrationTest`：台湾 / 阿联酋市场 `coord_sys` 为 null 的门店回填成 `wgs84`，大陆门店不动 | | |
-| A4 | `MerchantPlanServiceTest#minePlanListsSuspendedStoreDetailsAndGraceUntil`：降级压店后 `suspendedStoreDetails` 有门店号、名称、未完成订单数；`graceUntil = expireAt + 7 天`；`suspendedStores` 仍是名称数组 | | 去掉新字段 → 变红；旧字段类型变了 → uni-app 用例变红 |
-| A5 | `MerchantStaffServiceTest#grantsCustomRoleCode`（若已有同义用例则只引用）：自定义角色码授予成功，`OWNER` 被拒 | | |
-| A6 | 无后端改动 | — | — |
+| A1 | `BizPlanFlowTest#suspendedListNamesOnlyPlatformPressedStores`（追加断言）：同一主体下方案压店的门店 `GET /biz/store` 回 `status=READONLY`、`planSuspended=true`、`isDefault=false`、`name` 与套餐页一致、带 `slug` 键；商家自停的门店 `status=READONLY`、`planSuspended=false` | ✅ 8/8 | 实现前字段缺失变红（`get("graceUntil")` 为 null 抛 NPE，先于 A1 断言） |
+| A2 | `ScopePreviewFlowTest#polygonIsCountedInPreviewAndMatchesSave`：多边形框住的社区进入预估、框外的不进；保存后真查一次可见范围，与预估逐一相等 | ✅ 6/6 | 实现前红：「画了范围预览却是空的」 |
+| A3 | `ScopePreviewFlowTest#invalidPolygonInPreviewIs10473`：纬度在前、只有 2 个顶点，预估都回 10473；保存侧既有 `ServiceAreaPolygonFlowTest`（8/8）不变 | ✅ | 实现前红：没有抛异常 |
+| A4 | `BizPlanFlowTest#suspendedListNamesOnlyPlatformPressedStores`（追加）：`suspendedStoreDetails` 一条，门店号是被压那家、名称与 `suspendedStores` 一致、`openOrders=0`；EXPIRED 的 `graceUntil` 为 null；`suspendedStores` 仍是名称数组。`BizPlanFlowTest#activePlanCarriesGraceUntil`：ACTIVE 时 `graceUntil = expireAt + 7 天`、无压店时为空数组 | ✅ 8/8 | 实现前红：两条都 NPE |
+| A5 | 引用既有 `MerchantRoleFlowTest#customRoleTakesEffectImmediately`：经 `POST /biz/staff/{no}/store` 授予自定义角色码并判权生效 | ✅ | 后端行为未改，只改契约描述 |
+| 回填 | 无自动化测试：测试库按 `schema-test.sql` 建表、不跑 Flyway，V636 执行不到。SQL 方言闸门对它零命中；上线前在 166 先 `SELECT COUNT(*)` 同条件确认受影响行数 | — | — |
+| 回归 | `ServiceAreaPolygonFlowTest` 8、`ProfileAndPasswordTest` 9（`OpenOrderPort` 加方法后的 mock）、`CommerceStoreCreationFlowTest` 4（跳过 1，手工构造 `MerchantPlanServiceImpl`）、`BizStoreSetupTest` 12；`ArchitectureTest`、`BizEndpointPermTest` 与基线（`408da00ee`）报告逐字相同（基线已有 5 + 1 条失败，本次未新增）；`MerchantRoleFlowTest#assignablePermsComeFromBackend` 基线即失败（权限点清单），与本次无关；b-app / c-app `vue-tsc`、ops-web `tsc` 通过；生成文档 26 个全最新 | ✅ | |
 
 ## §6 对账二 · 设计 → 实现
 
-实现后填写。
+```
+     b-app/src/api/requests.ts                          |  8 ++-
+     .../shop/portal/biz/BizMerchantController.java     | 10 +++-
+     .../migration/V636__store_coord_sys_backfill.sql   | 12 ++++
+     .../ai/neargo/shop/scenario/BizPlanFlowTest.java   | 45 ++++++++++++++
+     .../neargo/shop/scenario/ScopePreviewFlowTest.java | 36 ++++++++++++
+     .../ai/neargo/shop/spi/trade/OpenOrderPort.java    |  8 +++
+     .../ai/neargo/shop/spi/user/MerchantQueryPort.java |  6 +-
+     .../neargo/shop/trade/port/OpenOrderPortImpl.java  | 13 +++++
+     .../neargo/shop/merchant/dto/StoreProfileVO.java   | 10 +++-
+     .../shop/merchant/port/MerchantPortImpl.java       | 24 +++++++-
+     .../shop/merchant/service/MerchantPlanService.java | 15 ++++-
+     .../service/impl/MerchantPlanServiceImpl.java      | 33 +++++++++--
+     .../service/impl/MerchantStoreServiceImpl.java     |  7 ++-
+     .../API\350\257\246\346\203\205-B\347\253\257.md"  | 62 ++++++++++++++++----
+     .../API\350\257\246\346\203\205-C\347\253\257.md"  |  3 +-
+     docs/api/openapi-b.yaml                            | 68 ++++++++++++++++++++--
+     docs/api/openapi.yaml                              | 62 ++++++++++++++++++--
+     docs/technical/reference/glossary.json             |  3 +-
+     ...275\223\344\270\216\345\255\227\345\205\270.md" |  2 +-
+     packages/shared/src/types/merchant.ts              | 19 ++++++
+     packages/shared/src/types/region.ts                |  2 +
+     packages/shared/src/types/store.ts                 | 24 ++++++--
+     22 files changed, 428 insertions(+), 44 deletions(-)
+```
+
+| 差异 | 说明 |
+|---|---|
+| 改了 `OpenOrderPort`、`OpenOrderPortImpl`（§2 未列） | A4 的 `openOrders` 要按门店计数，商户域不能直接读订单表，经 spi 端口加 `countOpenByStore`，口径复用同一组终态 `SETTLED` |
+| 改了 `MerchantQueryPort` 注释（§2 未列） | 预估项由 `[level, refCode, mode]` 扩为 `[level, refCode, mode, geometry?]` |
+| 改了 `packages/shared` 类型与 `b-app/src/api/requests.ts`，并重新生成 `openapi-b.yaml`、`openapi.yaml`、两份 API 详情与术语表 | OpenAPI 由 TS 类型生成，§2 写的「改 openapi-b.yaml」实际落在类型上 |
+| `StoreStatus` 加了 `SUSPENDED` | 后端 `MchStore.SUSPENDED`（平台强制下线）早已会出现在 `/biz/stores/mine`，共享类型漏了这个值；本次 `GET /biz/store` 也会回它 |
+| `GrantStoreReq.role` 放宽为字符串 | A5：OpenAPI 里不再只有 5 个预置枚举 |
+| 测试落在既有测试类里，名字与 §5 原计划不同 | `BizPlanFlowTest` 已能造出「自停 / 压店」两种只读，`ScopePreviewFlowTest` 已有「预估 = 保存后实查」的框架，复用比新建三个类更能测到真实路径 |
+| 回填迁移没有自动化测试 | 见 §5「回填」行 |
+
+### 偏差说明
+
+- **「已拍板 2」履约方式重开，本次没有实现「收紧到店主」**。实现时发现后端已有门店级、多选的履约配置 `GET|PUT /biz/stores/{storeNo}/fulfillment`（`BizStoreFulfillmentController`，四路：到店自取 / 邻里自提 / 商家自送 / 快递，共享类型注释写明它「取代商家级 fulfillmentReach 单选」），正对应原型 W05 的多选。拍板时的信息（只有主体级单选）不完整。这条路由在新模型门店上会被 `CommerceRoutePolicy` 拒（归为旧复数路由、DENY），用前要登记。等用户重新拍板：App 改用门店级接口并登记路由，还是维持单选。
+- 迁移号 V636 取的是本分支当前最大号 +1；合并前要确认 `codex/ai-shop-codex` 上没有别人占用。
+- V636 只改数据，166 的应用账号可直接执行，不需要 root。
 
 ## §7 确认与完成
 
@@ -133,3 +173,4 @@ GET /biz/plan → 现有字段 + {
 | 2026-11-08 | 草稿，等待用户与商户 App 确认待决 1–3 |
 | 2026-11-08 | 按商户 App 评审（ai-shop-bapp `docs/implementation/TDD评审-商户App.md`）修订：写明回读 `geometry` 与请求同格式；图形不合法统一 10473、上限 200；`status` 与 `planSuspended` 同一次读取；`openOrders` 口径；`graceUntil` 的有无；EXCLUDE 多边形在预估里扣除；坐标系理由按 App 实际画布更正，并补台湾存量门店坐标系回填；履约方式扩成「单选 / 门店级 / 谁能改」一并拍板 |
 | 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |
+| 2026-11-08 | 已实现 A1–A5 与坐标系回填（闸门见 §5「回归」）；履约方式一条重开，见 §6 偏差说明 |

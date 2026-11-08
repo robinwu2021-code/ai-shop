@@ -720,8 +720,12 @@ export interface AddStaffReq {
 export interface GrantStoreReq {
   /** 授权到哪家店。只能是本主体的门店 */
   storeNo: string;
-  /** 要授予/撤销的那一个角色 */
-  role: StaffRole;
+  /**
+   * 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS）
+   * **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。
+   * 不能是 `OWNER`（老板不在门店角色表里）。
+   */
+  role: StaffRole | (string & {});
   /** true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 */
   granted?: boolean;
 }

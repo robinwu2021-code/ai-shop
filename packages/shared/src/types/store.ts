@@ -39,8 +39,11 @@ export interface StoreFulfillment {
   /** 固定四行，顺序即开关顺序 —— 服务端补缺，端上不用自己造 */
   channels: StoreFulfillmentChannel[];
 }
-/** 门店状态。READONLY = 已停用（不再接新单，已有单照常履约） */
-export type StoreStatus = "ACTIVE" | "READONLY";
+/**
+ * 门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）；
+ * SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。
+ */
+export type StoreStatus = "ACTIVE" | "READONLY" | "SUSPENDED";
 /**
  * 门店（商家侧管理用）。
  *
@@ -138,7 +141,7 @@ export interface StoreRole {
   storeNo: string;
   /** 门店名快照，列表直接显示，省一次查询 */
   storeName: string;
-  /** MANAGER 店长 / CLERK 店员 */
+  /** 角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码 */
   role: StaffRole;
 }
 /** 商家自送规则（ADR-005 §5：不做骑手系统，只有范围与门槛） */
@@ -225,13 +228,26 @@ export interface StoreProfile {
    * 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。
    */
   latE6?: number | null;
-  /** 经度 ×1e6。**全站坐标一律 gcj02** */
+  /** 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） */
   lngE6?: number | null;
   /**
    * 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。
    * 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉
    */
   bannerUrl?: string;
+  /** 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` */
+  name?: string | null;
+  /** 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` */
+  slug?: string | null;
+  /**
+   * 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。
+   * 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。
+   */
+  status?: StoreStatus | null;
+  /** 是不是主体的默认门店（只读） */
+  isDefault?: boolean | null;
+  /** 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 */
+  planSuspended?: boolean | null;
 }
 /** 店铺码（C-ST-08 扫码进店的商家侧） */
 export interface StoreQrcode {

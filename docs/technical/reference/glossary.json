@@ -50388,7 +50388,8 @@
         "client": "shared",
         "values": [
           "ACTIVE",
-          "READONLY"
+          "READONLY",
+          "SUSPENDED"
         ],
         "zh": "门店状态。"
       },

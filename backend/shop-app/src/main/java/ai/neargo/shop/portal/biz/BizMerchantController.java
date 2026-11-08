@@ -652,7 +652,7 @@ public class BizMerchantController {
         String merchantNo = BizContext.requireMerchantNo();
         var next = req.areas() == null ? java.util.List.<String[]>of()
                 : req.areas().stream()
-                        .map(a -> new String[]{a.level(), a.refCode(), a.mode()})
+                        .map(a -> new String[]{a.level(), a.refCode(), a.mode(), a.geometry()})
                         .toList();
         /*
          * 两个数都按**当前门店**算（V381 经营范围改门店级）：店主改的是这家店的范围，
@@ -671,8 +671,12 @@ public class BizMerchantController {
     }
 
     public record ScopePreviewReq(java.util.List<AreaItem> areas) {
-        /** @param mode INCLUDE / EXCLUDE，空按 INCLUDE */
-        public record AreaItem(String level, String refCode, String mode) {
+        /**
+         * @param mode     INCLUDE / EXCLUDE，空按 INCLUDE
+         * @param geometry 仅 {@code level=POLYGON}：顶点 JSON 字符串 {@code [[lngE6,latE6],…]}（经度在前、整数 E6），
+         *                 与保存、回读同一格式；不合法回 10473
+         */
+        public record AreaItem(String level, String refCode, String mode, String geometry) {
         }
     }
 

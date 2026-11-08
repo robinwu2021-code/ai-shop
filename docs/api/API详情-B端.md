@@ -8037,6 +8037,8 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 
 #### POST `/biz/plan/trial`
@@ -8066,6 +8068,8 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 
 ### platform-activity
@@ -9464,7 +9468,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
-| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `role` | [`StaffRole`](#staffrole) \| `string` | 是 | 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS） **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。 |
 | `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 **出参**（`data`）
@@ -9520,8 +9524,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store`
@@ -9554,8 +9563,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### GET `/biz/store/{storeNo}/categories`
@@ -10261,8 +10275,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store/announcement/recent/remove`
@@ -10291,8 +10310,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store/create`
@@ -13410,7 +13434,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
-| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `role` | [`StaffRole`](#staffrole) \| `string` | 是 | 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS） **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。 |
 | `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 ### GrantType
@@ -14817,6 +14841,8 @@ SKU 组件：一件 SKU 交付哪些东西
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 ### MerchantProfile
 
@@ -16400,7 +16426,7 @@ Processing state of the order points refund projection.
 | `areaNo` | `string` | 否 | 业务键（服务端回填）。范围子集（P2）按它引用；端上新加的项没有，保存后才有 |
 | `mode` | [`AreaMode`](#areamode) | 否 | 覆盖方向：`INCLUDE` 纳入（默认，不传即此）/ `EXCLUDE` 排除。 它回答的是「商家框了小区，算不算覆盖里面每栋楼」—— **默认算**， 但给一个显式的出口：勾了整个小区、单独排除 3 幢。 展开时先并后减，EXCLUDE 优先；而矛盾应当在**输入端**消除 （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。 |
 | `status` | [`AreaStatus`](#areastatus) | 否 | `ACTIVE` 已生效 / `PENDING` 待运营审核。 勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。 |
-| `geometry` | `string` | 否 | 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。 |
+| `geometry` | `string` | 否 | 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。 **请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。 |
 
 ### ServiceScope
 
@@ -17582,8 +17608,13 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 ### StoreQrcode
 
@@ -17604,16 +17635,17 @@ StorePointType 的 status 取值域，按服务端契约校验。
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 哪家店 |
 | `storeName` | `string` | 是 | 门店名快照，列表直接显示，省一次查询 |
-| `role` | [`StaffRole`](#staffrole) | 是 | MANAGER 店长 / CLERK 店员 |
+| `role` | [`StaffRole`](#staffrole) | 是 | 角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码 |
 
 ### StoreStatus
 
-门店状态。READONLY = 已停用（不再接新单，已有单照常履约）
+门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。
 
 枚举取值：
 
 - `ACTIVE`
 - `READONLY`
+- `SUSPENDED`
 
 ### SubmitPaymentReq
 
@@ -17644,6 +17676,16 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `remark` | `string,null` | 否 | 备注。**引用平台档案时这一列仍归商家写** —— 那是他自己的话 |
 | `status` | `string` | 是 | ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 |
 | `fromPlatform` | `boolean` | 是 | 引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。 |
+
+### SuspendedStore
+
+被方案降级压成只读的一家店。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `name` | `string` | 是 | 门店名 |
+| `openOrders` | `number` | 是 | 还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约 |
 
 ### SvAccount
 
