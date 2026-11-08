@@ -670,6 +670,11 @@ class BizEndpointPermTest {
                     put("/biz/payment/links", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/links/{payOrderNo}/reissue", BizPerms.PAY_COLLECT);
                     put("/biz/payment/links/{payOrderNo}/void", BizPerms.PAY_COLLECT);
+                    // App 外收款记录（TDD-商户App外部记账）：表按路径一行，同一路径的 GET 列表读 PAY_ORDER_VIEW、POST 记一笔读 PAY_OFFLINE_RECORD
+                    put("/biz/payment/offline-records", BizPerms.PAY_OFFLINE_RECORD);
+                    put("/biz/payment/offline-records/summary", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/offline-records/{recordNo}/correct", BizPerms.PAY_OFFLINE_MANAGE);
+                    put("/biz/payment/offline-records/{recordNo}/void", BizPerms.PAY_OFFLINE_MANAGE);
                     put("/biz/settle/bills", BizPerms.FINANCE);
                     put("/biz/settle/income", BizPerms.FINANCE);
                     put("/biz/settle/daily-flow", BizPerms.FINANCE);

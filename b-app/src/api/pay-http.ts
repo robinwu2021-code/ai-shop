@@ -1,6 +1,7 @@
 import { http } from "@shared/net/http-client";
 import { ENDPOINTS as E, buildPath } from "./endpoints";
 import type { PayApi } from "./pay";
+import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery } from "./requests";
 
 export const payHttp: PayApi = {
   mPayCollect: (v) => http.post(E.mPayCollect.path, v),
@@ -13,4 +14,8 @@ export const payHttp: PayApi = {
   mPayAppGrants: () => http.get(E.mPayAppGrants.path),
   mPayGrantApp: (v) => http.post(E.mPayGrantApp.path, v),
   mPayRevokeGrant: (id) => http.del(buildPath(E.mPayRevokeGrant.path, { id })),
+  mPayRecordOffline: (body, key) =>
+    http.post(E.mPayRecordOffline.path, body satisfies OfflineRecordCreateReq, { "Idempotency-Key": key }),
+  mPayOfflineRecords: (query) => http.get(E.mPayOfflineRecords.path, query satisfies OfflineRecordListQuery | undefined),
+  mPayOfflineSummary: (query) => http.get(E.mPayOfflineSummary.path, query satisfies OfflineRecordSummaryQuery | undefined),
 };

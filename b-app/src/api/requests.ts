@@ -1145,5 +1145,67 @@ managementNo:string;
 /** Previously observed resource revision; stale writes are rejected. */
 expectedRevision:number}
 
+// ---------------------------------------------------------------- App 外收款记录（TDD-商户App外部记账）
+// 门店、主体、记账人一律由服务端取；请求体里多一个字段（含旧字段 requestId、storeNo）就是 10400。
+
+/** 记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里 */
+export interface OfflineRecordCreateReq {
+  /** 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） */
+  amountMinor: number;
+  /** 必须等于门店市场币种（台湾 TWD） */
+  currency: CurrencyCode;
+  /** 现金 / 银行转账 / 外部刷卡机 / 其他 */
+  method: "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+  /** 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 */
+  orderNo?: string;
+  /** ≤ 100 字 */
+  note?: string;
+  /** 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 */
+  receivedAt?: string;
+}
+
+/** 列表查询 */
+export interface OfflineRecordListQuery {
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93 */
+  from?: string;
+  to?: string;
+  method?: Array<"CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER">;
+  status?: Array<"RECORDED" | "VOIDED">;
+  /** 1–32 字，命中订单号或备注 */
+  q?: string;
+  /** 精确匹配订单号：订单详情据此判断「已有外部記錄」 */
+  orderNo?: string;
+  cursor?: string;
+  /** 1–50，默认 20 */
+  size?: number;
+}
+
+/** 汇总查询；区间规则同列表 */
+export interface OfflineRecordSummaryQuery {
+  from?: string;
+  to?: string;
+}
+
+/** 更正：店主 / 店长，记账后 31 天内 */
+export interface OfflineRecordCorrectReq {
+  amountMinor: number;
+  /** 必须等于原记录币种 */
+  currency: CurrencyCode;
+  method: "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+  /** 新的实收时刻；不传 = 不改 */
+  receivedAt?: string;
+  /** 1–100 字 */
+  reason: string;
+  /** 列表里拿到的 version；不符 → 10409 */
+  expectedVersion: number;
+}
+
+/** 作废：店主 / 店长，记账后 31 天内 */
+export interface OfflineRecordVoidReq {
+  /** 1–100 字 */
+  reason: string;
+  expectedVersion: number;
+}
+
 // 平台商城的请求体住在 ./mall.ts（与 commerce-mall-openapi.json 逐字一致）；转出给 OpenAPI 生成器
 export type { MallQuoteRequest, MallPlaceRequest, MallOfflineClaimRequest } from "./mall";

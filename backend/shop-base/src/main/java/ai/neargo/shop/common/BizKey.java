@@ -26,6 +26,8 @@ public final class BizKey {
     public static final String ORDER = "SO";
     public static final String SUB_ORDER = "SUB";
     public static final String AFTER_SALE = "AS";
+    /** App 外收款记录（{@code ord_offline_record}）：商家自报流水，与支付单号空间不重叠，退款接口按它查不到 */
+    public static final String OFFLINE_RECORD = "OFR";
     /** 预约时段（{@code mch_appointment_slot}）。门店的服务容量，不是商品的 */
     public static final String APPOINTMENT_SLOT = "APS";
     public static final String USER = "U";

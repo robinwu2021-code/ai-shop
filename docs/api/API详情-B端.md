@@ -7492,6 +7492,100 @@ _无字段_
 | `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
 
 
+#### POST `/biz/payment/offline-records`
+
+记一笔 App 外收款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`OfflineRecordCreateReq`](#offlinerecordcreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
+| `method` | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER` | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
+| `note` | `string` | 否 | ≤ 100 字 |
+| `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
+
+**出参**（`data`）
+
+类型：[`OfflineRecord`](#offlinerecord)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 记录号（OFR…），与支付单号空间不重叠 |
+| `amountMinor` | `number` | 是 | 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 收款方式 |
+| `orderNo` | `string,null` | 是 | 引用的本店子单号；只是引用，不推订单状态 |
+| `note` | `string,null` | 是 | 备注 |
+| `receivedAt` | `string` | 是 | 实际收款时刻，ISO 8601 带门店市场偏移 |
+| `recordedBy` | `string` | 是 | 记账人号 |
+| `recordedByName` | `string,null` | 是 | 记账人名字；取不到为 null，端上退回显示 recordedBy |
+| `recordedAt` | `string` | 是 | 记账时刻，ISO 8601 带门店市场偏移 |
+| `status` | [`OfflineRecordStatus`](#offlinerecordstatus) | 是 | 已记 / 已作废 |
+| `corrected` | `boolean` | 是 | 是否被更正过 |
+| `version` | `number` | 是 | 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 |
+| `history` | [`OfflineRecordHistory`](#offlinerecordhistory)\[\] | 是 | 留痕，按时间正序 |
+
+
+#### GET `/biz/payment/offline-records`
+
+App 外收款记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `from` | query | `string` | 否 | — |
+| `to` | query | `string` | 否 | — |
+| `method` | query | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER`\[\] | 否 | — |
+| `status` | query | `RECORDED` \| `VOIDED`\[\] | 否 | 状态筛选，取值见对应枚举 |
+| `q` | query | `string` | 否 | — |
+| `orderNo` | query | `string` | 否 | 订单单号（按商家拆单后的子订单） |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`OfflineRecordPage`](#offlinerecordpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`OfflineRecord`](#offlinerecord)\[\] | 是 | 按实收时间倒序 |
+| `nextCursor` | `string,null` | 是 | 下一页游标；null = 没有了 |
+
+
+#### GET `/biz/payment/offline-records/summary`
+
+App 外收款合计　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `from` | query | `string` | 否 | — |
+| `to` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`OfflineRecordSummary`](#offlinerecordsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `to` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `count` | `number` | 是 | 未作废笔数 |
+| `amountMinor` | `number` | 是 | 未作废合计（最小单位） |
+
+
 #### GET `/biz/payment/qr-code`
 
 本店收款码　🔒
@@ -15077,6 +15171,107 @@ SKU 组件：一件 SKU 交付哪些东西
 | `payoutStatus` | `PENDING` \| `EXPORTED` \| `PAID` \| `MATCHED` \| `FAILED` \| `null` | 否 | 本批最近一笔放款到哪一步了（V391）。空 = 还没放款。 批次状态 RELEASED 只说「放了」，没说钱到哪一步 —— 商家问客服的正是后者： PENDING / EXPORTED 财务还没打；PAID 已登记凭证；MATCHED 银行流水勾上；FAILED 退回了。 |
 | `paymentRef` | `string,null` | 否 | 凭证号（网银流水号）。商家拿它对自己的银行到账记录 |
 | `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒）。空 = 还没登记 |
+
+### OfflineRecord
+
+外部收款记录（四个接口共用）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 记录号（OFR…），与支付单号空间不重叠 |
+| `amountMinor` | `number` | 是 | 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 收款方式 |
+| `orderNo` | `string,null` | 是 | 引用的本店子单号；只是引用，不推订单状态 |
+| `note` | `string,null` | 是 | 备注 |
+| `receivedAt` | `string` | 是 | 实际收款时刻，ISO 8601 带门店市场偏移 |
+| `recordedBy` | `string` | 是 | 记账人号 |
+| `recordedByName` | `string,null` | 是 | 记账人名字；取不到为 null，端上退回显示 recordedBy |
+| `recordedAt` | `string` | 是 | 记账时刻，ISO 8601 带门店市场偏移 |
+| `status` | [`OfflineRecordStatus`](#offlinerecordstatus) | 是 | 已记 / 已作废 |
+| `corrected` | `boolean` | 是 | 是否被更正过 |
+| `version` | `number` | 是 | 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 |
+| `history` | [`OfflineRecordHistory`](#offlinerecordhistory)\[\] | 是 | 留痕，按时间正序 |
+
+### OfflineRecordAction
+
+留痕动作
+
+枚举取值：
+
+- `CREATE`
+- `CORRECT`
+- `VOID`
+
+### OfflineRecordCreateReq
+
+记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
+| `method` | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER` | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
+| `note` | `string` | 否 | ≤ 100 字 |
+| `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
+
+### OfflineRecordHistory
+
+一步留痕；端上按 action 与前后值自己拼文字
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string` | 是 | 发生时刻，ISO 8601 带门店市场偏移 |
+| `by` | `string` | 是 | 操作人号 |
+| `byName` | `string,null` | 是 | 操作人名字；取不到为 null，端上退回显示 by |
+| `action` | [`OfflineRecordAction`](#offlinerecordaction) | 是 | 这一步做了什么 |
+| `reason` | `string,null` | 是 | 更正 / 作废的原因；CREATE 为 null |
+| `fromAmountMinor` | `number,null` | 是 | 改前金额（最小单位）；CREATE / VOID 为 null |
+| `toAmountMinor` | `number,null` | 是 | 改后金额（最小单位）；VOID 为 null |
+| `fromMethod` | [`OfflineRecordMethod`](#offlinerecordmethod) \| `null` | 是 | 改前方式；CREATE / VOID 为 null |
+| `toMethod` | [`OfflineRecordMethod`](#offlinerecordmethod) \| `null` | 是 | 改后方式；VOID 为 null |
+| `fromReceivedAt` | `string,null` | 是 | 改前实收时间；更正改了实收时间时才有 |
+| `toReceivedAt` | `string,null` | 是 | 改后实收时间；更正改了实收时间时才有 |
+
+### OfflineRecordMethod
+
+收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款
+
+枚举取值：
+
+- `CASH`
+- `BANK_TRANSFER`
+- `EXTERNAL_POS`
+- `OTHER`
+
+### OfflineRecordPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`OfflineRecord`](#offlinerecord)\[\] | 是 | 按实收时间倒序 |
+| `nextCursor` | `string,null` | 是 | 下一页游标；null = 没有了 |
+
+### OfflineRecordStatus
+
+已记 / 已作废（作废是终态，行不删）
+
+枚举取值：
+
+- `RECORDED`
+- `VOIDED`
+
+### OfflineRecordSummary
+
+区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `to` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `count` | `number` | 是 | 未作废笔数 |
+| `amountMinor` | `number` | 是 | 未作废合计（最小单位） |
 
 ### OfflineSaleItem
 

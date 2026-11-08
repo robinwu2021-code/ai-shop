@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1158 个接口**：后端已实现 935（81%）· 前端在调 1018
+**合计 1161 个接口**：后端已实现 938（81%）· 前端在调 1021
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **471** 个接口 ｜ 后端已实现 **365**（77%）｜ 前端在调 **469**
+共 **474** 个接口 ｜ 后端已实现 **368**（78%）｜ 前端在调 **472**
 
 ### activities（4）
 
@@ -787,7 +787,7 @@
 | POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
 
-### payment（10）
+### payment（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -795,6 +795,9 @@
 | POST | `/biz/payment/app-grant` | 授权第三方 | — | `PayAppGrant` | 🔒 | ✅ | ✅ |
 | DELETE | `/biz/payment/app-grant/{id}` | 撤销第三方授权 | — | — | 🔒 | ✅ | ⬜ |
 | POST | `/biz/payment/collection` | 代客收款（动态码） | — | `PayCollectResult` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/offline-records` | 记一笔 App 外收款 | `OfflineRecordCreateReq` | `OfflineRecord` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/offline-records` | App 外收款记录 | — | `OfflineRecordPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/offline-records/summary` | App 外收款合计 | — | `OfflineRecordSummary` | 🔒 | ✅ | ✅ |
 | GET | `/biz/payment/qr-code` | 本店收款码 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/payment/qr-code` | 生成收款码 | — | `PayQrCode` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/payment/qr-code/{qrCode}/disabled` | 停用收款码 | — | — | 🔒 | ✅ | ✅ |

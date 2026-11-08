@@ -3,7 +3,10 @@ import type {SvActivity,SvSubmission,SvApproval} from "./stored-value-governance
 import type {CurrencyCode} from "@shared/types";
 import type { AfterSale, Order } from "@shared/types";
 // 商家端支付（S8）的响应类型住在 ./pay.ts；这里转出一次，OpenAPI 生成器只读本文件
-export type { PayCollectResult, PayRefundItem, PayDailyStatement, PayStatementItem, PayQrCode, PayAppGrant } from "./pay";
+export type {
+  PayCollectResult, PayRefundItem, PayDailyStatement, PayStatementItem, PayQrCode, PayAppGrant,
+  OfflineRecord, OfflineRecordHistory, OfflineRecordPage, OfflineRecordSummary,
+} from "./pay";
 // 平台商城（向平台采购，线下银行转账）的响应类型住在 ./mall.ts；同样转出一次
 export type {
   MallStorefront, MallQuote, MallOrder, MallOrderSummary, MallOrderDetail, MallOfflineInstructions,

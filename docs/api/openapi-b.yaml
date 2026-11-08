@@ -14921,6 +14921,129 @@ components:
         - "managementNo"
         - "commandKey"
       additionalProperties: false
+    OfflineRecordCreateReq:
+      type: "object"
+      properties:
+        amountMinor:
+          type: "number"
+          description: "金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元）"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "必须等于门店市场币种（台湾 TWD）"
+        method:
+          type: "string"
+          enum:
+            - "CASH"
+            - "BANK_TRANSFER"
+            - "EXTERNAL_POS"
+            - "OTHER"
+          description: "现金 / 银行转账 / 外部刷卡机 / 其他"
+        orderNo:
+          type: "string"
+          description: "本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404"
+        note:
+          type: "string"
+          description: "≤ 100 字"
+        receivedAt:
+          type: "string"
+          description: "实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00"
+      required:
+        - "amountMinor"
+        - "currency"
+        - "method"
+      additionalProperties: false
+      description: "记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里"
+    OfflineRecordListQuery:
+      type: "object"
+      properties:
+        from:
+          type: "string"
+          description: "yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93"
+        to:
+          type: "string"
+        method:
+          type: "array"
+          items:
+            type: "string"
+            enum:
+              - "CASH"
+              - "BANK_TRANSFER"
+              - "EXTERNAL_POS"
+              - "OTHER"
+        status:
+          type: "array"
+          items:
+            type: "string"
+            enum:
+              - "RECORDED"
+              - "VOIDED"
+        q:
+          type: "string"
+          description: "1–32 字，命中订单号或备注"
+        orderNo:
+          type: "string"
+          description: "精确匹配订单号：订单详情据此判断「已有外部記錄」"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+          description: "1–50，默认 20"
+      additionalProperties: false
+      description: "列表查询"
+    OfflineRecordSummaryQuery:
+      type: "object"
+      properties:
+        from:
+          type: "string"
+        to:
+          type: "string"
+      additionalProperties: false
+      description: "汇总查询；区间规则同列表"
+    OfflineRecordCorrectReq:
+      type: "object"
+      properties:
+        amountMinor:
+          type: "number"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "必须等于原记录币种"
+        method:
+          type: "string"
+          enum:
+            - "CASH"
+            - "BANK_TRANSFER"
+            - "EXTERNAL_POS"
+            - "OTHER"
+        receivedAt:
+          type: "string"
+          description: "新的实收时刻；不传 = 不改"
+        reason:
+          type: "string"
+          description: "1–100 字"
+        expectedVersion:
+          type: "number"
+          description: "列表里拿到的 version；不符 → 10409"
+      required:
+        - "amountMinor"
+        - "currency"
+        - "method"
+        - "reason"
+        - "expectedVersion"
+      additionalProperties: false
+      description: "更正：店主 / 店长，记账后 31 天内"
+    OfflineRecordVoidReq:
+      type: "object"
+      properties:
+        reason:
+          type: "string"
+          description: "1–100 字"
+        expectedVersion:
+          type: "number"
+      required:
+        - "reason"
+        - "expectedVersion"
+      additionalProperties: false
+      description: "作废：店主 / 店长，记账后 31 天内"
     MallQuoteRequest:
       type: "object"
       properties:
@@ -15298,6 +15421,206 @@ components:
       enum:
         - "ACTIVE"
         - "REVOKED"
+    OfflineRecord:
+      type: "object"
+      properties:
+        recordNo:
+          type: "string"
+          description: "记录号（OFR…），与支付单号空间不重叠"
+        amountMinor:
+          type: "number"
+          description: "金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数）"
+        currency:
+          type: "string"
+          description: "门店市场币种"
+        method:
+          "$ref": "#/components/schemas/OfflineRecordMethod"
+          description: "收款方式"
+        orderNo:
+          type:
+            - "string"
+            - "null"
+          description: "引用的本店子单号；只是引用，不推订单状态"
+        note:
+          type:
+            - "string"
+            - "null"
+          description: "备注"
+        receivedAt:
+          type: "string"
+          description: "实际收款时刻，ISO 8601 带门店市场偏移"
+        recordedBy:
+          type: "string"
+          description: "记账人号"
+        recordedByName:
+          type:
+            - "string"
+            - "null"
+          description: "记账人名字；取不到为 null，端上退回显示 recordedBy"
+        recordedAt:
+          type: "string"
+          description: "记账时刻，ISO 8601 带门店市场偏移"
+        status:
+          "$ref": "#/components/schemas/OfflineRecordStatus"
+          description: "已记 / 已作废"
+        corrected:
+          type: "boolean"
+          description: "是否被更正过"
+        version:
+          type: "number"
+          description: "每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回"
+        history:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/OfflineRecordHistory"
+          description: "留痕，按时间正序"
+      required:
+        - "recordNo"
+        - "amountMinor"
+        - "currency"
+        - "method"
+        - "orderNo"
+        - "note"
+        - "receivedAt"
+        - "recordedBy"
+        - "recordedByName"
+        - "recordedAt"
+        - "status"
+        - "corrected"
+        - "version"
+        - "history"
+      additionalProperties: false
+      description: "外部收款记录（四个接口共用）"
+    OfflineRecordMethod:
+      type: "string"
+      enum:
+        - "CASH"
+        - "BANK_TRANSFER"
+        - "EXTERNAL_POS"
+        - "OTHER"
+      description: "收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款"
+    OfflineRecordStatus:
+      type: "string"
+      enum:
+        - "RECORDED"
+        - "VOIDED"
+      description: "已记 / 已作废（作废是终态，行不删）"
+    OfflineRecordHistory:
+      type: "object"
+      properties:
+        at:
+          type: "string"
+          description: "发生时刻，ISO 8601 带门店市场偏移"
+        by:
+          type: "string"
+          description: "操作人号"
+        byName:
+          type:
+            - "string"
+            - "null"
+          description: "操作人名字；取不到为 null，端上退回显示 by"
+        action:
+          "$ref": "#/components/schemas/OfflineRecordAction"
+          description: "这一步做了什么"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "更正 / 作废的原因；CREATE 为 null"
+        fromAmountMinor:
+          type:
+            - "number"
+            - "null"
+          description: "改前金额（最小单位）；CREATE / VOID 为 null"
+        toAmountMinor:
+          type:
+            - "number"
+            - "null"
+          description: "改后金额（最小单位）；VOID 为 null"
+        fromMethod:
+          anyOf:
+            - "$ref": "#/components/schemas/OfflineRecordMethod"
+            - type: "null"
+          description: "改前方式；CREATE / VOID 为 null"
+        toMethod:
+          anyOf:
+            - "$ref": "#/components/schemas/OfflineRecordMethod"
+            - type: "null"
+          description: "改后方式；VOID 为 null"
+        fromReceivedAt:
+          type:
+            - "string"
+            - "null"
+          description: "改前实收时间；更正改了实收时间时才有"
+        toReceivedAt:
+          type:
+            - "string"
+            - "null"
+          description: "改后实收时间；更正改了实收时间时才有"
+      required:
+        - "at"
+        - "by"
+        - "byName"
+        - "action"
+        - "reason"
+        - "fromAmountMinor"
+        - "toAmountMinor"
+        - "fromMethod"
+        - "toMethod"
+        - "fromReceivedAt"
+        - "toReceivedAt"
+      additionalProperties: false
+      description: "一步留痕；端上按 action 与前后值自己拼文字"
+    OfflineRecordAction:
+      type: "string"
+      enum:
+        - "CREATE"
+        - "CORRECT"
+        - "VOID"
+      description: "留痕动作"
+    OfflineRecordPage:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/OfflineRecord"
+          description: "按实收时间倒序"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "下一页游标；null = 没有了"
+      required:
+        - "items"
+        - "nextCursor"
+      additionalProperties: false
+    OfflineRecordSummary:
+      type: "object"
+      properties:
+        from:
+          type: "string"
+          description: "门店市场的 yyyy-MM-dd，含"
+        to:
+          type: "string"
+          description: "门店市场的 yyyy-MM-dd，含"
+        currency:
+          type: "string"
+          description: "门店市场币种"
+        count:
+          type: "number"
+          description: "未作废笔数"
+        amountMinor:
+          type: "number"
+          description: "未作废合计（最小单位）"
+      required:
+        - "from"
+        - "to"
+        - "currency"
+        - "count"
+        - "amountMinor"
+      additionalProperties: false
+      description: "区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额"
     MallStorefront:
       type: "object"
       properties:
@@ -30240,6 +30563,166 @@ paths:
                   data:
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/payment/offline-records":
+    post:
+      operationId: "mPayRecordOffline"
+      summary: "记一笔 App 外收款"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OfflineRecord"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/OfflineRecordCreateReq"
+    get:
+      operationId: "mPayOfflineRecords"
+      summary: "App 外收款记录"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "method"
+          in: "query"
+          required: false
+          schema:
+            type: "array"
+            items:
+              type: "string"
+              enum:
+                - "CASH"
+                - "BANK_TRANSFER"
+                - "EXTERNAL_POS"
+                - "OTHER"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "array"
+            items:
+              type: "string"
+              enum:
+                - "RECORDED"
+                - "VOIDED"
+        - name: "q"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "1–32 字，命中订单号或备注"
+        - name: "orderNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "精确匹配订单号：订单详情据此判断「已有外部記錄」"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "1–50，默认 20"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OfflineRecordPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/payment/offline-records/summary":
+    get:
+      operationId: "mPayOfflineSummary"
+      summary: "App 外收款合计"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OfflineRecordSummary"
                 required:
                   - "code"
                   - "msg"

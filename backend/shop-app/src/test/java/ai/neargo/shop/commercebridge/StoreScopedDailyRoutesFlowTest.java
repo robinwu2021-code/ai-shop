@@ -112,6 +112,34 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ App 外收款记录（/biz/payment/offline-records*）在新模型门店上能进门店：记一笔、列表、汇总都是 0，不是 70006")
+    void new_model_store_member_reaches_offline_records() throws Exception {
+        String[] o = newModelOwner("15965020116");
+        jdbc.update("update mch_entity set market='TW' where entity_no=(select entity_no from mch_store where store_no=?)",
+                o[1]);
+        String body = mvc.perform(post("/biz/payment/offline-records").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).header("Idempotency-Key", "daily-routes-offline-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountMinor\":48000,\"currency\":\"TWD\",\"method\":\"CASH\"}"))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode created = json.readTree(body);
+        assertTrue(created.has("code"), body);
+        assertEquals(0, created.path("code").asInt(), body);
+        for (String path : new String[] {"/biz/payment/offline-records", "/biz/payment/offline-records/summary"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertTrue(r.has("code") && r.path("data").isObject(), path + " → " + r);
+            assertEquals(0, r.path("code").asInt(), path + " → " + r);
+        }
+        String no = created.path("data").path("recordNo").asText();
+        assertTrue(no.startsWith("OFR"), body);
+        String voided = mvc.perform(post("/biz/payment/offline-records/" + no + "/void")
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"测试\",\"expectedVersion\":1}"))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals(0, json.readTree(voided).path("code").asInt(), voided);
+    }
+
+    @Test
     @DisplayName("★★★ App 的店员角色、管理空间、证照协议、地图选址与看板，在新模型门店上都能进门店（不是 70006）")
     void appAdminAndOnboardingRoutesPassAdmission() throws Exception {
         String[] o = newModelOwner("15965020107");
