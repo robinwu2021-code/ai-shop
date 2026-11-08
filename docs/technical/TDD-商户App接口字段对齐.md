@@ -1,6 +1,6 @@
 # TDD-商户App接口字段对齐
 
-状态：已实现（2026-11-08；「已拍板 2」履约方式因新发现重开，未实现，见 §6）
+状态：已实现（2026-11-08；关路影响清单在新模型门店暂未开放，见 §6）
 档位：1（已有端点补字段；不新增端点、不改权限码；只有一条数据回填迁移，不改表结构）
 关联需求：商户 App 交接文档《功能矩阵与API交接文档》附录 A（ai-shop-bapp `docs/implementation/功能矩阵与API交接文档.md`，main `31a56c1`）；ADR-034（可见范围模型）；TDD-双地图提供方与门店选点（AC5 坐标系）
 创建：2026-11-08 · 最后更新：2026-11-08
@@ -91,6 +91,11 @@
      - A（本次不改后端）：App 单选，提示「主体级设置，会同时改同主体所有门店」；可选再把权限收紧到 `biz:store:admin`（只有店主能改）。
      - B（改成门店级多选）：按 2 档另起 TDD，改存储层级与 C 端可见范围判定；原型的「外送」要先定义对应哪个值。
    - **建议**：一期选 A，并把改 `fulfillmentReach` 收紧到店主；同时请产品确认「自取 + 宅配」是不是一期必须，必须就走 B。
+   - **2026-11-08 重新拍板：改用已有的门店级接口（取代上面的 A）**。实现时发现「B」早已存在：`GET|PUT /biz/stores/{storeNo}/fulfillment`（`BizStoreFulfillmentController` / `StoreFulfillmentService`），每店四路 `STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS` 各自开关，可见范围判定（`StoreRoutes`）**先看门店级配置，一路都没开才回落主体 `fulfillment_reach`**。所以 App 只改主体单选，对已有门店级配置的店可能完全不生效。决定：
+     - App W05 改用门店级接口（读四路、整份保存）。对应：到店自取 → `STORE_PICKUP`、外送 → `MERCHANT_DELIVERY`、宅配 → `EXPRESS`；「到府服务」是商品属性、不在这套里；`NEIGHBOR_PICKUP`（邻里自提）是否显示由 App 定。
+     - `GET|PUT /biz/stores/{storeNo}/fulfillment` 登记进 `ShopStoreMemberRoutes`（原为旧复数路由，新模型门店 70006）。
+     - 读接口如实反映买家侧：门店还没有任何生效的门店级配置时，兜底那一路回 `enabled=true, inherited=true`（新字段 `inherited`）。新建门店不会自动生成门店级配置，此前读到的是「四路全关」，与买家实际看到的不符。
+     - 不再收紧 `fulfillmentReach` 的权限：门店级配置只影响本店，店长改本店不会波及其它门店。保存要求至少开一路（`FULFILLMENT_NONE_ENABLED`）。
 3. **进件签约 `signRequired` / `signUrl`**
    - 后端没有签约环节的数据。渠道签约（如蓝新的线上签约页）如果存在，应由支付服务在进件回执里给出，ai-shop 只透传。
    - **建议**：先确认一期接入的通道（蓝新）进件后是否真有「商家点链接签约」这一步。有，则在支付服务侧补，ai-shop 在 `PaymentApplymentVO` 加两个透传字段（另起一份小 TDD）；没有，App 删掉「待签约」状态和 `signUrl` 按钮。
@@ -120,6 +125,7 @@ GET /biz/plan → 现有字段 + {
 | A4 | `BizPlanFlowTest#suspendedListNamesOnlyPlatformPressedStores`（追加）：`suspendedStoreDetails` 一条，门店号是被压那家、名称与 `suspendedStores` 一致、`openOrders=0`；EXPIRED 的 `graceUntil` 为 null；`suspendedStores` 仍是名称数组。`BizPlanFlowTest#activePlanCarriesGraceUntil`：ACTIVE 时 `graceUntil = expireAt + 7 天`、无压店时为空数组 | ✅ 8/8 | 实现前红：两条都 NPE |
 | A5 | 引用既有 `MerchantRoleFlowTest#customRoleTakesEffectImmediately`：经 `POST /biz/staff/{no}/store` 授予自定义角色码并判权生效 | ✅ | 后端行为未改，只改契约描述 |
 | 回填 | 无自动化测试：测试库按 `schema-test.sql` 建表、不跑 Flyway，V636 执行不到。SQL 方言闸门对它零命中；上线前在 166 先 `SELECT COUNT(*)` 同条件确认受影响行数 | — | — |
+| 已拍板 2 | `StoreScopedDailyRoutesFlowTest#storeFulfillmentWorksOnNewModelStores`：新模型门店 GET 回 0、没配过时恰好 `STORE_PICKUP` 开着且 `inherited`；PUT 只开 `EXPRESS` 回 0，之后四路都不再 `inherited`；影响清单仍 70006（钉现状）。`StoreFulfillmentFlowTest#getReturnsFourRows` 按新语义改写 | ✅ 13/13、20/20 | 登记前红：GET 回 70006 `CONTACT_ADMIN` |
 | 回归 | `ServiceAreaPolygonFlowTest` 8、`ProfileAndPasswordTest` 9（`OpenOrderPort` 加方法后的 mock）、`CommerceStoreCreationFlowTest` 4（跳过 1，手工构造 `MerchantPlanServiceImpl`）、`BizStoreSetupTest` 12；`ArchitectureTest`、`BizEndpointPermTest` 与基线（`408da00ee`）报告逐字相同（基线已有 5 + 1 条失败，本次未新增）；`MerchantRoleFlowTest#assignablePermsComeFromBackend` 基线即失败（权限点清单），与本次无关；b-app / c-app `vue-tsc`、ops-web `tsc` 通过；生成文档 26 个全最新 | ✅ | |
 
 ## §6 对账二 · 设计 → 实现
@@ -162,7 +168,9 @@ GET /biz/plan → 现有字段 + {
 
 ### 偏差说明
 
-- **「已拍板 2」履约方式重开，本次没有实现「收紧到店主」**。实现时发现后端已有门店级、多选的履约配置 `GET|PUT /biz/stores/{storeNo}/fulfillment`（`BizStoreFulfillmentController`，四路：到店自取 / 邻里自提 / 商家自送 / 快递，共享类型注释写明它「取代商家级 fulfillmentReach 单选」），正对应原型 W05 的多选。拍板时的信息（只有主体级单选）不完整。这条路由在新模型门店上会被 `CommerceRoutePolicy` 拒（归为旧复数路由、DENY），用前要登记。等用户重新拍板：App 改用门店级接口并登记路由，还是维持单选。
+- **「已拍板 2」履约方式重新拍板为「改用门店级接口」**（见 §2 已拍板 2 末条），已实现：登记 `GET|PUT /biz/stores/{storeNo}/fulfillment`；`ChannelVO` 加 `inherited`，未配置门店如实标出兜底那一路（兜底规则直接调 `StoreRoutes.of`，不复制）；`fulfillmentReach` 不再收紧。
+- **关路前的影响清单 `GET /biz/stores/{storeNo}/fulfillment/{channel}/impact` 在新模型门店上仍是 70006，本次刻意没开**：它走 `LEGACY_PREVIEW` 通道，老模型账号「目标店必须在本人范围内」的校验靠这条通道（`CommerceAccessSecurityFlowTest#assertLegacyImpact` 钉着目标店不存在 / 不属于本人回 403）。登记成门店成员路由会让老账号跳过这道校验，而那组测试要真实 MySQL、本机跑不了，改了无法验证。要在新模型门店开放，需在 `LEGACY_PREVIEW` 里按门店模型分流并补测试，另立一项。期间 App 关路时给通用确认，不列受影响商品。`StoreScopedDailyRoutesFlowTest` 把现状钉成 70006，开放时会变红提醒。
+- `StoreFulfillmentFlowTest#getReturnsFourRows` 原断言「没配过全部关着」，按新语义改为「恰好兜底那一路开着且 inherited」。这是有意改契约，不是放宽测试。
 - 迁移号 V636 取的是本分支当前最大号 +1；合并前要确认 `codex/ai-shop-codex` 上没有别人占用。
 - V636 只改数据，166 的应用账号可直接执行，不需要 root。
 
@@ -174,3 +182,4 @@ GET /biz/plan → 现有字段 + {
 | 2026-11-08 | 按商户 App 评审（ai-shop-bapp `docs/implementation/TDD评审-商户App.md`）修订：写明回读 `geometry` 与请求同格式；图形不合法统一 10473、上限 200；`status` 与 `planSuspended` 同一次读取；`openOrders` 口径；`graceUntil` 的有无；EXCLUDE 多边形在预估里扣除；坐标系理由按 App 实际画布更正，并补台湾存量门店坐标系回填；履约方式扩成「单选 / 门店级 / 谁能改」一并拍板 |
 | 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |
 | 2026-11-08 | 已实现 A1–A5 与坐标系回填（闸门见 §5「回归」）；履约方式一条重开，见 §6 偏差说明 |
+| 2026-11-08 | 「已拍板 2」重新拍板为改用门店级配送接口并已实现；影响清单在新模型门店暂未开放，见 §6 |

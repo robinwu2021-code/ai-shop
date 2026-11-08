@@ -3,9 +3,12 @@ package ai.neargo.shop.merchant.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchFulfillmentChannel;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.spi.user.AdmissionPort;
@@ -38,6 +41,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
+    private final MchEntityMapper entityMapper;
 
 
     public StoreFulfillmentServiceImpl(FulfillmentChannelMapper channelMapper,
@@ -46,7 +50,8 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                                        ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper,
                                        ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
                                        ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper,
-                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
+                                       MchEntityMapper entityMapper) {
         this.channelMapper = channelMapper;
         this.storeMapper = storeMapper;
         this.admissionPort = admissionPort;
@@ -54,26 +59,54 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
         this.pickupQueryPort = pickupQueryPort;
         this.areaRefMapper = areaRefMapper;
         this.serviceAreaMapper = serviceAreaMapper;
+        this.entityMapper = entityMapper;
     }
 
     @Override
     public FulfillmentVO get(String merchantNo, String storeNo) {
         MchStore store = requireStore(merchantNo, storeNo);
         Map<String, MchFulfillmentChannel> rows = rowsOf(store.getStoreNo());
+        String inheritedChannel = inheritedChannelOf(store, rows);
         List<ChannelVO> out = new ArrayList<>(CONFIGURABLE.size());
         for (String ch : CONFIGURABLE) {
             MchFulfillmentChannel row = rows.get(ch);
             boolean subset = row != null && MchFulfillmentChannel.SCOPE_SUBSET.equals(row.getScopeMode());
+            boolean inherited = ch.equals(inheritedChannel);
             out.add(new ChannelVO(ch,
-                    row != null && Boolean.TRUE.equals(row.getEnabled()),
+                    inherited || row != null && Boolean.TRUE.equals(row.getEnabled()),
                     deniedByMatrix(merchantNo, ch),
                     row == null ? null : templateNoOf(row.getConfig()),
                     Fulfillments.NEIGHBOR_PICKUP.equals(ch) ? pickupRefsOf(store.getStoreNo()) : List.of(),
                     row != null && Boolean.TRUE.equals(row.getOpsLocked()),
                     subset ? MchFulfillmentChannel.SCOPE_SUBSET : MchFulfillmentChannel.SCOPE_ALL,
-                    subset ? areaRefsOf(store.getStoreNo(), ch) : List.of()));
+                    subset ? areaRefsOf(store.getStoreNo(), ch) : List.of(),
+                    inherited));
         }
         return new FulfillmentVO(store.getStoreNo(), out);
+    }
+
+    /**
+     * 门店没有任何生效的门店级配置时，买家侧兜底用的那一路；有生效配置时为 null。
+     *
+     * <p>直接问 {@link ai.neargo.shop.merchant.reach.StoreRoutes} 而不是在这里再写一遍
+     * 「SHIPPING → 快递 / PICKUP → 自提 / 其余 → 自送」：兜底规则只能有一份，
+     * 否则这里说的和买家实际看到的迟早对不上。
+     */
+    private String inheritedChannelOf(MchStore store, Map<String, MchFulfillmentChannel> rows) {
+        boolean anyEffective = rows.values().stream().anyMatch(r ->
+                Boolean.TRUE.equals(r.getEnabled()) && !Boolean.TRUE.equals(r.getOpsLocked()));
+        if (anyEffective) {
+            return null;
+        }
+        MchEntity entity = DataScopeContext.executeWithoutScope(() ->
+                entityMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, store.getEntityNo()).last("LIMIT 1")));
+        if (entity == null) {
+            return null;
+        }
+        var routes = ai.neargo.shop.merchant.reach.StoreRoutes.of(entity, store.getStoreNo(),
+                List.copyOf(rows.values()), List.of());
+        return routes.size() == 1 ? routes.get(0).channel() : null;
     }
 
     @Override

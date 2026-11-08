@@ -3,6 +3,7 @@ package ai.neargo.shop.commercebridge;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -188,6 +189,48 @@ class StoreScopedDailyRoutesFlowTest {
                         .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andReturn().getResponse().getContentAsString();
         assertNotEquals(70006, json.readTree(body).path("code").asInt(), body);
+    }
+
+    @Test
+    @DisplayName("★★★ 门店级配送方式（App W05 多选）在新模型门店上能读能存；没配过的店如实回「沿用商户设置」那一路")
+    void storeFulfillmentWorksOnNewModelStores() throws Exception {
+        String[] o = newModelOwner("15965020115");
+        String path = "/biz/stores/" + o[1] + "/fulfillment";
+
+        JsonNode before = call(o[0], o[1], path);
+        assertEquals(0, before.path("code").asInt(), before.toString());
+        /*
+         * 新建门店没有门店级配置行，买家侧按主体 fulfillment_reach 兜底（StoreRoutes）。
+         * 读接口若照实回「四路全关」，App 会显示一家「谁也看不到」的店，而买家其实看得到 ——
+         * 所以兜底那一路要标成开着、并注明 inherited。
+         */
+        var inherited = new java.util.ArrayList<String>();
+        for (JsonNode ch : before.path("data").path("channels")) {
+            if (ch.path("enabled").asBoolean()) {
+                assertTrue(ch.path("inherited").asBoolean(), "兜底开着的那一路要标 inherited：" + ch);
+                inherited.add(ch.path("channel").asText());
+            }
+        }
+        assertEquals(java.util.List.of("STORE_PICKUP"), inherited, "主体 fulfillment_reach 为空按自提兜底");
+
+        String saved = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(path)
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channels\":[{\"channel\":\"EXPRESS\",\"enabled\":true}]}"))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode s = json.readTree(saved);
+        assertEquals(0, s.path("code").asInt(), saved);
+        for (JsonNode ch : s.path("data").path("channels")) {
+            assertFalse(ch.path("inherited").asBoolean(), "存过之后就是门店自己的配置，不再沿用：" + ch);
+            assertEquals("EXPRESS".equals(ch.path("channel").asText()), ch.path("enabled").asBoolean(), ch.toString());
+        }
+
+        /*
+         * 关路前的影响清单仍走 LEGACY_PREVIEW、只给老模型门店（见 ShopStoreMemberRoutes 的说明），
+         * 新模型门店上是 70006。这里钉住现状：哪天开放了，这条会变红提醒同步改 App 与 TDD。
+         */
+        JsonNode impact = call(o[0], o[1], path + "/EXPRESS/impact");
+        assertEquals(70006, impact.path("code").asInt(), impact.toString());
     }
 
     @Test

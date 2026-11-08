@@ -32,6 +32,12 @@ export interface StoreFulfillmentChannel {
   scopeMode?: string;
   /** SUBSET 时适用的范围项 area_no */
   areaNos?: string[];
+  /**
+   * 这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体
+   * `fulfillmentReach` 兜底，兜底那一路在这里 `enabled=true, inherited=true`。
+   * 端上可标「沿用商户设置」；商家存一次之后门店有了自己的配置，就不再出现。
+   */
+  inherited?: boolean;
 }
 export interface StoreFulfillment {
   /** 门店号 */

@@ -75,6 +75,11 @@ final class ShopStoreMemberRoutes {
             // 进销存，及本店线下销售、库存总览 / 对齐 / 对账（sell-rules、stock-sync 见上）
             HostRoute.of("GET,POST,PUT", "/biz/inventory/.+"),
             HostRoute.of("GET,POST", STORE + "(?:offline-sale|stock-overview|stock-alignment|stock-reconcile)(?:/.*)?"),
+            // 门店级配送方式（App W05 多选；取代主体级 fulfillmentReach 单选。TDD-商户App接口字段对齐「已拍板 2」）
+            HostRoute.of("GET,PUT", "/biz/stores/[A-Za-z0-9_-]{1,64}/fulfillment"),
+            // 关掉一路前的影响清单（…/fulfillment/{channel}/impact）**刻意不在这里登记**：它走 LEGACY_PREVIEW，
+            // 老模型账号的「目标店必须在本人范围内」靠那条通道校验（CommerceAccessSecurityFlowTest#assertLegacyImpact）。
+            // 登记成门店成员路由会让老账号跳过它。新模型门店怎么开放另行处理（TDD-商户App接口字段对齐 §6）
             // 会员、标签、分群、设置、触达
             HostRoute.of("GET,POST,PUT", "/biz/(?:members|member-tags|member-segments|member-reach)(?:/.*)?"),
             HostRoute.of("GET,PUT", "/biz/member-settings"),
