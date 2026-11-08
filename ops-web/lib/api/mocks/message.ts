@@ -211,6 +211,7 @@ export const messageMock: MessageApi = {
       db.paginate(db.tickets, q.page, q.size, (t) =>
         db.eqHit(q.status, t.status) &&
         db.eqHit(q.assignee, t.assignee) &&
+        db.eqHit(q.source, t.source ?? "C_USER") &&
         db.kwHit(q.keyword, t.ticketNo, t.title, t.userNickname, t.orderNo),
       ),
     ),
@@ -251,6 +252,16 @@ export const messageMock: MessageApi = {
     db.assertTransition(TICKET_TRANSITIONS, t.status, "CLOSED", "工单", "Ticket");
     t.status = "CLOSED";
     return wait(t, 400);
+  },
+
+  // 演示用：商户回报给两条诊断（一条带时区、一条设备本地时间），C 端工单与后端一样回空数组
+  ticketDiagnostics: async (ticketNo) => {
+    const t = findTicket(ticketNo);
+    if (t.source !== "B_MERCHANT") return wait([]);
+    return wait([
+      { at: "2026-11-08T09:19:58Z", method: "GET", path: "/biz/stores/mine", outcome: "ok" },
+      { at: "2026-11-08T17:20:00.123", method: "POST", path: "/biz/payment/refund/P…2001", outcome: "error 70006" },
+    ]);
   },
 
   listInbox: () => wait([...inbox].sort((a, b) => b.at - a.at)),

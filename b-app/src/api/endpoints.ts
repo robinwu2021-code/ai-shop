@@ -535,6 +535,13 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     summary: "解绑推送设备（登出前，共用设备换班必须解）",
   },
 
+  // ---------------------------------------------------------------- 问题回报与版本（TDD-商户App问题回报与版本）
+  // 账号级：不要求选门店（CommerceRoutePolicy.ACCOUNT），「选不了店」本身就是要回报的问题
+  mSubmitFeedback: { method: "POST", path: "/biz/feedback", auth: true, summary: "提交问题回报（回报号即工单号）" },
+  mMyFeedback: { method: "GET", path: "/biz/feedback/mine", auth: true, summary: "我的回报（最近 50 条，带客服回复）" },
+  // 匿名：令牌过期的旧包也要读得到「该升级了」，所以在 /common 而不是 /biz
+  mAppVersion: { method: "GET", path: "/common/app/version", auth: false, summary: "版本检查（最新版 / 最低支持版 / 更新说明）" },
+
   // ── 通知设置（TDD-来单四渠道与商家通知设置）。开关与群都是**门店级**，
   // 作用于请求头 X-Store-No 指定的那一家。
   mNotifySetting: { method: "GET", path: "/biz/notify/setting", auth: true, summary: "本店的通知开关与企微群状态" },

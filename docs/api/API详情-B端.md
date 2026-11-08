@@ -603,6 +603,33 @@
 | `size` | `integer` | 是 | — |
 
 
+### app
+
+#### GET `/common/app/version`
+
+版本检查（最新版 / 最低支持版 / 更新说明）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `platform` | query | `string` | 是 | — |
+| `build` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`AppVersionInfo`](#appversioninfo)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `platform` | `ANDROID` \| `IOS` | 是 | 归一后的平台 |
+| `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
+| `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
+| `storeUrl` | `string,null` | 是 | 商店地址（只会是 App Store 或 Google Play 的 https 地址） |
+| `upgradeRequired` | `boolean,null` | 是 | 只在请求带了 build 时有值；端上应以它为准 |
+
+
 ### appointment-slots
 
 #### POST `/biz/appointment-slots/{slotNo}/close`
@@ -1372,6 +1399,47 @@ _无字段_
 |---|---|:---:|---|
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
+
+
+### feedback
+
+#### POST `/biz/feedback`
+
+提交问题回报（回报号即工单号）　🔒
+
+**入参**
+
+请求体：[`SubmitFeedbackReq`](#submitfeedbackreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类：BUG / PAYMENT / IDEA / OTHER |
+| `description` | `string` | 是 | 描述，去首尾空白后 1–1000 字 |
+| `errorCode` | `string` | 否 | 从哪个错误进来（≤64，超长截断） |
+| `page` | `string` | 否 | 从哪一页进来（≤128，超长截断） |
+| `storeNo` | `string` | 否 | 当前门店号；不属于本账号会被丢弃（照常落库） |
+| `appVersion` | `string` | 是 | App 版本（必填，≤32） |
+| `platform` | `string` | 否 | android / ios；其它值归 OTHER |
+| `diagnostics` | [`FeedbackDiagnostic`](#feedbackdiagnostic)\[\] | 否 | 诊断，最多留最后 300 条 |
+
+**出参**（`data`）
+
+类型：[`FeedbackReceipt`](#feedbackreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+
+
+#### GET `/biz/feedback/mine`
+
+我的回报（最近 50 条，带客服回复）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantFeedback`](#merchantfeedback)\[\]
 
 
 ### freight-template
@@ -12434,6 +12502,19 @@ _无字段_
 - `REFUND_ONLY`
 - `RETURN_REFUND`
 
+### AppVersionInfo
+
+版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `platform` | `ANDROID` \| `IOS` | 是 | 归一后的平台 |
+| `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
+| `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
+| `storeUrl` | `string,null` | 是 | 商店地址（只会是 App Store 或 Google Play 的 https 地址） |
+| `upgradeRequired` | `boolean,null` | 是 | 只在请求带了 build 时有值；端上应以它为准 |
+
 ### AppealReviewReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -13181,6 +13262,46 @@ _无字段_
 |---|---|:---:|---|
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
+
+### FeedbackCategory
+
+回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。
+
+枚举取值：
+
+- `BUG`
+- `PAYMENT`
+- `IDEA`
+- `OTHER`
+
+### FeedbackDiagnostic
+
+回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string,null` | 是 | 请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null |
+| `method` | `string` | 是 | HTTP 方法 |
+| `path` | `string` | 是 | 请求路径（已脱敏） |
+| `outcome` | `string` | 是 | 结果摘要，如 `ok`、`error 70006` |
+
+### FeedbackReceipt
+
+提交回报的回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+
+### FeedbackStatus
+
+回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」
+
+枚举取值：
+
+- `OPEN`
+- `REPLIED`
+- `CLOSED`
 
 ### FulfillStage
 
@@ -14658,6 +14779,21 @@ SKU 组件：一件 SKU 交付哪些东西
 | `daysSinceLast` | `number` | 是 | 距上次下单天数 |
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
+
+### MerchantFeedback
+
+「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类 |
+| `description` | `string` | 是 | 描述原文 |
+| `status` | [`FeedbackStatus`](#feedbackstatus) | 是 | 处理状态 |
+| `reply` | `string,null` | 是 | 客服回复；没回复为 null |
+| `storeNo` | `string,null` | 是 | 提交时所在门店（核对属于本账号才存） |
+| `createdAt` | `string` | 是 | 提交时间（ISO-8601 UTC） |
+| `repliedAt` | `string,null` | 是 | 回复时间（ISO-8601 UTC）；没回复为 null |
 
 ### MerchantFulfillmentChange
 
@@ -17647,6 +17783,21 @@ StorePointType 的 status 取值域，按服务端契约校验。
 - `ACTIVE`
 - `READONLY`
 - `SUSPENDED`
+
+### SubmitFeedbackReq
+
+提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400； 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类：BUG / PAYMENT / IDEA / OTHER |
+| `description` | `string` | 是 | 描述，去首尾空白后 1–1000 字 |
+| `errorCode` | `string` | 否 | 从哪个错误进来（≤64，超长截断） |
+| `page` | `string` | 否 | 从哪一页进来（≤128，超长截断） |
+| `storeNo` | `string` | 否 | 当前门店号；不属于本账号会被丢弃（照常落库） |
+| `appVersion` | `string` | 是 | App 版本（必填，≤32） |
+| `platform` | `string` | 否 | android / ios；其它值归 OTHER |
+| `diagnostics` | [`FeedbackDiagnostic`](#feedbackdiagnostic)\[\] | 否 | 诊断，最多留最后 300 条 |
 
 ### SubmitPaymentReq
 

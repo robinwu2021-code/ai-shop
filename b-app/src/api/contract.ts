@@ -5,6 +5,7 @@ import type { StoredValueGovernanceApi } from "./stored-value-governance";
 import type { IssuerApi } from "./stored-value-issuers";
 import type { ManagementApi } from "./management-types";
 import type { OrderPointsEarning } from "@shared/types";
+import type { AppVersionInfo, FeedbackReceipt, MerchantFeedback } from "@shared/types";
 import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
@@ -831,6 +832,7 @@ import type {
   OpenFromMapReq,
   StockInboundReq, StockOutboundReq,
   SaveShipSettingReq,
+  SubmitFeedbackReq,
 } from "./requests";
 
 /** 缓存里的一条小区。坐标必有 —— 没坐标的在服务端就被滤掉了（买家定位落不进去） */
@@ -2092,6 +2094,20 @@ export interface MerchantApi extends ManagementApi,IssuerApi,StoredValueGovernan
    * 上一班的人不能继续收到这家店的订单推送。
    */
   mUnregisterPushToken(clientId: string): Promise<void>;
+
+  // ---- 问题回报与版本（TDD-商户App问题回报与版本）
+  /**
+   * 提交问题回报。账号级，不要求选门店；同一账号 10 分钟 5 条（超了 10429）。
+   * 带的门店号不属于本账号时只丢弃门店号，照常落库。
+   */
+  mSubmitFeedback(req: SubmitFeedbackReq): Promise<FeedbackReceipt>;
+  /** 我的回报：最近 50 条，新的在前，带客服回复。状态可能是 CLOSED（显示「已结案」） */
+  mMyFeedback(): Promise<MerchantFeedback[]>;
+  /**
+   * 版本检查（匿名）。`build` 带了才回 `upgradeRequired`，端上以它为准。
+   * 写请求带 `X-App-Platform` / `X-App-Version` 且低于最低版时，服务端回 10426 CLIENT_UPGRADE_REQUIRED。
+   */
+  mAppVersion(platform: string, build?: string): Promise<AppVersionInfo>;
 
   // ---- 通知设置（TDD-来单四渠道与商家通知设置）
   /** 本店的四条通道开关（三个场景各一组）与企微群是否配过 */

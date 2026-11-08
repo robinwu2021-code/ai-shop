@@ -622,6 +622,11 @@ export const RULES = [
   ["GET", /^\/ops\/(test-phones|test-identities)/, "system:testphone:read"],
   ["*", /^\/ops\/(test-phones|test-identities)/, "system:testphone:update"],
 
+  // ── App 版本策略（TDD-商户App问题回报与版本 V6）──
+  // 看用 param:read；改用单独的 app-version:update —— 抬高最低支持版让全部旧包停写，不随 param:update 发给技术运维
+  ["GET", /^\/ops\/app-versions$/, "system:param:read"],
+  ["PUT", /^\/ops\/app-versions\//, "system:app-version:update"],
+
   // ── 会员与人档（P-13）──────────────────────────────────────────────────
   ["GET", /^\/ops\/members/, "member:member:read"],
   ["GET", /^\/ops\/persons\/[^/]+$/, "member:person:read"],

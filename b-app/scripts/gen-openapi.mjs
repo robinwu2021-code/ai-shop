@@ -597,6 +597,9 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mSubscribeReport: "void",
   mRegisterPushToken: "void",
   mUnregisterPushToken: "void",
+  mSubmitFeedback: "FeedbackReceipt",
+  mMyFeedback: "MerchantFeedback[]",
+  mAppVersion: "AppVersionInfo",
   mGoodsList: "PageResult<Goods>",
   mGoodsDetail: "Goods",
   // 双版本（V279）。mGoodsDraft 的线上形状是 SaveGoodsReqBody（提交体镜像），
@@ -679,6 +682,8 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mSubmitFeedback: "SubmitFeedbackReq",
+  mAppVersion: "AppVersionQuery",
  mSvFinancialBrandOriginal:"SvFinancialOriginalQuery",
  mSvPrepareFinancePermissions:"SvFinanceManagementQuery",
 mSvFinancialBrandStart:"SvFinancialBrandRequest",mSvFinancialBrandChange:"SvFinanceManagementQuery",mSvFinancialBrandResume:"SvFinanceManagementQuery",

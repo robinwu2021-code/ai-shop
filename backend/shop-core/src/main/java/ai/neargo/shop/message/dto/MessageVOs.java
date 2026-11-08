@@ -25,8 +25,39 @@ public final class MessageVOs {
                              boolean read, long at) {
     }
 
+    /**
+     * 工单。C 端 {@code /mp/ticket} 与运营端 {@code /ops/tickets} 共用。
+     *
+     * <p>{@code source} 起的六个字段是商户问题回报加的（TDD-商户App问题回报与版本 F7），<b>只往尾部加、可空</b>：
+     * C 端工单它们为空（{@code source=C_USER}、{@code storeDropped=false}），现有字段与顺序不动。
+     */
     public record TicketVO(String ticketNo, String subject, String content, String orderNo,
-                           String status, String reply, long createdAt, Long repliedAt) {
+                           String status, String reply, long createdAt, Long repliedAt,
+                           String source, String category, String storeNo, boolean storeDropped,
+                           String clientVersion, String clientPlatform) {
+    }
+
+    /**
+     * 商户「我的回报」一条（{@code GET /biz/feedback/mine}）。
+     *
+     * <p><b>不复用 {@link TicketVO}</b>：App 用 {@code DateTime.tryParse} 读时间，要的是 ISO-8601 字符串，
+     * 而 TicketVO 的时间是毫秒数（C 端与运营端已经按它在读）。
+     *
+     * @param status    OPEN / REPLIED / CLOSED（App 要补「已结案」的显示）
+     * @param createdAt ISO-8601 UTC，如 {@code 2026-11-08T09:20:00Z}
+     * @param repliedAt 同上；没回复为 null
+     */
+    public record FeedbackVO(String feedbackNo, String category, String description, String status,
+                             String reply, String storeNo, String createdAt, String repliedAt) {
+    }
+
+    /**
+     * 回报附带的一条诊断：只有这四个字段，其余在入库前丢掉（F4）。
+     *
+     * @param at 带时区的原值归一成 UTC（{@code …Z}）；不带时区的<b>原样</b>（设备本地时间，不猜时区）；
+     *           解析不了为 null
+     */
+    public record DiagnosticVO(String at, String method, String path, String outcome) {
     }
 
     /**

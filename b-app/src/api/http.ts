@@ -6,6 +6,7 @@ import {issuerHttpApi} from "./stored-value-issuer-http";
 import {managementHttpApi} from "./management-http";
 import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
+import type { AppVersionInfo, FeedbackReceipt, MerchantFeedback } from "@shared/types";
 import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
@@ -21,6 +22,8 @@ import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateL
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
+  AppVersionQuery,
+  SubmitFeedbackReq,
   AddStaffReq,
   AppealReviewReq,
   AppointmentSlotOpenReq,
@@ -789,6 +792,12 @@ export const httpApi: MerchantApi = {
     http.post<void>(E.mRegisterPushToken.path, { platform, provider, clientId }),
   mUnregisterPushToken: (clientId) =>
     http.post<void>(E.mUnregisterPushToken.path, { clientId }),
+
+  // 问题回报与版本（TDD-商户App问题回报与版本）
+  mSubmitFeedback: (req) => http.post<FeedbackReceipt>(E.mSubmitFeedback.path, req satisfies SubmitFeedbackReq),
+  mMyFeedback: () => http.get<MerchantFeedback[]>(E.mMyFeedback.path),
+  mAppVersion: (platform, build) =>
+    http.get<AppVersionInfo>(E.mAppVersion.path, { platform, ...(build ? { build } : {}) } satisfies AppVersionQuery),
 
   // ---- 通知设置（TDD-来单四渠道与商家通知设置）。门店级，作用于 X-Store-No 那一家
   mNotifySetting: () => http.get<NotifySetting>(E.mNotifySetting.path),

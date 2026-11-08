@@ -9192,6 +9192,12 @@ _无字段_
 | `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+| `source` | [`TicketSource`](#ticketsource) | 否 | 来源：C 端用户工单 / 商户 App 回报 |
+| `category` | `string,null` | 否 | 商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示 |
+| `storeNo` | `string,null` | 否 | 提交时所在门店（已核对属于该账号） |
+| `storeDropped` | `boolean` | 否 | 带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了 |
+| `clientVersion` | `string,null` | 否 | App 版本 |
+| `clientPlatform` | `string,null` | 否 | ANDROID / IOS / OTHER |
 
 
 #### POST `/ops/tickets/{no}/close`
@@ -9223,6 +9229,29 @@ _无字段_
 | `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+| `source` | [`TicketSource`](#ticketsource) | 否 | 来源：C 端用户工单 / 商户 App 回报 |
+| `category` | `string,null` | 否 | 商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示 |
+| `storeNo` | `string,null` | 否 | 提交时所在门店（已核对属于该账号） |
+| `storeDropped` | `boolean` | 否 | 带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了 |
+| `clientVersion` | `string,null` | 否 | App 版本 |
+| `clientPlatform` | `string,null` | 否 | ANDROID / IOS / OTHER |
+
+
+#### GET `/ops/tickets/{no}/diagnostics`
+
+商户 App 回报附带的诊断资料（TDD-商户App问题回报与版本 F7）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：[`TicketDiagnostic`](#ticketdiagnostic)\[\]
 
 
 #### POST `/ops/tickets/{no}/proxy-actions`
@@ -9254,6 +9283,12 @@ _无字段_
 | `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+| `source` | [`TicketSource`](#ticketsource) | 否 | 来源：C 端用户工单 / 商户 App 回报 |
+| `category` | `string,null` | 否 | 商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示 |
+| `storeNo` | `string,null` | 否 | 提交时所在门店（已核对属于该账号） |
+| `storeDropped` | `boolean` | 否 | 带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了 |
+| `clientVersion` | `string,null` | 否 | App 版本 |
+| `clientPlatform` | `string,null` | 否 | ANDROID / IOS / OTHER |
 
 
 #### POST `/ops/tickets/{no}/reply`
@@ -9285,6 +9320,12 @@ _无字段_
 | `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+| `source` | [`TicketSource`](#ticketsource) | 否 | 来源：C 端用户工单 / 商户 App 回报 |
+| `category` | `string,null` | 否 | 商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示 |
+| `storeNo` | `string,null` | 否 | 提交时所在门店（已核对属于该账号） |
+| `storeDropped` | `boolean` | 否 | 带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了 |
+| `clientVersion` | `string,null` | 否 | App 版本 |
+| `clientPlatform` | `string,null` | 否 | ANDROID / IOS / OTHER |
 
 
 ### order
@@ -12099,6 +12140,49 @@ _无字段_
 
 ### system
 
+#### GET `/ops/app-versions`
+
+每个平台一行，没配过的也列出来（revision=0） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`AppVersionPolicy`](#appversionpolicy)\[\]
+
+
+#### PUT `/ops/app-versions/{appCode}/{platform}`
+
+改一行
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appCode` | path | `string` | 是 | — |
+| `platform` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`AppVersionPolicy`](#appversionpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `appCode` | `string` | 是 | 哪个 App。首期只有 MERCHANT |
+| `platform` | `ANDROID` \| `IOS` | 是 | ANDROID / IOS |
+| `latest` | `string` | 是 | 最新版；空 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；空 = 不拦写 |
+| `notes` | [`Partial<Record<AppVersionLang,string[]>>`](#partialrecordappversionlangstring) | 是 | 更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant |
+| `storeUrl` | `string,null` | 是 | 商店地址，只收 https://apps.apple.com/… 或 https://play.google.com/… |
+| `updatedBy` | `string,null` | 是 | 最后修改人 |
+| `updatedAt` | `number,null` | 是 | 最后修改时间（毫秒）；没配过为 null |
+| `revision` | `number` | 是 | 乐观锁版本：保存时原样带回 expectedRevision，别人先改了就 10409 |
+
+
 #### GET `/ops/appearance`
 
 getAppearance
@@ -12801,6 +12885,22 @@ _无字段_
 - `REFUND_ONLY`
 - `RETURN_REFUND`
 - `EXCHANGE`
+
+### AppVersionPolicy
+
+App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报与版本 V6）。 没配过的平台也会列出来：`revision=0`、字段为空 —— 那就是「App 不提示」的首发状态。 改「最低支持版」影响面是**全部**商户：低于它的包写请求立刻被拒（10426），所以改它要单独的 `system:app-version:update`，技术运维的 `system:param:update` 改不了。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `appCode` | `string` | 是 | 哪个 App。首期只有 MERCHANT |
+| `platform` | `ANDROID` \| `IOS` | 是 | ANDROID / IOS |
+| `latest` | `string` | 是 | 最新版；空 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；空 = 不拦写 |
+| `notes` | [`Partial<Record<AppVersionLang,string[]>>`](#partialrecordappversionlangstring) | 是 | 更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant |
+| `storeUrl` | `string,null` | 是 | 商店地址，只收 https://apps.apple.com/… 或 https://play.google.com/… |
+| `updatedBy` | `string,null` | 是 | 最后修改人 |
+| `updatedAt` | `number,null` | 是 | 最后修改时间（毫秒）；没配过为 null |
+| `revision` | `number` | 是 | 乐观锁版本：保存时原样带回 expectedRevision，别人先改了就 10409 |
 
 ### AppealStatus
 
@@ -16365,6 +16465,15 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 | `en` | `string` | 否 | — |
 | `ar` | `string` | 否 | — |
 
+### Partial<Record<AppVersionLang,string[]>>
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `zh-Hant` | `string`\[\] | 否 | — |
+| `zh-Hans` | `string`\[\] | 否 | — |
+| `en` | `string`\[\] | 否 | — |
+| `ar` | `string`\[\] | 否 | — |
+
 ### Partial<Record<MallCategoryLocale,string>>
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -18516,6 +18625,32 @@ REJECTED 不是终态：商家改完可以重新提审。
 | `reply` | `string` | 否 | 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by` 且注释写明「代客操作要能追到人」，但没有任何代码写过它们； 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。 |
 | `repliedAt` | `string` | 否 | 回复时间；未回复为空 |
 | `repliedBy` | `string` | 否 | 回复人（员工登录名）。回复署的是平台的名，必须能追到人 |
+| `source` | [`TicketSource`](#ticketsource) | 否 | 来源：C 端用户工单 / 商户 App 回报 |
+| `category` | `string,null` | 否 | 商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示 |
+| `storeNo` | `string,null` | 否 | 提交时所在门店（已核对属于该账号） |
+| `storeDropped` | `boolean` | 否 | 带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了 |
+| `clientVersion` | `string,null` | 否 | App 版本 |
+| `clientPlatform` | `string,null` | 否 | ANDROID / IOS / OTHER |
+
+### TicketDiagnostic
+
+商户回报附带的一条诊断（`GET /ops/tickets/{ticketNo}/diagnostics`）。 `at` 以 Z 或 ±hh:mm 结尾的是 UTC；不带时区的是**设备本地时间**原文（服务端不猜时区）；null = 时间缺失。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string,null` | 是 | — |
+| `method` | `string` | 是 | — |
+| `path` | `string` | 是 | — |
+| `outcome` | `string` | 是 | — |
+
+### TicketSource
+
+工单来源。两边按它隔离，不靠账号号段恰好不撞
+
+枚举取值：
+
+- `C_USER`
+- `B_MERCHANT`
 
 ### TicketStatus
 

@@ -3,6 +3,10 @@ import { client } from "../http-client";
 import type { SystemApi } from "../contracts/system";
 
 export const systemHttp: SystemApi = {
+  // ── App 版本策略 ──
+  listAppVersions: () => client.get("/ops/app-versions"),
+  saveAppVersion: (appCode, platform, v) => client.put(`/ops/app-versions/${appCode}/${platform}`, v),
+
   // ── 测试号固定验证码白名单 ──
   listTestPhones: () => client.get("/ops/test-phones"),
   saveTestPhone: (v) => client.post("/ops/test-phones", v),

@@ -1,5 +1,5 @@
 // 系统配置 mock（P-17.1）。
-import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts, TestIdentity } from "@/lib/types";
+import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts, TestIdentity, AppVersionPolicy } from "@/lib/types";
 
 export const appearance: AppearanceConfig = {
   // 与 packages/shared/src/design/tokens.ts 的 SKINS 同名同色
@@ -87,4 +87,14 @@ export const serviceScopes: ServiceScopeConfig[] = [
   { scope: "COMMUNITY", enabled: true, merchantCount: 5 },
   { scope: "CITY", enabled: true, merchantCount: 1 },
   { scope: "PLATFORM", enabled: false, merchantCount: 0 },
+];
+
+/** App 版本策略（mock）。iOS 没配过 —— 与首发状态一致 */
+export const appVersions: AppVersionPolicy[] = [
+  { appCode: "MERCHANT", platform: "ANDROID", latest: "0.2.0", minSupported: "0.1.0",
+    notes: { "zh-Hant": ["收款通知可以語音播報", "修正退款偶爾轉圈的問題"] },
+    storeUrl: "https://play.google.com/store/apps/details?id=ai.neargo.merchant",
+    updatedBy: "admin", updatedAt: Date.parse("2026-11-08T09:00:00Z"), revision: 1 },
+  { appCode: "MERCHANT", platform: "IOS", latest: "", minSupported: "", notes: {}, storeUrl: null,
+    updatedBy: null, updatedAt: null, revision: 0 },
 ];

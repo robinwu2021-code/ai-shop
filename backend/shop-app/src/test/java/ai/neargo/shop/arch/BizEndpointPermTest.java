@@ -935,6 +935,9 @@ class BizEndpointPermTest {
             "/biz/merchant/store-setup", "@perm.merchantAccount()",
             "/biz/business-types", "@perm.merchantAccount()",
             "/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()",
+            // 问题回报（TDD-商户App问题回报与版本）：账号级，店员一个 biz 码都没有也要能报，「选不了店」本身就是要报的问题
+            "/biz/feedback", "@perm.merchantAccount()",
+            "/biz/feedback/mine", "@perm.merchantAccount()",
             "/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)",
             "/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)",
             "/biz/stores/{storeNo}/entitlements", "@perm.memberOfSelectedStore(#storeNo)");

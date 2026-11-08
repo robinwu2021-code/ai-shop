@@ -1,11 +1,21 @@
 // 覆盖范围：系统配置（P-17.1）。
 import type {
+  AppVersionPolicy, SaveAppVersionPolicy,
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
   MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
 } from "@/lib/types";
 
 export interface SystemApi {
+  // ── App 版本策略（TDD-商户App问题回报与版本 V6）—— 真后端 `/ops/app-versions/**`
+  /** 每个平台一行，没配过的也列出来（revision=0） */
+  listAppVersions(): Promise<AppVersionPolicy[]>;
+  /**
+   * 改一行。`minSupported > latest`、版本号不合法、商店地址不是两家商店的 https、zh-Hant 说明缺失 → 10400；
+   * revision 对不上（别人先改了）→ 10409。要 `system:app-version:update`。
+   */
+  saveAppVersion(appCode: string, platform: string, v: SaveAppVersionPolicy): Promise<AppVersionPolicy>;
+
   // ── 测试号固定验证码白名单（TDD-测试号固定验证码）—— **已接真后端** `/ops/test-phones/**`
   //
   // 四个方法都返回**整份列表**而不是改动的那一条：这一页的每个动作都会改变

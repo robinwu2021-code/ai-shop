@@ -171,6 +171,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 界面上就是看不到，且不报错（这仓库在 MERCHANT_APPLY_ONBEHALF 上栽过一次）。
   "system:testphone:read": "system:testphone:read",
   "system:testphone:update": "system:testphone:update",
+  // App 版本策略的写码（TDD-商户App问题回报与版本 P5）：一个角色都不配，超管通配
+  "system:app-version:update": "system:app-version:update",
   "system:media:read": "system:media:read",
   "system:media:purge": "system:media:purge",
   // 定时任务：看与管两个码。读的人多得多 —— 一个任务出事时，

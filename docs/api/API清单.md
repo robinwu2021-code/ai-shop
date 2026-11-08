@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1158 个接口**：后端已实现 935（81%）· 前端在调 1018
+**合计 1163 个接口**：后端已实现 939（81%）· 前端在调 1023
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **471** 个接口 ｜ 后端已实现 **365**（77%）｜ 前端在调 **469**
+共 **473** 个接口 ｜ 后端已实现 **367**（78%）｜ 前端在调 **471**
 
 ### activities（4）
 
@@ -459,6 +459,13 @@
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/entity/{entityNo}` | 一张证照的详情与门店 | — | `EntityStores` | 🔒 | ✅ | ✅ |
+
+### feedback（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/feedback` | 提交问题回报（回报号即工单号） | `SubmitFeedbackReq` | `FeedbackReceipt` | 🔒 | ✅ | ✅ |
+| GET | `/biz/feedback/mine` | 我的回报（最近 50 条，带客服回复） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### freight-template（1）
 
@@ -1146,7 +1153,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **554** 个接口 ｜ 后端已实现 **439**（79%）｜ 前端在调 **416**
+共 **557** 个接口 ｜ 后端已实现 **441**（79%）｜ 前端在调 **419**
 
 ### aftersale（5）
 
@@ -1586,7 +1593,7 @@
 | POST | `/ops/stores/{storeNo}/channels/{channel}/lock` | lockChannel | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/stores/{storeNo}/channels/{channel}/unlock` | unlockChannel | — | `object` | — | ✅ | ✅ |
 
-### message（36）
+### message（37）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1624,6 +1631,7 @@
 | GET | `/ops/tickets` | listTickets | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/tickets/{no}/assign` | 分派工单（P-14.2.1） | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/close` | closeTicket | — | `Ticket` | — | ⬜ | ✅ |
+| GET | `/ops/tickets/{no}/diagnostics` | 商户 App 回报附带的诊断资料（TDD-商户App问题回报与版本 F7） | — | `数组` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/proxy-actions` | 记录代客操作（P-14.2.3）：谁、对什么、做了什么 | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/reply` | 客服回复（P-14.2.2） | — | `Ticket` | — | ⬜ | ✅ |
 
@@ -1788,10 +1796,12 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（34）
+### system（36）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/app-versions` | 每个平台一行，没配过的也列出来（revision=0） */ | — | `数组` | — | ✅ | ✅ |
+| PUT | `/ops/app-versions/{appCode}/{platform}` | 改一行 | — | `AppVersionPolicy` | — | ✅ | ✅ |
 | GET | `/ops/appearance` | getAppearance | — | `AppearanceConfig` | — | ✅ | ✅ |
 | POST | `/ops/appearance` | 皮肤下发（P-17.1.1 / C-TH-05） | — | `AppearanceConfig` | — | ✅ | ✅ |
 | GET | `/ops/auth-codes` | <b>全量，含停用</b>，带商家数与类目引用数 | — | `数组` | — | ✅ | ✅ |

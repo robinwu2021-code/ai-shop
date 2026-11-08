@@ -17,6 +17,8 @@ import ai.neargo.shop.pay.api.guard.core.GuardFilters;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.platform.AppVersionService;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -166,8 +168,10 @@ public class SecurityConfig {
     SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
                                       ObjectProvider<BizIdentityResolver> resolver,
                                       ObjectProvider<BizContextFilter.Admission> admission,
-                                      GuardFilters portalFilters) throws Exception {
-        return http
+                                      GuardFilters portalFilters,
+                                      ObjectProvider<AppVersionService> appVersions,
+                                      ObjectProvider<ObjectMapper> json) throws Exception {
+        http
                 .securityMatcher("/biz/**")
                 .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())          // 无 cookie 会话，CSRF 不适用
@@ -202,8 +206,18 @@ public class SecurityConfig {
                 // 商家端支付（/biz/pay/**，ADR-044 BIZ 面）：复用上面认好的商家会话，接入层只做请求记录与「必须是商家令牌」。
                 // 其它 /biz 路径它不碰（过滤器按入口前缀自判）
                 .addFilterAfter(portalFilters.forEntry(PortalFace.BIZ), BizContextFilter.class)
-                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
-                .build();
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()));
+        /*
+         * 旧版本写入被拒（TDD-商户App问题回报与版本 V7）：认证之后、选店之前判 —— 旧包的写请求
+         * 不该先撞上门店准入（70006）再被告知升级。只认请求头，不带头的请求一律放行。
+         * 用 ObjectProvider 与上面两个一样：只装了安全链的切片测试里没有版本策略，那里退回不拦。
+         */
+        AppVersionService versions = appVersions.getIfAvailable();
+        ObjectMapper mapper = json.getIfAvailable();
+        if (versions != null && mapper != null) {
+            http.addFilterBefore(new ClientVersionGateFilter(versions, mapper), BizContextFilter.class);
+        }
+        return http.build();
     }
 
     /**

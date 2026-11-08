@@ -6,6 +6,10 @@
 import { db, delay, persist } from "@shared/mock/db";
 import { currentStoreNo } from "./_shared";
 import type { MerchantApi } from "../contract";
+import type { MerchantFeedback } from "@shared/types";
+
+/** 本次把玩里提交的回报（不 persist：它不是演示数据） */
+const feedbackMock: MerchantFeedback[] = [];
 
 export const messageMock: Pick<MerchantApi,
   "mMessageList"
@@ -15,6 +19,9 @@ export const messageMock: Pick<MerchantApi,
   | "mSubscribeReport"
   | "mRegisterPushToken"
   | "mUnregisterPushToken"
+  | "mSubmitFeedback"
+  | "mMyFeedback"
+  | "mAppVersion"
   | "mNotifySetting"
   | "mSaveNotifySwitch"
   | "mSaveNotifyWecom"
@@ -65,6 +72,29 @@ export const messageMock: Pick<MerchantApi,
 
   async mUnregisterPushToken() {
     return delay(undefined);
+  },
+
+  // ---- 问题回报与版本（TDD-商户App问题回报与版本）。回报存在内存里：演示的是「提交 → 我的回报」，
+  // 客服回复要真后端（运营端工单页）才有；mock 世界里一直是 OPEN。
+  async mSubmitFeedback(req) {
+    const feedbackNo = `TK${Date.now()}`;
+    feedbackMock.unshift({
+      feedbackNo, category: req.category, description: req.description.trim(), status: "OPEN",
+      reply: null, storeNo: req.storeNo ?? null, createdAt: new Date().toISOString(), repliedAt: null,
+    });
+    return delay({ feedbackNo });
+  },
+
+  async mMyFeedback() {
+    return delay(feedbackMock.slice(0, 50));
+  },
+
+  // mock 世界没配版本策略：与后端「没配置」同形（不提示升级）
+  async mAppVersion(platform) {
+    return delay({
+      platform: platform.toUpperCase() === "IOS" ? "IOS" : "ANDROID",
+      latest: "", minSupported: "", notes: [], storeUrl: null, upgradeRequired: null,
+    });
   },
 
   // ---- 通知设置（TDD-来单四渠道与商家通知设置）。

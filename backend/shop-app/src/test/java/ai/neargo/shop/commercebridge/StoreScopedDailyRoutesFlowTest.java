@@ -180,6 +180,25 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 问题回报（提交 / 我的回报）是账号级：新模型门店账号不选门店也能调（ACCOUNT 通道，不是 70006）")
+    void feedbackRoutesWorkWithoutStoreSelection() throws Exception {
+        String[] o = newModelOwner("15965020116");
+        for (String store : new String[] {null, o[1]}) {
+            var b = post("/biz/feedback").header("Authorization", "Bearer " + o[0])
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"category\":\"BUG\",\"description\":\"选不了店\",\"appVersion\":\"0.1.0\","
+                            + "\"platform\":\"android\",\"storeNo\":\"" + o[1] + "\"}");
+            if (store != null) {
+                b.header("X-Store-No", store);
+            }
+            String body = mvc.perform(b).andReturn().getResponse().getContentAsString();
+            assertEquals(0, json.readTree(body).path("code").asInt(), "POST /biz/feedback store=" + store + " → " + body);
+            JsonNode mine = call(o[0], store, "/biz/feedback/mine");
+            assertEquals(0, mine.path("code").asInt(), "GET /biz/feedback/mine store=" + store + " → " + mine);
+        }
+    }
+
+    @Test
     @DisplayName("★★ 出款账户（收款账户 F06）在新模型门店上能进门店（不是 70006）")
     void payoutAccountPassesAdmission() throws Exception {
         String[] o = newModelOwner("15965020114");

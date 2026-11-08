@@ -34,6 +34,15 @@ public enum ErrorCode {
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
+    /**
+     * 客户端版本低于运营端配的「最低支持版本」，写请求被拒（TDD-商户App问题回报与版本 V7）。
+     *
+     * <p>由 {@code ClientVersionGateFilter} 在过滤器层直接写响应：{@code msg} 是机器码
+     * {@code CLIENT_UPGRADE_REQUIRED}、{@code data} 带 {@code minSupported} 与 {@code storeUrl} ——
+     * App 收到就进强制升级页。只靠 App 弹窗的话，拦得住的只有「会弹窗的新包」，
+     * 真正有问题的老包恰恰不认识那个弹窗；服务端拒写才是止血。
+     */
+    CLIENT_UPGRADE_REQUIRED(10426, "err.client.upgrade_required"),
     /** 逆地理编码没配地图厂商密钥：端上据此**藏掉**「定位取地址」按钮，而不是报错 */
     GEO_UNAVAILABLE(10503, "err.geo.unavailable"),
     /** Shared booking/actual resource authority is unavailable; no industry-specific fallback is permitted. */

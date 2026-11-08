@@ -559,6 +559,15 @@ public final class Perms {
      */
     public static final String SYSTEM_PARAM_UPDATE = "system:param:update";
 
+    /**
+     * 改 App 版本策略（最新版、最低支持版、更新说明、商店地址；TDD-商户App问题回报与版本 已拍板 P5）。
+     *
+     * <p><b>不并进 {@link #SYSTEM_PARAM_UPDATE}</b>：抬高「最低支持版本」会让低于它的所有旧包立刻停写（10426），
+     * 影响面是全部商户，而 param:update 已经给了 TECH_OPS。一个角色都不配，只有超管的通配能到；
+     * 要给发版负责人时，这里加人 + V639 回填 sys_role_point 两步一起做。看策略仍用 {@link #SYSTEM_PARAM_READ}。
+     */
+    public static final String SYSTEM_APP_VERSION_UPDATE = "system:app-version:update";
+
     /** 存储空间统计与待回收清单，只读。 */
     /**
      * 测试号固定验证码白名单 —— <b>只读</b>（TDD-测试号固定验证码）。
