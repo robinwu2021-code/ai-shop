@@ -234,6 +234,35 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 台湾主体：加员工、建会员收 +886 号码（此前只认 11 位大陆号，台湾店主加不了员工）；大陆主体口径不变")
+    void taiwanEntityAcceptsTaiwanPhones() throws Exception {
+        String[] o = newModelOwner("15965020116");
+        String entity = jdbc.queryForObject("select entity_no from mch_store where store_no=?", String.class, o[1]);
+        String staffBody = "{\"loginPhone\":\"+886912345678\",\"displayName\":\"阿明\"}";
+        String memberBody = "{\"phone\":\"+886912345679\"}";
+
+        // 大陆主体：台湾号照旧拒（大陆号段校验不放宽）
+        assertEquals(10400, postCode(o, "/biz/staff", staffBody));
+        assertNotEquals(0, postCode(o, "/biz/members", memberBody));
+
+        jdbc.update("update mch_entity set market='TW' where entity_no=?", entity);
+        assertEquals(0, postCode(o, "/biz/staff", staffBody), "台湾主体加员工");
+        assertEquals("+886912345678", jdbc.queryForObject(
+                "select login_phone from mch_account where entity_no=? and login_phone like '+886%'", String.class, entity),
+                "按 App 送来的 E.164 原样存 —— 员工登录按同一个号匹配");
+        assertEquals(0, postCode(o, "/biz/members", memberBody), "台湾主体建会员");
+        // 明显不是号码的仍然拒
+        assertEquals(10400, postCode(o, "/biz/staff", "{\"loginPhone\":\"abc\",\"displayName\":\"x\"}"));
+    }
+
+    private int postCode(String[] o, String path, String body) throws Exception {
+        String r = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(r).path("code").asInt();
+    }
+
+    @Test
     @DisplayName("★★ 逐条登记、不放开兜底：本店下未登记的子路径仍然 70006")
     void unregisteredStoreSubpathStillDenied() throws Exception {
         String[] o = newModelOwner("15965020112");
