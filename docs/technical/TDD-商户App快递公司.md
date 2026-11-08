@@ -1,10 +1,11 @@
 # TDD-商户 App 快递公司
 
-状态：草稿（未实现，未拍板）
+状态：草稿（未实现，未拍板；2026-11-08 已按商户 App 评审修订一轮）
 档位：1（新增端点 `GET /biz/express/companies`；`ExpressCompanies` 按市场分表，影响 `ship` / 发货设置的校验口径；`LogisticsPort` 加一个只读方法；无库表变更）
 关联需求：
-- 交接文档 `docs/交接-商户App功能矩阵与API.md` 第 12 模块「订单与履约」12-05（填运单发货）、12-17（发货设置的默认承运商）及该模块「待决与注意」第 2 条；附录 B「`/biz/express/companies` · 没有时可先用叫快递」
+- 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`）第 12 模块「订单与履约」12-05（填运单发货）、12-17（发货设置的默认承运商）及该模块「待决与注意」第 2 条；附录 B「`/biz/express/companies` · 没有时可先用叫快递」
 - 已有设计：`docs/technical/TDD-物流模块.md`（承运商码与渠道映射 `lgs_carrier_code`）、`docs/technical/TDD-快递100商家寄件.md`
+- 评审：ai-shop-bapp 仓库 `docs/implementation/TDD评审-商户App.md`「最需要先定的」第 10 条与「第一组 · 二」（本轮修订逐条见文末「评审修订说明」）
 创建：2026-11-08 · 最后更新：2026-11-08
 
 > **一句话**：给商户 App 一份「这家店能选的快递公司」清单，**和 `ship()` 校验用的是同一份表**；
@@ -16,21 +17,23 @@
 
 | AC | 需求（一句话） | 落点 |
 |---|---|---|
-| E1 | 选了门店的成员读快递公司清单，得到 `[{code, name, traceSupported}]`，顺序即发货界面的显示顺序 | `GET /biz/express/companies` → 新 `BizExpressCompanyController#list` |
+| E1 | 选了门店的成员读快递公司清单，得到 `{market, courierPickupAvailable, companies: [{code, name, traceSupported}]}`，`companies` 的顺序即发货界面的显示顺序 | `GET /biz/express/companies` → 新 `BizExpressCompanyController#list` |
 | E2 | 清单按**门店所属主体的经营市场**给：台湾门店给台湾承运商，大陆门店给现有 14 家 | `ExpressCompanies#forMarket(market)`；市场取 `MerchantQueryPort#storeProfileOf(storeNo).market()`，为空按部署默认 `shop.merchant.default-market` |
-| E3 | 清单里的每一个 `code`，拿去 `POST /biz/order/{orderNo}/ship`、`POST /biz/order/{orderNo}/waybill` 与 `PUT /biz/store/{storeNo}/ship-setting` 都会被接受；清单外的码被 10400 拒 | 三处校验统一为 `ExpressCompanies#isValidFor(market, code)`（改运单原先不校验，见 §1） |
+| E3 | 清单里的每一个 `code`（以及本市场清单里的承运商**名称**，归一成码再存），拿去 `POST /biz/order/{orderNo}/ship`、`POST /biz/order/{orderNo}/waybill` 与 `PUT /biz/store/{storeNo}/ship-setting` 都会被接受；`ship` 与 `ship-setting` 对清单外的值回 10400 | 统一为 `ExpressCompanies#resolve(market, codeOrName)`；**市场取订单 / 门店自己的门店号**，不取调用方上下文（§2 校验口径） |
 | E4 | 大陆的微信发货上报口径不变：只认微信 `delivery_id` | `WxShippingUploadResolver` 改用 `isValidFor("CN", code)`，台湾码进不了微信上报 |
 | E5 | `traceSupported=false` 的承运商照样能发货，只是不能查轨迹；App 据此提示「这家快递暂不支持查询轨迹」 | `LogisticsPort#traceCovers(carrier)`（新默认方法，实现查快递100 是否覆盖） |
 | E6 | 店主、店长、店员——凡是能发货或能看发货设置的人都能读；与门店无关的人读不到 | `@perm.canAnyBiz(SHIP, STORE)`；路由登记 `ShopStoreMemberRoutes` |
 | E7 | 新模型门店不被 70006 拒 | `ShopStoreMemberRoutes` 加 `GET /biz/express/companies` |
 | E8 | 端上（uni-app b-app / c-app）共用的快递表与后端逐项一致 | `packages/shared/src/utils/express-companies.ts` 与 `packages/shared/tests/express-companies.test.ts` 同步改 |
+| E9 | **改运单不因承运商校验而失败**：不改承运商（不传、或传的与运单当前承运商相同）一律放行；改成清单内的码或名称 → 归一后写入；改成清单外的值 → 首期仍写入（与现在一致），只记 WARN | `BizWaybillCorrectionController#correct`（§2 校验口径「改运单」一行） |
+| E10 | 响应里的 `market` 是**已回落**的经营市场；`courierPickupAvailable` 告诉 App 这家店能不能「叫快递」，App 不再自己按市场判断 | `BizExpressCompanyController#list`：`market` 为空按 `shop.merchant.default-market`；`courierPickupAvailable = ExpressPickupPort#enabled() && carriers() 与本市场清单有交集` |
 
 **孤立项**
 
 - 没落点的 AC：
-  - **台湾承运商的轨迹查询**——快递100 是否覆盖、编码是什么，本仓库里没有核验记录（`Kuaidi100TraceProvider.CODES` 与 `lgs_carrier_code` 只有大陆 14 家）。首期台湾承运商 `traceSupported=false`，轨迹另开（见待决 X3）。
-  - **台湾「叫快递上门」**——叫快递走快递100 商家寄件（`Kuaidi100PickupGateway`），承运商只有大陆快递，台湾门店报价会是空的。交接文档说的「没有承运商列表时可先用叫快递顶上」**在台湾门店不成立**。不在本 TDD 范围。
-  - **超商取货（7-11 交貨便、全家店到店）**——是「寄到门市、买家到门市取」的另一种履约，要收件门市，不是填一个承运商码能表达的。不在本 TDD 范围（见待决 X2）。
+  - **台湾承运商的轨迹查询**——快递100 是否覆盖、编码是什么，本仓库里没有核验记录（`Kuaidi100TraceProvider.CODES` 与 `lgs_carrier_code` 只有大陆 14 家）。首期台湾承运商 `traceSupported=false`，轨迹另开（见待用户拍板 X3）。
+  - **台湾「叫快递上门」**——叫快递走快递100 商家寄件（`Kuaidi100PickupGateway`），承运商只有大陆快递，台湾门店报价会是空的。交接文档说的「没有承运商列表时可先用叫快递顶上」**在台湾门店不成立**。不在本 TDD 范围（入口怎么处理见待用户拍板 X7）。
+  - **超商取货（7-11 交貨便、全家店到店）**——是「寄到门市、买家到门市取」的另一种履约，要收件门市，不是填一个承运商码能表达的。不在本 TDD 范围（见待用户拍板 X2）。
 - 挂不上 AC 的设计：无。
 
 ---
@@ -43,13 +46,17 @@
 |---|---|---|
 | 快递公司内置表（14 家大陆快递，码 = 微信 `delivery_id`，名 = 微信 `delivery_name`，顺序 = 发货界面顺序） | `backend/shop-base/src/main/java/ai/neargo/shop/common/ExpressCompanies.java`（`all()`、`isValid(code)`、`nameOf(code)`） | **直接作为清单的真源**；本次按市场分表 |
 | 发货时校验承运商码 | `OrderShippingServiceImpl#ship`（`backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/OrderShippingServiceImpl.java` 第 96 行 `ExpressCompanies.isValid`）；非快递履约走 `MerchantOrderServiceImpl#shipLegacy`（第 335 行） | 改为按门店市场校验 |
+| 发货调用方的门店号**可能为空** | `OrderActor.owns` 在 `storeNo` 为空时不比门店（`backend/shop-core/src/main/java/ai/neargo/shop/trade/order/command/OrderActor.java` 第 24 行）；叫快递取件回填运单时就是空门店号调用 `MerchantOrderService#ship(entityNo, null, …)`（`ExpressPickupServiceImpl` 第 360 行） | 市场必须取**订单自己的** `OrdSubOrder.storeNo`，不能取调用方的 |
+| 叫快递回写到订单上的承运商码 | 回写的是 `OrdExpressPickup.carrier`，即 `Kuaidi100PickupGateway.CODES` 的 key（第 52–64 行：`ZTO YTO YD STO JTSD JD DBL EMS`，注释写明「微信 delivery_id → 快递100 公司码」），**全部在大陆 14 家里**；快递100 自己的公司码（`zhongtong` 等）只发给快递100，不回写 | 回答评审「回写的是哪一套码」：与清单同一套，叫过快递的订单改运单不受影响 |
+| 改运单不传承运商时沿用原值 | `LogisticsAdminPortImpl#changeWaybill` 第 142 行：`newCarrier = notBlank(carrier) ? carrier.trim() : w.getCarrier()` | E9「不改承运商一律放行」的依据 |
 | 发货接口与运单预检 | `BizOrderController`（`backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizOrderController.java` 第 200–230 行，`/biz/order/{subOrderNo}/ship`、`/ship/precheck`，`BizPerms.SHIP`） | 不改接口 |
 | 预检对不认识的承运商回 `UNKNOWN`（放行发货，不拦） | `LogisticsPortImpl#precheck`（`backend/logistics/logistics-domain/src/main/java/ai/neargo/shop/logistics/port/LogisticsPortImpl.java` 第 272 行起；只有快递100 覆盖的承运商才去查，否则第 310 行回 `UNKNOWN`） | 台湾承运商发货时预检不会误拦 |
 | 发货设置的默认承运商校验 | `StoreShipSettingServiceImpl`（`backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/StoreShipSettingServiceImpl.java` 第 53 行 `ExpressCompanies.isValid(carrier)`）；接口 `BizStoreShipController`（读 `BizPerms.STORE`、写 `BizPerms.STORE_ADMIN`） | 改为按门店市场校验 |
 | 微信发货上报读承运商码 | `backend/shop-app/src/main/java/ai/neargo/shop/paybridge/WxShippingUploadResolver.java` 第 57、71 行 | 收紧为只认大陆表 |
 | 叫快递报价的承运商 | `ExpressPickupServiceImpl#quotes`（`backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ExpressPickupServiceImpl.java` 第 95 行起）取 `ExpressPickupPort#carriers()`，实现 `backend/shop-channel/src/main/java/ai/neargo/shop/channel/express/port/Kuaidi100PickupGateway.java` 第 103 行（快递100 编码表的 key） | 不改；说明它顶不了台湾 |
 | 快递100 轨迹覆盖的承运商 | `Kuaidi100TraceProvider.CODES`（`backend/logistics/logistics-channel/src/main/java/ai/neargo/shop/logistics/channel/kuaidi100/Kuaidi100TraceProvider.java` 第 62 行）；渠道编码表 `lgs_carrier_code`（`V387__logistics_module.sql` 第 70–100 行种子，`CarrierCodeBook` 只读缓存） | E5 的 `traceSupported` 从这里来 |
-| 门店 → 主体市场 | `MerchantQueryPort#storeProfileOf(storeNo)` 的 `market`（`backend/shop-base/src/main/java/ai/neargo/shop/spi/user/MerchantQueryPort.java` 第 383–388 行，取 `mch_entity.market` 原值、为空不回落） | E2 |
+| 门店 → 主体市场 | `MerchantQueryPort#storeProfileOf(storeNo)` 的 `market`（`backend/shop-base/src/main/java/ai/neargo/shop/spi/user/MerchantQueryPort.java` 第 383–388 行，取 `mch_entity.market` 原值、为空不回落）；`GET /biz/stores/{storeNo}/context` 给 App 的也是这个原值（`BizFoundationController#context` 第 140–152 行） | E2；也说明 App 拿不到回落后的市场（E10） |
+| 叫快递通道开关与承运商 | `ExpressPickupPort#enabled()`、`#carriers()`（`backend/shop-base/src/main/java/ai/neargo/shop/spi/fulfillment/ExpressPickupPort.java` 第 15、18 行）；报价前 `requireChannel()` 不通回 70070（`ExpressPickupServiceImpl` 第 398–402 行）；`quotes` 本身**不按市场拦**（第 95–119 行），台湾地址交给快递100 报价，结果未验证 | E10 的 `courierPickupAvailable` |
 | 部署默认市场 | `shop.merchant.default-market`（`backend/shop-app/src/main/resources/application.yml` 第 219 行，见 `TDD-B端建店默认经营市场.md`） | 主体市场为空时的回落 |
 | 「任一权限即可」判权 | `@perm.canAnyBiz(...)`（`BizDashboardController` 第 78 行在用）；`BizEndpointPermTest` 的 `ANY_OF` 表 | E6 |
 | 门店范围路由登记 | `backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopStoreMemberRoutes.java` | E7 |
@@ -73,9 +80,9 @@
 
 ### 会被改到的（已在跑的功能）
 
-- `POST /biz/order/{orderNo}/ship`：校验口径从「14 家大陆码」变为「本店市场的码」。**大陆门店行为不变**（大陆表原样保留、顺序不变）。`/ship/precheck` 本身不校验码（不认识的回 `UNKNOWN`），不改。
-- `POST /biz/order/{orderNo}/waybill`（改运单，`backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizWaybillCorrectionController.java`）：**现在完全不校验承运商码**——`LogisticsAdminPortImpl#changeWaybill`（`backend/logistics/logistics-domain/src/main/java/ai/neargo/shop/logistics/port/LogisticsAdminPortImpl.java` 第 128 行起）只要求单号和原因非空，任意字符串都会写进运单。本次补上与 `ship` 同口径的校验；这是对现有行为的收紧（大陆门店原来能写进去的非法码，以后会 10400）。
-- `PUT /biz/store/{storeNo}/ship-setting`：同上。
+- `POST /biz/order/{orderNo}/ship`：校验口径从「14 家大陆码」变为「本店市场的码或名称」。**大陆门店只放宽不收紧**（大陆表原样保留、顺序不变；多接受「顺丰速运」这类本市场名称，归一成码再存）。`/ship/precheck` 本身不校验码（不认识的回 `UNKNOWN`），不改。
+- `POST /biz/order/{orderNo}/waybill`（改运单，`backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizWaybillCorrectionController.java`）：**现在完全不校验承运商码**——`LogisticsAdminPortImpl#changeWaybill`（`backend/logistics/logistics-domain/src/main/java/ai/neargo/shop/logistics/port/LogisticsAdminPortImpl.java` 第 128 行起）只要求单号和原因非空，任意字符串都会写进运单。**（评审修订）本次不收紧成 10400**：App 的改运单（R06）是不受开关控制的自由文本框、预填当前承运商（ai-shop-bapp `features/store_orders/store_orders_pages.dart` 第 666–668 行），草稿原定「补上与 `ship` 同口径校验」会让台湾门店改运单被 10400 拒。改为 E9：不改承运商放行、改成清单内的值归一、清单外的值照旧写入并记 WARN。收紧另开，等 App 清单单选版本普及后再定。
+- `PUT /biz/store/{storeNo}/ship-setting`：同 `ship`。
 - 微信发货上报：口径从 `isValid` 改成 `isValidFor("CN", …)`，对现有大陆数据零差异。
 - b-app / c-app：共用常量文件改成按市场导出，大陆那份逐项不变（对账测试保证）。
 
@@ -94,9 +101,9 @@
 | 项 | 内容 |
 |---|---|
 | 端点（新增） | `GET /biz/express/companies` |
-| 端点（口径变化） | `ship` / `ship-setting` 的承运商码按门店市场校验；`waybill` 从「不校验」改为同口径校验 |
+| 端点（口径变化） | `ship` / `ship-setting` 的承运商按订单 / 门店所属市场校验（码或本市场名称，名称归一成码）；`waybill` 不改承运商一律放行、改成清单内的值归一、清单外的值照旧写入（E9，**不收紧**） |
 | 库表 | **无**。清单是代码里的内置表（与 `ExpressCompanies` 现有取舍一致：十几家、改了要发版、换来的是每个码都核验过） |
-| 迁移 | **无**（V6xx 不需要）。若待决 X4 选「运营端可配」，才需要新表与迁移 |
+| 迁移 | **无**（V6xx 不需要）。若待用户拍板 X4 选「运营端可配」，才需要新表与迁移 |
 | 权限码 | 不新增；用 `biz:ship`、`biz:store` 任一 |
 | i18n | 无（承运商名是专有名词，按市场原文给，见 X5） |
 | 配置项 | 无（复用 `shop.merchant.default-market`） |
@@ -113,23 +120,31 @@
 | 判权登记 | `BizEndpointPermTest` 的 `ANY_OF` 加 `/biz/express/companies` |
 | 请求 | 无参数 |
 
-响应 `data`（数组，顺序即显示顺序）：
+响应 `data`（对象；`companies` 的顺序即显示顺序）：
 
 ```json
-[
-  { "code": "TCAT",  "name": "黑貓宅急便", "traceSupported": false },
-  { "code": "HCT",   "name": "新竹物流",   "traceSupported": false },
-  { "code": "TWPOST","name": "中華郵政",   "traceSupported": false }
-]
+{
+  "market": "TW",
+  "courierPickupAvailable": false,
+  "companies": [
+    { "code": "TCAT",  "name": "黑貓宅急便", "traceSupported": false },
+    { "code": "HCT",   "name": "新竹物流",   "traceSupported": false },
+    { "code": "TWPOST","name": "中華郵政",   "traceSupported": false }
+  ]
+}
 ```
 
-大陆门店得到的就是现有 14 家，`traceSupported` 按快递100 覆盖情况为 `true`（现有 14 家都在 `Kuaidi100TraceProvider.CODES` 里）。
+- `market`：**已按 `shop.merchant.default-market` 回落**的经营市场。
+- `courierPickupAvailable`：这家店能不能「叫快递」= `ExpressPickupPort#enabled()`，且 `carriers()` 与本市场清单有交集。台湾门店恒为 `false`（叫快递的承运商全是大陆码）；大陆门店在快递100 桩环境下也是 `false`。App 据此决定显示不显示叫快递入口；**台湾门店在接口为 `false` 时要不要隐藏入口，是产品决定（待用户拍板 X7）**，这个字段只如实报告能力。
+- 大陆门店得到的就是现有 14 家，`traceSupported` 按快递100 覆盖情况为 `true`（现有 14 家都在 `Kuaidi100TraceProvider.CODES` 里）。
 
 错误：10403 / 70006（不是该店成员、角色没有这两个码之一）· 70006 + `SELECT_STORE`（没带店号）· 401。
 
-**为什么返回裸数组而不是 `{market, companies}`**：与同模块的 `GET /biz/order/{orderNo}/express/quotes` 一致（交接文档第 12 模块该接口返回数组）；市场 App 已经从 `/biz/stores/mine` 与 `/biz/stores/{storeNo}/context` 拿到了，不必重复。
+**为什么从裸数组改成对象（评审修订）**：草稿原理由是「市场 App 已经从 `/biz/stores/mine` 与 `/biz/stores/{storeNo}/context` 拿到了」——核对后不成立：这两处给的是 `mch_entity.market` **原值**，为空时不回落（§1），App 不知道部署默认市场是什么，会把存量主体判错。叫快递能不能用也不该由 App 按市场猜。两个字段都放在 App 进发货页本来就要调的这个接口里，不另动 `/context`（那个响应归《TDD-商户App接口字段对齐》管）。与 `quotes` 返回数组不一致，换来的是 App 不用再自己推断。
 
-**App 要改的**：发货页（R03）与发货设置页（S01）的承运商从自由文本框改为从这份清单选，提交 `code` 而不是名字；`expressCompany` / `carrier` 字段传 `code`。冻结后删 `features/v5/contracts.dart` 里 `^/biz/express/companies$` 那一行。
+**清单的稳定性**：清单是代码内置表，只随后端发版变化。App 按门店缓存到切店或冷启动即可，不用每次进发货页都拉。
+
+**App 要改的**：发货页（R03）、改运单（R06）与发货设置页（S01）的承运商从自由文本框改为从这份清单选，提交 `code` 而不是名字；R06 预选当前单的承运商；`expressCompany` / `carrier` 字段传 `code`。清单为空（不认得的市场）时禁用发货、提示「本市场暂无可选快递」，不要退回自由文本框。冻结后删 `features/v5/contracts.dart` 里 `^/biz/express/companies$` 那一行。**服务端的名称归一与改运单放行（E3、E9）是给 App 改版前那段时间兜底的**，App 不应依赖它们。
 
 ### `ExpressCompanies` 按市场分表
 
@@ -137,11 +152,12 @@
 public final class ExpressCompanies {
     public record Company(String code, String name) { }          // 形状不变：对账测试的正则依赖它
     private static final List<Company> CN = List.of(/* 现有 14 家，原样、原顺序 */);
-    private static final List<Company> TW = List.of(/* 见待决 X1 */);
+    private static final List<Company> TW = List.of(/* 见待用户拍板 X1 */);
     private static final Map<String, List<Company>> BY_MARKET = Map.of("CN", CN, "TW", TW);
 
     public static List<Company> forMarket(String market);         // 不认得的市场 → 空表（不回落 CN）
     public static boolean isValidFor(String market, String code);
+    public static Optional<String> resolve(String market, String codeOrName); // 码原样返回；本市场名称（去首尾空白、精确匹配）→ 码；都不是 → empty
     public static String nameOf(String code);                     // 跨市场查名字（展示用，码全局唯一）
     @Deprecated public static boolean isValid(String code);       // = isValidFor("CN", code)，过渡期保留
 }
@@ -151,18 +167,21 @@ public final class ExpressCompanies {
 
 - **码全局唯一**（台湾不复用大陆的 `SF`）：订单上只存一个码，`nameOf` 不带市场也能反查。若台湾也上顺丰，用独立码（如 `SF_TW`），因为大陆 `SF` 的语义是「微信 `delivery_id`」，台湾单永远不会上报微信，混用会让 `WxShippingUploadResolver` 把台湾单当成能报的。
 - **不认得的市场给空表**而不是回落大陆：回落的话，阿联酋门店会看到一排大陆快递，选了以后发货成功、买家查不到件——比「一家都没有」更难发现。
+- **名称归一只在本市场的表里找**（评审修订新增）：App 改版前，发货页是自由文本框、默认值「黑貓宅急便」（ai-shop-bapp `features/store_orders/store_orders_pages.dart` 第 421 行）。台湾表的 `TCAT` 名称就是「黑貓宅急便」，归一后**现有 App 不改也能在台湾门店发货**；只在本市场找，防止台湾门店写「顺丰速运」被归成大陆的 `SF`、再被当成能报微信的单。
 - **`Company` 记录形状不变**：`express-companies.test.ts` 用正则抠 `new Company("…", "…")`，改成三参会让正则一条都抠不到，而那个测试里「真的抠到了东西」的对照量只要求 `> 10`——大陆 14 家仍在，**台湾那几条会被静默漏掉**。所以对账测试要同步改成按市场分组比对（E8）。
 
 ### 校验口径（E3、E4）
 
 | 调用点 | 现在 | 改为 | 市场从哪来 |
 |---|---|---|---|
-| `OrderShippingServiceImpl#ship` | `isValid(carrier)` | `isValidFor(market, carrier)` | `OrderActor.storeNo` → `MerchantQueryPort#storeProfileOf` |
-| `MerchantOrderServiceImpl#shipLegacy` | `isValid(expressCompany)` | 同上 | `storeNo` 参数 |
-| `BizWaybillCorrectionController#correct`（改运单） | **不校验** | `expressCompany` 非空时 `isValidFor(market, …)`，不过 → 10400 | `BizContext.currentStoreNo()` |
-| `StoreShipSettingServiceImpl` | `isValid(carrier)` | 同上 | 路径里的 `storeNo` |
+| `OrderShippingServiceImpl#ship` | `isValid(carrier)` | `resolve(market, carrier)`，empty → 10400；有值则存归一后的码 | **订单自己的 `OrdSubOrder.storeNo`** → `MerchantQueryPort#storeProfileOf`（草稿原写 `OrderActor.storeNo`，它可能为空，见 §1） |
+| `MerchantOrderServiceImpl#shipLegacy` | `isValid(expressCompany)` | 同上 | 订单自己的 `OrdSubOrder.storeNo`（草稿原写「`storeNo` 参数」；叫快递回填时这个参数是 null） |
+| `BizWaybillCorrectionController#correct`（改运单） | **不校验** | E9：`expressCompany` 为空、或去空白后等于订单当前的 `expressCompany` → 原样交给 `changeWaybill`（空则沿用原值）；`resolve` 有值 → 传归一后的码；`resolve` 为 empty → **照旧原样写入**，记 WARN（订单号、门店、原值），不拒 | 订单所属门店（`orders.detail` 返回的 `OrderVO.store`），取不到用 `BizContext.currentStoreNo()` |
+| `StoreShipSettingServiceImpl` | `isValid(carrier)` | 同 `ship` | 路径里的 `storeNo` |
 | `WxShippingUploadResolver` | `isValid(...)` | `isValidFor("CN", ...)` | 固定大陆：微信只认 `delivery_id` |
 | `ExpressPickupServiceImpl`、`NotificationConsumer`、`FreightDraftServiceImpl`、`Kuaidi100TraceProvider` | 只用 `nameOf` / 编码映射 | 不改 | — |
+
+改运单为什么不拒（E9）：App 现在的 R06 预填当前承运商、商户通常只改单号，「与当前相同就放行」覆盖了绝大多数；叫快递回写的码都在大陆表里（§1），也不受影响。清单外的新值照旧写入，是因为拒了就是**已发货的订单改不了运单**，而写进去的后果和今天一样（查不到轨迹、报不了微信——`WxShippingUploadResolver` 只认大陆码，挡在那一层）。WARN 日志用来看 App 改版后还有没有人在写自由文本，再决定何时收紧。
 
 市场为空时按 `shop.merchant.default-market` 回落——这和 E2「不认得的市场给空表」不矛盾：空是「存量主体没写过市场」（存量大陆数据大多如此），不认得是「写了一个我们没有快递表的市场」。
 
@@ -170,20 +189,29 @@ public final class ExpressCompanies {
 
 | 动作 | 路径 | 说明 |
 |---|---|---|
-| 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/ExpressCompanies.java` | 按市场分表，加 `forMarket` / `isValidFor`；类注释补「台湾码不是微信码」 |
-| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizExpressCompanyController.java` | 唯一的新端点；与 `BizExpressController` 同包 |
+| 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/ExpressCompanies.java` | 按市场分表，加 `forMarket` / `isValidFor` / `resolve`；类注释补「台湾码不是微信码」 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizExpressCompanyController.java` | 唯一的新端点；与 `BizExpressController` 同包；读 `ExpressPickupPort` 算 `courierPickupAvailable` |
 | 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/spi/logistics/LogisticsPort.java` | 加 `default boolean traceCovers(String carrier) { return false; }` |
 | 修改 | `backend/logistics/logistics-domain/src/main/java/ai/neargo/shop/logistics/port/LogisticsPortImpl.java` | 实现 `traceCovers`：有可用的轨迹渠道覆盖该码即为 true（与 `precheck` 里判「快递100 覆盖」同一口径） |
-| 修改 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/OrderShippingServiceImpl.java` | 按市场校验 |
-| 修改 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/MerchantOrderServiceImpl.java` | 按市场校验 |
-| 修改 | `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/StoreShipSettingServiceImpl.java` | 按市场校验 |
-| 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizWaybillCorrectionController.java` | 补承运商码校验（原先没有） |
+| 修改 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/OrderShippingServiceImpl.java` | 按订单所属市场校验并归一 |
+| 修改 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/MerchantOrderServiceImpl.java` | 按订单所属市场校验并归一 |
+| 修改 | `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/StoreShipSettingServiceImpl.java` | 按门店市场校验并归一 |
+| 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizWaybillCorrectionController.java` | E9：承运商归一 + 清单外记 WARN，**不拒** |
 | 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/paybridge/WxShippingUploadResolver.java` | 固定大陆口径 |
 | 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopStoreMemberRoutes.java` | 登记 `GET /biz/express/companies` |
 | 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java` | `ANY_OF` 加一行 |
 | 修改 | `packages/shared/src/utils/express-companies.ts` | 按市场导出；`EXPRESS_COMPANIES` 保留为大陆表（b-app / c-app 现有引用不动） |
 | 修改 | `packages/shared/tests/express-companies.test.ts` | 按市场分组对账 |
 | 运营端 | — | **不做页面**（清单是代码内置表）。若 X4 选「运营可配」再另开 |
+
+### 评审提问的答复（不改契约的部分）
+
+| 评审提问 | 答复 |
+|---|---|
+| `OrderVO` 与 `/trace` 能否顺带返回 `expressCompanyName` | **本 TDD 不加**。`OrderVO` 是 C 端、商户端、运营端共用的 record，构造器有七八个重载（`backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java` 第 131–587 行），加一个字段要改遍所有构造点；App 用清单把码映射成名称即可，映射不到就显示原值。若 App 确有大量跨市场或历史订单要显示名称，另开一份只改 `OrderVO` 的 TDD |
+| 台湾门店调 `/biz/order/{no}/express/quotes` 现在回什么 | 代码里不按市场拦（`ExpressPickupServiceImpl#quotes` 第 95–119 行），会拿台湾地址去问快递100 的八家大陆承运商，结果未验证（多半是空数组，且要等各家超时）。App 以 `courierPickupAvailable` 为准，为 `false` 就不调 |
+| 存量订单的 `expressCompany` 不在清单里，改运单怎么办 | 服务端放行原值（E9「与当前承运商相同即放行」）。App 端建议：原值在清单里就预选；不在就显示原值、默认不改承运商，商户主动换才从清单选 |
+| 清单会不会因发版变化，能否缓存 | 只随后端发版变；按门店缓存到切店或冷启动即可（见接口一节） |
 
 > 注：若 `codex/biz-host-routes-70006`（`56d729544`，App 第二批门店路由登记）先合进 `codex/ai-shop-codex`，`ShopStoreMemberRoutes.java` 会先有一轮改动；本次只追加一行，合并时按行并入即可。当前分支（基于 `codex/ai-shop-codex`）里还没有那一批登记。
 
@@ -194,8 +222,10 @@ public final class ExpressCompanies {
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | E1 | `BizExpressCompanyFlowTest#member_reads_companies_in_display_order` | 未跑 | |
+| E10 | `BizExpressCompanyFlowTest#market_is_resolved_with_deploy_default`、`#tw_store_reports_courier_pickup_unavailable`、`#cn_store_reports_pickup_available_only_when_channel_enabled` | 未跑 | 计划：`market` 改回原值 → 第一条变红；去掉交集判断 → 台湾那条变红 |
 | E2 | `ExpressCompaniesTest#tw_market_lists_tw_carriers_only`、`#cn_market_keeps_the_14_wechat_codes_in_order`、`#unknown_market_is_empty`；`BizExpressCompanyFlowTest#entity_without_market_falls_back_to_deploy_default` | 未跑 | 计划：`forMarket` 改成恒返回大陆表 → TW 用例变红 |
-| E3 | `BizExpressCompanyFlowTest#every_listed_code_is_accepted_by_ship_and_ship_setting`（逐个码打 `ship` 与 `ship-setting`）、`OrderShippingServiceTest#tw_store_rejects_cn_only_code`、`BizWaybillCorrectionFlowTest#unknown_carrier_code_is_rejected` | 未跑 | 计划：`ship` 仍用旧 `isValid` → TW 码被拒、变红；改运单去掉新校验 → 最后一条变红 |
+| E3 | `BizExpressCompanyFlowTest#every_listed_code_is_accepted_by_ship_and_ship_setting`（逐个码打 `ship` 与 `ship-setting`）、`OrderShippingServiceTest#tw_store_rejects_cn_only_code`、`#tw_store_name_is_normalized_to_code`（送「黑貓宅急便」存 `TCAT`）、`#tw_store_cn_name_is_not_normalized`（台湾门店送「顺丰速运」→ 10400）、`ExpressPickupServiceTest#pickup_write_back_uses_order_store_market`（空门店号回填仍按订单所属市场校验通过） | 未跑 | 计划：`ship` 仍用旧 `isValid` → TW 码被拒、变红；市场改取调用方门店号 → 回填那条变红 |
+| E9 | `BizWaybillCorrectionFlowTest#unchanged_carrier_passes_even_if_not_in_list`、`#blank_carrier_keeps_current`、`#listed_name_is_normalized`、`#unknown_new_carrier_is_written_and_warned_not_rejected` | 未跑 | 计划：改运单加上「清单外 → 10400」→ 最后一条变红 |
 | E4 | `WxShippingUploadResolverTest#tw_code_is_never_reported_to_wechat` | 未跑 | |
 | E5 | `LogisticsPortImplTest#trace_covers_only_kuaidi100_mapped_carriers`；`BizExpressCompanyFlowTest#tw_carriers_report_trace_unsupported` | 未跑 | |
 | E6 | `BizEndpointPermTest#everyBizEndpointHasADecision`（已有，加登记后通过）、`BizExpressCompanyFlowTest#clerk_without_ship_or_store_is_forbidden` | 未跑 | |
@@ -205,14 +235,41 @@ public final class ExpressCompanies {
 
 ---
 
-## 待决（要产品 / 用户拍板）
+## 评审修订说明（2026-11-08，按 ai-shop-bapp `docs/implementation/TDD评审-商户App.md`）
 
-| # | 问题 | 建议 |
+技术问题核对属实的，已直接改进 §0 / §1 / §2 / §5；产品问题合进下方「待用户拍板」。
+
+| 评审条目 | 改了什么 | 为什么 |
 |---|---|---|
-| X1 | 台湾首批承运商清单与显示顺序 | 建议：黑貓宅急便 `TCAT`、新竹物流 `HCT`、中華郵政 `TWPOST`、嘉里大榮物流 `KERRYTJ`、宅配通 `PELICAN`。**码是我方自定义的**（台湾承运商不在微信表里），名称用承运商官方繁体名；要产品按首批商户实际在用的快递增删，并确认顺序 |
-| X2 | 超商取货（7-11 交貨便、全家店到店）要不要进这份清单 | **不进**。它要买家选取件门市、走另一套单号与状态，硬塞成「承运商」会让买家拿着超商单号去宅配网站查不到；另立履约方式另开 |
-| X3 | 台湾承运商要不要首期就能查轨迹 | 首期不要（`traceSupported=false`，发货照常）。要做时先核验快递100 对这几家的覆盖与编码，再往 `lgs_carrier_code` 与 `Kuaidi100TraceProvider.CODES` 各补一行（届时才有迁移，V6xx 待定） |
-| X4 | 清单是代码内置还是运营端可配 | **代码内置**（与 `ExpressCompanies` 现有取舍一致：十几家、每个码核验过；运营可配的话填错一个码就是发货静默失败）。若业务要求不发版加快递，再另开「运营可配 + 核验」方案 |
-| X5 | 承运商名要不要随 `Accept-Language` 翻译 | 不翻译，按市场原文（台湾繁体、大陆简体）：名字要与包裹面单、承运商官网一致，买家才对得上 |
-| X6 | 大陆快递是否也给台湾门店（如跨境寄大陆） | 首期不给：台湾一期只做岛内；跨境寄件的运费模板、清关都没有 |
-| X7 | 交接文档写「没有清单时先用叫快递顶上」 | 台湾门店顶不上（叫快递只有大陆承运商）。建议 App 在台湾门店**隐藏**叫快递入口，直到台湾寄件渠道接入；本接口上线后「填运单发货」就是台湾门店唯一的发货方式 |
+| 「最需要先定的」10 · 改运单（R06）是自由文本，加校验后台湾门店改运单被 10400 拒 | 新 E9：改运单**不收紧**——不改承运商（空或与当前相同）放行、改成清单内的码或名称归一、清单外照旧写入并记 WARN；§1「会被改到的」与校验口径表同步改 | 核对属实：App R06 是不受开关控制的自由文本框（`store_orders_pages.dart` 第 666–668 行）；`changeWaybill` 本来就允许不传承运商（第 142 行）。拒了就是已发货订单改不了运单 |
+| 同上（延伸）· 现有 App 在台湾门店发货必失败 | E3 加「本市场名称归一成码」，`ExpressCompanies#resolve` | App 默认值「黑貓宅急便」正是台湾表 `TCAT` 的名称，归一后 App 改版前也能发货；只在本市场找，台湾门店的「顺丰速运」不会被归成大陆 `SF` |
+| 二 · 叫快递回写的是哪一套码 | §1 新增一行出处 | 回写的是 `Kuaidi100PickupGateway.CODES` 的 key，八个全在大陆 14 家里，与清单同一套；叫过快递的订单改运单不受影响 |
+| 二 · 只按 `market` 判断，门店 `market` 为空时 App 判错；建议给能力位 | E1 响应从裸数组改成 `{market, courierPickupAvailable, companies}`；新 E10 | 核对属实：`/context` 与 `storeProfileOf` 给的都是原值、为空不回落。能力位放在发货页本来就调的这个接口里，不动 `/context` |
+| （评审未提，核对时发现）· 发货校验的市场取调用方门店号 | 校验口径表改为取订单自己的 `OrdSubOrder.storeNo` | 叫快递取件回填运单时以空门店号调 `ship`（`ExpressPickupServiceImpl` 第 360 行），按调用方取市场会取不到 |
+| 二 · 关联需求里的交接文档路径不对 | 改为 ai-shop-bapp `docs/implementation/功能矩阵与API交接文档.md` | 原路径在本仓库不存在 |
+| 二 · `OrderVO` / `/trace` 带 `expressCompanyName` | **没有照改**，答复见 §2「评审提问的答复」 | `OrderVO` 共用、构造点多，改动面与本 TDD 不相称；App 用清单映射即可 |
+| 二 · X7 台湾隐藏叫快递、X3 台湾首期不查轨迹与原型冲突 | 不自己定，合进「待用户拍板」X7、X3，写明与原型 v15 R10、v6 R03 / R06 的冲突 | 这是砍原型功能，要产品决定并同步改原型 |
+| 二 · X1 首批名单谁拍板、何时定 | 合进「待用户拍板」X1 | 同上 |
+
+---
+
+## 待用户拍板
+
+| # | 问题 | 选项与各自后果 | 建议 |
+|---|---|---|---|
+| X7 | 台湾门店的「叫快递」入口怎么办。原型 v15 R10 画了台湾门店叫「黑貓 NT$130 / 新竹 NT$110」上门取件，v6 R03 也有「改为预约上门取件」；但后端叫快递只有大陆承运商（`Kuaidi100PickupGateway`），台湾门店 `courierPickupAvailable=false` | **A 首期隐藏**：App 按 `courierPickupAvailable=false` 隐藏 R03 与 R13 待办里的叫快递，「填运单发货」是台湾唯一发货方式；原型 R10 与 R03 那一句要同步改或标「二期」。**B 保留入口、点了说明「本市场暂未开通」**：原型不用改，但商户看得到用不了，会来问。**C 首期就做台湾叫快递**：要先接台湾寄件渠道（本仓库没有），排期另算，本 TDD 不覆盖 | **A**，并请产品同步改原型；台湾寄件渠道接入时只要 `courierPickupAvailable` 变 `true`，App 不用再改 |
+| X3 | 台湾承运商首期查不查轨迹。原型 v6 R06 画了「黑猫 9012…7890」的轨迹节点；后端快递100 对台湾这几家的覆盖与编码没有核验记录 | **A 首期不查**：`traceSupported=false`，发货照常，R06 显示「这家快递暂不支持查询轨迹」；原型 R06 要改。**B 首期就查**：先核验快递100 对台湾承运商的覆盖与编码，再往 `lgs_carrier_code` 与 `Kuaidi100TraceProvider.CODES` 补行，**多一次迁移（V6xx）**、排期加核验时间 | **A**，轨迹另开；核验通过后只改服务端，`traceSupported` 变 `true` 即可 |
+| X1 | 台湾首批承运商清单与显示顺序，由谁拍板、何时定。App 默认选中第一项 | 建议名单：黑貓宅急便 `TCAT`、新竹物流 `HCT`、中華郵政 `TWPOST`、嘉里大榮物流 `KERRYTJ`、宅配通 `PELICAN`（**码是我方自定义的**，名称用官方繁体名）。**A 按建议名单上**：首批商户用的其它快递要等下一次发版。**B 先问首批商户实际在用哪些再定**：名单准，但接口冻结要等 | 由产品在接口冻结前拍板；没有新信息就按 **A**，黑貓放第一（与 App 现有默认值一致） |
+| X2 | 超商取货（7-11 交貨便、全家店到店）要不要进这份清单 | **A 不进**：另立履约方式另开。**B 进**：硬塞成「承运商」，买家拿着超商单号去宅配网站查不到，也没有收件门市 | **A** |
+| X4 | 清单是代码内置还是运营端可配 | **A 代码内置**：每个码核验过，加快递要发版。**B 运营可配**：不发版就能加，但填错一个码就是发货静默失败，要另做「可配 + 核验」，多一张表与迁移 | **A** |
+| X5 | 承运商名要不要随 `Accept-Language` 翻译 | **A 不翻译**，按市场原文：与包裹面单、承运商官网一致，买家对得上。**B 翻译**：英文界面好看，但名称与面单对不上，名称归一（E3）也要按多语匹配 | **A** |
+| X6 | 大陆快递是否也给台湾门店（如跨境寄大陆） | **A 首期不给**：台湾一期只做岛内。**B 给**：跨境运费模板、清关都没有，选了也走不通 | **A** |
+
+---
+
+## §7 确认与完成
+
+| 日期 | 事件 |
+|---|---|
+| 2026-11-08 | 起草（草稿，未拍板） |
+| 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：见上方「评审修订说明」；状态仍为草稿 |
