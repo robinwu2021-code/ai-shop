@@ -20,6 +20,15 @@ public class MsgTicket extends BaseEntity {
     /** 商户 App 的问题回报（TDD-商户App问题回报与版本）。两边按它隔离，不靠账号号段恰好不撞。 */
     public static final String SOURCE_B_MERCHANT = "B_MERCHANT";
 
+    /** 商户回报分类：冻结这四个（已拍板 P4），以后加分类要服务端与 App 同发 */
+    public static final String CATEGORY_BUG = "BUG";
+    public static final String CATEGORY_PAYMENT = "PAYMENT";
+    public static final String CATEGORY_IDEA = "IDEA";
+    public static final String CATEGORY_OTHER = "OTHER";
+    /** 请求体校验用（编译期常量，可放进 {@code @Pattern}） */
+    public static final String CATEGORY_PATTERN =
+            CATEGORY_BUG + "|" + CATEGORY_PAYMENT + "|" + CATEGORY_IDEA + "|" + CATEGORY_OTHER;
+
     private String ticketNo;
     private String userNo;
     private String subject;

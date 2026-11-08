@@ -1,7 +1,7 @@
 # TDD-商户 App 问题回报与版本
 
-状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
-档位：1（新增端点 3 个 B/公共 + 3 个运营；`notify_ticket` 加列、新表 `sys_app_version`；新错误码 1 个；运营端一个新 tab）
+状态：已实现（2026-11-08：用户按「已拍板」一节各条的建议全部接受；实现提交 936885ea1，§5 测试已跑，偏差见 §6）
+档位：1（新增端点 3 个 B/公共 + 3 个运营；`notify_ticket` 加列、新表 `sys_app_version`；新错误码 1 个；新权限码 1 个（P5）；运营端一个新 tab）
 关联需求：
 - 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`）第 6 模块「系统状态」6-08、6-09，附录 B 第 8 行（`/biz/feedback`、`/app/version` 被正式包拦下）
 - 商户 App PRD（ai-shop-bapp 仓库 `docs/requirements/PRD-NearGo商户B端需求说明书.md`）FR-040（AC-040a 日志去敏）、FR-042（AC-042b 最低支持版本）
@@ -126,8 +126,8 @@
 |---|---|
 | 端点（新增） | `POST /biz/feedback`、`GET /biz/feedback/mine`、`GET /common/app/version`、`GET /ops/app-versions`、`PUT /ops/app-versions/{appCode}/{platform}`、`GET /ops/tickets/{ticketNo}/diagnostics` |
 | 端点（改响应） | `GET /ops/tickets` 等返回的 `TicketVO` 尾部加可空字段 |
-| 库表 | `notify_ticket` 加 9 列 + 1 个索引；新表 `sys_app_version`。迁移号 **V6xx 待定**（当前最新 `V635__ops_staff_second_factor_exempt.sql`） |
-| 权限码 | **不新增**（回报用 `@perm.merchantAccount()`；版本策略用 `system:param:read/update`。是否另立一个码见「已拍板」P5） |
+| 库表 | `notify_ticket` 加 9 列 + 1 个索引；新表 `sys_app_version`。迁移 **`V638__merchant_feedback_and_app_version.sql`**（DDL）与 **`V639__app_version_perm_and_menu.sql`**（菜单点与权限码种子） |
+| 权限码 | 新增 **`system:app-version:update`**（已拍板 P5 = B，只授超管，V639 种子）；回报用 `@perm.merchantAccount()`；看版本策略用 `system:param:read` |
 | i18n | 新错误码 `err.client.upgrade_required` 三语（`backend/shop-app/src/main/resources/i18n/messages*.properties`）；`BackendI18nParityTest` 会盯 |
 | 配置项 | 无（频率阈值写常量；如要可调见「已拍板」P3） |
 | 请求头（新约定） | `X-App-Platform`、`X-App-Version`（App 端新增发送，服务端只读） |
@@ -283,12 +283,12 @@
 | 方法 | 路径 | 权限 | 请求 / 响应 |
 |---|---|---|---|
 | GET | `/ops/app-versions` | `system:param:read` | `[{appCode, platform, latest, minSupported, notes{zh-Hant[],zh-Hans[],en[],ar[]}, storeUrl, updatedBy, updatedAt, revision}]` |
-| PUT | `/ops/app-versions/{appCode}/{platform}` | `system:param:update` | `{latest, minSupported, notes, storeUrl, expectedRevision}` → 同上单条；`minSupported > latest` → 10400；`storeUrl` 不是两家商店的 https 地址 → 10400；`expectedRevision` 对不上 → 10409；写审计 `AuditLogPort#record("APP_VERSION_UPDATE", …)` |
+| PUT | `/ops/app-versions/{appCode}/{platform}` | `system:app-version:update`（P5） | `{latest, minSupported, notes, storeUrl, expectedRevision}` → 同上单条；`minSupported > latest` → 10400；`storeUrl` 不是两家商店的 https 地址 → 10400；`expectedRevision` 对不上 → 10409；写审计 `AuditLogPort#record("APP_VERSION_UPDATE", …)` |
 | GET | `/ops/tickets/{ticketNo}/diagnostics` | `message:ticket:read` | `[{at, method, path, outcome}]`；C 端工单返回空数组 |
 
 `appCode` 首期只有 `MERCHANT`；留这一维是因为 POS 安卓 App（`docs/technical/design/POS安卓App-技术栈与架构.md`）以后也要强更，届时加一行数据，不加表。
 
-### 库表与迁移（V6xx 待定）
+### 库表与迁移（V638 / V639）
 
 **`notify_ticket` 加列**（存量行 `source` 落默认值 `C_USER`，行为不变）：
 
@@ -343,7 +343,7 @@
 | 修改 | `backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/security/CommerceRoutePolicy.java` | `ACCOUNT` 加 `POST /biz/feedback`、`GET /biz/feedback/mine` |
 | 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java` | `CLIENT_UPGRADE_REQUIRED(10426, "err.client.upgrade_required")` |
 | 修改 | `backend/shop-app/src/main/resources/i18n/messages.properties`、`messages_en.properties`、`messages_ar.properties` | 新码文案 |
-| 新增 | `backend/shop-app/src/main/resources/db/migration/V6xx__merchant_feedback_and_app_version.sql` | 上面两张表的 DDL |
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V638__merchant_feedback_and_app_version.sql`、`V639__app_version_perm_and_menu.sql` | 上面两张表的 DDL；「App 版本」菜单点与 `system:app-version:update` 种子 |
 | 修改 | `backend/shop-app/src/test/resources/schema-test.sql` | 同步 DDL |
 | 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java` | 登记两个 `/biz/feedback*` 的判权 |
 | 修改 | `ops-web/lib/types/message.ts`、`ops-web/app/messages/page.tsx`、`ops-web/app/messages/copy.ts` | 工单 tab 加列与诊断抽屉 |
@@ -353,30 +353,109 @@
 
 ---
 
-## §5 对账三 · 实现 → 需求（测试，计划，未跑）
+## §5 对账三 · 实现 → 需求（测试，已跑）
+
+先写测试跑出红：实现前跑 7 个流程类 49 条，**8 失败 / 22 错误**（端点、表、错误码都不存在；未登录 401 那条本来就绿）。
+实现后全部转绿。本仓库约定不强制回退实现再造红（`references/java.md` §8.4），「消融」列记的是实现前的那次红与断言能识别的缺陷。
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| F1 | `BizFeedbackFlowTest#merchant_submits_feedback_without_selecting_store` | 未跑 | 计划：去掉 `ACCOUNT` 登记 → 70006 变红 |
-| F2 | `BizFeedbackFlowTest#blank_or_overlong_description_is_rejected_and_not_stored`、`#unknown_category_is_rejected`、`#app_shaped_report_is_accepted`（300 条诊断、33 字 `errorCode`、`platform=macOS`、不带时区的 `at` 一起送，断言落库）；`FeedbackDiagnosticsTest#keeps_last_300_entries`、`#truncates_overlong_fields`、`#offset_at_is_normalized_to_utc_and_local_at_is_kept_verbatim`、`#unparseable_at_becomes_null` | 未跑 | 计划：注掉描述长度校验 → 落库变红；把条数上限改回 200 并改成拒单 → `app_shaped_report_is_accepted` 变红 |
-| F3 | `BizFeedbackFlowTest#store_no_outside_my_stores_is_dropped_and_feedback_still_stored`、`#store_no_of_my_store_is_kept` | 未跑 | 计划：注掉 `myStores` 核对 → 第一条变红（别人的门店号被存下）；改回抛 10403 → 第一条变红（没落库） |
-| F4 | `FeedbackDiagnosticsTest#keeps_only_four_fields_and_redacts_long_numbers`、`#strips_query_string` | 未跑 | 计划：去掉脱敏 → 变红 |
-| F5 | `BizFeedbackFlowTest#mine_lists_only_my_merchant_feedback_newest_first_capped_at_50` | 未跑 | |
-| F6 | `MessageServiceTicketSourceTest#consumer_tickets_exclude_merchant_feedback_with_same_user_no`、`#merchant_feedback_excludes_consumer_tickets` | 未跑 | 计划：去掉 `source` 条件 → 变红（用同一个 `user_no` 造两边数据） |
-| F7 | `OpsTicketFlowTest#merchant_feedback_shows_source_category_store_and_version`、`#diagnostics_endpoint_returns_sanitized_entries` | 未跑 | |
-| F8 | `OpsTicketFlowTest#reply_to_merchant_feedback_pushes_staff_message`、`#reply_message_is_listed_whichever_store_is_selected`（带另一家店的 `X-Store-No` 读 `/biz/message`） | 未跑 | |
-| F9 | `BizFeedbackFlowTest#sixth_submission_within_window_is_rate_limited`（断言 `code=10429`） | 未跑 | |
-| F10 | `CommerceAccessSecurityFlowTest#feedback_routes_pass_for_new_model_account_without_store` | 未跑 | 计划：删 `ACCOUNT` 两行 → 70006 变红 |
-| V1 | `AppVersionHttpTest#anonymous_and_expired_token_both_read_version` | 未跑 | |
-| V2 | `AppVersionHttpTest#platform_is_case_insensitive`、`#unknown_platform_is_bad_request` | 未跑 | |
-| V3 | `AppVersionHttpTest#unconfigured_platform_returns_empty_fields` | 未跑 | |
-| V4 | `AppVersionsTest#compares_like_app_compare_versions`（逐条照抄 App `compareVersions` 的用例）、`#build_suffix_in_parentheses_is_ignored`（`1.4.2 (20261108.1)` 大于 `1.4.1`）、`AppVersionHttpTest#upgrade_required_when_build_below_min` | 未跑 | 计划：改成按 `.` 硬拆 → 括号用例变红 |
-| V5 | `AppVersionHttpTest#notes_follow_accept_language_then_fall_back_to_zh_hant`、`#zh_hant_tw_and_zh_tw_match_zh_hant` | 未跑 | |
-| V6 | `OpsAppVersionFlowTest#min_above_latest_is_rejected`、`#store_url_must_be_app_store_or_play`、`#stale_revision_conflicts`、`#update_writes_audit_log` | 未跑 | |
-| V7 | `ClientVersionGateFilterTest#old_build_write_gets_10426`、`#missing_headers_pass`、`#reads_are_never_blocked`、`#exempt_writes_are_never_blocked`（参数化跑七个不拦的写请求）、`#set_password_is_blocked` | 未跑 | 计划：过滤器不挂 → 第一条变红；从常量表删掉 `POST /biz/feedback` → 参数化那条变红 |
-| 闸门 | `BizEndpointPermTest`、`BackendI18nParityTest`、`ArchitectureTest`、`gen-ui-catalog.py --check` | 未跑 | |
+| F1 | `BizFeedbackFlowTest#merchant_submits_feedback_without_selecting_store`、`#anonymous_submission_is_unauthorized` | ✅ | 实现前红（404/无表） |
+| F2 | `BizFeedbackFlowTest#blank_or_overlong_description_is_rejected_and_not_stored`、`#unknown_category_is_rejected`、`#app_shaped_report_is_accepted`（301 条诊断、33 字 `errorCode`、`platform=macOS`、不带时区的 `at`）；`FeedbackDiagnosticsTest#keeps_last_300_entries`、`#truncates_overlong_fields`、`#offset_at_is_normalized_to_utc_and_local_at_is_kept_verbatim`、`#unparseable_at_becomes_null` | ✅ | 实现前红 |
+| F3 | `BizFeedbackFlowTest#store_no_outside_my_stores_is_dropped_and_feedback_still_stored`、`#store_no_of_my_store_is_kept` | ✅ | 断言 `store_no` 为空且 `store_dropped=1`：不核对或改回 10403 都会红 |
+| F4 | `FeedbackDiagnosticsTest#keeps_only_four_fields_and_redacts_long_numbers`、`#strips_query_string`；`BizFeedbackFlowTest#app_shaped_report_is_accepted`（落库后无 `body` 字段、路径 `P…2001`） | ✅ | 断言与 App `redactPath` 测试同一用例 |
+| F5 | `BizFeedbackFlowTest#mine_lists_only_my_merchant_feedback_newest_first_capped_at_50` | ✅ | 实现前红 |
+| F6 | `MessageServiceTicketSourceTest#consumer_tickets_exclude_merchant_feedback_with_same_user_no`、`#merchant_feedback_excludes_consumer_tickets`（同一 `user_no` 造两边数据） | ✅ | 实现前红；去掉 `source` 条件即串单 |
+| F7 | `OpsTicketFlowTest#merchant_feedback_shows_source_category_store_and_version`、`#diagnostics_endpoint_returns_sanitized_entries` | ✅ | 实现前红 |
+| F8 | `OpsTicketFlowTest#reply_to_merchant_feedback_pushes_staff_message`、`#reply_message_is_listed_whichever_store_is_selected` | ✅ | 实现前红 |
+| F9 | `BizFeedbackFlowTest#sixth_submission_within_window_is_rate_limited`（断言 10429 且只落 5 条） | ✅ | 实现前红 |
+| F10 | `StoreScopedDailyRoutesFlowTest#feedbackRoutesWorkWithoutStoreSelection`（新模型门店账号，带与不带 `X-Store-No`） | ✅ | 实现前红（`ACCOUNT` 未登记 → 70006） |
+| V1 | `AppVersionHttpTest#anonymous_and_expired_token_both_read_version`（含 `Cache-Control: no-store`） | ✅ | 实现前红 |
+| V2 | `AppVersionHttpTest#platform_is_case_insensitive`、`#unknown_platform_is_bad_request` | ✅ | 实现前红 |
+| V3 | `AppVersionHttpTest#unconfigured_platform_returns_empty_fields` | ✅ | 实现前红 |
+| V4 | `AppVersionsTest#compares_like_app_compare_versions`（照抄 App `v22_units_test.dart` 四条）、`#build_suffix_in_parentheses_is_ignored`、`#non_versions_are_rejected`；`AppVersionHttpTest#upgrade_required_when_build_below_min` | ✅ | 括号用例：按 `.` 硬拆会把 `1.4.2 (…)` 当 1.4.0 → 红 |
+| V5 | `AppVersionHttpTest#notes_follow_accept_language_then_fall_back_to_zh_hant`、`#zh_hant_tw_and_zh_tw_match_zh_hant` | ✅ | 实现前红 |
+| V6 | `OpsAppVersionFlowTest#list_shows_both_platforms`、`#min_above_latest_is_rejected`、`#store_url_must_be_app_store_or_play`、`#zh_hant_notes_are_required`、`#stale_revision_conflicts`、`#update_writes_audit_log`、`#tech_ops_reads_but_cannot_update`（P5） | ✅ | 实现前红 |
+| V7 | `ClientVersionGateFilterTest#old_build_write_gets_10426`、`#missing_headers_pass`、`#reads_are_never_blocked`、`#exempt_writes_are_never_blocked`（参数化七条）、`#set_password_is_blocked`；`ClientVersionGateFlowTest#old_build_write_is_rejected_end_to_end`（挂在链上、回报不拦） | ✅ | 流程用例实现前红（过滤器不挂即红） |
+| P7 | `BizFeedbackFlowTest#diagnostics_older_than_90_days_are_purged_ticket_kept` | ✅ | — |
+| 闸门 | `BizEndpointPermTest`、`BackendI18nParityTest`、`ArchitectureTest` 及 `arch` 包全部守卫；`gen-ui-catalog.py --check`、`check-generated-docs.mjs`、`vue-tsc`（b-app / c-app）、ops-web `tsc` 与 vitest | ✅ 见下 | |
 
----
+跑法与输出（`cd backend && mvn -q -o -pl shop-app -am test -Dtest=…`）：
+
+```
+BizFeedbackFlowTest              Tests run: 10, Failures: 0, Errors: 0
+MessageServiceTicketSourceTest   Tests run: 2,  Failures: 0, Errors: 0
+OpsTicketFlowTest                Tests run: 9,  Failures: 0, Errors: 0   （原 5 条 + 新 4 条）
+AppVersionHttpTest               Tests run: 7,  Failures: 0, Errors: 0
+OpsAppVersionFlowTest            Tests run: 7,  Failures: 0, Errors: 0
+ClientVersionGateFilterTest      Tests run: 11, Failures: 0, Errors: 0
+ClientVersionGateFlowTest        Tests run: 1,  Failures: 0, Errors: 0
+StoreScopedDailyRoutesFlowTest   Tests run: 14, Failures: 0, Errors: 0   （原 13 条 + 新 1 条）
+FeedbackDiagnosticsTest          Tests run: 6,  Failures: 0, Errors: 0   （shop-core）
+AppVersionsTest                  Tests run: 3,  Failures: 0, Errors: 0   （shop-core）
+BackendI18nParityTest            Tests run: 6,  Failures: 0, Errors: 0
+```
+
+**基线对比**：同一组命令（`ai.neargo.shop.arch.*Test` + 消息相关场景测试）在基线 `54eb737ab` 的导出副本上跑：231 跑 / 19 失败 / 1 错误；
+本分支同组 292 跑 / 19 失败 / 1 错误。失败的**方法清单逐条相同**，失败内容逐字相同（`SchemaParityTest` 两侧集合各多一张 `sys_app_version`，属同一条存量失败）：
+`ArchitectureTest` 5 条、`BizEndpointPermTest.everyBizEndpointHasADecision`（未决清单与基线逐条相同，不含 `/biz/feedback*`）、
+`BizKeyConventionTest`、`BizRoleSeedTest`、`InventoryDisabledContextTest`、`MapperSmokeTest`、`MpEndpointAuthTest`（`/mp/checkout/**`）、
+`OrphanModuleTest`、`PayAuditTrailTest`、`PayReverseDependencyBudgetTest` 3 条、`ScheduledJobConventionTest` 2 条、`SchemaParityTest`、`TableHasProducerTest` —— 均为基线即有。
+实现过程中新增过一条 `ArchitectureTest.domainsMustNotTouchWebRuntime`（版本接口用了 `HttpServletResponse` 设响应头），已改为 `ResponseEntity` + `CacheControl.noStore()` 消除。
+
+## §6 对账二 · 设计 → 实现
+
+`git show --stat 936885ea1`：92 个文件，+4256 / −112。按 §2 模块设计逐行核对：
+
+| §2 列的文件 | 实际 |
+|---|---|
+| `portal/biz/BizFeedbackController.java` | ✅ 新增 |
+| `message/FeedbackDiagnostics.java` | ✅ 新增 |
+| `message/MessageService.java`、`impl/MessageServiceImpl.java` | ✅ 改 |
+| `message/entity/MsgTicket.java` | ✅ 改 |
+| `message/dto/MessageVOs.java` | ✅ 改 |
+| `message/api/ops/OpsTicketController.java` | ✅ 改 |
+| `platform/AppVersionService.java` + `impl/AppVersionServiceImpl.java` + `entity/SysAppVersion.java` + mapper | ✅ 新增；mapper 进现有 `PlatformMappers.AppVersionMapper` |
+| `platform/AppVersions.java` | ✅ 新增 |
+| `platform/api/common/AppVersionController.java` | ✅ 新增 |
+| `platform/api/ops/OpsAppVersionController.java` | ✅ 新增 |
+| `config/ClientVersionGateFilter.java` | ✅ 新增 |
+| `config/SecurityConfig.java` | ✅ 改（只动 `merchantChain`，`publicChain` 未改） |
+| `CommerceRoutePolicy.java` | ✅ 改 |
+| `ErrorCode.java` | ✅ 改 |
+| `messages*.properties` 三语 | ✅ 改 |
+| `V6xx__…sql` | ✅ 为 `V638__merchant_feedback_and_app_version.sql`，另加 `V639__app_version_perm_and_menu.sql`（见偏差 1） |
+| `schema-test.sql` | ✅ 由 `backend/scripts/gen-test-schema.py` 重放迁移生成 |
+| `BizEndpointPermTest.java` | ✅ 改（`FOUNDATION_READS` 两行） |
+| `ops-web/lib/types/message.ts`、`app/messages/page.tsx`、`app/messages/copy.ts` | ✅ 改 |
+| `ops-web/app/system/` 下 App 版本 tab | ✅ `app-version-tab.tsx` 新增、`page.tsx`/`copy.ts` 改 |
+| `ops-web/lib/nav.ts` + `ui-catalog.json` | ✅ 改、重新生成 |
+
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了的文件 | `platform/dto/AppVersionVOs.java`（VO 与请求体）；`message/job/TicketDiagnosticsPurgeJob.java`（已拍板 P7 的 90 天清理）；`Perms.java`、`V639`、`ops-web/lib/{perm-map,permissions,point-codes}.ts`、`lib/i18n/nav-labels.ts`、`nav.test.ts`、`scripts/perm-endpoint-map.mjs`（P5 新权限码与新菜单的登记面）；`ops-web/app/messages/ticket-diagnostics.tsx`（诊断抽屉）；`ops-web/lib/api/{contracts,https,mocks}/…`、`lib/api/query.ts`、`lib/mock/db/…`（运营端接口与替身）；`packages/shared/src/types/message.ts`、`b-app/src/api/{endpoints,contract,http,requests,mocks/message}.ts`、`b-app/scripts/gen-openapi.mjs`（契约类型与端点登记）；`docs/api/响应格式规范.md`（10426 进错误码分段表）；`check-generated-docs` 列出的生成物（openapi 三份、API 清单与详情、权限 / 菜单 / 词条 / 表清单等）；测试类 `MessageServiceTicketSourceTest`、`AppVersionHttpTest`、`OpsAppVersionFlowTest`、`ClientVersionGateFilterTest`、`ClientVersionGateFlowTest`、`BizFeedbackFlowTest`、`FeedbackDiagnosticsTest`、`AppVersionsTest`，以及 `OpsTicketFlowTest`、`StoreScopedDailyRoutesFlowTest` 的追加用例 |
+| TDD 列了、实际没动的文件 | 无 |
+
+### 偏差说明
+
+1. **两条迁移**：DDL 放 V638；P5 选 B 之后多了「新权限码 + 菜单点」的种子，单列 V639（照 V355 的可重入写法）。166 上 V638 要 root 先执行（DDL），V639 只是 INSERT。
+2. **权限码**：§2 原写「不新增」，按已拍板 P5 = B 新增 `system:app-version:update`，只授超管（`Perms.ROLE_PERMS` 不配任何角色，超管靠通配）；列为高危码（`CRITICAL_PERMS`）。看策略与菜单仍是 `system:param:read`（超管、技术运维）。
+3. **`platform` 缺失**：接口一表格写「必填」，但 F2 只把描述、分类、`appVersion` 列为拒单条件、并要求附带资料一律不拒单 —— 实现按 F2：缺失与不认得一样归 `OTHER`，不回 10400。
+4. **版本策略的校验细则**（§2 只写了 `min ≤ latest` 与商店地址）：版本号必须能取出 `数字(.数字){0,2}` 前缀；配了 `minSupported` 就必须配 `latest`；`zh-Hant` 说明在 `latest` 非空时必填（P6 = A）；`notes` 里出现四种语言以外的键 → 10400；商店地址按 URI 的 scheme=https、host 整串等于 `apps.apple.com` / `play.google.com` 判（`apps.apple.com.evil…` 过不去）。
+5. **`/ops/tickets` 多一个可选 `source` 查询参数**：运营端配套写了「来源筛选」，接口表没列；只加可选参数，旧调用不变。
+6. **过滤器位置**：挂在 `BizContextFilter` 之前（认证之后、选店之前），旧包的写请求不会先撞 70006；通过 `ObjectProvider` 取 `AppVersionService`，只装了安全链的切片测试里没有它就不挂（与同一方法里另两个依赖的处理一致）。闸门缓存 60 秒，运营端保存时清本机缓存；多实例部署时其它实例最多晚 60 秒。
+7. **版本接口的 `Cache-Control`**：用 `ResponseEntity.cacheControl(noStore())` 而不是 `HttpServletResponse`（`ArchitectureTest.domainsMustNotTouchWebRuntime` 禁止领域包依赖 Servlet）；信封照包。
+8. **F10 的锁定用例**放在 `StoreScopedDailyRoutesFlowTest#feedbackRoutesWorkWithoutStoreSelection`，不在 §5 原写的 `CommerceAccessSecurityFlowTest`（后者是 MySQL 测试，本地默认跑不了）。
+9. **H2 测试库不建 `idx_ticket_source_user`**：生成器对普通索引一律丢弃；MySQL 迁移里有。
+10. **频率闸是本机内存实现**（现有 `InMemoryRateLimiter`）：多实例时「10 分钟 5 条」按实例计。正常使用碰不到，接受。
+11. **§1「顺带发现」里的 `/biz/push-token*`**：基线 `54eb737ab` 里两条已在 `CommerceRoutePolicy.ACCOUNT`，无需再改。
+12. **跟进提交（文档与守卫）**：`packages/shared` 守卫要求新具名枚举登记、取值域列登记、不在 interface 里内联字面量联合 —— 于是
+    `enum-registry.ts` 登记了 `FeedbackCategory`/`FeedbackStatus`/`AppPlatform`/`AppVersionPlatform`/`AppVersionLang`/`TicketSource`，
+    `scripts/check-enum-fields.mjs` 登记了 `notify_ticket.category/source/client_platform` 与 `sys_app_version.platform`，
+    平台字段抽成具名类型；分类码在 `MsgTicket` 里落成常量（`CATEGORY_*`、`CATEGORY_PATTERN`，请求体 `@Pattern` 引用它），
+    后端取值表才认得 BUG / IDEA。`packages/shared` 守卫与基线相比没有新增失败（`ops-data-scope` G1/G3 在基线 `54eb737ab` 上已红，
+    来自门店配送的 `StoreFulfillmentServiceImpl#inheritedChannelOf`，与本 TDD 无关）。
+
 
 ## 评审修订说明（2026-11-08，按 ai-shop-bapp `docs/implementation/TDD评审-商户App.md`）
 
@@ -437,3 +516,4 @@
 | 2026-11-08 | 起草（草稿，未拍板） |
 | 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：见上方「评审修订说明」；状态仍为草稿 |
 | 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |
+| 2026-11-08 | 实现（分支 `codex/p0-feedback-version`，提交 936885ea1）：§5 全部跑绿、基线对比无新增失败，§6 偏差 11 条；状态改为已实现 |

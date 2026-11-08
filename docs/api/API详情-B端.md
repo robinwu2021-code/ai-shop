@@ -622,7 +622,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `platform` | `ANDROID` \| `IOS` | 是 | 归一后的平台 |
+| `platform` | [`AppPlatform`](#appplatform) | 是 | 归一后的平台 |
 | `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
 | `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
 | `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
@@ -12502,13 +12502,22 @@ _无字段_
 - `REFUND_ONLY`
 - `RETURN_REFUND`
 
+### AppPlatform
+
+App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致
+
+枚举取值：
+
+- `ANDROID`
+- `IOS`
+
 ### AppVersionInfo
 
 版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `platform` | `ANDROID` \| `IOS` | 是 | 归一后的平台 |
+| `platform` | [`AppPlatform`](#appplatform) | 是 | 归一后的平台 |
 | `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
 | `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
 | `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |

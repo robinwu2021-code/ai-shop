@@ -40418,6 +40418,34 @@
         "module": "shop-core"
       },
       {
+        "host": "MsgTicket",
+        "name": "CATEGORY_BUG",
+        "value": "BUG",
+        "zh": "商户回报分类：冻结这四个（已拍板 P4），以后加分类要服务端与 App 同发",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_PAYMENT",
+        "value": "PAYMENT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_IDEA",
+        "value": "IDEA",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_OTHER",
+        "value": "OTHER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "NotifyChannel",
         "name": "TYPE_SMS",
         "value": "SMS",
@@ -47564,6 +47592,15 @@
         "zh": "售后类型。"
       },
       {
+        "name": "AppPlatform",
+        "client": "shared",
+        "values": [
+          "ANDROID",
+          "IOS"
+        ],
+        "zh": "App 平台（版本策略按它分行）。"
+      },
+      {
         "name": "AppVersionLang",
         "client": "ops-web",
         "values": [
@@ -47573,6 +47610,15 @@
           "ar"
         ],
         "zh": "更新说明的四种语言"
+      },
+      {
+        "name": "AppVersionPlatform",
+        "client": "ops-web",
+        "values": [
+          "ANDROID",
+          "IOS"
+        ],
+        "zh": "版本策略按平台分行（sys_app_version.platform）"
       },
       {
         "name": "AppealStatus",
@@ -55571,6 +55617,14 @@
       "type": "String",
       "value": "\"zh-CN\"",
       "zh": "默认语言。",
+      "module": "shop-core"
+    },
+    {
+      "host": "MsgTicket",
+      "name": "CATEGORY_PATTERN",
+      "type": "String",
+      "value": "\"BUG|PAYMENT|IDEA|OTHER\"",
+      "zh": "请求体校验用（编译期常量，可放进 @Pattern）",
       "module": "shop-core"
     },
     {

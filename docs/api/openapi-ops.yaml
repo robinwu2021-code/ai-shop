@@ -12547,10 +12547,7 @@ components:
           type: "string"
           description: "哪个 App。首期只有 MERCHANT"
         platform:
-          type: "string"
-          enum:
-            - "ANDROID"
-            - "IOS"
+          "$ref": "#/components/schemas/AppVersionPlatform"
           description: "ANDROID / IOS"
         latest:
           type: "string"
@@ -12591,6 +12588,12 @@ components:
         - "revision"
       additionalProperties: false
       description: "App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报与版本 V6）。\n\n没配过的平台也会列出来：`revision=0`、字段为空 —— 那就是「App 不提示」的首发状态。 改「最低支持版」影响面是**全部**商户：低于它的包写请求立刻被拒（10426），所以改它要单独的 `system:app-version:update`，技术运维的 `system:param:update` 改不了。"
+    AppVersionPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "版本策略按平台分行（sys_app_version.platform）"
     "Partial<Record<AppVersionLang,string[]>>":
       type: "object"
       properties:

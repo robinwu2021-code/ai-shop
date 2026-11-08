@@ -86,13 +86,16 @@ export interface FeedbackReceipt {
   feedbackNo: string;
 }
 
+/** App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致 */
+export type AppPlatform = "ANDROID" | "IOS";
+
 /**
  * 版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、
  * `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。
  */
 export interface AppVersionInfo {
   /** 归一后的平台 */
-  platform: "ANDROID" | "IOS";
+  platform: AppPlatform;
   /** 最新版；空串 = 不提示更新 */
   latest: string;
   /** 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED */

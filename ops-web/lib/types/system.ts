@@ -352,7 +352,7 @@ export interface AppVersionPolicy {
   /** 哪个 App。首期只有 MERCHANT */
   appCode: string;
   /** ANDROID / IOS */
-  platform: "ANDROID" | "IOS";
+  platform: AppVersionPlatform;
   /** 最新版；空 = 不提示更新 */
   latest: string;
   /** 最低支持版；空 = 不拦写 */
@@ -368,6 +368,9 @@ export interface AppVersionPolicy {
   /** 乐观锁版本：保存时原样带回 expectedRevision，别人先改了就 10409 */
   revision: number;
 }
+
+/** 版本策略按平台分行（sys_app_version.platform） */
+export type AppVersionPlatform = "ANDROID" | "IOS";
 
 /** 更新说明的四种语言 */
 export type AppVersionLang = "zh-Hant" | "zh-Hans" | "en" | "ar";

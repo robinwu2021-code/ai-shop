@@ -7017,14 +7017,17 @@ components:
         - "feedbackNo"
       additionalProperties: false
       description: "提交回报的回执"
+    AppPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致"
     AppVersionInfo:
       type: "object"
       properties:
         platform:
-          type: "string"
-          enum:
-            - "ANDROID"
-            - "IOS"
+          "$ref": "#/components/schemas/AppPlatform"
           description: "归一后的平台"
         latest:
           type: "string"

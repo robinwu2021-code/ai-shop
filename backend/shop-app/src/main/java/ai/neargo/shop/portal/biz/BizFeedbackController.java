@@ -6,6 +6,7 @@ import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.MessageService.MerchantFeedbackCommand;
 import ai.neargo.shop.message.dto.MessageVOs.DiagnosticVO;
 import ai.neargo.shop.message.dto.MessageVOs.FeedbackVO;
+import ai.neargo.shop.message.entity.MsgTicket;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -80,7 +81,7 @@ public class BizFeedbackController {
      * @param diagnostics 最多留最后 300 条，每条只留 at / method / path / outcome
      */
     public record SubmitFeedbackReq(
-            @NotNull @Pattern(regexp = "BUG|PAYMENT|IDEA|OTHER") String category,
+            @NotNull @Pattern(regexp = MsgTicket.CATEGORY_PATTERN) String category,
             @NotBlank @Size(max = 1000) String description,
             String errorCode,
             String page,

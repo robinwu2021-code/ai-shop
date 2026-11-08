@@ -12173,7 +12173,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `appCode` | `string` | 是 | 哪个 App。首期只有 MERCHANT |
-| `platform` | `ANDROID` \| `IOS` | 是 | ANDROID / IOS |
+| `platform` | [`AppVersionPlatform`](#appversionplatform) | 是 | ANDROID / IOS |
 | `latest` | `string` | 是 | 最新版；空 = 不提示更新 |
 | `minSupported` | `string` | 是 | 最低支持版；空 = 不拦写 |
 | `notes` | [`Partial<Record<AppVersionLang,string[]>>`](#partialrecordappversionlangstring) | 是 | 更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant |
@@ -12886,6 +12886,15 @@ _无字段_
 - `RETURN_REFUND`
 - `EXCHANGE`
 
+### AppVersionPlatform
+
+版本策略按平台分行（sys_app_version.platform）
+
+枚举取值：
+
+- `ANDROID`
+- `IOS`
+
 ### AppVersionPolicy
 
 App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报与版本 V6）。 没配过的平台也会列出来：`revision=0`、字段为空 —— 那就是「App 不提示」的首发状态。 改「最低支持版」影响面是**全部**商户：低于它的包写请求立刻被拒（10426），所以改它要单独的 `system:app-version:update`，技术运维的 `system:param:update` 改不了。
@@ -12893,7 +12902,7 @@ App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报�
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `appCode` | `string` | 是 | 哪个 App。首期只有 MERCHANT |
-| `platform` | `ANDROID` \| `IOS` | 是 | ANDROID / IOS |
+| `platform` | [`AppVersionPlatform`](#appversionplatform) | 是 | ANDROID / IOS |
 | `latest` | `string` | 是 | 最新版；空 = 不提示更新 |
 | `minSupported` | `string` | 是 | 最低支持版；空 = 不拦写 |
 | `notes` | [`Partial<Record<AppVersionLang,string[]>>`](#partialrecordappversionlangstring) | 是 | 更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant |
