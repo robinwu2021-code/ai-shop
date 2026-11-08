@@ -270,6 +270,28 @@ export interface ExpressQuote {
   listPriceMinor: number;
 }
 
+/** 本店可选的一家快递公司（TDD-商户App快递公司 E1、E5） */
+export interface ExpressCompanyOption {
+  /** 承运商码：大陆是微信 delivery_id，台湾是我方自定义码；发货、改运单、发货设置都提交它 */
+  code: string;
+  /** 按市场原文给的展示名（不随语言翻译） */
+  name: string;
+  /** false = 照样能发货，只是查不到轨迹 */
+  traceSupported: boolean;
+}
+
+/**
+ * 本店能选的快递公司（`GET /biz/express/companies`，TDD-商户App快递公司）。
+ * `companies` 的顺序就是发货界面的显示顺序；只随后端发版变化，按门店缓存到切店即可。
+ */
+export interface ExpressCompanyList {
+  /** 已按部署默认回落的经营市场（门店所属主体没填市场时不再是空） */
+  market: string;
+  /** 这家店能不能「叫快递上门」：通道开着、且通道的承运商与本市场清单有交集 */
+  courierPickupAvailable: boolean;
+  companies: ExpressCompanyOption[];
+}
+
 /**
  * 门店发货设置（TDD-快递100商家寄件 §7 AC12）。五项都可空：空 = 用 `default*` 那一份
  * （门店名 / 店主登录手机 / 门店地址）。`default*` 给端上当 placeholder，让商家看到「不填会用什么」。
@@ -1620,6 +1642,12 @@ export interface MerchantApi extends ManagementApi,IssuerApi,StoredValueGovernan
    * 权限用 `biz:receive` 不是 `biz:order:view`：后者是只读权限，配送员也持有。
    */
   mConfirmOfflinePay(subOrderNo: string): Promise<Order>;
+
+  /**
+   * 本店可选的快递公司（门店范围，按门店所属主体的经营市场给；biz:ship 或 biz:store 任一即可读）。
+   * 发货、改运单、发货设置的承运商从这里选，提交 `code`
+   */
+  mExpressCompanies(): Promise<ExpressCompanyList>;
 
   // ---- 快递代下单（TDD-快递100商家寄件）。权限与发货同一个 biz:ship
   /** 各家报价，按价从低到高；查不到价的那家不出现 */

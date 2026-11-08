@@ -12,7 +12,7 @@
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
 统计：**50 个权限码 × 6 个角色 × 443 个受控功能点**
-（另有 0 个登录即可、16 个「任一权限即可」）。
+（另有 0 个登录即可、17 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -1136,6 +1136,7 @@
 - `/biz/example/before`　
 - `/biz/example/guarded-after`　
 - `/biz/example/guarded-before`　
+- `/biz/express/companies`　本店可选快递公司
 - `/biz/merchant/store-setup`　
 - `/biz/stores/{}/context`　
 - `/biz/stores/{}/end-access`　

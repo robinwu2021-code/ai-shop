@@ -920,8 +920,11 @@ class BizEndpointPermTest {
      * 汇总型端点：一次返回好几件互不相干的事，<b>任一权限即可进</b>， 粒度由端上按 {@code perms} 裁。
      *
      * <p>单独列一张表而不是丢进 {@link #PUBLIC}：它们仍然要求「在这家店有角色」， 空角色的人一样进不来。混进 PUBLIC 会让人以为这类端点谁都能调。
+     *
+     * <p>{@code /biz/express/companies} 是另一类「任一」：发货页（{@code biz:ship}）与发货设置页（{@code biz:store}）
+     * 都要读这份快递公司清单（TDD-商户App快递公司 E6）。
      */
-    private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
+    private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo", "/biz/express/companies");
 
     /*
      * 注册开店与商城（commerce）。三类判权都不进 REQUIRED，因为它们不是一个固定的 BizPerms 码：

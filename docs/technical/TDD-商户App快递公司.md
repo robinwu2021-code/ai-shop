@@ -1,6 +1,6 @@
 # TDD-商户 App 快递公司
 
-状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
+状态：已实现（2026-11-08：用户按「已拍板」一节各条的建议全部接受；实现与测试见 §5、§6）
 档位：1（新增端点 `GET /biz/express/companies`；`ExpressCompanies` 按市场分表，影响 `ship` / 发货设置的校验口径；`LogisticsPort` 加一个只读方法；无库表变更）
 关联需求：
 - 交接文档（ai-shop-bapp 仓库 `docs/implementation/功能矩阵与API交接文档.md`）第 12 模块「订单与履约」12-05（填运单发货）、12-17（发货设置的默认承运商）及该模块「待决与注意」第 2 条；附录 B「`/biz/express/companies` · 没有时可先用叫快递」
@@ -217,21 +217,113 @@ public final class ExpressCompanies {
 
 ---
 
-## §5 对账三 · 实现 → 需求（测试，计划，未跑）
+## §5 对账三 · 实现 → 需求（测试，已跑）
+
+先写测试跑出红（实现前，同一分支 `54eb737ab`）：`BizExpressCompanyFlowTest` 8 条全红（端点不存在、台湾码被 10400、
+空门店号回填 `BAD_REQUEST`），`StoreScopedDailyRoutesFlowTest#express_companies_pass_admission_for_new_model_store` 回 70006，
+`express-companies.test.ts` 8/9 红；其余新测试引用的类 / 方法尚不存在（编译红）。实现后全部转绿：
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| E1 | `BizExpressCompanyFlowTest#member_reads_companies_in_display_order` | 未跑 | |
-| E10 | `BizExpressCompanyFlowTest#market_is_resolved_with_deploy_default`、`#tw_store_reports_courier_pickup_unavailable`、`#cn_store_reports_pickup_available_only_when_channel_enabled` | 未跑 | 计划：`market` 改回原值 → 第一条变红；去掉交集判断 → 台湾那条变红 |
-| E2 | `ExpressCompaniesTest#tw_market_lists_tw_carriers_only`、`#cn_market_keeps_the_14_wechat_codes_in_order`、`#unknown_market_is_empty`；`BizExpressCompanyFlowTest#entity_without_market_falls_back_to_deploy_default` | 未跑 | 计划：`forMarket` 改成恒返回大陆表 → TW 用例变红 |
-| E3 | `BizExpressCompanyFlowTest#every_listed_code_is_accepted_by_ship_and_ship_setting`（逐个码打 `ship` 与 `ship-setting`）、`OrderShippingServiceTest#tw_store_rejects_cn_only_code`、`#tw_store_name_is_normalized_to_code`（送「黑貓宅急便」存 `TCAT`）、`#tw_store_cn_name_is_not_normalized`（台湾门店送「顺丰速运」→ 10400）、`ExpressPickupServiceTest#pickup_write_back_uses_order_store_market`（空门店号回填仍按订单所属市场校验通过） | 未跑 | 计划：`ship` 仍用旧 `isValid` → TW 码被拒、变红；市场改取调用方门店号 → 回填那条变红 |
-| E9 | `BizWaybillCorrectionFlowTest#unchanged_carrier_passes_even_if_not_in_list`、`#blank_carrier_keeps_current`、`#listed_name_is_normalized`、`#unknown_new_carrier_is_written_and_warned_not_rejected` | 未跑 | 计划：改运单加上「清单外 → 10400」→ 最后一条变红 |
-| E4 | `WxShippingUploadResolverTest#tw_code_is_never_reported_to_wechat` | 未跑 | |
-| E5 | `LogisticsPortImplTest#trace_covers_only_kuaidi100_mapped_carriers`；`BizExpressCompanyFlowTest#tw_carriers_report_trace_unsupported` | 未跑 | |
-| E6 | `BizEndpointPermTest#everyBizEndpointHasADecision`（已有，加登记后通过）、`BizExpressCompanyFlowTest#clerk_without_ship_or_store_is_forbidden` | 未跑 | |
-| E7 | `StoreScopedDailyRoutesFlowTest#express_companies_pass_admission_for_new_model_store` | 未跑 | 计划：删登记行 → 70006 变红 |
-| E8 | `packages/shared/tests/express-companies.test.ts`「按市场逐项一致」 | 未跑 | 计划：TS 侧少一家台湾承运商 → 变红 |
-| 闸门 | `ArchitectureTest`、`BizEndpointPermTest`、`npm test`（packages/shared） | 未跑 | |
+| E1 | `BizExpressCompanyFlowTest#member_reads_companies_in_display_order` | ✅ | 实现前红（端点不存在） |
+| E10 | `BizExpressCompanyFlowTest#entity_without_market_falls_back_to_deploy_default`、`#tw_store_lists_tw_carriers_without_trace_or_pickup`；`BizExpressCompanyControllerTest#market_is_resolved_with_deploy_default`、`#tw_store_reports_courier_pickup_unavailable`、`#cn_store_reports_pickup_available_only_when_channel_enabled` | ✅ | 流程两条实现前红 |
+| E2 | `ExpressCompaniesTest#tw_market_lists_tw_carriers_only`、`#cn_market_keeps_the_14_wechat_codes_in_order`、`#unknown_market_is_empty`；`BizExpressCompanyFlowTest#entity_without_market_falls_back_to_deploy_default` | ✅ | — |
+| E3 | `BizExpressCompanyFlowTest#every_listed_code_is_accepted_by_ship_and_ship_setting`（大陆 14 + 台湾 5 个码逐个打 `ship` 与 `ship-setting`）、`#tw_store_validates_by_its_own_market`（大陆码 10400、「黑貓宅急便」存 `TCAT`、「顺丰速运」10400，发货设置同口径）、`#cn_store_normalizes_name_and_rejects_tw_code`、`#pickup_write_back_uses_order_store_market`（`MerchantOrderService#ship(entityNo, null, …)`，即叫快递回填的那条调用）；`ExpressCompaniesTest#resolve_normalizes_names_within_market_only` | ✅ | 实现前红（`ship` 用旧 `isValid` → 台湾码 10400；回填那条 `BAD_REQUEST`） |
+| E9 | `BizWaybillCorrectionControllerTest#unchanged_carrier_passes_even_if_not_in_list`、`#blank_carrier_keeps_current`、`#listed_name_is_normalized`、`#unknown_new_carrier_is_written_and_warned_not_rejected`（断言 WARN 带订单号、门店号、原值） | ✅ | 编译红（新构造器） |
+| E4 | `WxShippingUploadResolverTest#tw_code_is_never_reported_to_wechat`（存量单路径与冻结快照路径各一次） | ✅ | 守的是「`isValid` 不得放宽成跨市场」：基线上台湾码不在任何表里，本条在基线即绿 |
+| E5 | `LogisticsPortImplTest#trace_covers_only_kuaidi100_mapped_carriers`；`BizExpressCompanyControllerTest#trace_supported_comes_from_logistics_coverage`；`BizExpressCompanyFlowTest#tw_store_lists_tw_carriers_without_trace_or_pickup` | ✅ | — |
+| E6 | `BizEndpointPermTest`（`ANY_OF` 登记后 `/biz/express/companies` 不在未决清单里）、`BizExpressCompanyFlowTest#clerk_without_ship_or_store_is_forbidden`（CS 角色 70006；COURIER 只有 `biz:ship` 也读得到） | ✅ | 实现前红 |
+| E7 | `StoreScopedDailyRoutesFlowTest#express_companies_pass_admission_for_new_model_store` | ✅ | 实现前红（70006 `CONTACT_ADMIN`） |
+| E8 | `packages/shared/tests/express-companies.test.ts`「按市场逐项一致」+「对照量：每个市场都真的抠到了东西，且没有一条 `new Company` 落在市场之外」（台湾必须恰好 5 条） | ✅ | 做过一次：TS 侧删掉 `PELICAN` → 「按市场逐项一致」变红 |
+| 闸门 | `ArchitectureTest`、`BizEndpointPermTest`、`packages/shared` vitest、`b-app` / `c-app` `vue-tsc`、`check-generated-docs` | 见下 | — |
+
+**真实输出**（`cd backend && mvn -q -o -pl shop-app -am test -Dtest=<上表各类与发货 / 改运单 / 发货设置 / 微信上报相关既有类>`，2026-11-08）：
+
+```
+Tests run: 5,  Failures: 0 -- in ai.neargo.shop.common.ExpressCompaniesTest
+Tests run: 4,  Failures: 0 -- in ai.neargo.shop.trade.api.biz.BizExpressCompanyControllerTest
+Tests run: 8,  Failures: 0 -- in ai.neargo.shop.scenario.BizExpressCompanyFlowTest
+Tests run: 4,  Failures: 0 -- in ai.neargo.shop.portal.biz.BizWaybillCorrectionControllerTest
+Tests run: 1,  Failures: 0 -- in ai.neargo.shop.paybridge.WxShippingUploadResolverTest
+Tests run: 7,  Failures: 0 -- in ai.neargo.shop.logistics.port.LogisticsPortImplTest
+Tests run: 14, Failures: 0 -- in ai.neargo.shop.commercebridge.StoreScopedDailyRoutesFlowTest
+Tests run: 9,  Failures: 0 -- in ai.neargo.shop.logistics.channel.kuaidi100.Kuaidi100TraceProviderTest
+Tests run: 7,  Failures: 0 -- in ai.neargo.shop.channel.express.port.Kuaidi100PickupGatewayTest
+Tests run: 9,  Failures: 0 -- in ai.neargo.shop.scenario.OrderShipWiringFlowTest
+Tests run: 1,  Failures: 0 -- in ai.neargo.shop.scenario.OrderShippingOperatorFlowTest
+Tests run: 15, Failures: 0 -- in ai.neargo.shop.scenario.BizOrderFulfillFlowTest
+Tests run: 12, Failures: 0 -- in ai.neargo.shop.scenario.ExpressPickupFlowTest
+Tests run: 5,  Failures: 0 -- in ai.neargo.shop.scenario.WxShippingSourceIsolationFlowTest
+Tests run: 3,  Failures: 0 -- in ai.neargo.shop.scenario.ShippingRefundSnapshotFlowTest
+Tests run: 3,  Failures: 0 -- in ai.neargo.shop.scenario.OrderLogisticsFinalFlowTest
+Tests run: 11, Failures: 0 -- in ai.neargo.shop.scenario.OpsLogisticsFlowTest
+Tests run: 9,  Failures: 0 -- in ai.neargo.shop.scenario.OrderMappedOpsLogisticsFlowTest
+Tests run: 1,  Failures: 0 -- in ai.neargo.shop.unit.WxShippingUploadImmediateConsumerTest
+Tests run: 4,  Failures: 0 -- in ai.neargo.shop.trade.GenericIndustryFulfillmentGuardTest
+Tests run: 22, Failures: 5, Skipped: 1 -- in ai.neargo.shop.arch.ArchitectureTest
+Tests run: 12, Failures: 1 -- in ai.neargo.shop.arch.BizEndpointPermTest
+```
+
+`ArchitectureTest` 5 条（`implsMustLiveInDedicatedPackage`、`noFullyQualifiedReferences`、`everyScheduledMethodMustBeLocked`、
+`serviceMustBeInterface`、`controllersMustNotTouchMappers`）与 `BizEndpointPermTest.everyBizEndpointHasADecision` 是基线已知失败：
+实现前在同一分支跑过同一组类，两份 surefire 报告去掉耗时与堆栈后**逐字相同**；未决清单里没有 `/biz/express/companies`。
+
+前端：`b-app` / `c-app` `npx vue-tsc --noEmit` 均 0 退出；`packages/shared` `vitest run` 712 条 687 过 25 红 ——
+红的 27 项（25 条用例 + 2 个整文件加载失败）与 `54eb737ab` 干净副本逐条相同（基线既有，与本次无关），`express-companies.test.ts` 9/9 过。
+`node scripts/check-generated-docs.mjs --check`：`✓ 26 个生成器的产物都是最新的`（重跑了 b-app OpenAPI、API 清单、B 端 API 详情、
+B 端功能点矩阵、三端权限矩阵、后端分层清单）。
+
+---
+
+## §6 对账二 · 设计 → 实现
+
+改动文件（提交 `git show --stat`，生成物另列）：
+
+| 动作 | 文件 | 对 §2 模块设计 |
+|---|---|---|
+| 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/ExpressCompanies.java` | ✅ 按市场分表；`forMarket` / `isValidFor` / `resolve` / `nameOf`（跨市场）/ `@Deprecated isValid` |
+| 新增 | `backend/shop-base/src/main/java/ai/neargo/shop/common/StoreMarkets.java` | ⚠️ 偏差 1 |
+| 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizExpressCompanyController.java` | ✅ |
+| 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/spi/logistics/LogisticsPort.java` | ✅ `default boolean traceCovers` |
+| 修改 | `backend/logistics/logistics-domain/src/main/java/ai/neargo/shop/logistics/port/LogisticsPortImpl.java` | ✅ 实现 `traceCovers`，原 `hasK100` 改为调它（同一口径） |
+| 修改 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/OrderShippingServiceImpl.java` | ✅（另见偏差 3） |
+| 修改 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/MerchantOrderServiceImpl.java` | ✅ `shipLegacy` |
+| 修改 | `backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/StoreShipSettingServiceImpl.java` | ✅ |
+| 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizWaybillCorrectionController.java` | ✅ E9 |
+| 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/paybridge/WxShippingUploadResolver.java` | ✅ |
+| 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopStoreMemberRoutes.java` | ✅ 「订单与售后」组 |
+| 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java` | ✅ `ANY_OF` |
+| 修改 | `packages/shared/src/utils/express-companies.ts`、`packages/shared/tests/express-companies.test.ts` | ✅（另见偏差 4） |
+| 修改 | `b-app/src/api/{contract,endpoints,http}.ts`、`b-app/src/api/mocks/order.ts`、`b-app/scripts/gen-openapi.mjs` | ⚠️ 偏差 5 |
+| 修改 | `backend/logistics/logistics-channel/.../Kuaidi100TraceProviderTest.java`、`backend/shop-channel/.../Kuaidi100PickupGatewayTest.java` | ⚠️ 偏差 2 |
+| 新增 / 修改（测试） | `ExpressCompaniesTest`、`BizExpressCompanyControllerTest`、`BizExpressCompanyFlowTest`、`BizWaybillCorrectionControllerTest`、`WxShippingUploadResolverTest`、`LogisticsPortImplTest`、`StoreScopedDailyRoutesFlowTest` | §5 |
+| 生成物 | `docs/api/openapi-b.yaml`、`docs/api/API清单.md`、`docs/api/API详情-B端.md`、`docs/technical/reference/{B端功能点-权限码-页面,三端权限矩阵-按业务域,后端分层清单}.md` | 重新生成 |
+
+库表、迁移、权限码、i18n、配置项：均未动（与 §2 一致，没有 V6xx）。
+
+### 偏差说明
+
+1. **新增 `StoreMarkets`（`ai.neargo.shop.common`，`@Component`）**。§2 只写了「市场取订单 / 门店自己的门店号，为空按
+   `shop.merchant.default-market` 回落」，没说放哪。清单接口、`ship`、`shipLegacy`、改运单、发货设置五处都要同一口径，
+   散写五遍迟早有一处忘了回落（存量大陆主体大多没写市场，忘了的那处会拒掉所有发货）。它只读 `MerchantQueryPort#storeProfileOf`，
+   不加 Port 方法。另：`mch_entity.market` 列非空，「没写市场」在库里是空串，`storeProfileOf` 已把空串当空处理。
+2. **删掉 `ExpressCompanies#all()`**（§2 草图没列它）。「全部」在分表之后语义不清；唯一调用方 `Kuaidi100TraceProviderTest`
+   改为 `forMarket("CN")`（它验的是「大陆能选的轨迹都查得到」，台湾首期本就不查）；`Kuaidi100PickupGatewayTest` 改用
+   `isValidFor("CN", …)`，不再调已废弃的 `isValid`。
+3. **`OrderShippingServiceImpl#correctByPlatform`（运营端改运单）也随之按订单市场校验并归一**：它与 `ship` 共用
+   `requireEligible`，§2 只列了 `ship`。大陆单零差异（大陆表原样）；台湾单此前任何码都过不了这里，现在能用台湾码更正。
+4. **端上共用文件多导出了 `EXPRESS_COMPANIES_BY_MARKET`、`expressCompaniesOf(market)`、`expressCompanyName(code)`**；
+   `EXPRESS_COMPANIES` 仍是大陆表，b-app / c-app 现有引用一行没动。对账测试改为先去掉 Java 注释再抠（类注释里举例的
+   `new Company("…", "…")` 会被误算），并按 `BY_MARKET` 映射分组、要求「分组后的条数 = 全文件 `new Company` 条数」。
+5. **b-app 契约补了端点**（`mExpressCompanies` → `GET /biz/express/companies`，响应类型 `ExpressCompanyList` /
+   `ExpressCompanyOption` 写在 `contract.ts`）：§2 只说「App 要改」，没有列 uni-app b-app 的契约文件；不补的话 OpenAPI 与
+   API 清单里没有这个端点。mock 只有大陆门店，给大陆 14 家、`courierPickupAvailable: true`。b-app 页面仍用编译期常量
+   （它只服务大陆单），没有改成调接口。
+6. **测试类名与 §5 计划不同**：`OrderShippingServiceTest#…` / `ExpressPickupServiceTest#…` 的几条并进了
+   `BizExpressCompanyFlowTest`（走真实 HTTP 与真实 `MerchantOrderService`，比替身更接近线上）；`BizWaybillCorrectionFlowTest`
+   改成 `BizWaybillCorrectionControllerTest` 单测 —— 商户改运单要先有已登记的物流运单（outbox → 物流域登记），
+   流程夹具代价与要验的分支不相称，四条分支只看「交给 `changeWaybill` 的承运商」与 WARN，单测即可断言；
+   能不能叫快递的两个分支（通道开 / 关）同理放在 `BizExpressCompanyControllerTest`。
 
 ---
 
@@ -276,3 +368,4 @@ public final class ExpressCompanies {
 | 2026-11-08 | 起草（草稿，未拍板） |
 | 2026-11-08 | 按商户 App 评审（TDD评审-商户App.md）修订：见上方「评审修订说明」；状态仍为草稿 |
 | 2026-11-08 | 用户按「已拍板」各条建议全部接受，状态改为已确认 |
+| 2026-11-08 | 实现（分支 `codex/p0-express-companies`）：§5 测试全绿，基线已知失败未增；§6 偏差 6 条；状态改为已实现 |

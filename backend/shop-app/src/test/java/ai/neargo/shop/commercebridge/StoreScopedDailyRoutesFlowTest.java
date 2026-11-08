@@ -285,6 +285,15 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 快递公司清单（TDD-商户App快递公司 E7）在新模型门店上能进门店，且店主读得到（不是 70006）")
+    void express_companies_pass_admission_for_new_model_store() throws Exception {
+        String[] o = newModelOwner("15965020116");
+        JsonNode r = call(o[0], o[1], "/biz/express/companies");
+        assertEquals(0, r.path("code").asInt(), r.toString());
+        assertFalse(r.path("data").path("companies").isEmpty(), r.toString());
+    }
+
+    @Test
     @DisplayName("★★★ 没选门店：日常接口回 SELECT_STORE（让 App 去选店），而不是「联系管理员」")
     void noSelectionAsksToSelectStore() throws Exception {
         String[] o = newModelOwner("15965020102");

@@ -21,7 +21,7 @@ import {
 } from "./_shared";
 import type { ExpressPickup, MerchantApi } from "../contract";
 import { beginMockRefund } from "@shared/mock/refund";
-import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
+import { EXPRESS_COMPANIES, expressCompaniesOf } from "@shared/utils/express-companies";
 
 export const orderMock: Pick<MerchantApi,
   "mOrderList"
@@ -38,6 +38,7 @@ export const orderMock: Pick<MerchantApi,
   | "mDelivered"
   | "mPrepare"
   | "mConfirmOfflinePay"
+  | "mExpressCompanies"
   | "mExpressQuotes"
   | "mBookExpress"
   | "mExpressPickup"
@@ -268,6 +269,17 @@ export const orderMock: Pick<MerchantApi,
     pushTimeline(o, "商家已确认收款");
     persist();
     return delay(o);
+  },
+
+  // ---------------------------------------------------------------- 本店可选快递公司
+
+  // mock 只有大陆门店，且 mock 能叫快递（见下面 mBookExpress）：与真后端大陆门店、快递100 已开通时同形
+  async mExpressCompanies() {
+    return delay({
+      market: "CN",
+      courierPickupAvailable: true,
+      companies: expressCompaniesOf("CN").map((c) => ({ ...c, traceSupported: true })),
+    });
   },
 
   // ---------------------------------------------------------------- 快递代下单

@@ -16,7 +16,7 @@ import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateL
   GoodsRevision,
   DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PayoutAccount,
-  PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate,
+  PurchaseInvoice, Statement, ExpressQuote, ExpressCompanyList, ExpressPickup, ShipSetting, StoreFreightTemplate,
   NotifySetting } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
@@ -557,6 +557,7 @@ export const httpApi: MerchantApi = {
   mPrepare: (orderNo) => http.post<Order>(buildPath(E.mPrepare.path, { orderNo }), {}),
   mConfirmOfflinePay: (subOrderNo) =>
     http.post<Order>(buildPath(E.mConfirmOfflinePay.path, { orderNo: subOrderNo }), {}),
+  mExpressCompanies: () => http.get<ExpressCompanyList>(E.mExpressCompanies.path),
   mExpressQuotes: (orderNo, weightKg) =>
     http.get<ExpressQuote[]>(buildPath(E.mExpressQuotes.path, { orderNo }), { weightKg } satisfies ExpressQuotesQuery),
   mBookExpress: (orderNo, carrier, weightKg) =>
