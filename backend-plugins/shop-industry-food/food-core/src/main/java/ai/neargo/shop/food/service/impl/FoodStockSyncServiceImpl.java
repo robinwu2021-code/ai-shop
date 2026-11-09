@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;

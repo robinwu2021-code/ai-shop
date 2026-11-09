@@ -208,7 +208,7 @@ public class FoodAutoConfiguration {
             ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs,
             @Value("${shop.food.bundle-publication-enabled:false}") boolean bundlePublicationEnabled,
             RecipeMapper recipeHeads, RecipeLineMapper recipeLines, RecipeAdjustmentMapper recipeAdjustments,
-            DishOptionGroupMapper recipeBindings, ai.neargo.shop.food.service.FoodMaterialSource materialCatalog,
+            DishOptionGroupMapper recipeBindings, ai.neargo.shop.food.spi.FoodMaterialSource materialCatalog,
             @Value("${shop.food.recipe-publication-enabled:false}") boolean recipePublicationEnabled,
             ObjectProvider<MenuWorkingDefinitionAccess> workingMenus, DishMapper dishes,
             MenuChannelBindingMapper channelBindings, StationMapper stationHeads, SkuStationMapper stationRoutes,
@@ -317,7 +317,7 @@ public class FoodAutoConfiguration {
             RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups,
             IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs, ai.neargo.shop.food.service.FoodMaterialSource materials,
+            ObjectProvider<GoodsCatalogQueryPort> catalogs, ai.neargo.shop.food.spi.FoodMaterialSource materials,
             CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,

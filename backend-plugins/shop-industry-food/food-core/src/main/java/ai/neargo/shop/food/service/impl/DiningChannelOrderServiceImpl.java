@@ -1,6 +1,10 @@
 package ai.neargo.shop.food.service.impl;
 
-import static ai.neargo.shop.food.service.impl.DiningChannelSourceStore.require;
+import ai.neargo.shop.food.service.support.DiningChannelOrderBinder;
+import ai.neargo.shop.food.service.support.DiningChannelProductionPlanBuilder;
+import ai.neargo.shop.food.service.support.DiningChannelOriginalModifierResolver;
+import ai.neargo.shop.food.service.support.DiningChannelSourceStore;
+import static ai.neargo.shop.food.service.support.DiningChannelSourceStore.require;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;

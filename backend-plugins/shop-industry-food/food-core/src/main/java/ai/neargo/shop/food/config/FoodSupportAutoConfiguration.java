@@ -37,7 +37,7 @@ public class FoodSupportAutoConfiguration {
             ObjectProvider<IndustryOrderPort> orders,
             ObjectProvider<PricingCheckoutPort> pricing,
             ObjectProvider<InventoryDemandPlanPort> inventory,
-            ObjectProvider<ai.neargo.shop.food.service.FoodMaterialSource> materials,
+            ObjectProvider<ai.neargo.shop.food.spi.FoodMaterialSource> materials,
             ObjectProvider<ai.neargo.shop.spi.food.FoodLocalStockPort> localStock,
             @org.springframework.beans.factory.annotation.Value("${shop.food.local-stock.enabled:false}")boolean local,
             ObjectProvider<PrintPort> printing,

@@ -7,7 +7,7 @@ import ai.neargo.shop.event.outbox.OutboxEnvelope;
 import ai.neargo.shop.event.outbox.OutboxHandler;
 import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.food.policy.DiningChannelFulfillmentSignalPolicy;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.spi.commerce.ChannelFulfillmentTriggerPort;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 import ai.neargo.shop.spi.food.DiningServiceEvent;

@@ -2,7 +2,7 @@ package ai.neargo.shop.food.commerce.config;
 
 import ai.neargo.shop.food.commerce.api.internal.FoodCommerceInternalSecurity;
 import ai.neargo.shop.food.commerce.api.internal.InternalFoodChannelFulfillmentSignalController;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

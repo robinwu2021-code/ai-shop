@@ -1,5 +1,6 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
+import ai.neargo.shop.food.service.impl.FoodStockSyncDispatchServiceImpl;
 import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -19,10 +20,10 @@ import tools.jackson.databind.ObjectMapper;
 public final class FoodStockSyncWorker {
     private static final Set<String> TERMINAL=Set.of("COMPLETED","CANCELLED");
     private final StockSyncDeliveryMapper deliveries;
-    private final FoodStockSyncDispatcher dispatcher;
+    private final FoodStockSyncDispatchServiceImpl dispatcher;
     private final ObjectMapper json;
     private final TransactionTemplate write,outside;
-    public FoodStockSyncWorker(StockSyncDeliveryMapper deliveries,FoodStockSyncDispatcher dispatcher,
+    public FoodStockSyncWorker(StockSyncDeliveryMapper deliveries,FoodStockSyncDispatchServiceImpl dispatcher,
             ObjectMapper json,PlatformTransactionManager manager){
         this.deliveries=deliveries;this.dispatcher=dispatcher;this.json=json;
         write=new TransactionTemplate(manager);write.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);

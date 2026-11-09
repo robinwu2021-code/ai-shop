@@ -49,8 +49,6 @@ class DishServiceTest extends FoodWriteGuardFixture {
         f.sql().execute("CREATE TABLE fnb_dish (" + common + "goods_no VARCHAR(32) UNIQUE,"
                 + "dish_kind VARCHAR(16),prep_seconds INT,status VARCHAR(16),presentation TEXT,"
                 + "measurement_policy TEXT,config_version BIGINT)");
-        c.getBean(UnifiedOutboxFacade.class)
-                .setArchiveOnly(Set.of("PLATFORM:FOOD_DISH_CHANGED"));
         return f;
     }
 

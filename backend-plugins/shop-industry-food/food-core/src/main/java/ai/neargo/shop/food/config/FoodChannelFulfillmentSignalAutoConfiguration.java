@@ -6,8 +6,8 @@ import ai.neargo.shop.food.mapper.FoodMappers.KitchenTicketMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
-import ai.neargo.shop.food.service.impl.DiningChannelFulfillmentSignalPortImpl;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.port.DiningChannelFulfillmentSignalPortImpl;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

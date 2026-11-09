@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import tools.jackson.databind.ObjectMapper;
 
 class CoreMaterialCatalogQueryPortTest {
     private static MaterialCatalogInternalApi materialApi(
@@ -86,6 +87,8 @@ class CoreMaterialCatalogQueryPortTest {
         try {
             new ApplicationContextRunner()
                     .withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                     .withPropertyValues(
                             "shop.food.enabled=true",
                             "shop.services.internal-token=wire",
@@ -272,6 +275,8 @@ class CoreMaterialCatalogQueryPortTest {
         assertThat(calls).hasValue(0);
         new ApplicationContextRunner()
                 .withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=true")
                 .run(
                         c -> {
@@ -290,6 +295,8 @@ class CoreMaterialCatalogQueryPortTest {
     void disabledRestaurantDoesNotRegisterMaterialRemote() {
         new ApplicationContextRunner()
                 .withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=false")
                 .run(
                         c ->

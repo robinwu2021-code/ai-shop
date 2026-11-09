@@ -17,10 +17,10 @@ import ai.neargo.shop.food.service.DiningChannelOrderService;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.SalesQuotaClaimService;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.food.service.impl.DiningChannelOrderBinder;
+import ai.neargo.shop.food.service.support.DiningChannelOrderBinder;
 import ai.neargo.shop.food.service.impl.DiningChannelOrderServiceImpl;
-import ai.neargo.shop.food.service.impl.DiningChannelProductionPlanBuilder;
-import ai.neargo.shop.food.service.impl.DiningChannelSourceStore;
+import ai.neargo.shop.food.service.support.DiningChannelProductionPlanBuilder;
+import ai.neargo.shop.food.service.support.DiningChannelSourceStore;
 import ai.neargo.shop.food.spi.DiningChannelSourceFactsPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort;
@@ -77,7 +77,7 @@ public class FoodChannelOrderAutoConfiguration {
 
     @Bean
     DiningChannelProductionPlanBuilder diningChannelProductionPlanBuilder(
-            DiningChannelSourceStore store, ai.neargo.shop.food.service.FoodMaterialSource materials, ObjectMapper json) {
+            DiningChannelSourceStore store, ai.neargo.shop.food.spi.FoodMaterialSource materials, ObjectMapper json) {
         return new DiningChannelProductionPlanBuilder(store, materials.port(), json);
     }
 

@@ -1,13 +1,13 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.dto.FoodStockContracts.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.FoodLocalStockBalance;
-import ai.neargo.shop.food.service.FoodStockItemService;
-import ai.neargo.shop.food.service.FoodStockBalanceService;
+import ai.neargo.shop.food.service.FoodStockManagementService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -24,7 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** One transaction boundary for the two management contracts; no independent inventory calls. */
-public final class FoodStockManagementServiceImpl implements FoodStockItemService, FoodStockBalanceService {
+public final class FoodStockManagementServiceImpl implements FoodStockManagementService {
     private final StockItemMapper items;
     private final StockBalanceMapper balances;
     private final StockCommandMapper commands;
