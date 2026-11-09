@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "B端注册至进件资料提交 API",
-    "version": "2026-11-05.2-dual-map",
-    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。 2026-11-05 门店列表 Store 补经营上下文 7 个可选字段（与 Flutter .2-store-setup 一致）。 门店经营上下文 CurrentStoreCommercialContext 同步补 8 个可选字段。 2026-11-05 双地图（TDD-双地图提供方与门店选点）：StoreSetupMarket.mapProvider 增 GOOGLE 并补 mapJsKey / mapJsSecurity；quick-start 补 latE6 / lngE6 / coordSys；新收录既有端点 /biz/geo/tips、/biz/geo/reverse（新增可选 market 参数与 coordSys 字段）。"
+    "version": "2026-11-09.1-feature-matrix",
+    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共33个操作；未新增业务端点。 2026-11-04 补 store-setup 与端准入三条（end-access / end-sessions / pos/access）。 2026-11-05 门店列表 Store 补经营上下文 7 个可选字段（与 Flutter .2-store-setup 一致）。 门店经营上下文 CurrentStoreCommercialContext 同步补 8 个可选字段。 2026-11-05 双地图（TDD-双地图提供方与门店选点）：StoreSetupMarket.mapProvider 增 GOOGLE 并补 mapJsKey / mapJsSecurity；quick-start 补 latE6 / lngE6 / coordSys；新收录既有端点 /biz/geo/tips、/biz/geo/reverse（新增可选 market 参数与 coordSys 字段）。 2026-11-09 功能矩阵（TDD-B端门店功能矩阵与方案准入）：新增 GET /biz/business-types/{typeCode}/feature-matrix 与 GET /biz/stores/{storeNo}/features。"
   },
   "servers": [
     {
@@ -5476,6 +5476,367 @@
           }
         ]
       }
+    },
+    "/biz/business-types/{typeCode}/feature-matrix": {
+      "get": {
+        "operationId": "getBusinessTypeFeatureMatrix",
+        "summary": "查看经营类型的功能矩阵（功能 × 三档 × 预置角色）",
+        "description": "TDD-B端门店功能矩阵与方案准入。开店选方案、方案比较页用；档位包含关系取已发布方案，角色列由 BizPerms 预置角色现算。未发布权益码的功能不返回。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/BusinessTypeFeatureMatrix"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "businessTypeCode": "FNB",
+                    "catalogVersion": 12,
+                    "status": "PUBLISHED",
+                    "tiers": [
+                      {
+                        "tier": "FREE",
+                        "planNo": "PLAN-FREE",
+                        "displayName": "免費版",
+                        "purchaseAvailable": false
+                      }
+                    ],
+                    "roles": [
+                      "OWNER",
+                      "MANAGER",
+                      "CLERK",
+                      "PICKER",
+                      "COURIER",
+                      "CS"
+                    ],
+                    "features": [
+                      {
+                        "featureCode": "FNB_ORDERING",
+                        "group": "FNB",
+                        "entitlementCode": "END_FNB",
+                        "requiresPayActivation": false,
+                        "minTier": "PRO",
+                        "tiers": {
+                          "FREE": false,
+                          "PRO": true,
+                          "CHAIN": true
+                        },
+                        "usePerms": [
+                          "biz:order:view"
+                        ],
+                        "managePerms": [
+                          "biz:aftersale"
+                        ],
+                        "roles": {
+                          "OWNER": "MANAGE",
+                          "MANAGER": "MANAGE",
+                          "CLERK": "USE",
+                          "PICKER": "NONE",
+                          "COURIER": "USE",
+                          "CS": "MANAGE"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "typeCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "精确编码；不得百分号编码 /biz 路径。"
+          }
+        ]
+      }
+    },
+    "/biz/stores/{storeNo}/features": {
+      "get": {
+        "operationId": "getSelectedStoreFeatures",
+        "summary": "当前用户在所选店每个功能的状态与下一步",
+        "description": "TDD-B端门店功能矩阵与方案准入。工作台入口裁剪与锁定态用：收款等基础功能 FREE 即有但要先开通收款；行业功能要对应方案。只做展示判定，真正拦截仍在各接口。切店、购买/续费完成、serverNow ≥ nextBoundaryAt 时重读。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "有效所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CurrentStoreFeatures"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "storeNo": "STORE-EXAMPLE",
+                    "businessTypeCode": "FNB",
+                    "commerceModel": "STORE_V1",
+                    "currentTier": "FREE",
+                    "entitlementVersion": 7,
+                    "serverNow": 1793717808626,
+                    "nextBoundaryAt": null,
+                    "payActivation": "ACTIVE",
+                    "features": [
+                      {
+                        "featureCode": "COLLECT",
+                        "group": "BASE",
+                        "entitlementCode": "END_BIZ_APP",
+                        "status": "AVAILABLE",
+                        "nextAction": "ENTER",
+                        "requiredTier": "FREE",
+                        "effectiveUntil": null,
+                        "canUse": true,
+                        "canManage": true
+                      },
+                      {
+                        "featureCode": "FNB_ORDERING",
+                        "group": "FNB",
+                        "entitlementCode": "END_FNB",
+                        "status": "NEED_PLAN",
+                        "nextAction": "VIEW_SUBSCRIPTION",
+                        "requiredTier": "PRO",
+                        "effectiveUntil": null,
+                        "canUse": false,
+                        "canManage": false
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8536,6 +8897,329 @@
           }
         },
         "description": "坐标反查地址。"
+      },
+      "FeatureMatrixTier": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "FREE",
+              "PRO",
+              "CHAIN"
+            ]
+          },
+          "planNo": {
+            "type": "string",
+            "description": ""
+          },
+          "displayName": {
+            "type": "string",
+            "description": "按 Accept-Language 本地化的方案名。"
+          },
+          "purchaseAvailable": {
+            "type": "boolean",
+            "description": ""
+          }
+        },
+        "required": [
+          "tier",
+          "planNo",
+          "displayName",
+          "purchaseAvailable"
+        ]
+      },
+      "FeatureMatrixFeature": {
+        "type": "object",
+        "properties": {
+          "featureCode": {
+            "type": "string",
+            "description": "功能机器码（如 COLLECT、FNB_ORDERING），端上按它翻译名称。"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "BASE",
+              "POS",
+              "RETAIL",
+              "FNB",
+              "SERVICE",
+              "MARKETING",
+              "CHAIN"
+            ],
+            "description": "功能分组；端上可按组折叠。"
+          },
+          "entitlementCode": {
+            "type": "string",
+            "description": "门控该功能的业务端权益码，如 END_BIZ_APP、END_FNB。"
+          },
+          "requiresPayActivation": {
+            "type": "boolean",
+            "description": "true = 门店要先开通收款。"
+          },
+          "minTier": {
+            "type": "string",
+            "enum": [
+              "FREE",
+              "PRO",
+              "CHAIN"
+            ],
+            "description": "包含该功能的最低档。"
+          },
+          "tiers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "档位名 → 是否包含。"
+          },
+          "usePerms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "有任一即可用；空 = 门店成员即可。"
+          },
+          "managePerms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "有任一即可管理；空 = 无管理动作。"
+          },
+          "roles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "NONE",
+                "USE",
+                "MANAGE"
+              ]
+            },
+            "description": "预置角色 → 默认能用到哪一级（由 BizPerms 现算）。"
+          }
+        },
+        "required": [
+          "featureCode",
+          "group",
+          "entitlementCode",
+          "requiresPayActivation",
+          "minTier",
+          "tiers",
+          "usePerms",
+          "managePerms",
+          "roles"
+        ]
+      },
+      "BusinessTypeFeatureMatrix": {
+        "type": "object",
+        "properties": {
+          "businessTypeCode": {
+            "type": "string",
+            "description": ""
+          },
+          "catalogVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": ""
+          },
+          "status": {
+            "type": "string",
+            "description": "PUBLISHED / UNAVAILABLE …"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureMatrixTier"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "预置角色，固定顺序 OWNER, MANAGER, CLERK, PICKER, COURIER, CS。"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureMatrixFeature"
+            },
+            "description": "只含该经营类型方案里发布了权益码的功能；顺序固定。"
+          }
+        },
+        "required": [
+          "businessTypeCode",
+          "status",
+          "tiers",
+          "roles",
+          "features"
+        ]
+      },
+      "StoreFeatureState": {
+        "type": "object",
+        "properties": {
+          "featureCode": {
+            "type": "string",
+            "description": ""
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "BASE",
+              "POS",
+              "RETAIL",
+              "FNB",
+              "SERVICE",
+              "MARKETING",
+              "CHAIN"
+            ],
+            "description": "功能分组；端上可按组折叠。"
+          },
+          "entitlementCode": {
+            "type": "string",
+            "description": ""
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NEED_PLAN",
+              "PLAN_EXPIRED",
+              "NOT_STARTED",
+              "REVOKED",
+              "STORE_DISABLED",
+              "FORBIDDEN",
+              "NO_PERMISSION",
+              "NEED_PAY_ACTIVATION",
+              "CHECK_UNAVAILABLE"
+            ],
+            "description": "按 商业 → 角色 → 收款开通 的顺序判，第一条不满足的就是状态。"
+          },
+          "nextAction": {
+            "type": "string",
+            "enum": [
+              "ENTER",
+              "VIEW_SUBSCRIPTION",
+              "CONTACT_OWNER",
+              "WAIT_FOR_START",
+              "CONTACT_ADMIN",
+              "APPLY_PAYMENT",
+              "RETRY_CHECK",
+              "REFRESH_CONTEXT"
+            ]
+          },
+          "requiredTier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "FREE",
+              "PRO",
+              "CHAIN",
+              null
+            ],
+            "description": "包含该功能的最低档；旧模型门店为 null。"
+          },
+          "effectiveUntil": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "当前连续有效期结束（毫秒）；null = 长期或未生效。"
+          },
+          "canUse": {
+            "type": "boolean",
+            "description": "= status 为 AVAILABLE。"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "可用且有任一管理权限码。"
+          }
+        },
+        "required": [
+          "featureCode",
+          "group",
+          "entitlementCode",
+          "status",
+          "nextAction",
+          "canUse",
+          "canManage"
+        ]
+      },
+      "CurrentStoreFeatures": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": ""
+          },
+          "businessTypeCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": ""
+          },
+          "commerceModel": {
+            "type": "string",
+            "enum": [
+              "STORE_V1",
+              "LEGACY"
+            ]
+          },
+          "currentTier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "FREE / PRO / CHAIN；旧模型门店为 null。"
+          },
+          "entitlementVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": ""
+          },
+          "serverNow": {
+            "type": "integer",
+            "description": ""
+          },
+          "nextBoundaryAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "到这个时刻（毫秒）要重读。"
+          },
+          "payActivation": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "NOT_ACTIVE",
+              "UNKNOWN"
+            ],
+            "description": "UNKNOWN = 收款状态读取失败，不等于未开通。"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreFeatureState"
+            }
+          }
+        },
+        "required": [
+          "storeNo",
+          "commerceModel",
+          "serverNow",
+          "payActivation",
+          "features"
+        ]
       }
     }
   }
