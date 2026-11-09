@@ -37,18 +37,18 @@
 | 15-12 技师与资源、可否被预约 | `GET /biz/beauty/staff-resources`、`POST …/{name}/bookable` | `GET/POST /biz/personnel`、`POST /biz/personnel/{personnelNo}/status-changes`；`GET/POST /biz/resources` | 用人员编号代替姓名；只有店主（`biz:store:admin`）能改 |
 | 15-13 停约 | `GET /biz/beauty/slots`、`POST /biz/appointment-slots/{slotNo}/close` | `GET /biz/stores/{storeNo}/appointment-slots`、`POST /biz/appointment-slots/{slotNo}/close` | 关闭接口不收请求体，App 的 `reason` 不会被保存 |
 | 15-14 排班 | `GET/POST /biz/beauty/schedule`、`GET …/schedule/impact` | `GET /biz/schedules`、`POST /biz/schedule-rules` | **缺口 5**：「改班前看影响」没有接口（`schedule-rules` 的响应不含受影响预约） |
-| 15-15 报表 | `GET /biz/beauty/report` | 无 | **缺口 6**：服务业报表没有后端接口 |
+| 15-15 报表 | `GET /biz/beauty/report` | `GET /biz/x/beauty/reports/scheduling?from=&to=`（预约数、到店率、爽约、取消、按技师次数、热门项目前 5） | 营收与按技师金额待 D19；App 按门店时区算今天 / 近 7 天 / 本月的窗口 |
 
 ## 三、缺口清单（后端待办）
 
 | # | 缺口 | 建议 |
 |---|---|---|
 | 1 | 预约详情里的会员摘要（到店次数、偏好、储值余额） | App 用会员域 `/biz/members/{memberNo}` 与储值接口补读；或美业详情接口增加会员摘要 |
-| 2 | 结账编排（储值抵扣 + 其他付款） | 与餐饮缺口 1 合并处理，和收款、储值域一起定 |
+| 2 | 结账编排（储值抵扣 + 其他付款） | 已定（执行方案 D5）：各付款方式带工单号 `bizNo`，是否收齐读 `GET /biz/stores/{storeNo}/receivables/{bizNo}`（[TDD-业务单收款汇总](./TDD-业务单收款汇总.md)） |
 | 3 | 首页汇总 | 短期 App 组合读 |
-| 4 | 订金规则 | 产品先定订金怎么收、怎么抵扣尾款，再定接口 |
+| 4 | 订金规则 | 已定（执行方案 D6）：订金用外部记账记在预约号下；结账读汇总时带 `relatedBizNo=预约号` 抵扣（[TDD-美业订金线下记账](./TDD-美业订金线下记账.md)） |
 | 5 | 改班影响预览 | `POST /biz/schedule-rules` 只返回 `ruleNo, resourceNo, resourceRevision, status`，不含受影响预约；需补影响预览接口 |
-| 6 | 服务业报表 | 新接口，需求先定指标（预约数、到店率、爽约、按技师业绩、热门项目） |
+| 6 | 服务业报表 | 首期计数已实现（[TDD-服务业报表](./TDD-服务业报表.md)）；营收口径见 D19 |
 
 ## 四、共通约定
 

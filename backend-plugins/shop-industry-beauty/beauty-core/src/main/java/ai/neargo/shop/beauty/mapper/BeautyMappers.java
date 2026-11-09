@@ -146,6 +146,60 @@ public final class BeautyMappers {
 
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
     public interface AppointmentMapper extends BaseMapper<BtyAppointment> {
+        /** 报表（BAPI-119）：窗口内按状态计数；start_at 以 UTC 存 */
+        @Select(
+                """
+                SELECT status AS status, COUNT(*) AS n FROM bty_appointment
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0
+                AND start_at>=#{from} AND start_at<#{to}
+                GROUP BY status
+                """)
+        java.util.List<java.util.Map<String, Object>> reportStatusCounts(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("from") LocalDateTime from,
+                @Param("to") LocalDateTime to);
+
+        /** 报表：到店预约中各人员在当前安排里被指派的项目数（同一项目多条安排只算一次） */
+        @Select(
+                """
+                SELECT a.personnel_no AS personnel_no, COUNT(DISTINCT i.appointment_item_no) AS n
+                FROM bty_appointment ap
+                JOIN bty_appointment_current c ON c.tenant_no=ap.tenant_no AND c.entity_no=ap.entity_no
+                  AND c.appointment_no=ap.appointment_no AND c.deleted=0
+                JOIN bty_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
+                  AND i.appointment_no=ap.appointment_no AND i.deleted=0
+                JOIN bty_appointment_assignment a ON a.tenant_no=i.tenant_no AND a.entity_no=i.entity_no
+                  AND a.appointment_item_no=i.appointment_item_no AND a.appointment_revision=c.arrangement_revision
+                  AND a.deleted=0
+                WHERE ap.tenant_no='MAIN' AND ap.entity_no=#{entityNo} AND ap.store_no=#{storeNo} AND ap.deleted=0
+                AND ap.status='CHECKED_IN' AND ap.start_at>=#{from} AND ap.start_at<#{to}
+                AND a.personnel_no IS NOT NULL
+                GROUP BY a.personnel_no ORDER BY n DESC, a.personnel_no LIMIT 200
+                """)
+        java.util.List<java.util.Map<String, Object>> reportPersonnelCounts(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("from") LocalDateTime from,
+                @Param("to") LocalDateTime to);
+
+        /** 报表：到店预约的项目按规格计数，前 5 */
+        @Select(
+                """
+                SELECT i.sku_no AS sku_no, COUNT(*) AS n
+                FROM bty_appointment ap
+                JOIN bty_appointment_item i ON i.tenant_no=ap.tenant_no AND i.entity_no=ap.entity_no
+                  AND i.appointment_no=ap.appointment_no AND i.deleted=0
+                WHERE ap.tenant_no='MAIN' AND ap.entity_no=#{entityNo} AND ap.store_no=#{storeNo} AND ap.deleted=0
+                AND ap.status='CHECKED_IN' AND ap.start_at>=#{from} AND ap.start_at<#{to}
+                GROUP BY i.sku_no ORDER BY n DESC, i.sku_no LIMIT 5
+                """)
+        java.util.List<java.util.Map<String, Object>> reportTopServices(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("from") LocalDateTime from,
+                @Param("to") LocalDateTime to);
+
         /** Conversion advances only the revision; execution still has not started. */
         @Update(
                 """
