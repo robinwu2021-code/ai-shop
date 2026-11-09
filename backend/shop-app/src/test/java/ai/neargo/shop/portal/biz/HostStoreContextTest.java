@@ -62,4 +62,20 @@ class HostStoreContextTest {
         assertNull(host.currencyScale());
         assertEquals("RETAIL", host.industryCode());
     }
+
+    /** TDD-子行业与能力端验收 B6：门店存了行业与子行业码就原样回显；没存回落经营类型 */
+    @org.junit.jupiter.api.Test
+    void storedSubIndustryIsEchoedOtherwiseTheBusinessType() {
+        var stored = HostStoreContext.of(context(),
+                Optional.of(new MerchantQueryPort.StoreProfile("S1", "E1", "Shop", "Road 1", "TW", "RETAIL",
+                        "RETAIL_CVS")),
+                Optional.empty());
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of("RETAIL", "RETAIL_CVS"),
+                java.util.List.of(stored.industryCode(), stored.subIndustryCode()));
+        var legacy = HostStoreContext.of(context(),
+                Optional.of(new MerchantQueryPort.StoreProfile("S1", "E1", "Shop", "Road 1", "TW")),
+                Optional.empty());
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of("RETAIL", "RETAIL"),
+                java.util.List.of(legacy.industryCode(), legacy.subIndustryCode()));
+    }
 }

@@ -87,8 +87,10 @@ public class BizFoundationController {
         if (market.isEmpty()) return new StoreSetup(List.of(), null);
         var router = geo == null ? null : geo.getIfAvailable();
         var map = router == null ? null : router.clientMapFor(market.get().market()).orElse(null);
+        var merchantPort = merchants == null ? null : merchants.getIfAvailable();
         return storeSetup(market.get(), queries.businessTypes(ShopCommerceActorAdapter.current()),
-                map, otherBusinessType);
+                map, otherBusinessType, merchantPort == null ? List.of() : merchantPort.industries(),
+                org.springframework.context.i18n.LocaleContextHolder.getLocale());
     }
 
     /**
@@ -109,11 +111,18 @@ public class BizFoundationController {
     /** @param map 该市场的端上地图（{@link GeoRouter#clientMapFor}）；null = 没有地图选点 */
     static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types, GeoRouter.ClientMap map,
                                  String otherBusinessType) {
-        var industries = types.stream()
-                .map(t -> new StoreSetupIndustry(t.businessTypeCode(), t.displayName(), List.of(
-                        new StoreSetupSubIndustry(t.businessTypeCode(), t.displayName(), t.businessTypeCode(),
-                                t.displayName(), t.catalogVersion()))))
-                .toList();
+        return storeSetup(m, types, map, otherBusinessType, List.of(), null);
+    }
+
+    /**
+     * 行业表（TDD-子行业与能力端验收 B1–B3）：两级树，每个子行业带它的经营类型；只列经营类型已发布且启用的子行业，
+     * 行业下没有可用子行业就不列。行业表为空时回落一对一默认映射（B2），与改动前完全一样。
+     */
+    static StoreSetup storeSetup(MarketPort.MarketBrief m, List<BusinessType> types, GeoRouter.ClientMap map,
+                                 String otherBusinessType, List<MerchantQueryPort.IndustryRow> rows,
+                                 Locale locale) {
+        List<StoreSetupIndustry> industries = rows == null || rows.isEmpty() ? defaultIndustries(types)
+                : catalogIndustries(types, rows, locale);
         String other = otherBusinessType == null || otherBusinessType.isBlank() ? null
                 : types.stream().map(BusinessType::businessTypeCode)
                         .filter(otherBusinessType.trim()::equals).findFirst().orElse(null);
@@ -122,6 +131,40 @@ public class BizFoundationController {
                 map == null ? null : map.provider(), map == null ? null : map.jsKey(),
                 map == null ? null : map.jsSecurity())),
                 other);
+    }
+
+    private static List<StoreSetupIndustry> catalogIndustries(List<BusinessType> types,
+                                                               List<MerchantQueryPort.IndustryRow> rows,
+                                                               Locale locale) {
+        var published = new java.util.LinkedHashMap<String, BusinessType>();
+        types.forEach(t -> published.put(t.businessTypeCode(), t));
+        var out = new java.util.ArrayList<StoreSetupIndustry>();
+        rows.stream().filter(r -> r.subIndustryCode() == null)
+                .sorted(java.util.Comparator.comparingInt(MerchantQueryPort.IndustryRow::sort))
+                .forEach(industry -> {
+                    var subs = rows.stream()
+                            .filter(r -> industry.industryCode().equals(r.industryCode())
+                                    && r.subIndustryCode() != null && published.containsKey(r.businessTypeCode()))
+                            .sorted(java.util.Comparator.comparingInt(MerchantQueryPort.IndustryRow::sort))
+                            .map(r -> {
+                                var type = published.get(r.businessTypeCode());
+                                return new StoreSetupSubIndustry(r.subIndustryCode(), r.displayName(locale),
+                                        type.businessTypeCode(), type.displayName(), type.catalogVersion());
+                            })
+                            .toList();
+                    if (!subs.isEmpty()) {
+                        out.add(new StoreSetupIndustry(industry.industryCode(), industry.displayName(locale), subs));
+                    }
+                });
+        return List.copyOf(out);
+    }
+
+    private static List<StoreSetupIndustry> defaultIndustries(List<BusinessType> types) {
+        return types.stream()
+                .map(t -> new StoreSetupIndustry(t.businessTypeCode(), t.displayName(), List.of(
+                        new StoreSetupSubIndustry(t.businessTypeCode(), t.displayName(), t.businessTypeCode(),
+                                t.displayName(), t.catalogVersion()))))
+                .toList();
     }
 
     @PreAuthorize("@perm.merchantAccount()")

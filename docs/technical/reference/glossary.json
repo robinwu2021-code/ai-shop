@@ -35732,6 +35732,13 @@
       "package": "ai.neargo.shop.platform.entity"
     },
     {
+      "table": "sys_store_industry",
+      "class": "SysStoreIndustry",
+      "zh": "平台行业与子行业（V643，TDD-子行业与能力端验收）。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
       "table": "trd_cart_item",
       "class": "TrdCartItem",
       "zh": "购物车行（服务端购物车）。",

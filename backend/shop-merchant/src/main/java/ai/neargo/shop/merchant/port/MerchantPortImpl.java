@@ -1194,8 +1194,35 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
                     ? null : entity.getMarket();
             return Optional.of(new StoreProfile(store.getStoreNo(), store.getEntityNo(), store.getName(),
-                    store.getAddress(), market));
+                    store.getAddress(), market, store.getIndustryCode(), store.getSubIndustryCode()));
         });
+    }
+
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.SysStoreIndustryMapper industryMapper;
+
+    /** 行业表（V643）；setter 注入，不动构造函数 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setIndustryMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.SysStoreIndustryMapper industryMapper) {
+        this.industryMapper = industryMapper;
+    }
+
+    @Override
+    public List<IndustryRow> industries() {
+        if (industryMapper == null) {
+            return List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> industryMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.SysStoreIndustry>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.SysStoreIndustry::getEnabled, 1)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getIndustryCode)
+                                .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getSort)))
+                .stream()
+                .map(r -> new IndustryRow(r.getIndustryCode(),
+                        r.getSubIndustryCode() == null || r.getSubIndustryCode().isEmpty() ? null
+                                : r.getSubIndustryCode(),
+                        r.getBusinessTypeCode(), r.getNameZh(), r.getNameTw(), r.getNameEn(),
+                        r.getSort() == null ? 0 : r.getSort()))
+                .toList();
     }
 
     @Override
@@ -1538,6 +1565,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             store.setAddressDetail(cmd.addressDetail());
             store.setIndustryText(cmd.industryText());
             store.setSubIndustryText(cmd.subIndustryText());
+            // 行业 / 子行业码（TDD-子行业与能力端验收 B4）：控制器已按行业表校验，只有登记过的才会带来
+            store.setIndustryCode(cmd.industryCode());
+            store.setSubIndustryCode(cmd.subIndustryCode());
             // 地图选点坐标原样存、记坐标系（TDD-双地图提供方与门店选点 AC5）：高德 gcj02，Google wgs84
             if (cmd.latE6() != null && cmd.lngE6() != null) {
                 store.setLatE6(cmd.latE6());

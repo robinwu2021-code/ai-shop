@@ -401,8 +401,8 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                 storeLinkService.linkOf(
                         s.getSlug() != null && !s.getSlug().isBlank() ? s.getSlug() : s.getStoreCode(),
                         null),
-                // 经营市场由调用方按主体补（StoreVO#withMarket）；这里只带门店自己的经营类型
-                null, null, null, null, null, null, s.getBusinessTypeCode(),
+                // 经营市场由调用方按主体补（StoreVO#withMarket）；这里带门店自己的经营类型与建店选的行业码（V643）
+                null, null, null, null, s.getIndustryCode(), s.getSubIndustryCode(), s.getBusinessTypeCode(),
                 s.getIndustryText(), s.getSubIndustryText());
     }
 

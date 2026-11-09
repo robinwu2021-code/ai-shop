@@ -84,9 +84,22 @@ public interface MerchantAdminPort {
      * @param lngE6           同上
      * @param coordSys        坐标的坐标系 {@code gcj02} / {@code wgs84}；没有坐标时为 null
      */
+    /**
+     * @param industryCode    建店选的行业码（TDD-子行业与能力端验收 B4）；只在行业表登记过时才有，否则为空
+     * @param subIndustryCode 建店选的子行业码；同上，子行业选「其他」时为空
+     */
     record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                              String market, String industryText, String subIndustryText, String addressDetail,
-                             Integer latE6, Integer lngE6, String coordSys) {
+                             Integer latE6, Integer lngE6, String coordSys, String industryCode,
+                             String subIndustryCode) {
+        /** 子行业之前（双地图）的形状：没有行业码 */
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                                 String market, String industryText, String subIndustryText, String addressDetail,
+                                 Integer latE6, Integer lngE6, String coordSys) {
+            this(ownerUserNo, storeName, address, businessTypeCode, market, industryText, subIndustryText,
+                    addressDetail, latE6, lngE6, coordSys, null, null);
+        }
+
         /** 双地图之前（三步建店）的形状：没有坐标 */
         public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
                                  String market, String industryText, String subIndustryText, String addressDetail) {

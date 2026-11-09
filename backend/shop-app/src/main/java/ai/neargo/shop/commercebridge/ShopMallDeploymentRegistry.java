@@ -34,14 +34,21 @@ final class ShopMallDeploymentRegistry implements BusinessEndReadinessPort {
         this.required = Map.copyOf(copy);
     }
 
+    /**
+     * 能力端（TDD-子行业与能力端验收 A1/A2）：行业、营销、连锁是商户 App 里的一组功能，没有独立客户端与路由，
+     * 挂商户 App 的 BIZ 路由验收。码必须等于权益码，且只能是这几个；POS 路由仍只能是 POS 本身。
+     */
+    static final Set<String> BIZ_CAPABILITIES =
+            Set.of("END_RETAIL", "END_FNB", "END_SERVICE", "END_MARKETING", "END_CHAIN");
+
     private static boolean installedPolicy(BusinessEndDeploymentOption e) {
-        String code =
-                switch (e.routePolicyRef() == null ? "" : e.routePolicyRef()) {
-                    case "commerce-route-v1:BIZ" -> CommerceRoutePolicy.BIZ;
-                    case "commerce-route-v1:POS" -> CommerceRoutePolicy.POS;
-                    default -> null;
-                };
-        return code != null && code.equals(e.code()) && code.equals(e.entitlementCode());
+        if (e.code() == null || !e.code().equals(e.entitlementCode())) return false;
+        return switch (e.routePolicyRef() == null ? "" : e.routePolicyRef()) {
+            case "commerce-route-v1:BIZ" ->
+                    CommerceRoutePolicy.BIZ.equals(e.code()) || BIZ_CAPABILITIES.contains(e.code());
+            case "commerce-route-v1:POS" -> CommerceRoutePolicy.POS.equals(e.code());
+            default -> false;
+        };
     }
 
     public List<BusinessEndDeploymentOption> acceptedDeployments(String tenant) {

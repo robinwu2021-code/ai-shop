@@ -7560,7 +7560,7 @@
               "string",
               "null"
             ],
-            "description": "store-setup 返回的子业态码，或 \"OTHER\"。行业非 OTHER 而子业态为 OTHER 时 subIndustryText 必填；否则必须等于 businessTypeCode。"
+            "description": "store-setup 返回的子业态码，或 \"OTHER\"。行业非 OTHER 而子业态为 OTHER 时 subIndustryText 必填，businessTypeCode 取该行业的经营类型；否则子业态须属于所选行业，businessTypeCode 必须等于该子业态的经营类型（store-setup 里的 businessTypeCode）。旧的一对一形状（行业 = 子业态 = 经营类型）仍接受。"
           },
           "industryText": {
             "type": [
@@ -7826,14 +7826,14 @@
               "string",
               "null"
             ],
-            "description": "经营行业：默认映射下等于 businessTypeCode；建店时行业选「其他」（industryText 非空）则为 OTHER。旧店可为空。"
+            "description": "经营行业：建店时选的行业码；建店时行业选「其他」（industryText 非空）则为 OTHER；未存行业码的旧店等于 businessTypeCode。旧店可为空。"
           },
           "subIndustryCode": {
             "type": [
               "string",
               "null"
             ],
-            "description": "子业态：默认映射下等于 businessTypeCode；建店时子业态选「其他」（subIndustryText 非空）则为 OTHER。旧店可为空。"
+            "description": "子业态：建店时选的子业态码；建店时子业态选「其他」（subIndustryText 非空）则为 OTHER；未存子业态码的旧店等于 businessTypeCode。旧店可为空。"
           },
           "businessTypeCode": {
             "type": [
