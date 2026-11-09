@@ -1,6 +1,8 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
-import static ai.neargo.shop.food.service.impl.DiningChannelSourceStore.require;
+import ai.neargo.shop.food.service.support.DiningChannelSourceStore;
+import ai.neargo.shop.food.service.support.DiningChannelModifierDemand;
+import static ai.neargo.shop.food.service.support.DiningChannelSourceStore.require;
 
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.OrderLineInput;
@@ -43,7 +45,7 @@ public final class DiningChannelProductionPlanBuilder {
      * Network material facts are loaded outside FOOD transactions; the core persists this exact
      * generation before reserve.
      */
-    Plan build(FnbChannelOrderSource source, String reservationRef, String subOrderNo) {
+    public Plan build(FnbChannelOrderSource source, String reservationRef, String subOrderNo) {
         require(MaterialCatalogFacts.validKey(reservationRef, 32));
         require(MaterialCatalogFacts.validKey(subOrderNo, 32));
         var data = store.query(() -> store.data(source));

@@ -165,7 +165,7 @@ rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并
 #
 # 上面的全量只编零售形态（backend/ 默认 reactor），插件五个模块与宿主的 food-embedded 测试
 # 都不在里面 —— 2026-10-26 评审时 HEAD 上已经红着一条插件测试（FoodArchitectureTest），
-# 就是因为没有任何闸门编它、测它。这里用 food-embedded + food-verify 两个 profile
+# 就是因为没有任何闸门编它、测它。这里用与部署相同的 profile（见下 FOOD_PROFILES）
 # 把插件拉进同一个 reactor，**只跑餐饮的测试**（零售全量上面已经跑过，不重复）。
 #
 # 排除两类：
@@ -174,10 +174,13 @@ rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并
 #                               与插件里 FOOD_TEST_DISPOSABLE 门控的用例同一类，常规构建不跑。
 # 判据是 0 失败（插件没有已知失败清单）。约 2 分钟。
 FOOD_LOG="$(mktemp "${TMPDIR:-/tmp}/head-food-test.XXXXXX")"
-echo "→ 餐饮插件：mvn -Pfood-embedded,food-verify test（只跑餐饮测试，约 2 分钟）"
+# profile 与部署（scripts/deploy-backend.sh）一致：2026-10-29 起 food-embedded 测试源码里有依赖 commerce 集成的用例
+# （FoodChannelVertical*），只开 food-embedded,food-verify 时宿主测试编译不过 —— 之前被前面模块的失败遮住了。
+FOOD_PROFILES="food-embedded,food-verify,commerce-embedded,food-commerce-embedded,retail-commerce-embedded"
+echo "→ 餐饮插件：mvn -P$FOOD_PROFILES test（只跑餐饮测试，约 2 分钟）"
 START=$(date +%s)
 set +e
-(cd "$WT/backend" && mvn -o -B -fae -Pfood-embedded,food-verify test \
+(cd "$WT/backend" && mvn -o -B -fae -P"$FOOD_PROFILES" test \
     -Dtest='ai/neargo/shop/food/**,**/Food*,!FoodMigrationPackagingIT,!**/*Native*' \
     -Dsurefire.failIfNoSpecifiedTests=false) > "$FOOD_LOG" 2>&1
 FOOD_RC=$?

@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 
 import ai.neargo.shop.food.service.FoodReturnStockService;
-import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
+import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 /**
  * 后台补偿（预约出餐、叫号重发、耗用恢复、退菜改单恢复）的本地执行者。
  *

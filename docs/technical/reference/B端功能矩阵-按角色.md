@@ -59,15 +59,15 @@
 | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
 | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
-| `BOOKING_VIEW` | Cross-industry appointment reading; gran | 0 | ✅ | — | — | — | — | — |
-| `BOOKING_MANAGE` | Explicit appointment management, indepen | 0 | ✅ | — | — | — | — | — |
+| `BOOKING_VIEW` | Cross-industry appointment reading; gran | 0 | ✅ | — | ✅ | — | — | — |
+| `BOOKING_MANAGE` | Explicit appointment management, indepen | 0 | ✅ | ✅ | — | — | — | — |
 | `SERVICE_TASK_SELF` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 | `SERVICE_TASK_VIEW` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 | `SERVICE_TASK_COORDINATE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 | `SERVICE_TASK_APPROVE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 | `SERVICE_TASK_CLOSE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 30 项**：`STORE_ADMIN`、`FINANCE`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
+**只有 OWNER 能碰的 28 项**：`STORE_ADMIN`、`FINANCE`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点

@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.support.DiningChannelModifierDemand;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;

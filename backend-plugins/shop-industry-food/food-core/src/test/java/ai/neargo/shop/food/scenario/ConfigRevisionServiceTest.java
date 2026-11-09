@@ -69,8 +69,6 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
                 + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
                 + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,"
                 + "deleted INT DEFAULT 0,goods_no VARCHAR(32),group_no VARCHAR(32),sort_no INT)");
-        c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MODIFIER_CHANGED",
-                "PLATFORM:FOOD_OPTION_GROUP_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED"));
         return f;
     }
     void run(java.util.function.BiConsumer<AssertableApplicationContext,Fixture> action) {

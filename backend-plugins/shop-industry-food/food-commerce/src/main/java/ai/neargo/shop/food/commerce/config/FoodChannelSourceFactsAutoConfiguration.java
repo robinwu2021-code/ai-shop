@@ -37,14 +37,14 @@ public class FoodChannelSourceFactsAutoConfiguration {
     @ConditionalOnBean({
         ChannelOrderSourceEvidencePort.class,
         ConfigRevisionService.class,
-        ai.neargo.shop.food.service.FoodMaterialSource.class,
+        ai.neargo.shop.food.spi.FoodMaterialSource.class,
         ObjectMapper.class
     })
     @ConditionalOnMissingBean(DiningChannelSourceFactsPort.class)
     FoodChannelSourceFactsPortImpl foodChannelSourceFactsPort(
             ChannelOrderSourceEvidencePort evidence,
             ConfigRevisionService revisions,
-            ai.neargo.shop.food.service.FoodMaterialSource materials,
+            ai.neargo.shop.food.spi.FoodMaterialSource materials,
             ObjectMapper json,
             ObjectProvider<Clock> clocks) {
         return new FoodChannelSourceFactsPortImpl(

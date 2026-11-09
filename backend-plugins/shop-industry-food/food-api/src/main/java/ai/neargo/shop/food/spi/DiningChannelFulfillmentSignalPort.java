@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service;
+package ai.neargo.shop.food.spi;
 
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 

@@ -2,7 +2,7 @@ package ai.neargo.shop.food.commerce.api.internal;
 
 import ai.neargo.shop.commerce.policy.CatalogSourceTransportPolicy;
 import ai.neargo.shop.food.scope.FoodScopeCredentials;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalInternalApi;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 import ai.neargo.shop.svc.InternalHttp;

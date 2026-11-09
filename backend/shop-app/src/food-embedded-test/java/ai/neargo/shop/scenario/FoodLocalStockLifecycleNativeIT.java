@@ -205,7 +205,7 @@ class FoodLocalStockLifecycleNativeIT extends FoodEmbeddedStartupIT {
         var before=inventorySql.queryForList("SELECT owner_id,location_id,item_id,on_hand,reserved,version FROM inv_stock_balance ORDER BY owner_id,location_id,item_id");
         var stockItems=context.getBean(FoodStockItemService.class);var stockBalances=context.getBean(FoodStockBalanceService.class);
         var sync=context.getBean(ai.neargo.shop.food.service.FoodStockSyncService.class);
-        var dispatcher=context.getBean(ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher.class);
+        var dispatcher=context.getBean(ai.neargo.shop.food.service.impl.FoodStockSyncDispatchServiceImpl.class);
         var target=context.getBean(ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.class);
         var mapper=context.getBean(ObjectMapper.class);
         var source=DataScopeContext.executeWithoutScope(()->stockItems.createItem(entity,store,"U",new CreateItem("MATERIAL",null,"mirror proof","EA","TRACKED"),"mi"+tag));

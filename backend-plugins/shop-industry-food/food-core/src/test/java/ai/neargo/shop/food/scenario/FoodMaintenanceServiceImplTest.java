@@ -14,7 +14,7 @@ import ai.neargo.shop.food.service.FoodMaintenanceService.Task;
 import ai.neargo.shop.food.service.ProductionConsumptionService;
 import ai.neargo.shop.food.service.ScheduledDiningDispatchService;
 import ai.neargo.shop.food.service.impl.FoodMaintenanceServiceImpl;
-import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
+import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 import ai.neargo.shop.food.service.impl.QueueNotificationServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

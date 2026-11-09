@@ -283,13 +283,15 @@ class TableConfigurationTest extends FoodWriteGuardFixture {
             });
         }
     }
-    @Test void missingSourceDoesNotLeaveTableOrReceipt() {
+    @Test void missingSourceStillCreatesTableWithoutAnOutboxEvent() {
+        // 866e3870f：归档类事实（FoodOutboxRouting.ARCHIVE_ONLY）不依赖发件箱，业务照常写入、不产生事件；
+        // 与 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 同一规则。
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class,TableServiceTest.Areas.class)
                 .withPropertyValues("test.policy.source=false").run(c -> {
                     var f=fixture(c);
-                    assertThatThrownBy(() -> create(c.getBean(TableService.class),"T1")).isInstanceOf(IllegalStateException.class);
-                    for(String table:List.of("fnb_table","fnb_action_log","sys_outbox","sys_idempotent"))
-                        assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isZero();
+                    create(c.getBean(TableService.class),"T1");
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_table",Integer.class)).isOne();
+                    assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isZero();
                 });
     }
     @Test @EnabledIfEnvironmentVariable(named="FOOD_TEST_DISPOSABLE",matches="true")

@@ -224,7 +224,8 @@ class TradingHttpAcceptanceTest {
         @Bean BizBusinessOperationsController operationsController(CheckCollaborationService s,StoreDirectoryPort d,FoodRequestScopeValidator v) { return new BizBusinessOperationsController(mock(ServiceFormService.class),mock(FoodFeeSourceService.class),mock(QueueNotificationService.class),s,mock(ReservationPreorderService.class),mock(ServiceSlotService.class),mock(BusinessOperationsService.class),d,v); }
         @Override @Bean SecurityFilterChain chain(HttpSecurity http,MemoryTokenStore tokens,ObjectProvider<LiveIdentityResolver> identities) throws Exception {
             var context=new BizContextFilter((actor,requested) -> new BizContext("E",Set.of(),Set.of(),Set.of("A"),"A",false,Map.of(),Map.of("A",actor.equals("cashier") ? Set.of() : Set.of(BizPerms.VERIFY,BizPerms.ORDER_VIEW,BizPerms.AFTERSALE,BizPerms.STOCK))));
-            return http.csrf(x -> x.disable()).authorizeHttpRequests(a -> a.anyRequest().authenticated())
+            // 与基类一致只管 /biz/**；/ops/** 由基类的 opsChain 负责
+            return http.securityMatcher("/biz/**").csrf(x -> x.disable()).authorizeHttpRequests(a -> a.anyRequest().authenticated())
                     .exceptionHandling(e -> e.authenticationEntryPoint((q,r,x) -> r.sendError(401)))
                     .addFilterBefore(new OperatorTokenAuthFilter(tokens,identities),UsernamePasswordAuthenticationFilter.class)
                     .addFilterBefore(new MerchantTokenAuthFilter(tokens),UsernamePasswordAuthenticationFilter.class)

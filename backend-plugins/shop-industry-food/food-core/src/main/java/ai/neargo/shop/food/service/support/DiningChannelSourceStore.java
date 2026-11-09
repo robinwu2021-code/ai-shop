@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
@@ -65,16 +65,16 @@ import java.util.function.Supplier;
  * these transactions.
  */
 public final class DiningChannelSourceStore {
-    final ChannelOrderSourceMapper sources;
+    public final ChannelOrderSourceMapper sources;
     final ChannelImportGuardMapper guards;
     final ChannelPartyMapper parties;
     final CheckCartMapper carts;
     final CheckCartItemMapper items;
-    final OrderBatchMapper batches;
+    public final OrderBatchMapper batches;
     final SalesQuotaClaimService quotas;
     final ServiceSlotLifecycle slots;
-    final ObjectMapper json;
-    final Clock clock;
+    public final ObjectMapper json;
+    public final Clock clock;
     private final TransactionTemplate read;
     private final TransactionTemplate write;
 
@@ -123,7 +123,7 @@ public final class DiningChannelSourceStore {
 
     record CartEnvelope(int schema, OrderLineInput line) {}
 
-    record FrozenSource(
+    public record FrozenSource(
             int schema,
             String sourceNo,
             String sourceHash,
@@ -133,7 +133,7 @@ public final class DiningChannelSourceStore {
             FrozenRoutes kitchenRoutes,
             List<SalesQuotaClaimVO> quotaClaims,
             Plan inventoryPlan) {
-        FrozenSource {
+        public FrozenSource {
             cartLines = List.copyOf(cartLines);
             quotaClaims = List.copyOf(quotaClaims);
         }
@@ -152,7 +152,7 @@ public final class DiningChannelSourceStore {
         }
     }
 
-    <T> T query(Supplier<T> work) {
+    public <T> T query(Supplier<T> work) {
         return DataScopeContext.executeWithoutScope(() -> read.execute(tx -> work.get()));
     }
 
@@ -174,7 +174,7 @@ public final class DiningChannelSourceStore {
         row.setUpdatedBy("SYSTEM");
     }
 
-    FnbChannelImportGuard guard(Key key, boolean lock) {
+    public FnbChannelImportGuard guard(Key key, boolean lock) {
         var query =
                 Wrappers.<FnbChannelImportGuard>query()
                         .eq("tenant_no", "MAIN")
@@ -214,7 +214,7 @@ public final class DiningChannelSourceStore {
         require(guard != null && "ACTIVE".equals(guard.getStatus()));
     }
 
-    CancellationResult cancelled(Key key, FnbChannelImportGuard guard) {
+    public CancellationResult cancelled(Key key, FnbChannelImportGuard guard) {
         require(
                 guard != null
                         && "CANCELLED".equals(guard.getStatus())
@@ -227,7 +227,7 @@ public final class DiningChannelSourceStore {
                         : json.readValue(guard.getCoreCancellationSnapshot(), Cancellation.class));
     }
 
-    CancellationResult beginCancellation(Key key, CurrentEvidence withdrawal) {
+    public CancellationResult beginCancellation(Key key, CurrentEvidence withdrawal) {
         ensureGuard(key);
         return atomic(
                 () -> {
@@ -258,7 +258,7 @@ public final class DiningChannelSourceStore {
                 });
     }
 
-    FnbChannelOrderSource find(Key key, boolean lock) {
+    public FnbChannelOrderSource find(Key key, boolean lock) {
         var query =
                 Wrappers.<FnbChannelOrderSource>query()
                         .eq("tenant_no", "MAIN")
@@ -271,13 +271,13 @@ public final class DiningChannelSourceStore {
         return row;
     }
 
-    FnbChannelOrderSource required(Key key, boolean lock) {
+    public FnbChannelOrderSource required(Key key, boolean lock) {
         var row = find(key, lock);
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
     }
 
-    Reference reference(FnbChannelOrderSource source) {
+    public Reference reference(FnbChannelOrderSource source) {
         return new Reference(
                 new Scope("MAIN", source.getEntityNo(), source.getStoreNo()),
                 "FOOD",
@@ -287,7 +287,7 @@ public final class DiningChannelSourceStore {
                 source.getImportNo());
     }
 
-    Data data(FnbChannelOrderSource source) {
+    public Data data(FnbChannelOrderSource source) {
         var data = json.readValue(source.getSourceSnapshot(), Data.class);
         require(source.getSourceHash().equals(PricingSnapshotHash.of(data)));
         return data;
@@ -306,7 +306,7 @@ public final class DiningChannelSourceStore {
      * Sources and quota claims are genuine even before core assigns its genuine channel quote and
      * order numbers.
      */
-    FnbChannelOrderSource register(
+    public FnbChannelOrderSource register(
             DiningChannelSourceFacts facts,
             StoreOperationPolicyResultVO policy,
             FrozenRoutes routes) {
@@ -561,7 +561,7 @@ public final class DiningChannelSourceStore {
      * The existing batch's non-null quote reference is filled only with an actual core-owned OCQ
      * quote.
      */
-    FnbOrderBatch recordPreparation(Key key, Preparation preparation) {
+    public FnbOrderBatch recordPreparation(Key key, Preparation preparation) {
         return atomic(
                 () -> {
                     activeGuard(key);
@@ -641,9 +641,9 @@ public final class DiningChannelSourceStore {
                 });
     }
 
-    record Claim(FnbChannelOrderSource source, long fence) {}
+    public record Claim(FnbChannelOrderSource source, long fence) {}
 
-    Claim claim(Key key, String phase) {
+    public Claim claim(Key key, String phase) {
         return atomic(
                 () -> {
                     if ("ACCEPTING".equals(phase)) activeGuard(key);
@@ -679,7 +679,7 @@ public final class DiningChannelSourceStore {
                 });
     }
 
-    CancellationResult finishCancelled(Key key, Claim claim, Cancellation proof) {
+    public CancellationResult finishCancelled(Key key, Claim claim, Cancellation proof) {
         return atomic(
                 () -> {
                     var guard = guard(key, true);
@@ -746,7 +746,7 @@ public final class DiningChannelSourceStore {
                 });
     }
 
-    void needsAfterSale(Key key, Claim claim, Preparation prepared, Acceptance accepted) {
+    public void needsAfterSale(Key key, Claim claim, Preparation prepared, Acceptance accepted) {
         atomic(
                 () -> {
                     var guard = guard(key, true);
@@ -792,7 +792,7 @@ public final class DiningChannelSourceStore {
                 });
     }
 
-    void recovery(Key key, Claim claim, String code) {
+    public void recovery(Key key, Claim claim, String code) {
         atomic(
                 () -> {
                     sources.update(
@@ -809,7 +809,7 @@ public final class DiningChannelSourceStore {
                 });
     }
 
-    static void require(boolean value) {
+    public static void require(boolean value) {
         if (!value) throw BizException.of(ErrorCode.CONFLICT);
     }
 }

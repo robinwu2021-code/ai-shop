@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;

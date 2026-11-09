@@ -3,7 +3,7 @@ package ai.neargo.shop.food.policy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 
 import java.time.Clock;

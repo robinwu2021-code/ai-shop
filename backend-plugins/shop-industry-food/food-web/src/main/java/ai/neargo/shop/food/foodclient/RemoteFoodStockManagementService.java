@@ -9,7 +9,7 @@ import java.util.List;
 import ai.neargo.shop.food.service.*;
 import ai.neargo.shop.food.spi.FoodStockManagementInternalApi;
 
-public final class RemoteFoodStockManagementService implements FoodStockItemService, FoodStockBalanceService {
+public final class RemoteFoodStockManagementService implements FoodStockManagementService {
     private final FoodStockManagementInternalApi api;
     public RemoteFoodStockManagementService(FoodStockManagementInternalApi api) {this.api=api;}
     @Override public ItemVO createItem(String entityNo, String storeNo, String actorNo, CreateItem input, String key) {return FoodStockRemoteCalls.invoke(()->api.createItem(new FoodStockManagementInternalApi.ItemCreate(entityNo,storeNo,actorNo,input,key)));}

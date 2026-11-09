@@ -37779,6 +37779,55 @@
         "module": "shop-app"
       },
       {
+        "host": "Codes",
+        "name": "BIZ_APP",
+        "value": "END_BIZ_APP",
+        "zh": "商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。",
+        "module": "shop-app"
+      },
+      {
+        "host": "Codes",
+        "name": "APP_POS",
+        "value": "END_APP_POS",
+        "zh": "感应收款 / POS 端。",
+        "module": "shop-app"
+      },
+      {
+        "host": "Codes",
+        "name": "RETAIL",
+        "value": "END_RETAIL",
+        "zh": "零售进阶：进销存、团购（商品与订单是基础功能）。",
+        "module": "shop-app"
+      },
+      {
+        "host": "Codes",
+        "name": "FNB",
+        "value": "END_FNB",
+        "zh": "餐饮作业：点餐单、菜单、桌台、出品看板、报表。",
+        "module": "shop-app"
+      },
+      {
+        "host": "Codes",
+        "name": "SERVICE",
+        "value": "END_SERVICE",
+        "zh": "服务业作业：预约、服务项目、排班、报表。",
+        "module": "shop-app"
+      },
+      {
+        "host": "Codes",
+        "name": "MARKETING",
+        "value": "END_MARKETING",
+        "zh": "会员与营销。",
+        "module": "shop-app"
+      },
+      {
+        "host": "Codes",
+        "name": "CHAIN",
+        "value": "END_CHAIN",
+        "zh": "连锁：跨店管理、考勤工资。",
+        "module": "shop-app"
+      },
+      {
         "host": "BizKey",
         "name": "MANAGEMENT_SPACE",
         "value": "MGS",
@@ -45192,6 +45241,20 @@
         "module": "shop-base"
       },
       {
+        "name": "Group",
+        "values": [
+          "BASE",
+          "POS",
+          "RETAIL",
+          "FNB",
+          "SERVICE",
+          "MARKETING",
+          "CHAIN"
+        ],
+        "zh": "功能分组，端上按组折叠。",
+        "module": "shop-app"
+      },
+      {
         "name": "GuardDecision",
         "values": [
           "ALLOW_HISTORICAL_RECEIPT",
@@ -46064,6 +46127,16 @@
         ],
         "zh": "能力矩阵的动作（设计 v4 §2.8.2。",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "PayActivation",
+        "values": [
+          "ACTIVE",
+          "NOT_ACTIVE",
+          "UNKNOWN"
+        ],
+        "zh": "收款开通状态。",
+        "module": "shop-app"
       },
       {
         "name": "PayErrorCode",
@@ -47296,6 +47369,41 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "StoreFeature",
+        "values": [
+          "COLLECT",
+          "COLLECT_QR",
+          "CASHIER",
+          "PAY_STATEMENT",
+          "PAY_ACTIVATION",
+          "STORE_PROFILE",
+          "STAFF",
+          "SUBSCRIPTION",
+          "PRINT",
+          "REVIEW",
+          "GOODS",
+          "ORDERS",
+          "SOFTPOS",
+          "INVENTORY",
+          "GROUP_BUY",
+          "FNB_ORDERING",
+          "FNB_MENU",
+          "FNB_TABLES",
+          "FNB_KITCHEN",
+          "FNB_REPORT",
+          "SVC_BOOKING",
+          "SVC_CATALOG",
+          "SVC_SCHEDULE",
+          "SVC_REPORT",
+          "MEMBERS",
+          "CAMPAIGN",
+          "CHAIN_OPS",
+          "HR"
+        ],
+        "zh": "商户 App 的功能注册表（TDD-B端门店功能矩阵与方案准入 §2）。",
+        "module": "shop-app"
       },
       {
         "name": "StoreStatus",
@@ -54222,7 +54330,7 @@
       "name": "BOOKING_VIEW",
       "type": "String",
       "value": "\"biz:booking:view\"",
-      "zh": "Cross-industry appointment reading; grants no management capability.",
+      "zh": "Cross-industry appointment reading; grants no management capability。",
       "module": "shop-base-auth"
     },
     {
@@ -54230,7 +54338,7 @@
       "name": "BOOKING_MANAGE",
       "type": "String",
       "value": "\"biz:booking:manage\"",
-      "zh": "Explicit appointment management, independently assignable from fulfillment permissions.",
+      "zh": "Explicit appointment management, independently assignable from fulfillment permissions。",
       "module": "shop-base-auth"
     },
     {

@@ -20,9 +20,9 @@ import ai.neargo.shop.food.mapper.FoodMappers.*;
 import ai.neargo.shop.food.service.FoodStockSyncService.ConfigCommand;
 import ai.neargo.shop.food.service.impl.FoodStockManagementServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl;
-import ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher;
-import ai.neargo.shop.food.service.impl.FoodStockSyncPublisher;
-import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
+import ai.neargo.shop.food.service.impl.FoodStockSyncDispatchServiceImpl;
+import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
+import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 import ai.neargo.shop.food.channel.port.InventoryFoodStockProjectionPortImpl;
 import java.util.concurrent.ScheduledExecutorService;
 import ai.neargo.shop.food.service.impl.FoodStockSyncServiceImpl;
@@ -244,7 +244,7 @@ class FoodInventoryDirectSyncNativeMysqlTest {
         reconcile=new FoodStockReconciliationServiceImpl(mapper(StockSyncReconciliationMapper.class),mapper(StockSyncDifferenceMapper.class),
                 mapper(StockSyncConfigMapper.class),mapper(StockSyncItemStateMapper.class),mapper(StockBalanceMapper.class),mapper(StockItemMapper.class),
                 mapper(StockCommandMapper.class),captured,provider,json,manager);
-        var dispatcher=new FoodStockSyncDispatcher(mapper(StockSyncConfigMapper.class),mapper(StockSyncDeliveryMapper.class),mapper(StockItemMapper.class),
+        var dispatcher=new FoodStockSyncDispatchServiceImpl(mapper(StockSyncConfigMapper.class),mapper(StockSyncDeliveryMapper.class),mapper(StockItemMapper.class),
                 mapper(StockBalanceMapper.class),captured,provider,json,manager,reconcile);
         worker=new FoodStockSyncWorker(mapper(StockSyncDeliveryMapper.class),dispatcher,json,manager);
         captured.delivery(worker::deliver);

@@ -1,7 +1,7 @@
 package ai.neargo.shop.food.commerce.config;
 
 import ai.neargo.shop.food.commerce.event.FoodChannelFulfillmentEventConsumer;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.spi.commerce.ChannelFulfillmentTriggerPort;
 
 import org.springframework.beans.factory.ObjectProvider;

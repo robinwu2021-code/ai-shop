@@ -61,7 +61,6 @@ class BundleServiceTest extends FoodWriteGuardFixture {
                 + "group_no VARCHAR(32),sku_no VARCHAR(32),units_per_pick DECIMAL(12,3),"
                 + "min_qty DECIMAL(18,6),max_qty DECIMAL(18,6),default_qty DECIMAL(18,6),"
                 + "price_mode VARCHAR(24),sort_no INT,UNIQUE(group_no,sku_no))");
-        c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_BUNDLE_CHANGED"));
         return f;
     }
     private void run(BiConsumer<AssertableApplicationContext,Fixture> test) {

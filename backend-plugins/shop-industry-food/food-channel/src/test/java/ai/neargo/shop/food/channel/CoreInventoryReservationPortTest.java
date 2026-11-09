@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.ObjectMapper;
 
 class CoreInventoryReservationPortTest {
     @Test void standaloneConfigurationCallsActualPlatformTransportAndRejectsForeignOrUnavailableFacts() throws Exception {
@@ -58,6 +59,8 @@ class CoreInventoryReservationPortTest {
         server.start();
         try {
             new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                     .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire",
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort())
                     .run(context -> {

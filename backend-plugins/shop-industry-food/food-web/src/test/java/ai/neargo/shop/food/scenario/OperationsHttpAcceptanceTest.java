@@ -180,13 +180,25 @@ class OperationsHttpAcceptanceTest {
         @Bean OpsFoodSupportController ops(FoodSupportService s,StoreDirectoryPort d) { return new OpsFoodSupportController(s,d); }
         @Bean BizBusinessCloseController closeController(BusinessCloseService s,StoreDirectoryPort d,FoodRequestScopeValidator v) { return new BizBusinessCloseController(s,d,v); }
         @Bean BizPrintDeviceController devices(PrintPort p,StoreDirectoryPort d,FoodRequestScopeValidator v) { return new BizPrintDeviceController(p,d,v); }
-        @Bean SecurityFilterChain chain(HttpSecurity http,MemoryTokenStore tokens,ObjectProvider<LiveIdentityResolver> identities) throws Exception {
+        /*
+         * 与生产 SecurityConfig 一致分两条链：BizContextFilter 只挂在 /biz/** 商家链上
+         * （它对非 /biz 路径一律 400 NONCANONICAL_MERCHANT_PATH），运营端走 /ops/** 自己的链。
+         */
+        @Bean @org.springframework.core.annotation.Order(1)
+        SecurityFilterChain chain(HttpSecurity http,MemoryTokenStore tokens,ObjectProvider<LiveIdentityResolver> identities) throws Exception {
             var context=new BizContextFilter((actor,requested) -> new BizContext("E",Set.of(),Set.of(),Set.of("A"),"A",false,Map.of(),Map.of("A",actor.equals("cashier") ? Set.of() : Set.of(BizPerms.FINANCE,BizPerms.VERIFY,BizPerms.RECEIVE,BizPerms.STORE_ADMIN,BizPerms.ORDER_VIEW))));
-            return http.csrf(c -> c.disable()).authorizeHttpRequests(a -> a.anyRequest().authenticated())
+            return http.securityMatcher("/biz/**").csrf(c -> c.disable()).authorizeHttpRequests(a -> a.anyRequest().authenticated())
                     .exceptionHandling(e -> e.authenticationEntryPoint((q,r,x) -> r.sendError(401)))
                     .addFilterBefore(new OperatorTokenAuthFilter(tokens,identities),UsernamePasswordAuthenticationFilter.class)
                     .addFilterBefore(new MerchantTokenAuthFilter(tokens),UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(context,MerchantTokenAuthFilter.class).build();
+        }
+        @Bean @org.springframework.core.annotation.Order(2)
+        SecurityFilterChain opsChain(HttpSecurity http,MemoryTokenStore tokens,ObjectProvider<LiveIdentityResolver> identities) throws Exception {
+            return http.securityMatcher("/ops/**").csrf(c -> c.disable()).authorizeHttpRequests(a -> a.anyRequest().authenticated())
+                    .exceptionHandling(e -> e.authenticationEntryPoint((q,r,x) -> r.sendError(401)))
+                    .addFilterBefore(new OperatorTokenAuthFilter(tokens,identities),UsernamePasswordAuthenticationFilter.class)
+                    .build();
         }
     }
 }

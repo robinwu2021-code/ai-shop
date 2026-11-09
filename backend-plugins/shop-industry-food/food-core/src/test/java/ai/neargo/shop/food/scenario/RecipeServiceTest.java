@@ -94,7 +94,6 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                         + "option_identity_hash VARCHAR(64),"
                         + "UNIQUE(recipe_no,option_item_no,target_line_no))");
             }
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_RECIPE_CHANGED"));
             action.accept(c, f);
         });
     }
@@ -475,8 +474,6 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                     c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
                     template.getMapper(DishMapper.class), template.getMapper(DishOptionGroupMapper.class),
                     template.getMapper(ModifierMapper.class), sources, sources);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(
-                    Set.of("PLATFORM:FOOD_RECIPE_CHANGED", "PLATFORM:FOOD_OPTION_GROUP_CHANGED"));
             var service = c.getBean(RecipeService.class);
             var json = c.getBean(ObjectMapper.class);
             var id = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "create")

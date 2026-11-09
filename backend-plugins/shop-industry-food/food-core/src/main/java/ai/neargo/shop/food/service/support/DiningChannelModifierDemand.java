@@ -1,6 +1,6 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
-import static ai.neargo.shop.food.service.impl.DiningChannelSourceStore.require;
+import static ai.neargo.shop.food.service.support.DiningChannelSourceStore.require;
 
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.DiningChannelSourceFacts.Definition;
