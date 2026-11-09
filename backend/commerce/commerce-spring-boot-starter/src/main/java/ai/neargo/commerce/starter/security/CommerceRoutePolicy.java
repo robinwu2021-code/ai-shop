@@ -117,7 +117,7 @@ public final class CommerceRoutePolicy {
         if (isStoreSelection(method, path)
                 || ACCOUNT.contains(method + " " + path)
                 || method.equals("GET")
-                        && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/plans"))
+                        && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/(?:plans|feature-matrix)"))
             return new Route(Lane.ACCOUNT, null, null, null);
         var foundation =
                 switch (method + " " + path) {
@@ -205,7 +205,7 @@ public final class CommerceRoutePolicy {
             }
             if (method.equals("GET")
                     && store.matches(ID)
-                    && Set.of("context", "subscription", "entitlements").contains(tail))
+                    && Set.of("context", "subscription", "entitlements", "features").contains(tail))
                 return new Route(Lane.BOOTSTRAP, store, null, null, false, true);
             if (method.equals("GET") && tail.equals("pos/access"))
                 return new Route(Lane.END_PROTECTED, store, POS, "biz:receive", true);

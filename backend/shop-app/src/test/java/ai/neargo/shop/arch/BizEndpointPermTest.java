@@ -935,9 +935,11 @@ class BizEndpointPermTest {
             "/biz/merchant/store-setup", "@perm.merchantAccount()",
             "/biz/business-types", "@perm.merchantAccount()",
             "/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()",
+            "/biz/business-types/{typeCode}/feature-matrix", "@perm.merchantAccount()",
             "/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)",
             "/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)",
-            "/biz/stores/{storeNo}/entitlements", "@perm.memberOfSelectedStore(#storeNo)");
+            "/biz/stores/{storeNo}/entitlements", "@perm.memberOfSelectedStore(#storeNo)",
+            "/biz/stores/{storeNo}/features", "@perm.memberOfSelectedStore(#storeNo)");
 
     private static final Set<String> END_ENTRY_DUTY =
             Set.of("/biz/stores/{storeNo}/end-sessions", "/biz/stores/{storeNo}/end-access");

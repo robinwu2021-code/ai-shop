@@ -12,7 +12,7 @@
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
 统计：**50 个权限码 × 6 个角色 × 443 个受控功能点**
-（另有 0 个登录即可、16 个「任一权限即可」）。
+（另有 0 个登录即可、18 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -64,8 +64,8 @@
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 0 | ✅ | — | — | — | — | — |
-| `biz:booking:view` | `BOOKING_VIEW` | Cross-industry appointment reading | 0 | ✅ | — | — | — | — | — |
-| `biz:booking:manage` | `BOOKING_MANAGE` | Explicit appointment management, i | 0 | ✅ | — | — | — | — | — |
+| `biz:booking:view` | `BOOKING_VIEW` | Cross-industry appointment reading | 0 | ✅ | — | ✅ | — | — | — |
+| `biz:booking:manage` | `BOOKING_MANAGE` | Explicit appointment management, i | 0 | ✅ | ✅ | — | — | — | — |
 | `biz:service:task:self` | `SERVICE_TASK_SELF` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
 | `biz:service:task:view` | `SERVICE_TASK_VIEW` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
 | `biz:service:task:coordinate` | `SERVICE_TASK_COORDINATE` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
@@ -1129,6 +1129,7 @@
 
 - `/biz/broken`　
 - `/biz/business-types`　
+- `/biz/business-types/{}/feature-matrix`　
 - `/biz/business-types/{}/plans`　
 - `/biz/dashboard/todo`　工作台待办
 - `/biz/example`　
@@ -1141,6 +1142,7 @@
 - `/biz/stores/{}/end-access`　
 - `/biz/stores/{}/end-sessions`　
 - `/biz/stores/{}/entitlements`　
+- `/biz/stores/{}/features`　
 - `/biz/stores/{}/mall/`　
 - `/biz/stores/{}/subscription`　
 

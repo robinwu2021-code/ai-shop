@@ -117,9 +117,9 @@ public final class BizPerms {
     /** 调整发行容量，不直接发放实例。 */
     public static final String ENT_ISSUE_MANAGE = "pay:ent:issue:manage";
 
-    /** Cross-industry appointment reading; grants no management capability. */
+    /** Cross-industry appointment reading; grants no management capability. Seeded: MANAGER, CLERK. */
     public static final String BOOKING_VIEW = "biz:booking:view";
-    /** Explicit appointment management, independently assignable from fulfillment permissions. */
+    /** Explicit appointment management, independently assignable from fulfillment permissions. Seeded: MANAGER. */
     public static final String BOOKING_MANAGE = "biz:booking:manage";
 
     /** Independently assignable service action; no seeded role grant. */
@@ -193,9 +193,11 @@ public final class BizPerms {
             OWNER, List.of("*"),
             MANAGER, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
                     GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PAY_ORDER_VIEW, PAY_COLLECT,
+                    // 预约：店长看与管、店员只看（TDD-B端门店功能矩阵与方案准入 §4-1，V640）
+                    BOOKING_VIEW, BOOKING_MANAGE,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
                     PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
-            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW,
+            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW, BOOKING_VIEW,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
