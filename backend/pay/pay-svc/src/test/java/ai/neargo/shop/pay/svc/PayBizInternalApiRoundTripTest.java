@@ -53,6 +53,16 @@ class PayBizInternalApiRoundTripTest {
     }
 
     @Test
+    @DisplayName("★★★ 不带业务单号的收款请求与加字段前一字不差 —— 老版本收款服务不会因为多一个字段拒收")
+    void collectWithoutBizNoKeepsTheOldWireShape() {
+        var json = tools.jackson.databind.json.JsonMapper.builder().build();
+        assertThat(json.writeValueAsString(new CollectReq("MCH-A", 1200L, "桌 3", 15, null)))
+                .doesNotContain("bizNo");
+        assertThat(json.writeValueAsString(new CollectReq("MCH-A", 1200L, "桌 3", 15, "FST1")))
+                .contains("\"bizNo\":\"FST1\"");
+    }
+
+    @Test
     @DisplayName("★★ 业务单收款汇总的原始行过边界不丢字段（TDD-业务单收款汇总）")
     void bizReceiptsCrossTheBoundary() {
         var receipts = new ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts(
