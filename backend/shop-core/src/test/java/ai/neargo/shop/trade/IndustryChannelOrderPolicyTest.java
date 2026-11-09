@@ -3,11 +3,14 @@ package ai.neargo.shop.trade;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.idem.SysIdempotentMapper;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort.Scope;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
 import ai.neargo.shop.trade.mapper.TradeMappers.ChannelPolicyMapper;
+import ai.neargo.shop.trade.service.IndustryChannelOrderPolicyService.EnabledReq;
 import ai.neargo.shop.trade.service.IndustryChannelOrderPolicyService.SaveReq;
 import ai.neargo.shop.trade.service.impl.IndustryChannelOrderPolicyServiceImpl;
 
@@ -172,6 +175,156 @@ class IndustryChannelOrderPolicyTest {
                         valid.replace("\"holdSeconds\":900", "\"holdSeconds\":900.1"),
                         valid.replace("\"version\":0", "\"reservedMinor\":0,\"version\":0"))) {
             assertThatThrownBy(() -> json.readValue(body, SaveReq.class))
+                    .isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    static ErrorCode code(Runnable call) {
+        try {
+            call.run();
+        } catch (BizException failed) {
+            return failed.errorCode();
+        }
+        throw new AssertionError("expected BizException");
+    }
+
+    @Test
+    void toggleChangesOnlyEnabledAndBumpsTheVersion() {
+        var saved = service.save(scope, "A", channel, request(0, "AED", true, 1000), "create");
+        sql.execute("UPDATE ord_channel_policy SET reserved_minor=100");
+        var paused = service.setEnabled(scope, "M", channel, new EnabledReq(0L, false), "pause");
+        assertThat(paused.enabled()).isFalse();
+        assertThat(paused.version()).isEqualTo(1);
+        assertThat(paused.reservedMinor()).isEqualTo(100);
+        assertThat(paused)
+                .usingRecursiveComparison()
+                .ignoringFields("enabled", "version", "reservedMinor")
+                .isEqualTo(saved);
+        var resumed = service.setEnabled(scope, "M", channel, new EnabledReq(1L, true), "resume");
+        assertThat(resumed.enabled()).isTrue();
+        assertThat(resumed.version()).isEqualTo(2);
+        assertThat(service.get(scope, channel)).isEqualTo(resumed);
+    }
+
+    @Test
+    void toggleRejectsStaleVersionsAbsentPoliciesAndForeignStores() {
+        assertThat(
+                        code(
+                                () ->
+                                        service.setEnabled(
+                                                scope,
+                                                "M",
+                                                channel,
+                                                new EnabledReq(0L, false),
+                                                "absent")))
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM ord_channel_policy", Integer.class))
+                .isZero();
+        service.save(scope, "A", channel, request(0, "AED", true, 1000), "create");
+        service.setEnabled(scope, "M", channel, new EnabledReq(0L, false), "pause");
+        assertThat(
+                        code(
+                                () ->
+                                        service.setEnabled(
+                                                scope,
+                                                "M",
+                                                channel,
+                                                new EnabledReq(0L, true),
+                                                "stale")))
+                .isEqualTo(ErrorCode.CONFLICT);
+        assertThat(
+                        code(
+                                () ->
+                                        service.setEnabled(
+                                                new Scope("MAIN", "E", "OTHER"),
+                                                "M",
+                                                channel,
+                                                new EnabledReq(1L, true),
+                                                "foreign")))
+                .isEqualTo(ErrorCode.FORBIDDEN);
+        assertThat(service.get(scope, channel).enabled()).isFalse();
+    }
+
+    @Test
+    void enablingAPolicyWithoutAnAllowedPaymentModeIsABadRequest() {
+        service.save(
+                scope,
+                "A",
+                channel,
+                new SaveReq(0L, "AED", false, false, false, 1000L, 1000L, 900),
+                "create");
+        assertThat(
+                        code(
+                                () ->
+                                        service.setEnabled(
+                                                scope,
+                                                "M",
+                                                channel,
+                                                new EnabledReq(0L, true),
+                                                "enable")))
+                .isEqualTo(ErrorCode.BAD_REQUEST);
+        assertThat(
+                        code(
+                                () ->
+                                        service.setEnabled(
+                                                scope, "M", channel, new EnabledReq(null, true), "n")))
+                .isEqualTo(ErrorCode.BAD_REQUEST);
+        assertThat(
+                        code(
+                                () ->
+                                        service.setEnabled(
+                                                scope, "M", channel, new EnabledReq(0L, null), "n")))
+                .isEqualTo(ErrorCode.BAD_REQUEST);
+        assertThat(service.get(scope, channel).enabled()).isFalse();
+    }
+
+    @Test
+    void toggleReplaysByKeyAndKeepsItsOwnIdempotencyNamespace() {
+        service.save(scope, "A", channel, request(0, "AED", true, 1000), "shared");
+        var paused = service.setEnabled(scope, "M", channel, new EnabledReq(0L, false), "shared");
+        assertThat(paused.version()).isEqualTo(1);
+        owners.unavailable = true;
+        assertThat(service.setEnabled(scope, "M", channel, new EnabledReq(0L, false), "shared"))
+                .isEqualTo(paused);
+        owners.unavailable = false;
+        assertThatThrownBy(
+                        () ->
+                                service.setEnabled(
+                                        scope, "OTHER", channel, new EnabledReq(0L, false), "shared"))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(
+                        () ->
+                                service.setEnabled(
+                                        scope, "M", channel, new EnabledReq(0L, true), "shared"))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(
+                        sql.queryForObject(
+                                "SELECT COUNT(DISTINCT endpoint) FROM sys_idempotent",
+                                Integer.class))
+                .isEqualTo(2);
+        assertThat(
+                        sql.queryForObject(
+                                "SELECT COUNT(*) FROM sys_idempotent WHERE endpoint LIKE"
+                                        + " 'CHANNEL_ORDER_POLICY_ENABLED:%'",
+                                Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void toggleJsonAcceptsOnlyVersionAndEnabledWithoutCoercion() throws Exception {
+        String valid = "{\"version\":3,\"enabled\":false}";
+        var parsed = json.readValue(valid, EnabledReq.class);
+        assertThat(parsed.version()).isEqualTo(3);
+        assertThat(parsed.enabled()).isFalse();
+        for (String body :
+                Set.of(
+                        "{\"version\":3,\"enabled\":0}",
+                        "{\"version\":3,\"enabled\":\"false\"}",
+                        "{\"version\":3.5,\"enabled\":false}",
+                        "{\"version\":\"3\",\"enabled\":false}",
+                        "{\"version\":3,\"enabled\":false,\"maxSingleMinor\":1}")) {
+            assertThatThrownBy(() -> json.readValue(body, EnabledReq.class))
+                    .as(body)
                     .isInstanceOf(RuntimeException.class);
         }
     }

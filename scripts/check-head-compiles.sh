@@ -29,6 +29,7 @@
 # 逃生门：
 #   SKIP_COMPILE_GATE=1   整个闸门都跳过（.githooks/pre-push 里判断）
 #   SKIP_TEST_GATE=1      只编译、不跑测试
+#   SKIP_BEAUTY_GATE=1    跳过美业插件段（scripts/check-beauty-plugin.sh）
 #
 # 什么时候该用 SKIP_TEST_GATE：**共享工作区里别人写到一半时不该用** ——
 # 这个脚本跑的是干净 HEAD 副本，别人未提交的半成品影响不到它。
@@ -207,6 +208,20 @@ fi
 echo "✓ 餐饮插件与宿主 food-embedded 测试全绿"
 rm -f "$FOOD_LOG"
 
+# ── 美业插件（backend-plugins/shop-industry-beauty，执行方案 D10 / W1.6）──
+#
+# 美业是独立 Maven 工程，只能从仓库解析宿主构件；为了不覆盖 ~/.m2，它在克隆出来的独立仓库里装、测。
+# 细节与判据见 scripts/check-beauty-plugin.sh；已知失败清单在插件目录下（只准变短）。约 1 分钟。
+BEAUTY_SUMMARY="跳过"
+if [ "${SKIP_BEAUTY_GATE:-}" = "1" ]; then
+  echo "⚠ 已跳过美业闸门（SKIP_BEAUTY_GATE=1）"
+else
+  BEAUTY_COUNT="$(mktemp "${TMPDIR:-/tmp}/head-beauty-count.XXXXXX")"
+  "$ROOT/scripts/check-beauty-plugin.sh" "$WT" "$BEAUTY_COUNT"
+  BEAUTY_SUMMARY="$(cat "$BEAUTY_COUNT") 跑 / 只含已知失败"
+  rm -f "$BEAUTY_COUNT"
+fi
+
 # 记下**这一次验的是哪个提交**，给 deploy-backend.sh 比对用。
 #
 # 为什么需要：闸门跑四到六分钟，而这个目录常有多个会话在推 —— 跑完之后 HEAD 会前进，
@@ -228,7 +243,7 @@ rm -f "$FOOD_LOG"
 # 会有这种「看起来莫名其妙被拦」的时刻。
 {
     printf '%s\n' "$VERIFIED_SHA"
-    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）· 餐饮 %s 跑 / 0 红\n' \
+    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）· 餐饮 %s 跑 / 0 红 · 美业 %s\n' \
         "$(date '+%F %T')" "$TOTAL" \
-        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')" "$FOOD_TOTAL"
+        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')" "$FOOD_TOTAL" "$BEAUTY_SUMMARY"
 } > "$(git rev-parse --git-dir)/gate-verified-sha"

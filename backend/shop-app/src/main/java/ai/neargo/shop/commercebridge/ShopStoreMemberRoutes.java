@@ -89,7 +89,9 @@ final class ShopStoreMemberRoutes {
             // 外卖平台接单 / 拒单、渠道连接与对账（餐饮首批的外送部分）：68 个商家接口同样各自 @PreAuthorize
             HostRoute.of("GET,POST,PUT", "/biz/x/commerce/.+"),
             // 外卖接单策略（含暂停 / 恢复接单的 enabled 开关；类级 @PreAuthorize biz:store:admin）：App 餐饮 14-14
-            HostRoute.of("GET,POST", STORE_PLURAL + "channel-order-policies(?:/[A-Za-z0-9_.:-]{1,64})?"),
+            HostRoute.of("GET,POST", STORE_PLURAL + "channel-order-policies(?:/[A-Za-z0-9_.:-]{1,64}(?:/enabled)?)?"),
+            // 业务单收款汇总（TDD-业务单收款汇总）：@PreAuthorize mch:pay:order:view，路径门店须等于所选门店
+            HostRoute.of("GET", STORE_PLURAL + "receivables/[A-Za-z0-9_.:-]{1,64}"),
             // 美业插件（开发计划 B3）：26 个商家接口在服务层判权（AppointmentAccess / ReceptionAccess /
             // ServiceSubmissionAccess / ServiceExecutionAccess），另 5 个 @PreAuthorize；逐条审计见开发计划第八节
             HostRoute.of("GET,POST", "/biz/x/beauty/.+"),

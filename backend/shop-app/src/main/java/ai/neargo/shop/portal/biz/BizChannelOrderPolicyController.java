@@ -8,6 +8,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort.Scope;
 import ai.neargo.shop.trade.service.IndustryChannelOrderPolicyService;
+import ai.neargo.shop.trade.service.IndustryChannelOrderPolicyService.EnabledReq;
 import ai.neargo.shop.trade.service.IndustryChannelOrderPolicyService.Policy;
 import ai.neargo.shop.trade.service.IndustryChannelOrderPolicyService.SaveReq;
 
@@ -75,6 +76,23 @@ public class BizChannelOrderPolicyController {
             HttpServletRequest request) {
         query(request, Set.of());
         return policies.save(
+                scope(storeNo), SecurityUtils.currentUserNo(), channelStoreKey, body, key);
+    }
+
+    /**
+     * Pause / resume taking channel orders. Duty managers hold {@code biz:store}; limits and payment
+     * modes stay owner-only via {@link #save}.
+     */
+    @PostMapping("/biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}/enabled")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    public Policy setEnabled(
+            @PathVariable @NotBlank @Size(max = 32) String storeNo,
+            @PathVariable @NotBlank @Size(max = 64) String channelStoreKey,
+            @Valid @RequestBody EnabledReq body,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key,
+            HttpServletRequest request) {
+        query(request, Set.of());
+        return policies.setEnabled(
                 scope(storeNo), SecurityUtils.currentUserNo(), channelStoreKey, body, key);
     }
 

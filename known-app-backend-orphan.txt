@@ -123,6 +123,7 @@ b-app GET /biz/service-orders/counter-quotes/*
 b-app GET /biz/store-sales-catalog
 b-app GET /biz/stores/*/channel-order-policies
 b-app GET /biz/stores/*/channel-order-policies/*
+b-app GET /biz/stores/*/receivables/*
 b-app POST /biz/checkout/*/offline-receipts
 b-app POST /biz/checkout/*/offline-receipts/lookup
 b-app POST /biz/personnel
@@ -140,6 +141,7 @@ b-app POST /biz/store-sales-catalog/versions
 b-app POST /biz/stores/*/channel-after-sale-decisions
 b-app POST /biz/stores/*/channel-after-sale-decisions/release-unissued
 b-app POST /biz/stores/*/channel-order-policies/*
+b-app POST /biz/stores/*/channel-order-policies/*/enabled
 c-app GET /mp/checkout/*
 c-app GET /mp/checkout/*/payments/*
 c-app POST /mp/checkout/*/confirmations

@@ -12348,6 +12348,7 @@ CREATE TABLE IF NOT EXISTS ord_offline_record
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 1,
     deleted INT NOT NULL DEFAULT 0,
+    biz_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_offline_record_no UNIQUE (tenant_no,record_no),
     CONSTRAINT uk_offline_record_idem UNIQUE (tenant_no,entity_no,store_no,idem_key_hash)
@@ -19227,6 +19228,18 @@ UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CA
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:collect"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='MANAGER' AND deleted=0 AND LOCATE('"mch:pay:collect"',perms)=0;
 UPDATE mch_role SET perms=CONCAT(LEFT(TRIM(perms),CHAR_LENGTH(TRIM(perms))-1),CASE WHEN TRIM(perms)='[]' THEN '' ELSE ',' END,'"mch:pay:order:view"]'),updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE entity_no='*' AND builtin=1 AND role_code='CLERK' AND deleted=0 AND LOCATE('"mch:pay:order:view"',perms)=0;
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'OWNER', '老板', '["*"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'MANAGER', '店长', '["biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:goods","biz:campaign","biz:review","biz:aftersale","biz:customer","biz:store","biz:print:read","biz:print:submit","biz:print:reprint","biz:print:extra","biz:print:device","biz:print:config","biz:print:resolve","biz:print:simulate","biz:print:export","mch:pay:order:view","mch:pay:offline:record","mch:pay:offline:manage","biz:booking:view","biz:booking:manage","mch:pay:collect"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'CLERK', '店员', '["biz:receive","biz:verify","biz:ship","biz:order:view","biz:stock","biz:print:read","biz:print:submit","biz:print:reprint","biz:print:simulate","biz:print:export","mch:pay:order:view","mch:pay:offline:record","biz:booking:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'PICKER', '理货员', '["biz:receive","biz:stock"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'COURIER', '配送员', '["biz:ship","biz:order:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
+INSERT IGNORE INTO mch_role (entity_no, role_code, name, perms, builtin, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('*', 'CS', '客服', '["biz:review","biz:aftersale","biz:order:view"]', 1, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

@@ -11,7 +11,8 @@ class BeautyBookingRoutesTest {
                 {"mp.MpAvailabilityController", "/mp/x/beauty/availability"},
                 {"biz.BizAppointmentController", "/biz/x/beauty/appointments"},
                 {"mp.MpAppointmentController", "/mp/x/beauty/appointments"},
-                {"biz.BizServiceOperationController", "/biz/x/beauty/operations"}}) {
+                {"biz.BizServiceOperationController", "/biz/x/beauty/operations"},
+                {"biz.BizSchedulingReportController", "/biz/x/beauty/reports"}}) {
             Class<?> type = assertDoesNotThrow(() -> Class.forName("ai.neargo.shop.beauty.api." + route[0]));
             assertThat(type.getAnnotation(RequestMapping.class).value()).containsExactly(route[1]);
         }

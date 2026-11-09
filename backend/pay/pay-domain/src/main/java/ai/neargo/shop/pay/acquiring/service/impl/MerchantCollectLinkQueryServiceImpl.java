@@ -85,6 +85,28 @@ public class MerchantCollectLinkQueryServiceImpl implements MerchantCollectLinkQ
         return rows(List.of(o), LocalDateTime.now(ZoneOffset.UTC)).get(0);
     }
 
+    @Override
+    public List<BizLink> ofBizNo(PayCaller caller, Long storeId, String bizNo) {
+        policy.check(caller, PayAction.READ_LEDGER, storeId);
+        if (bizNo == null || !bizNo.matches("[A-Za-z0-9_.:-]{1,64}")) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<PayOrder> found = DataScopeContext.executeWithoutScope(() -> orders.selectList(links(storeId)
+                .eq(PayOrder::getBizNo, bizNo).orderByAsc(PayOrder::getCreatedAt).orderByAsc(PayOrder::getId)
+                .last("LIMIT 50")));
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        List<LinkRow> rows = rows(found, now);
+        java.util.ArrayList<BizLink> out = new java.util.ArrayList<>(found.size());
+        for (int i = 0; i < found.size(); i++) {
+            PayOrder o = found.get(i);
+            LinkRow r = rows.get(i);
+            out.add(new BizLink(o.getPayOrderNo(), r.status(), o.getCurrency(), r.amountMinor(),
+                    o.getPaidMinor() == null ? 0 : o.getPaidMinor(),
+                    o.getRefundedMinor() == null ? 0 : o.getRefundedMinor(), r.createdAt(), r.paidAt()));
+        }
+        return out;
+    }
+
     /** 本店的付款链接 —— 消融点：去掉 biz_type 条件，静态码等别的来源就混进来 */
     private static LambdaQueryWrapper<PayOrder> links(Long storeId) {
         return Wrappers.<PayOrder>lambdaQuery().eq(PayOrder::getStoreId, storeId).eq(PayOrder::getBizType, COLLECT_BIZ_TYPE);

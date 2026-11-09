@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 512 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 514 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -22,7 +22,7 @@
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 34 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
+| `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 24 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_READ` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
@@ -394,6 +394,7 @@
 - `/biz/store/{storeNo}/pay-setting`
 - `/biz/store/{storeNo}/ship-setting`
 - `/biz/stores/{storeNo}/appointment-slots`
+- `/biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}/enabled`
 - `/biz/stores/{storeNo}/fulfillment`
 - `/biz/stores/{storeNo}/fulfillment/{channel}/impact`
 

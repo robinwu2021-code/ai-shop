@@ -47,7 +47,8 @@ public class BizPaymentController {
     public record GrantReq(String appNo, Set<String> actions) {
     }
 
-    public record CollectReq(Long amountMinor, String subject, Integer expireMinutes) {
+    /** @param bizNo 业务单号（可空）：餐饮结算单、美业工单等，供业务单收款汇总（TDD-业务单收款汇总 AC8） */
+    public record CollectReq(Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
     }
 
     public record VoidLinkReq(String reason) {
@@ -85,7 +86,8 @@ public class BizPaymentController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_COLLECT + "')")
     @PostMapping("/biz/payment/collection")
     public CollectView collect(@RequestBody CollectReq req) {
-        return app.collect(BizContext.requireStoreNo(), req.amountMinor(), req.subject(), req.expireMinutes());
+        return app.collect(BizContext.requireStoreNo(), req.amountMinor(), req.subject(), req.expireMinutes(),
+                req.bizNo());
     }
 
     // ---- 本店静态收款码（F45） ----

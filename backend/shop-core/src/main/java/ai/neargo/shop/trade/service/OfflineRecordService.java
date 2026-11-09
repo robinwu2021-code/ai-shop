@@ -24,6 +24,9 @@ public interface OfflineRecordService {
     /** 本店区间内未作废记录的笔数与金额（已拍板 D6-B：单列，不并入渠道营业额）。 */
     Summary summary(Scope scope, LocalDate from, LocalDate to);
 
+    /** 本店带某个业务单号的全部记录（含已作废），按实收时间正序；最多 200 条。 */
+    List<OfflineRecordView> ofBizNo(Scope scope, String bizNo);
+
     /** 更正金额、方式、实收时间；原因必填，旧值进留痕。 */
     OfflineRecordView correct(Scope scope, String recordNo, CorrectCmd cmd);
 
@@ -42,6 +45,7 @@ public interface OfflineRecordService {
             String currency,
             String method,
             String orderNo,
+            String bizNo,
             String note,
             Instant receivedAt) {}
 
@@ -84,6 +88,7 @@ public interface OfflineRecordService {
             String currency,
             String method,
             String orderNo,
+            String bizNo,
             String note,
             String receivedAt,
             String recordedBy,

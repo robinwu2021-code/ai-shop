@@ -62,14 +62,17 @@ public class PayBizFacade {
     private final MerchantPaymentQueryService payments;
     private final PaymentService paymentService;
     private final MerchantCollectLinkQueryService links;
+    private final ai.neargo.shop.pay.mapper.entitlement.EntUsageMapper usages;
     private final String checkoutBase;
 
     public PayBizFacade(PayMerchantBindingService stores, InternalCallers callers, AppGrantService grants,
                         CheckoutService checkout, QrCodeService codes, RefundService refunds,
                         PayStatementService statements, MerchantPaymentQueryService payments,
                         PaymentService paymentService, MerchantCollectLinkQueryService links,
+                        ai.neargo.shop.pay.mapper.entitlement.EntUsageMapper usages,
                         @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
         this.links = links;
+        this.usages = usages;
         this.stores = stores;
         this.callers = callers;
         this.grants = grants;
@@ -128,10 +131,45 @@ public class PayBizFacade {
     // ---- 代客收款（F42） ----
 
     public CollectView collect(String storeNo, String operatorNo, Long amountMinor, String subject, Integer expireMinutes) {
+        return collect(storeNo, operatorNo, amountMinor, subject, expireMinutes, null);
+    }
+
+    /** @param bizNo 业务单号（可空）：写进支付单 {@code biz_no}，供业务单收款汇总按单号查（TDD-业务单收款汇总 AC8） */
+    public CollectView collect(String storeNo, String operatorNo, Long amountMinor, String subject, Integer expireMinutes,
+                               String bizNo) {
         StoreRef s = store(storeNo);
         Issued i = checkout.collect(caller(s, operatorNo), s.storeId(), amountMinor == null ? 0 : amountMinor, subject,
-                expireMinutes);
+                expireMinutes, bizNo);
         return card(i);
+    }
+
+    // ---- 业务单收款汇总（TDD-业务单收款汇总）：收款域只给原始行，加减由宿主做 ----
+
+    /** @param status 储值消费行状态：COMMITTED 计入；REVERSED / PARTIAL_REVERSED 等不计 */
+    public record StoredValueReceipt(String usageNo, String status, String currency, long amountMinor, Long occurredAt) {
+    }
+
+    public record BizReceipts(List<MerchantCollectLinkQueryService.BizLink> links,
+                              List<StoredValueReceipt> storedValue) {
+    }
+
+    /** 本店带某个业务单号的付款链接与储值扣款；只读、不改任何单据 */
+    public BizReceipts receipts(String storeNo, String operatorNo, String bizNo) {
+        StoreRef s = store(storeNo);
+        List<MerchantCollectLinkQueryService.BizLink> found = links.ofBizNo(caller(s, operatorNo), s.storeId(), bizNo);
+        List<StoredValueReceipt> sv = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> usages.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.pay.entitlement.entity.EntUsage>lambdaQuery()
+                        .eq(ai.neargo.shop.pay.entitlement.entity.EntUsage::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.pay.entitlement.entity.EntUsage::getAssetKind, "STORED_VALUE")
+                        .eq(ai.neargo.shop.pay.entitlement.entity.EntUsage::getSourceOrderNo, bizNo)
+                        .orderByAsc(ai.neargo.shop.pay.entitlement.entity.EntUsage::getOccurredAt)
+                        .last("LIMIT 50"))).stream()
+                .map(u -> new StoredValueReceipt(u.getUsageNo(), u.getStatus(), u.getCurrency(),
+                        u.getAmountMinor() == null ? 0 : u.getAmountMinor(),
+                        u.getOccurredAt() == null ? null : u.getOccurredAt().toInstant(ZoneOffset.UTC).toEpochMilli()))
+                .toList();
+        return new BizReceipts(found, sv);
     }
 
     private CollectView card(Issued i) {

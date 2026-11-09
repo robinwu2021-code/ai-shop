@@ -53,12 +53,23 @@ class PayBizInternalApiRoundTripTest {
     }
 
     @Test
+    @DisplayName("★★ 业务单收款汇总的原始行过边界不丢字段（TDD-业务单收款汇总）")
+    void bizReceiptsCrossTheBoundary() {
+        var receipts = new ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts(
+                List.of(new ai.neargo.shop.pay.acquiring.service.MerchantCollectLinkQueryService.BizLink(
+                        "PYO-1", "PAID", "CNY", 300, 300, 100, 1L, 2L)),
+                List.of(new ai.neargo.shop.pay.biz.PayBizFacade.StoredValueReceipt("EU1", "COMMITTED", "CNY", 150, 3L)));
+        when(biz.receipts("S-1", "MCH-A", "FST1")).thenReturn(receipts);
+        assertThat(api().receipts("S-1", "MCH-A", "FST1").value()).isEqualTo(receipts);
+    }
+
+    @Test
     @DisplayName("★★★ 门店与操作人显式过边界（读也带 —— 门店范围按操作员圈）；结果原样回")
     void storeAndOperatorCrossTheBoundary() {
-        when(biz.collect("S-1", "MCH-A", 1200L, "桌 3", 15)).thenReturn(new CollectView("PYO-1", "tk-1", 9L, "/c/tk-1", 1200L, "CNY", "桌 3", "一号店"));
+        when(biz.collect("S-1", "MCH-A", 1200L, "桌 3", 15, "FST1")).thenReturn(new CollectView("PYO-1", "tk-1", 9L, "/c/tk-1", 1200L, "CNY", "桌 3", "一号店"));
         when(biz.refunds("S-1", "MCH-A")).thenReturn(List.of(refund("SUCCEEDED")));
 
-        PortResult<CollectView> c = api().collect("S-1", new CollectReq("MCH-A", 1200L, "桌 3", 15));
+        PortResult<CollectView> c = api().collect("S-1", new CollectReq("MCH-A", 1200L, "桌 3", 15, "FST1"));
         PortResult<List<RefundView>> r = api().refunds("S-1", "MCH-A");
         api().statement("S-1", "MCH-A", "2026-10-28");
         api().disableQrCode("S-1", "QR-1", "MCH-A");

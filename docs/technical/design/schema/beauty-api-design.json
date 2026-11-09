@@ -2366,13 +2366,13 @@
           "method": "GET",
           "path": "/biz/x/beauty/reports/scheduling",
           "purpose": "预约转化爽约资源利用率",
-          "request": "storeNo,from,to,resourceType",
-          "response": "SchedulingReportVO含计划/实际口径",
+          "request": "from,to（左闭右开，带偏移；门店取当前X-Store-No）",
+          "response": "SchedulingReportVO：预约数、到店数、到店率万分比、爽约、取消、按人员项目次数、热门项目前5（均为计划/到店口径，不含金额）",
           "functions": [
             "BTY-Q04"
           ],
           "phase": "P3",
-          "status": "美业候选新接口"
+          "status": "已实现首期子集（W1.5，TDD-服务业报表）；资源利用率与实际服务时长仍为候选"
         },
         {
           "id": "BAPI-120",

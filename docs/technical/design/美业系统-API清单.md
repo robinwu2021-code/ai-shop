@@ -312,7 +312,7 @@
 | BAPI-116<br>BTY-Q01<br>P1 | `GET /biz/x/beauty/customer-timelines/{customerNo}` | 本人或受权顾客预约服务来源时间线<br>storeNo,from,to,page,size | PageData<CustomerTimelineVO><br>美业候选新接口 |
 | BAPI-117<br>BTY-Q02<br>P1 | `GET /biz/x/beauty/workbench/summary` | 今日接待待服务未结异常概览<br>storeNo,businessDate | WorkbenchSummaryVO含asOf独立水位<br>美业候选新接口 |
 | BAPI-118<br>BTY-Q03<br>P3 | `CONTRACT analytics.money-separate-measures` | 现金充值资产消耗余额分口径报表<br>storeNo,period,currency | MoneyReportVO不可叠加为营收<br>共用合同接入，路径待核对 |
-| BAPI-119<br>BTY-Q04<br>P3 | `GET /biz/x/beauty/reports/scheduling` | 预约转化爽约资源利用率<br>storeNo,from,to,resourceType | SchedulingReportVO含计划/实际口径<br>美业候选新接口 |
+| BAPI-119<br>BTY-Q04<br>P3 | `GET /biz/x/beauty/reports/scheduling` | 预约转化爽约资源利用率<br>from,to（左闭右开，带偏移；门店取当前X-Store-No） | SchedulingReportVO：预约数、到店数、到店率万分比、爽约、取消、按人员项目次数、热门项目前5（均为计划/到店口径，不含金额）<br>已实现首期子集（W1.5，TDD-服务业报表）；资源利用率与实际服务时长仍为候选 |
 | BAPI-120<br>BTY-Q05<br>P3 | `GET /biz/x/beauty/reports/services` | 项目服务产出成本复购业绩查询<br>storeNo,period,dimensions | ServiceReportVO各事实水位<br>美业候选新接口 |
 | BAPI-121<br>BTY-Q06<br>P3 | `POST /biz/x/beauty/report-exports` | 创建受权跨店导出任务<br>storeNos,reportType,filters,purpose | ReportExportVO含水位与到期下载<br>美业候选新接口 |
 | BAPI-122<br>BTY-Q06<br>P3 | `GET /biz/x/beauty/report-exports/{exportNo}` | 查导出结果及更正水位<br>exportNo | ReportExportVO下载二次鉴权<br>美业候选新接口 |

@@ -134,6 +134,89 @@ public final class IndustryChannelOrderPolicyServiceImpl
                                                                 request))));
     }
 
+    /**
+     * Same replay, lock and version rules as {@link #save}; a separate idempotency namespace keeps a
+     * toggle key from colliding with a full-save key.
+     */
+    @Override
+    public Policy setEnabled(
+            Scope scope, String actor, String channelStoreKey, EnabledReq request, String key) {
+        scope(scope);
+        channel(channelStoreKey);
+        text(actor, 32);
+        text(key, 128);
+        if (request == null
+                || request.version() == null
+                || request.version() < 0
+                || request.enabled() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        String endpoint =
+                "CHANNEL_ORDER_POLICY_ENABLED:"
+                        + PricingSnapshotHash.of(
+                                List.of(
+                                        scope.tenantNo(),
+                                        scope.entityNo(),
+                                        scope.storeNo(),
+                                        channelStoreKey));
+        String hash = PricingSnapshotHash.of(request);
+        var replay =
+                DataScopeContext.executeWithoutScope(
+                        () -> idempotency.findCompleted(key, endpoint, actor, hash, Policy.class));
+        if (replay.isPresent()) return replay.get();
+        authorize(scope);
+        return DataScopeContext.executeWithoutScope(
+                () ->
+                        write.execute(
+                                tx ->
+                                        idempotency.execute(
+                                                key,
+                                                endpoint,
+                                                actor,
+                                                hash,
+                                                Policy.class,
+                                                () ->
+                                                        toggle(
+                                                                scope,
+                                                                actor,
+                                                                channelStoreKey,
+                                                                request))));
+    }
+
+    private Policy toggle(Scope scope, String actor, String channelStoreKey, EnabledReq request) {
+        var row =
+                policies.selectOne(
+                        Wrappers.<OrdChannelPolicy>query()
+                                .eq("tenant_no", scope.tenantNo())
+                                .eq("entity_no", scope.entityNo())
+                                .eq("store_no", scope.storeNo())
+                                .eq("channel_store_key", channelStoreKey)
+                                .last("FOR UPDATE"));
+        if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (!request.version().equals(row.getVersion())) throw BizException.of(ErrorCode.CONFLICT);
+        if (request.enabled()
+                && !Boolean.TRUE.equals(row.getAllowPlatformCollected())
+                && !Boolean.TRUE.equals(row.getAllowCashOnDelivery()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        var now = LocalDateTime.now(ZoneOffset.UTC);
+        int updated =
+                policies.update(
+                        Wrappers.<OrdChannelPolicy>update()
+                                .eq("tenant_no", scope.tenantNo())
+                                .eq("entity_no", scope.entityNo())
+                                .eq("store_no", scope.storeNo())
+                                .eq("id", row.getId())
+                                .eq("version", request.version())
+                                .set("enabled", request.enabled())
+                                .set("updated_by", actor)
+                                .set("updated_at", now)
+                                .set("version", request.version() + 1));
+        if (updated != 1) throw BizException.of(ErrorCode.CONFLICT);
+        row.setEnabled(request.enabled());
+        row.setUpdatedAt(now);
+        row.setUpdatedBy(actor);
+        row.setVersion(request.version() + 1);
+        return view(row);
+    }
+
     private Policy persist(Scope scope, String actor, String channelStoreKey, SaveReq request) {
         var row =
                 policies.selectOne(

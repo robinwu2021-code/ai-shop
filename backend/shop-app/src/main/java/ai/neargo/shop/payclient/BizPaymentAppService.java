@@ -29,7 +29,11 @@ public interface BizPaymentAppService {
 
     void revokeGrant(String storeNo, Long id);
 
-    CollectView collect(String storeNo, Long amountMinor, String subject, Integer expireMinutes);
+    /** @param bizNo 业务单号（可空，TDD-业务单收款汇总 AC8） */
+    CollectView collect(String storeNo, Long amountMinor, String subject, Integer expireMinutes, String bizNo);
+
+    /** 本店带某个业务单号的付款链接与储值扣款原始行（TDD-业务单收款汇总） */
+    ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts receipts(String storeNo, String bizNo);
 
     List<QrView> qrCodes(String storeNo);
 

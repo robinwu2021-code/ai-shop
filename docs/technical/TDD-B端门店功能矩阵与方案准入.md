@@ -191,6 +191,7 @@ GET /biz/stores/{storeNo}/features
 |---|---|---|---|
 | 1 | 预约权限要不要默认给店长、店员 | **给**：店长 `biz:booking:view` + `biz:booking:manage`，店员 `biz:booking:view`；理货、配送、客服不给 | `BizPerms.ROLE_PERMS` + `V640__default_role_perms_booking_and_pay.sql`；`BizRoleSeedTest` 对账 |
 | 1a | （实施中发现）店长、店员的收款权限只在 Java 表里、库里没有 | **补齐**：店长 `mch:pay:order:view` + `mch:pay:collect`，店员 `mch:pay:order:view`，与 `BizPerms` 早已写明的意图一致 | 同上 V640。此前 `BizRoleSeedTest#seedMatchesBizPerms` 在基线上就是红的，现在转绿 |
+| 1b | （部署后发现，执行方案 D1 / W1.1）166 的 `mch_role` 没有 `entity_no='*'` 的预置行，V637、V640 的补授只改到 0 行，店长店员登录后 `perms` 为空 | **补齐缺失行**：按「V71 初始数据 + 之后所有补授」写入六个预置角色；已有行一律不动 | `V642__builtin_role_backfill.sql`（逐行 `INSERT IGNORE`，只写数据、无 DDL，可重复执行）；`BizRoleSeedTest#backfillMatchesTheSeedStateBeforeIt` 对账。是否真缺仍以 W0.4 在 166 上查询为准，不缺时它是空操作 |
 | 2 | 零售的商品、订单进不进 PRO | **不进**：商品、订单是各行业都要的卖货基础，归 `END_BIZ_APP`（FREE 即有）；零售 PRO 只收进销存、团购 | `StoreFeature` 中 `GOODS`、`ORDERS` 改归 `BASE` |
 | 3 | 餐饮、服务业要不要专用权限码 | **不要**：后端已实现的 `/biz/x/food/*` 用的就是 `biz:order:view / verify / receive / aftersale / finance`，美业设计用 `biz:booking:*`；功能矩阵对齐它们 | `StoreFeature` 餐饮 5 行、`SVC_BOOKING` 改权限码 |
 | 4 | 服务端按功能拦截 | **现在不加逐请求拦截**，见下 | 本次只做展示判定；拦截按下面的方案在 App 接入业务端会话时落地 |
@@ -239,6 +240,7 @@ GET /biz/stores/{storeNo}/features
 | AC7 | `StoreFeatureMatrixTest#legacyStore` | ✅ | — |
 | AC8 | `StoreFeatureRoutePolicyTest`（2 个）· `BizEndpointPermTest` | ✅ | 改路由策略前先跑：2 个都红（`expected <ACCOUNT>/<BOOTSTRAP> but was <DENY>`）✅ |
 | §4-1 / 4-1a | `BizRoleSeedTest#seedMatchesBizPerms` · `StoreFeatureMatrixTest#bookingDefaultRoles` | ✅ | 删掉 V640 里店员预约那行 → `BizRoleSeedTest` 红 ✅；改前基线上它因收款权限缺漏本就是红的 |
+| §4-1b | `BizRoleSeedTest#backfillMatchesTheSeedStateBeforeIt`（六行齐全、权限 = V642 之前所有迁移叠加的结果、不含改写或删除语句）· `SchemaGeneratorTest`（H2 重放后仍为 V71 的六行） | ✅ | 先写测试、文件不存在时红 ✅；断言最初用子串匹配 `UPDATE` 误中列名 `updated_at`，改为只匹配行首语句 |
 | §4-2 | `StoreFeatureMatrixTest#matrixForBusinessType` / `#freeStoreOwner`（商品、订单 FREE 可用） | ✅ | — |
 | §4-3 | `StoreFeatureMatrixTest#foodPermissionsFollowFoodApis` | ✅ | — |
 

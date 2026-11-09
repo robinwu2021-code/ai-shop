@@ -21,6 +21,7 @@ import ai.neargo.shop.beauty.service.impl.AppointmentServiceImpl;
 import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
 import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
+import ai.neargo.shop.beauty.service.impl.SchedulingReportServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceTaskStockPreparationCoordinator;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
@@ -103,6 +104,12 @@ public class BeautyAppointmentConfiguration {
     @Bean
     AppointmentSourceAuthorityPortImpl appointmentSourceAuthorityPortImpl(AppointmentSourceAuthority authority) {
         return new AppointmentSourceAuthorityPortImpl(authority);
+    }
+    /** BAPI-119 首期子集：服务业报表（TDD-服务业报表） */
+    @Bean
+    SchedulingReportServiceImpl schedulingReportServiceImpl(
+            BeautyMappers.AppointmentMapper appointments, AppointmentAccess access) {
+        return new SchedulingReportServiceImpl(appointments, access);
     }
     @Bean
     AppointmentServiceImpl appointmentServiceImpl(AppointmentPersistence db, AppointmentAccess access,

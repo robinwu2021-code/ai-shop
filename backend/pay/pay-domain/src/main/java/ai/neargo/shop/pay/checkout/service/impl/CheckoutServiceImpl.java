@@ -50,6 +50,8 @@ public class CheckoutServiceImpl implements CheckoutService {
     static final String QR_BIZ_TYPE = "CHECKOUT_QR";
     /** 商家代客收款建的单 */
     static final String COLLECT_BIZ_TYPE = "BIZ_COLLECT";
+    /** 业务单号字符集（与宿主路径变量同一规则） */
+    static final String BIZ_NO = "[A-Za-z0-9_.:-]{1,64}";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PayCheckoutSessionMapper sessions;
@@ -210,6 +212,15 @@ public class CheckoutServiceImpl implements CheckoutService {
 
     @Override
     public Issued collect(PayCaller caller, Long storeId, long amountMinor, String subject, Integer expireMinutes) {
+        return collect(caller, storeId, amountMinor, subject, expireMinutes, null);
+    }
+
+    @Override
+    public Issued collect(PayCaller caller, Long storeId, long amountMinor, String subject, Integer expireMinutes,
+                          String bizNo) {
+        if (bizNo != null && !bizNo.matches(BIZ_NO)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         int minutes = expireMinutes == null ? 15 : expireMinutes;
         if (amountMinor <= 0 || minutes < 1 || minutes > maxCollectMinutes) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -217,7 +228,8 @@ public class CheckoutServiceImpl implements CheckoutService {
         StoreRef store = stores.storeById(storeId).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         String currency = MerchantDefaults.currencyOf(store.market());
         String outOrderNo = BizKey.next("BZC");
-        PayOrder o = payments.create(caller, new CreatePaymentCmd(COLLECT_BIZ_TYPE, outOrderNo, outOrderNo, store.storeId(),
+        PayOrder o = payments.create(caller, new CreatePaymentCmd(COLLECT_BIZ_TYPE,
+                bizNo == null ? outOrderNo : bizNo, outOrderNo, store.storeId(),
                 store.storeName(), store.entityName(), store.market(), amountMinor, currency,
                 subject == null || subject.isBlank() ? store.storeName() : subject, "ONLINE",
                 Instant.now().plus(Duration.ofMinutes(minutes)), store.fundsPath()));
