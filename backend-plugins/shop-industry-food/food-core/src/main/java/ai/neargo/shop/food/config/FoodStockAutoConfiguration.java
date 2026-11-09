@@ -16,11 +16,11 @@ import ai.neargo.shop.food.service.FoodReturnStockService;
 import ai.neargo.shop.food.service.FoodStockSyncService;
 import ai.neargo.shop.food.service.impl.FoodReturnStockServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl;
-import ai.neargo.shop.food.service.impl.FoodStockReservationServiceImpl;
-import ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher;
-import ai.neargo.shop.food.service.impl.FoodStockSyncPublisher;
+import ai.neargo.shop.food.port.FoodLocalStockPortImpl;
+import ai.neargo.shop.food.service.impl.FoodStockSyncDispatchServiceImpl;
+import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
 import ai.neargo.shop.food.service.impl.FoodStockSyncServiceImpl;
-import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
+import ai.neargo.shop.food.service.support.FoodStockSyncWorker;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
 import ai.neargo.shop.spi.food.FoodStockReportFactsPort;
 import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
@@ -63,13 +63,13 @@ public class FoodStockAutoConfiguration {
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new FoodStockSyncServiceImpl(configs,mappings,deliveries,items,balances,commands,logs,publisher,receivers,json,manager);
     }
-    @Bean FoodStockSyncDispatcher foodStockSyncDispatcher(
+    @Bean FoodStockSyncDispatchServiceImpl foodStockSyncDispatcher(
             StockSyncConfigMapper configs,StockSyncDeliveryMapper deliveries,StockItemMapper items,
             StockBalanceMapper balances,FoodStockSyncPublisher publisher,
             ObjectProvider<InventoryFoodStockProjectionPort> receivers,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager,
             FoodStockReconciliationServiceImpl reconciliation) {
-        return new FoodStockSyncDispatcher(configs,deliveries,items,balances,publisher,receivers,json,manager,reconciliation);
+        return new FoodStockSyncDispatchServiceImpl(configs,deliveries,items,balances,publisher,receivers,json,manager,reconciliation);
     }
     @Bean FoodStockSyncPublisher foodStockSyncPublisher(
             StockSyncConfigMapper configs,StockSyncItemStateMapper states,StockSyncMappingMapper mappings,
@@ -80,7 +80,7 @@ public class FoodStockAutoConfiguration {
         return publisher;
     }
     @Bean FoodStockSyncWorker foodStockSyncWorker(
-            StockSyncDeliveryMapper deliveries,FoodStockSyncDispatcher dispatcher,
+            StockSyncDeliveryMapper deliveries,FoodStockSyncDispatchServiceImpl dispatcher,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager){
         return new FoodStockSyncWorker(deliveries,dispatcher,json,manager);
     }
@@ -89,7 +89,7 @@ public class FoodStockAutoConfiguration {
             StockCommandMapper commands,StockMovementMapper movements,ObjectMapper json,
             FoodStockSyncPublisher sync,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new FoodStockReservationServiceImpl(items,balances,heads,leaves,commands,movements,json,manager,sync);
+        return new FoodLocalStockPortImpl(items,balances,heads,leaves,commands,movements,json,manager,sync);
     }
     @Bean FoodStockManagementServiceImpl foodStockManagementService(StockItemMapper items,
             StockBalanceMapper balances,StockCommandMapper commands,StockMovementMapper movements,

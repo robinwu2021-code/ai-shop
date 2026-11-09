@@ -1,6 +1,7 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
-import static ai.neargo.shop.food.service.impl.DiningChannelSourceStore.require;
+import ai.neargo.shop.food.service.support.DiningChannelSourceStore;
+import static ai.neargo.shop.food.service.support.DiningChannelSourceStore.require;
 
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
@@ -64,7 +65,7 @@ public final class DiningChannelOrderBinder {
         this.publisher = publisher;
     }
 
-    void bind(Key key, long fence, Preparation prepared, Acceptance accepted) {
+    public void bind(Key key, long fence, Preparation prepared, Acceptance accepted) {
         store.atomic(
                 () -> {
                     store.activeGuard(key);

@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
@@ -19,13 +20,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Receiver calls stay outside FOOD transactions. Finite baseline pages resume from a durable cursor. */
-public final class FoodStockSyncDispatcher implements OutboxHandler,OutboxRouteContribution,FoodStockSyncDispatchService {
+public final class FoodStockSyncDispatchServiceImpl implements FoodStockSyncDispatchService,OutboxHandler,OutboxRouteContribution {
     private final StockSyncConfigMapper configs;private final StockSyncDeliveryMapper deliveries;
     private final StockItemMapper items;private final StockBalanceMapper balances;
     private final FoodStockSyncPublisher publisher;private final ObjectProvider<InventoryFoodStockProjectionPort> receivers;
     private final ObjectMapper json;private final TransactionTemplate write;
     private final FoodStockReconciliationServiceImpl reconciliation;
-    public FoodStockSyncDispatcher(StockSyncConfigMapper configs,StockSyncDeliveryMapper deliveries,
+    public FoodStockSyncDispatchServiceImpl(StockSyncConfigMapper configs,StockSyncDeliveryMapper deliveries,
             StockItemMapper items,StockBalanceMapper balances,FoodStockSyncPublisher publisher,
             ObjectProvider<InventoryFoodStockProjectionPort> receivers,ObjectMapper json,PlatformTransactionManager manager,FoodStockReconciliationServiceImpl reconciliation) {
         this.configs=configs;this.deliveries=deliveries;this.items=items;this.balances=balances;this.publisher=publisher;

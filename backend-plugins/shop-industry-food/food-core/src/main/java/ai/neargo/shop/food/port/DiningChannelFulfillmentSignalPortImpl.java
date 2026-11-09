@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -19,7 +19,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

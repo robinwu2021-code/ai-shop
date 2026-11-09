@@ -1,5 +1,6 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.port;
 
+import ai.neargo.shop.food.service.support.FoodStockSyncPublisher;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
@@ -21,13 +22,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Atomically persists original leaves, exact quantities, movements and permanent command receipts. */
-public final class FoodStockReservationServiceImpl implements FoodLocalStockPort {
+public final class FoodLocalStockPortImpl implements FoodLocalStockPort {
     private final StockItemMapper items; private final StockBalanceMapper balances;
     private final StockReservationMapper heads; private final StockReservationItemMapper leaves;
     private final StockCommandMapper commands; private final StockMovementMapper movements;
     private final FoodStockSyncPublisher sync;
     private final ObjectMapper json; private final TransactionTemplate write; private final TransactionTemplate read;
-    public FoodStockReservationServiceImpl(StockItemMapper items,StockBalanceMapper balances,
+    public FoodLocalStockPortImpl(StockItemMapper items,StockBalanceMapper balances,
             StockReservationMapper heads,StockReservationItemMapper leaves,StockCommandMapper commands,
             StockMovementMapper movements,ObjectMapper json,PlatformTransactionManager manager,FoodStockSyncPublisher sync) {
         this.items=items;this.balances=balances;this.heads=heads;this.leaves=leaves;this.commands=commands;

@@ -1,6 +1,6 @@
 package ai.neargo.shop.food.spi;
 
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 
 import org.springframework.web.bind.annotation.RequestBody;

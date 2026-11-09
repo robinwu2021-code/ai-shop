@@ -26,8 +26,8 @@ import ai.neargo.shop.food.mapper.FoodMappers.OrderBatchMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceEventMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
-import ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort;
-import ai.neargo.shop.food.service.impl.DiningChannelFulfillmentSignalPortImpl;
+import ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort;
+import ai.neargo.shop.food.port.DiningChannelFulfillmentSignalPortImpl;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
 
 import org.junit.jupiter.api.Test;
