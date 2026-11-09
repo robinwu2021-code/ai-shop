@@ -184,6 +184,8 @@ GET /biz/stores/{storeNo}/features
 
 ## §4 决定与执行（2026-11-09）
 
+后续开发计划（合流、App 接入、各行业上线、服务端拦截）见 [B端门店功能矩阵-开发计划-2026-11-09](./B端门店功能矩阵-开发计划-2026-11-09.md)。
+
 | # | 原待决 | 决定 | 执行 |
 |---|---|---|---|
 | 1 | 预约权限要不要默认给店长、店员 | **给**：店长 `biz:booking:view` + `biz:booking:manage`，店员 `biz:booking:view`；理货、配送、客服不给 | `BizPerms.ROLE_PERMS` + `V640__default_role_perms_booking_and_pay.sql`；`BizRoleSeedTest` 对账 |
