@@ -91,6 +91,26 @@ class BizOfflineRecordFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 记录人名称取店员在本店的显示名；没设过显示名、昵称又是默认「微信用户」时给 null（2026-11-09 166 联调）")
+    void recorded_by_name_is_staff_display_name_not_default_nickname() throws Exception {
+        Shop s = shop();
+        JsonNode r = data(record(s.clerk(), s, key(), body(1000, "TWD", "CASH", null, null, null)));
+        String userNo = r.get("recordedBy").asString();
+        jdbc.update("UPDATE usr_account SET nickname='微信用户' WHERE user_no=?", userNo);
+        jdbc.update("UPDATE mch_account SET display_name=NULL WHERE (user_no=? OR mch_account_no=?) AND entity_no=?",
+                userNo, userNo, s.entityNo());
+        JsonNode unnamed = data(call(s.clerk(), s, get("/biz/payment/offline-records")));
+        assertThat(unnamed.get("items").get(0).get("recordedByName").isNull()).isTrue();
+        assertThat(unnamed.get("items").get(0).get("history").get(0).get("byName").isNull()).isTrue();
+
+        jdbc.update("UPDATE mch_account SET display_name='阿明' WHERE (user_no=? OR mch_account_no=?) AND entity_no=?",
+                userNo, userNo, s.entityNo());
+        JsonNode named = data(call(s.clerk(), s, get("/biz/payment/offline-records")));
+        assertThat(named.get("items").get(0).get("recordedByName").asString()).isEqualTo("阿明");
+        assertThat(named.get("items").get(0).get("history").get(0).get("byName").asString()).isEqualTo("阿明");
+    }
+
+    @Test
     @DisplayName("★★ AC1/AC10 币种必须是门店市场的币种：台湾店记 CNY → 10400")
     void record_rejects_currency_other_than_store_market() throws Exception {
         Shop s = shop();

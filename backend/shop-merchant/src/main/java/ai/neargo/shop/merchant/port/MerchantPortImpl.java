@@ -488,6 +488,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public java.util.Map<String, String> staffDisplayNames(String entityNo, java.util.Collection<String> userNos) {
+        if (entityNo == null || userNos == null || userNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // 调用方只传本店记录里的用户号，且限定在当前主体内：不解数据域也不会多看到别家的人
+        var rows = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, entityNo)
+                        .and(w -> w.in(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNos)
+                                .or().in(ai.neargo.shop.merchant.entity.MchAccount::getMchAccountNo, userNos))));
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (var a : rows) {
+            if (a.getDisplayName() == null || a.getDisplayName().isBlank()) {
+                continue;
+            }
+            // 店主按 C 端用户号登录，手机号登录的店员主体号是店员账号号：两种都认
+            for (String key : new String[]{a.getUserNo(), a.getMchAccountNo()}) {
+                if (key != null && userNos.contains(key)) {
+                    out.putIfAbsent(key, a.getDisplayName().trim());
+                }
+            }
+        }
+        return out;
+    }
+
+    @Override
     public java.util.Map<String, String> storeNames(java.util.Collection<String> storeNos) {
         if (storeNos == null || storeNos.isEmpty()) {
             return java.util.Map.of();

@@ -66,6 +66,9 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
+    /** 注册默认昵称（UsrAccount.DEFAULT_NICKNAME；trade 不依赖 user 实体，这里抄一份） */
+    private static final String DEFAULT_NICKNAME = "微信用户";
+
     private final RecordMapper records;
     private final EventMapper events;
     private final SubOrderMapper subOrders;
@@ -415,9 +418,19 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
                                 .orderByAsc(OrdOfflineRecordEvent::getId))
                 .stream()
                 .collect(Collectors.groupingBy(OrdOfflineRecordEvent::getRecordNo));
+        /*
+         * 记录人名称：店员在本店主体下的显示名优先；没填过就退回账号昵称，
+         * 但注册默认的「微信用户」不算名字（认不出是谁）→ null，App 自己退回显示。
+         */
+        java.util.Set<String> actors = new java.util.HashSet<>();
+        rows.forEach(r -> actors.add(r.getRecordedBy()));
+        trail.values().forEach(es -> es.forEach(e -> actors.add(e.getActorNo())));
+        actors.remove(null);
+        Map<String, String> staffNames = merchants.staffDisplayNames(rows.get(0).getEntityNo(), actors);
         Map<String, String> names = new HashMap<>();
-        Function<String, String> nameOf = no -> names.computeIfAbsent(no,
-                k -> users.find(k).map(UserBrief::nickname).orElse(null));
+        Function<String, String> nameOf = no -> no == null ? null : names.computeIfAbsent(no,
+                k -> staffNames.containsKey(k) ? staffNames.get(k) : users.find(k).map(UserBrief::nickname)
+                        .filter(n -> !n.isBlank() && !DEFAULT_NICKNAME.equals(n)).orElse(null));
         List<OfflineRecordView> out = new ArrayList<>(rows.size());
         for (OrdOfflineRecord row : rows) {
             List<HistoryView> history = trail.getOrDefault(row.getRecordNo(), List.of()).stream()

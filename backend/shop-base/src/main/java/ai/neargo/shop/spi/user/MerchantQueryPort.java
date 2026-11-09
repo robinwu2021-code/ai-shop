@@ -161,6 +161,14 @@ public interface MerchantQueryPort {
     java.util.Map<String, String> storeNames(java.util.Collection<String> storeNos);
 
     /**
+     * 这些操作人（C 端用户号，或手机号登录店员的店员账号号）在该主体下的店员显示名（「我的 › 显示名」/ 店员管理里填的姓名）。
+     * 外部记账的记录人、留痕操作人显示它：账号昵称多半是注册默认的「微信用户」，认不出是谁。
+     *
+     * @return 操作人号 → 显示名；没有店员账号或显示名为空的不出现在结果里
+     */
+    java.util.Map<String, String> staffDisplayNames(String entityNo, java.util.Collection<String> userNos);
+
+    /**
      * 批量取默认门店号。
      *
      * <p>与单个的 {@link #defaultStoreNo} 是<b>两件事</b>：那个为了兼容历史调用方

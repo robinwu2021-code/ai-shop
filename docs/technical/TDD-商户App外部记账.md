@@ -166,7 +166,7 @@
 
   - `history[].action`：`CREATE | CORRECT | VOID`，按时间正序；App 按 `action` 与前后值自己拼文字（同 `/biz/payment/orders/{payOrderNo}` 的 `timeline.kind` 做法）。
   - `version`：每次更正 / 作废 +1，更正与作废要带回来（`expectedVersion`）。
-  - `recordedByName`：取不到时为 `null`，App 退回显示 `recordedBy`。
+  - `recordedByName`（以及 `history[].byName`）：取店员在本主体下的显示名（「我的 › 显示名」/ 店员管理里填的姓名）；没填过退回账号昵称，但注册默认昵称「微信用户」不算名字；都取不到时为 `null`，App 自己退回显示（如「店主」「店员」或脱敏手机号），不要直接显示 `recordedBy` 这串账号号。（2026-11-09 166 联调：原先取账号昵称，店主显示成「微信用户」，按用户拍板改为店员名。）
   - 列表每行都带 `history`：一条记录通常 1–3 个事件，一页 ≤ 50 行，体积可接受；不另开详情接口。若日后出现大量多次更正，再改成列表只给 `corrected`、详情另取（契约加法，不破坏旧包）。
 
 ### 金额与小数位
