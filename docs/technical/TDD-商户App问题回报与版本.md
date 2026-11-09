@@ -41,7 +41,7 @@
 | V4 | 带 `build` 时多回一个 `upgradeRequired`（`build < minSupported`）；版本号只取开头的 `数字(.数字){0,2}`，**`1.4.2 (20261108.1)` 按 `1.4.2` 比**（App 现有 `compareVersions` 会把它当成 `1.4.0`，见 §2 接口三） | 新 `AppVersions#compare` |
 | V5 | `notes` 按 `Accept-Language` 取对应语言（BCP 47 归并规则见 §2 接口三：`zh-Hant`、`zh-Hant-TW`、`zh-TW`、`zh-HK` 都归到 `zh-Hant`）；该语言没填 → 回落 `zh-Hant` → 再回落空数组 | `AppVersionService#current` |
 | V6 | 运营端能看、能改每个平台的版本策略；`minSupported ≤ latest`；`storeUrl` 只能是 `https://apps.apple.com/…` 或 `https://play.google.com/…`；每次改动留审计 | `GET/PUT /ops/app-versions…` → 新 `OpsAppVersionController`；`ops-web` 新 tab `/system?tab=appVersion` |
-| V7 | 旧版本写入被拒：`/biz/**` 的写请求带了 `X-App-Platform` + `X-App-Version` 且低于 `minSupported` → `code=10426`、`msg=CLIENT_UPGRADE_REQUIRED`；**不带这两个头的请求放行**；登出、解绑推播、**问题回报、四个登录类写请求**不拦（清单与理由见 §2 接口四） | 新 `ClientVersionGateFilter` 挂在 `SecurityConfig#merchantChain`；`ErrorCode.CLIENT_UPGRADE_REQUIRED(10426)` |
+| V7 | 旧版本写入被拒：`/biz/**` 的写请求带了 `X-App-Platform` + `X-App-Version` 且低于 `minSupported` → `code=10426`、`msg=CLIENT_UPGRADE_REQUIRED`；**不带这两个头的请求放行**；登出、解绑推播、**问题回报、六个登录类写请求**不拦（清单与理由见 §2 接口四） | 新 `ClientVersionGateFilter` 挂在 `SecurityConfig#merchantChain`；`ErrorCode.CLIENT_UPGRADE_REQUIRED(10426)` |
 
 **孤立项**
 
@@ -251,7 +251,7 @@
 
 | 项 | 契约 |
 |---|---|
-| 作用面 | `/biz/**` 的 `POST / PUT / DELETE / PATCH`，**排除下面这张表里的七个**（评审修订：原稿只排除了前两个） |
+| 作用面 | `/biz/**` 的 `POST / PUT / DELETE / PATCH`，**排除下面这张表里的九个**（评审修订：原稿只排除了前两个） |
 | 判定 | 请求同时带 `X-App-Platform` 与 `X-App-Version`，且 `X-App-Version < minSupported(platform)` → 拒 |
 | 不带头 | **放行**。uni-app 版 b-app 与现有 Flutter 包都不带，拦了就是全量误伤 |
 | 拒绝的响应 | HTTP 200，`{"code":10426,"msg":"CLIENT_UPGRADE_REQUIRED","data":{"minSupported":"0.2.0","storeUrl":"…"}}`；`msg` 是全大写机器码，App 按 §3 约定会读 |
@@ -267,7 +267,7 @@
 | `POST /biz/auth/logout` | 让旧包至少能退出 |
 | `POST /biz/push-token/unregister` | 让旧包能解绑推播，不再收到它处理不了的通知 |
 | `POST /biz/feedback` | 强制升级页 Y11 上有「回报问题」（ai-shop-bapp `features/system/app_version.dart` 第 171 行）。拦了它，「升不了级 / 商店打不开」这种最需要回报的问题就报不上来；回报本身不改任何业务数据 |
-| `POST /biz/auth/login`、`POST /biz/auth/staff-login`、`POST /biz/auth/otp/send`、`POST /biz/auth/email-otp/send` | **登录类不拦，是有意的**。它们在 `merchantChain` 上（`SecurityConfig` 第 185–186 行 `permitAll`），不排除就会被拦。不拦的理由：① 登录不写业务数据，旧包登录进来后第一笔业务写入照样 10426；② 回报接口要登录态——令牌过期的旧包如果连登录都被拦，就再也报不了问题；③ 少一处「登录页也要认 10426」的端上要求。拦的话 App 登录页必须认 10426 并显示 Y11，否则用户看到的是一条通用错误 |
+| `POST /biz/auth/login`、`POST /biz/auth/staff-login`、`POST /biz/auth/otp/send`、`POST /biz/auth/email-otp/send`；统一登录的 `POST /biz/auth/identities`、`POST /biz/auth/identities/enter`（ADR-053，2026-11-09 App 联调补入） | **登录类不拦，是有意的**。它们在 `merchantChain` 上（`SecurityConfig` 第 185–186 行 `permitAll`），不排除就会被拦。不拦的理由：① 登录不写业务数据，旧包登录进来后第一笔业务写入照样 10426；② 回报接口要登录态——令牌过期的旧包如果连登录都被拦，就再也报不了问题；③ 少一处「登录页也要认 10426」的端上要求。拦的话 App 登录页必须认 10426 并显示 Y11，否则用户看到的是一条通用错误 |
 
 `POST /biz/auth/password`（设密码）**照拦**：它是账号写入，旧包拿到 10426 进 Y11 即可。
 
@@ -338,7 +338,7 @@
 | 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/platform/AppVersions.java` | 版本比较（与 App `compareVersions` 同规则） |
 | 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/platform/api/common/AppVersionController.java` | `GET /common/app/version`，`@Profile("api")` |
 | 新增 | `backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsAppVersionController.java` | `/ops/app-versions` 两个端点 |
-| 新增 | `backend/shop-app/src/main/java/ai/neargo/shop/config/ClientVersionGateFilter.java` | V7；七个不拦的写请求写成常量表 |
+| 新增 | `backend/shop-app/src/main/java/ai/neargo/shop/config/ClientVersionGateFilter.java` | V7；九个不拦的写请求写成常量表 |
 | 修改 | `backend/shop-app/src/main/java/ai/neargo/shop/config/SecurityConfig.java` | `merchantChain` 挂 V7 过滤器（**`publicChain` 不改**） |
 | 修改 | `backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/security/CommerceRoutePolicy.java` | `ACCOUNT` 加 `POST /biz/feedback`、`GET /biz/feedback/mine` |
 | 修改 | `backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java` | `CLIENT_UPGRADE_REQUIRED(10426, "err.client.upgrade_required")` |
@@ -376,7 +376,7 @@
 | V4 | `AppVersionsTest#compares_like_app_compare_versions`（照抄 App `v22_units_test.dart` 四条）、`#build_suffix_in_parentheses_is_ignored`、`#non_versions_are_rejected`；`AppVersionHttpTest#upgrade_required_when_build_below_min` | ✅ | 括号用例：按 `.` 硬拆会把 `1.4.2 (…)` 当 1.4.0 → 红 |
 | V5 | `AppVersionHttpTest#notes_follow_accept_language_then_fall_back_to_zh_hant`、`#zh_hant_tw_and_zh_tw_match_zh_hant` | ✅ | 实现前红 |
 | V6 | `OpsAppVersionFlowTest#list_shows_both_platforms`、`#min_above_latest_is_rejected`、`#store_url_must_be_app_store_or_play`、`#zh_hant_notes_are_required`、`#stale_revision_conflicts`、`#update_writes_audit_log`、`#tech_ops_reads_but_cannot_update`（P5） | ✅ | 实现前红 |
-| V7 | `ClientVersionGateFilterTest#old_build_write_gets_10426`、`#missing_headers_pass`、`#reads_are_never_blocked`、`#exempt_writes_are_never_blocked`（参数化七条）、`#set_password_is_blocked`；`ClientVersionGateFlowTest#old_build_write_is_rejected_end_to_end`（挂在链上、回报不拦） | ✅ | 流程用例实现前红（过滤器不挂即红） |
+| V7 | `ClientVersionGateFilterTest#old_build_write_gets_10426`、`#missing_headers_pass`、`#reads_are_never_blocked`、`#exempt_writes_are_never_blocked`（参数化九条）、`#set_password_is_blocked`；`ClientVersionGateFlowTest#old_build_write_is_rejected_end_to_end`（挂在链上、回报不拦） | ✅ | 流程用例实现前红（过滤器不挂即红） |
 | P7 | `BizFeedbackFlowTest#diagnostics_older_than_90_days_are_purged_ticket_kept` | ✅ | — |
 | 闸门 | `BizEndpointPermTest`、`BackendI18nParityTest`、`ArchitectureTest` 及 `arch` 包全部守卫；`gen-ui-catalog.py --check`、`check-generated-docs.mjs`、`vue-tsc`（b-app / c-app）、ops-web `tsc` 与 vitest | ✅ 见下 | |
 

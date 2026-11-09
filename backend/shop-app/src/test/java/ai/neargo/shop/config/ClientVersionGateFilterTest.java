@@ -84,11 +84,12 @@ class ClientVersionGateFilterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/biz/auth/logout", "/biz/push-token/unregister", "/biz/feedback", "/biz/auth/login",
-            "/biz/auth/staff-login", "/biz/auth/otp/send", "/biz/auth/email-otp/send"})
-    @DisplayName("★★★ 七个不拦的写请求：退出、解绑推播、回报、四个登录类")
+            "/biz/auth/staff-login", "/biz/auth/otp/send", "/biz/auth/email-otp/send",
+            "/biz/auth/identities", "/biz/auth/identities/enter"})
+    @DisplayName("★★★ 九个不拦的写请求：退出、解绑推播、回报、六个登录类（含统一登录的验证与进身份）")
     void exempt_writes_are_never_blocked(String path) throws Exception {
         assertThat(passed(run("POST", path, true))).as(path).isTrue();
-        assertThat(ClientVersionGateFilter.EXEMPT).hasSize(7);
+        assertThat(ClientVersionGateFilter.EXEMPT).hasSize(9);
     }
 
     @Test

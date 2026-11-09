@@ -24,8 +24,8 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p><b>不带头的请求放行</b>：uni-app 版 b-app 与现有 Flutter 包都不带，拦了就是全量误伤。读请求一律不拦。
  *
- * <p><b>不拦的七个写请求</b>（{@link #EXEMPT}，{@code ClientVersionGateFilterTest} 逐条断言）：
- * 让旧包能退出、能解绑推播、能在强更页上回报「升不了级」；四个登录类请求<b>有意不拦</b> ——
+ * <p><b>不拦的九个写请求</b>（{@link #EXEMPT}，{@code ClientVersionGateFilterTest} 逐条断言）：
+ * 让旧包能退出、能解绑推播、能在强更页上回报「升不了级」；六个登录类请求（含统一登录的验证与进身份）<b>有意不拦</b> ——
  * 登录不写业务数据，旧包登录后第一笔业务写入照样 10426，而回报要登录态，连登录都拦就再也报不了问题。
  * {@code POST /biz/auth/password}（设密码）是账号写入，照拦。
  *
@@ -42,7 +42,10 @@ public class ClientVersionGateFilter extends OncePerRequestFilter {
             "POST /biz/auth/login",
             "POST /biz/auth/staff-login",
             "POST /biz/auth/otp/send",
-            "POST /biz/auth/email-otp/send");
+            "POST /biz/auth/email-otp/send",
+            // 统一登录（ADR-053）：先验证、再选身份进入。与上面四个同理，连登录都拦就报不了问题
+            "POST /biz/auth/identities",
+            "POST /biz/auth/identities/enter");
     private static final Set<String> WRITES = Set.of("POST", "PUT", "DELETE", "PATCH");
 
     private final AppVersionService appVersions;
