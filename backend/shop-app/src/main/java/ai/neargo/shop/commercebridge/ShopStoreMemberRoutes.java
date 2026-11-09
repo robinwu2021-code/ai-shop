@@ -82,6 +82,11 @@ final class ShopStoreMemberRoutes {
             // 关掉一路前的影响清单（…/fulfillment/{channel}/impact）**刻意不在这里登记**：它走 LEGACY_PREVIEW，
             // 老模型账号的「目标店必须在本人范围内」靠那条通道校验（CommerceAccessSecurityFlowTest#assertLegacyImpact）。
             // 登记成门店成员路由会让老账号跳过它。新模型门店怎么开放另行处理（TDD-商户App接口字段对齐 §6）
+            // 餐饮插件（门店功能矩阵开发计划 E3）：242 个商家接口各自 @PreAuthorize 判权、按所选门店取数据范围，
+            // 这里只放进门店上下文。按方案拦截（END_FNB）留到 App 接入业务端令牌后改走 END_PROTECTED（TDD-B端门店功能矩阵与方案准入 §4-4）
+            HostRoute.of("GET,POST,PUT", "/biz/x/food/.+"),
+            // 外卖平台接单 / 拒单、渠道连接与对账（餐饮首批的外送部分）：68 个商家接口同样各自 @PreAuthorize
+            HostRoute.of("GET,POST,PUT", "/biz/x/commerce/.+"),
             // 会员、标签、分群、设置、触达
             HostRoute.of("GET,POST,PUT", "/biz/(?:members|member-tags|member-segments|member-reach)(?:/.*)?"),
             HostRoute.of("GET,PUT", "/biz/member-settings"),

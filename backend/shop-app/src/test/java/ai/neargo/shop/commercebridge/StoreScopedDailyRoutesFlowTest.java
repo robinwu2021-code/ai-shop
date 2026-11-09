@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import ai.neargo.shop.common.OtpStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -307,6 +308,32 @@ class StoreScopedDailyRoutesFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(r).path("code").asInt();
+    }
+
+    @Test
+    @DisplayName("★★★ 餐饮插件 /biz/x/food/** 与外卖渠道 /biz/x/commerce/** 在新模型门店上能进门店（门店功能矩阵开发计划 E3；接口自带 @PreAuthorize 判权）")
+    void foodPluginRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020120");
+        for (String path : new String[] {
+                "/biz/x/food/stores/" + o[1] + "/tables", "/biz/x/food/queue-tickets",
+                "/biz/x/food/stores/" + o[1] + "/kitchen/tasks", "/biz/x/food/reports/business-day",
+                "/biz/x/commerce/orders/CO1", "/biz/x/commerce/providers"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+        for (String path : new String[] {"/biz/x/food/queue-tickets:call-next", "/biz/x/food/tasks/T1:start",
+                "/biz/x/commerce/orders/CO1:accept"}) {
+            String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertNotEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+        }
+        String body = mvc.perform(put("/biz/x/food/menus/M1").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn().getResponse().getContentAsString();
+        assertNotEquals(70006, json.readTree(body).path("code").asInt(), body);
+        // 只放开餐饮：美业插件路由未登记，仍然 70006
+        assertEquals(70006, call(o[0], o[1], "/biz/x/beauty/appointments").path("code").asInt());
     }
 
     @Test
