@@ -323,6 +323,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 预览<b>这家店</b>改成这份范围后覆盖哪儿（V381 范围门店级）。门店为空 = 默认店 */
     @Override
     public List<String> previewReachable(String merchantNo, String storeNo, List<String[]> areas) {
+        /*
+         * 图形先校验、再看主体：待补证照的新店也在画范围，若先按「主体没激活」回空，
+         * 不合法的图形就拿到 code 0 + 覆盖 0（166 台北早餐实测），与保存的 10473 不一致。
+         */
+        if (areas != null) {
+            areas.stream().filter(a -> a != null && a.length >= 2 && a[0] != null && isPolygon(a))
+                    .forEach(a -> parsePolygon(a[3]));
+        }
         // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
         MchEntity m = activeEntity(merchantNo);
         if (m == null) {
@@ -346,14 +354,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                          * 此前这里不收 geometry，画出来的范围在预览里整片消失，
                          * 商家看着「覆盖 0」不敢保存，或者保存了才发现预览从来不算它。
                          */
-                        ai.neargo.shop.geo.GeoPolygon g;
-                        try {
-                            g = ai.neargo.shop.geo.GeoPolygon.parse(a[3], geoProps.getPolygonMaxVertices());
-                        } catch (IllegalArgumentException e) {
-                            throw ai.neargo.shop.common.BizException.of(
-                                    ai.neargo.shop.common.ErrorCode.SERVICE_AREA_POLYGON_INVALID, e.getMessage());
-                        }
-                        r.setRefCode(g.fingerprint());
+                        r.setRefCode(parsePolygon(a[3]).fingerprint());
                         r.setGeometry(a[3]);
                     }
                     r.setStatus(AREA_ACTIVE);
@@ -368,6 +369,16 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
          */
         return reachMatcher.previewReachable(m, storeNo, rows);
+    }
+
+    /** 与保存同一道解析、同一个错误码 10473 */
+    private ai.neargo.shop.geo.GeoPolygon parsePolygon(String geometry) {
+        try {
+            return ai.neargo.shop.geo.GeoPolygon.parse(geometry, geoProps.getPolygonMaxVertices());
+        } catch (IllegalArgumentException e) {
+            throw ai.neargo.shop.common.BizException.of(
+                    ai.neargo.shop.common.ErrorCode.SERVICE_AREA_POLYGON_INVALID, e.getMessage());
+        }
     }
 
     /** 预览项是不是带了几何的多边形：{@code [POLYGON, refCode?, mode, geometry]} */

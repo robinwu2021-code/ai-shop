@@ -203,6 +203,23 @@ class ScopePreviewFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 主体还没激活（待补证照）时，图形不合法照样回 10473，不能先回空结果把错误吞掉")
+    void invalidPolygonIs10473EvenBeforeEntityIsActive() {
+        String m = merchant();
+        DataScopeContext.executeWithoutScope(() -> merchantMapper.update(null,
+                Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaUpdate()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, m)
+                        .set(ai.neargo.shop.merchant.entity.MchEntity::getStatus, "PENDING_LICENSE")));
+        // 166 上 App 实测的那一份：两个顶点、纬度在前
+        String bad = "[[25033964,121564468],[25033965,121564469]]";
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> merchantQuery.previewReachable(m,
+                        List.<String[]>of(new String[]{"POLYGON", null, "INCLUDE", bad})))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class)
+                .satisfies(e -> assertThat(((ai.neargo.shop.common.BizException) e).errorCode().code())
+                        .isEqualTo(10473));
+    }
+
+    @Test
     @DisplayName("★★ 只自提 + 预览成空范围 = 谁也看不到，预览要如实给 0")
     void previewOfAnEmptyScopeForPickupOnlyIsZero() {
         String m = merchant();
