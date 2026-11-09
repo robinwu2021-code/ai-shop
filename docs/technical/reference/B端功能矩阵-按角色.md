@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 497 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 512 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,9 +16,9 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 87 | ✅ | — | — | — | — | — |
-| `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 91 | ✅ | — | — | — | — | — |
+| `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 34 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
@@ -28,8 +28,8 @@
 | `PRINT_CONFIG` | 更正与作废 App 外收款记录（原因必填、留痕） | 15 | ✅ | ✅ | — | — | — | — |
 | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 14 | ✅ | ✅ | — | — | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 13 | ✅ | ✅ | — | — | — | ✅ |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 12 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 10 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
@@ -43,6 +43,7 @@
 | `PRINT_EXPORT` | 更正与作废 App 外收款记录（原因必填、留痕） | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
 | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 2 | ✅ | — | — | — | — | — |
+| `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
@@ -51,7 +52,6 @@
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `PRINT_REPRINT` | 更正与作废 App 外收款记录（原因必填、留痕） | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_SIMULATE` | 更正与作废 App 外收款记录（原因必填、留痕） | 2 | ✅ | ✅ | ✅ | — | — | — |
-| `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
 | `PRINT_SUBMIT` | 更正与作废 App 外收款记录（原因必填、留痕） | 1 | ✅ | ✅ | ✅ | — | — | — |
@@ -67,7 +67,7 @@
 | `SERVICE_TASK_APPROVE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 | `SERVICE_TASK_CLOSE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 28 项**：`STORE_ADMIN`、`FINANCE`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
+**只有 OWNER 能碰的 28 项**：`STORE_ADMIN`、`FINANCE`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`CASH_RECEIVE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -78,15 +78,19 @@
 - `/biz/entity/{entityNo}`
 - `/biz/inventory/locations/{id}/source`
 - `/biz/member-settings`
+- `/biz/personnel`
 - `/biz/personnel/{personnelNo}/account-links`
 - `/biz/personnel/{personnelNo}/assignments`
 - `/biz/personnel/{personnelNo}/status-changes`
 - `/biz/plan`
 - `/biz/plan/trial`
+- `/biz/resources`
 - `/biz/role-perms`
 - `/biz/role/{roleCode}`
 - `/biz/role/{roleCode}/delete`
 - `/biz/roles`
+- `/biz/schedule-rules`
+- `/biz/schedules`
 - `/biz/staff`
 - `/biz/staff/logs`
 - `/biz/staff/{mchAccountNo}/status`
@@ -181,6 +185,8 @@
 - `/biz/inventory/counts/{no}/void`
 - `/biz/inventory/cross-store`
 - `/biz/inventory/documents`
+- `/biz/inventory/food-stock-projections`
+- `/biz/inventory/food-stock-projections/{sourceItemNo}`
 - `/biz/inventory/inbounds`
 - `/biz/inventory/inbounds/{no}`
 - `/biz/inventory/inbounds/{no}/post`
@@ -255,6 +261,7 @@
 - `/biz/spec-templates`
 - `/biz/spec-values`
 - `/biz/spu-std`
+- `/biz/store-sales-catalog`
 - `/biz/store-sales-catalog/versions`
 - `/biz/store-spec-dims`
 
@@ -479,19 +486,6 @@
 - `/biz/x/commerce/after-sales/{caseNo}:apply-decision`
 - `/biz/x/commerce/stores/{storeNo}/after-sales`
 
-### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
-
-- `/biz/order/{subOrderNo}/delivered`
-- `/biz/order/{subOrderNo}/express`
-- `/biz/order/{subOrderNo}/express/cancel`
-- `/biz/order/{subOrderNo}/express/quotes`
-- `/biz/order/{subOrderNo}/fulfillment-change`
-- `/biz/order/{subOrderNo}/fulfillment-options`
-- `/biz/order/{subOrderNo}/prepare`
-- `/biz/order/{subOrderNo}/ship`
-- `/biz/order/{subOrderNo}/ship/precheck`
-- `/biz/order/{subOrderNo}/waybill`
-
 ### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
 
 - `/biz/checkout/{operationNo}/offline-receipts/lookup`
@@ -504,6 +498,21 @@
 - `/biz/order/{subOrderNo}/inventory-trace`
 - `/biz/order/{subOrderNo}/logistics-updates`
 - `/biz/order/{subOrderNo}/trace`
+- `/biz/service-orders/{orderNo}/manual-admission`
+- `/biz/service-orders/{orderNo}/manual-source`
+
+### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
+
+- `/biz/order/{subOrderNo}/delivered`
+- `/biz/order/{subOrderNo}/express`
+- `/biz/order/{subOrderNo}/express/cancel`
+- `/biz/order/{subOrderNo}/express/quotes`
+- `/biz/order/{subOrderNo}/fulfillment-change`
+- `/biz/order/{subOrderNo}/fulfillment-options`
+- `/biz/order/{subOrderNo}/prepare`
+- `/biz/order/{subOrderNo}/ship`
+- `/biz/order/{subOrderNo}/ship/precheck`
+- `/biz/order/{subOrderNo}/waybill`
 
 ### `SV_RECHARGE_CREATE`　（OWNER）
 
@@ -602,6 +611,11 @@
 - `/biz/pricing-configs/{no}/reset`
 - `/biz/pricing-configs/{no}/upgrade`
 
+### `CASH_RECEIVE`　（OWNER）
+
+- `/biz/checkout/{operationNo}/offline-receipts`
+- `/biz/service-orders/{orderNo}/manual-receipts`
+
 ### `SV_PLAN_READ`　（OWNER）
 
 - `/biz/stored-value/context`
@@ -641,10 +655,6 @@
 
 - `/biz/print/simulations`
 - `/biz/print/simulations/{simulationNo}`
-
-### `CASH_RECEIVE`　（OWNER）
-
-- `/biz/checkout/{operationNo}/offline-receipts`
 
 ### `ENT_ISSUE`　（OWNER）
 

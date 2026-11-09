@@ -14,6 +14,7 @@ import java.util.List;
 final class ShopStoreMemberRoutes {
 
     private static final String STORE = "/biz/store/[A-Za-z0-9_-]{1,64}/";
+    private static final String STORE_PLURAL = "/biz/stores/[A-Za-z0-9_-]{1,64}/";
 
     static final List<HostRoute> ALL = List.of(
             // 商品：列表、编辑、草稿与发布、版本、库存与本店价、识别与规格
@@ -82,6 +83,23 @@ final class ShopStoreMemberRoutes {
             // 关掉一路前的影响清单（…/fulfillment/{channel}/impact）**刻意不在这里登记**：它走 LEGACY_PREVIEW，
             // 老模型账号的「目标店必须在本人范围内」靠那条通道校验（CommerceAccessSecurityFlowTest#assertLegacyImpact）。
             // 登记成门店成员路由会让老账号跳过它。新模型门店怎么开放另行处理（TDD-商户App接口字段对齐 §6）
+            // 餐饮插件（门店功能矩阵开发计划 E3）：242 个商家接口各自 @PreAuthorize 判权、按所选门店取数据范围，
+            // 这里只放进门店上下文。按方案拦截（END_FNB）留到 App 接入业务端令牌后改走 END_PROTECTED（TDD-B端门店功能矩阵与方案准入 §4-4）
+            HostRoute.of("GET,POST,PUT", "/biz/x/food/.+"),
+            // 外卖平台接单 / 拒单、渠道连接与对账（餐饮首批的外送部分）：68 个商家接口同样各自 @PreAuthorize
+            HostRoute.of("GET,POST,PUT", "/biz/x/commerce/.+"),
+            // 外卖接单策略（含暂停 / 恢复接单的 enabled 开关；类级 @PreAuthorize biz:store:admin）：App 餐饮 14-14
+            HostRoute.of("GET,POST", STORE_PLURAL + "channel-order-policies(?:/[A-Za-z0-9_.:-]{1,64})?"),
+            // 美业插件（开发计划 B3）：26 个商家接口在服务层判权（AppointmentAccess / ReceptionAccess /
+            // ServiceSubmissionAccess / ServiceExecutionAccess），另 5 个 @PreAuthorize；逐条审计见开发计划第八节
+            HostRoute.of("GET,POST", "/biz/x/beauty/.+"),
+            // 服务业共用的人员、资源、周排班（shop-merchant）：各接口 @PreAuthorize biz:store:admin
+            HostRoute.of("GET,POST", "/biz/personnel(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/resources(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/(?:schedules|schedule-rules)(?:/.*)?"),
+            // 预约时段与停约（BizStoreFulfillmentController，@PreAuthorize biz:store）：App 服务业 15-13 停约要用
+            HostRoute.of("GET,POST", "/biz/stores/[A-Za-z0-9_-]{1,64}/appointment-slots"),
+            HostRoute.of("POST", "/biz/appointment-slots/[A-Za-z0-9_-]{1,64}/close"),
             // 会员、标签、分群、设置、触达
             HostRoute.of("GET,POST,PUT", "/biz/(?:members|member-tags|member-segments|member-reach)(?:/.*)?"),
             HostRoute.of("GET,PUT", "/biz/member-settings"),

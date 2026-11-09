@@ -82,8 +82,8 @@
 | `FNB_KITCHEN` | 出品看板 | FNB | END_FNB |  | `biz:receive` | `biz:aftersale` | - | ✓ | ✓ | M | U | U | - | - |
 | `FNB_REPORT` | 营业日报、日结 | FNB | END_FNB |  | `biz:order:view` | `biz:finance` | - | ✓ | ✓ | U | U | - | U | U |
 | `SVC_BOOKING` | 预约、签到、改约、结账 | SERVICE | END_SERVICE |  | `biz:booking:view` `biz:booking:manage` | `biz:booking:manage` | - | ✓ | ✓ | M | U | - | - | - |
-| `SVC_CATALOG` | 服务项目 | SERVICE | END_SERVICE |  | `biz:goods` | `biz:goods` | - | ✓ | ✓ | M | - | - | - | - |
-| `SVC_SCHEDULE` | 技师、资源、排班、停约 | SERVICE | END_SERVICE |  | `biz:store` | `biz:store` | - | ✓ | ✓ | M | - | - | - | - |
+| `SVC_CATALOG` | 服务项目、门店政策 | SERVICE | END_SERVICE |  | `biz:store` | `biz:store` | - | ✓ | ✓ | M | - | - | - | - |
+| `SVC_SCHEDULE` | 技师、资源、排班 | SERVICE | END_SERVICE |  | `biz:store:admin` | `biz:store:admin` | - | ✓ | ✓ | - | - | - | - | - |
 | `SVC_REPORT` | 服务业报表 | SERVICE | END_SERVICE |  | `biz:customer` | — | - | ✓ | ✓ | U | - | - | - | - |
 | `MEMBERS` | 会员 | MARKETING | END_MARKETING |  | `biz:customer` | `biz:customer` | - | ✓ | ✓ | M | - | - | - | - |
 | `CAMPAIGN` | 营销活动 | MARKETING | END_MARKETING |  | `biz:campaign` | `biz:campaign` | - | ✓ | ✓ | M | - | - | - | - |
@@ -93,6 +93,7 @@
 角色列是从 `BizPerms` 预置角色**算出来**的（接口也是现算），不是另一份手写表。值得产品留意的几处：
 
 - `SVC_BOOKING`：店长看与管、店员只看，由 V640 写进预置角色（§4-1）。
+- `SVC_CATALOG`、`SVC_SCHEDULE`：按美业接口实际判权对齐（开发计划 B2 审计）。服务项目与门店政策是 `biz:store`；技师、资源、排班是 `biz:store:admin`，店长默认没有，要店主在角色里勾选。
 - `COLLECT`、`CASHIER`：店长、店员的收款权限 `BizPerms` 早有，但库里一直没有（判权读库），V640 一并补齐（§4-1）。
 - `COLLECT_QR`、`PAY_STATEMENT`：沿用「店长也碰不了钱」的既有规则，默认只有店主。
 - 餐饮权限码取自已实现的 `/biz/x/food/*`（`food-system-design.json`），服务业取自 `beauty-api-design.json`（读 = view 或 manage，写 = manage）；不另造专用码（§4-3）。

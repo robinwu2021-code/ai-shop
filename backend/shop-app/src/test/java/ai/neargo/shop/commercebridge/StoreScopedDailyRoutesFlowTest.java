@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import ai.neargo.shop.common.OtpStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -307,6 +308,52 @@ class StoreScopedDailyRoutesFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(r).path("code").asInt();
+    }
+
+    @Test
+    @DisplayName("★★★ 餐饮插件 /biz/x/food/** 与外卖渠道 /biz/x/commerce/** 在新模型门店上能进门店（门店功能矩阵开发计划 E3；接口自带 @PreAuthorize 判权）")
+    void foodPluginRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020120");
+        for (String path : new String[] {
+                "/biz/x/food/stores/" + o[1] + "/tables", "/biz/x/food/queue-tickets",
+                "/biz/x/food/stores/" + o[1] + "/kitchen/tasks", "/biz/x/food/reports/business-day",
+                "/biz/x/commerce/orders/CO1", "/biz/x/commerce/providers",
+                "/biz/stores/" + o[1] + "/channel-order-policies"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+        for (String path : new String[] {"/biz/x/food/queue-tickets:call-next", "/biz/x/food/tasks/T1:start",
+                "/biz/x/commerce/orders/CO1:accept"}) {
+            String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertNotEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+        }
+        String body = mvc.perform(put("/biz/x/food/menus/M1").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn().getResponse().getContentAsString();
+        assertNotEquals(70006, json.readTree(body).path("code").asInt(), body);
+    }
+
+    @Test
+    @DisplayName("★★★ 美业插件 /biz/x/beauty/** 与人员、资源、排班在新模型门店上能进门店（开发计划 B3；26 个接口服务层判权已逐条审计）")
+    void beautyAndStaffingRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020121");
+        for (String path : new String[] {"/biz/x/beauty/appointments", "/biz/x/beauty/appointments/A1",
+                "/biz/x/beauty/work-orders/W1/bill", "/biz/x/beauty/store-policies",
+                "/biz/x/beauty/service-definitions", "/biz/personnel", "/biz/resources", "/biz/schedules",
+                "/biz/stores/" + o[1] + "/appointment-slots"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+        for (String path : new String[] {"/biz/x/beauty/appointments", "/biz/x/beauty/arrivals",
+                "/biz/x/beauty/work-orders/W1/tasks/T1/preparations", "/biz/personnel/P1/assignments",
+                "/biz/resources", "/biz/schedule-rules", "/biz/appointment-slots/SL1/close"}) {
+            String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertNotEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+        }
     }
 
     @Test

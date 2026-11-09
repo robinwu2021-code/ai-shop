@@ -1,0 +1,55 @@
+# B 端服务业：App 接口与插件接口对照
+
+日期：2026-11-09 · 依据：[B端门店功能矩阵-开发计划](./B端门店功能矩阵-开发计划-2026-11-09.md) 第八节 B5（已定案：App 改调插件接口，后端不另做 `/biz/beauty/*`）
+
+读者：Flutter（ai-shop-bapp）与后端。左列是 App 按 mock 写的 23 个服务业建议接口（`/biz/beauty/*`，对应 App 功能 15-01～15-15，见 [商户App功能矩阵与API交接文档](../交接-商户App功能矩阵与API.md) §15）；右列是美业插件（`/biz/x/beauty/*`）和宿主共用的人员、资源、排班、时段接口。
+
+新模型门店的门禁已在开发计划 B3 放开。美业接口在服务层判权，逐条审计结果见开发计划第八节；权限码与[门店功能矩阵](./TDD-B端门店功能矩阵与方案准入.md)服务业 4 行一致。
+
+## 一、模型差异
+
+| App 概念 | 插件对象 | 说明 |
+|---|---|---|
+| 预约 Visit（含到店、服务中、待结账） | **预约 appointment** + **工单 work-order** | 预约只管「约了什么、什么时候、谁做」；到店后开工单，服务与结账挂在工单上 |
+| 签到并指派技师 | **到店 arrivals**（预约到店）/ **散客 walk-ins** | 签到会开出工单；指派体现在预约或工单的 `assignments` |
+| 服务中加项 | **服务提交 service-submissions** | 在工单上提交实际做了的服务 |
+| 结账 | **工单账单 bill** → 收款域 | 储值抵扣与其他付款方式由收款与储值域完成，美业只给账单 |
+| 技师 | **人员 personnel**（宿主共用） | 用人员编号，不用姓名 |
+| 资源（床位、房间） | **资源 resources**（宿主共用） | |
+| 班表 | **周排班 schedules / schedule-rules**（宿主共用） | |
+| 停约 | **预约时段 appointment-slots**（宿主） | 逐个关时段，已有预约不自动取消 |
+
+## 二、逐条对照
+
+| App 功能 | App 建议接口 | 插件 / 宿主接口 | 缺口 / 要对齐的地方 |
+|---|---|---|---|
+| 15-01 按天看预约 | `GET /biz/beauty/bookings?date=` | `GET /biz/x/beauty/appointments`（按时间范围过滤） | App 的 `stage` 要由预约状态加工单状态合成 |
+| 15-02 预约详情 | `GET …/bookings/{no}` | `GET /biz/x/beauty/appointments/{appointmentNo}`；到店后 `GET /biz/x/beauty/work-orders/{workOrderNo}` | 会员信息（到店次数、偏好、储值余额）不在预约里，见缺口 1 |
+| 15-03 签到并指派技师 | `GET …/staff`、`POST …/check-in` | `POST /biz/x/beauty/availability/queries`（谁有空）；`POST /biz/x/beauty/arrivals`（签到并开工单） | 指派用人员编号；签到需要 `biz:booking:manage` 和 `biz:customer` |
+| 15-04 取消 | `POST …/cancel` | `POST /biz/x/beauty/appointments/{no}/cancellations` | 带 `expectedRevision` 与原因 |
+| 15-05 结账 | `POST …/checkout` | `GET /biz/x/beauty/work-orders/{no}/bill`；付款走收款与储值域 | **缺口 2**：「储值扣一部分、其余刷卡或现金」的编排入口，与餐饮结账同一问题 |
+| 15-06 改约 | `POST …/reschedule` | `POST /biz/x/beauty/appointments/{no}/changes/previews` → `POST …/changes` | 先预览再确认；时段冲突由预览返回 |
+| 15-07 服务中加项 | `POST …/items` | `POST /biz/x/beauty/work-orders/{no}/service-submissions` | 需要 `biz:order:view` 和 `trade:checkout:prepare` |
+| 15-08 首页汇总 | `GET /biz/beauty/summary` | 无单一接口 | **缺口 3**：短期 App 组合预约列表与工单；长期视性能补汇总接口 |
+| 15-09 时间线 | `GET /biz/beauty/timeline` | `GET /biz/x/beauty/appointments`（含 `assignments`）+ `GET /biz/schedules`（班表窗口） | App 按技师或资源分栏自行排布 |
+| 15-10 代客预约 | `GET …/availability`、`GET …/customers`、`POST …/bookings` | `POST /biz/x/beauty/availability/queries`；会员查找走会员域 `/biz/members`；`POST /biz/x/beauty/appointments/previews` → `POST /biz/x/beauty/appointments`；新客 `POST /biz/x/beauty/guest-registrations` | 订金规则未定（缺口 4） |
+| 15-11 服务项目 | `GET/POST /biz/beauty/catalog` | `GET /biz/x/beauty/service-definitions`、`POST …/service-definitions/versions`（发布新版本）；卡片 `GET /biz/x/beauty/services/{skuNo}` | 服务项目按版本发布，不能原地改；时长、缓冲、可做技师都在定义里 |
+| 15-12 技师与资源、可否被预约 | `GET /biz/beauty/staff-resources`、`POST …/{name}/bookable` | `GET/POST /biz/personnel`、`POST /biz/personnel/{personnelNo}/status-changes`；`GET/POST /biz/resources` | 用人员编号代替姓名；只有店主（`biz:store:admin`）能改 |
+| 15-13 停约 | `GET /biz/beauty/slots`、`POST /biz/appointment-slots/{slotNo}/close` | `GET /biz/stores/{storeNo}/appointment-slots`、`POST /biz/appointment-slots/{slotNo}/close` | 关闭接口不收请求体，App 的 `reason` 不会被保存 |
+| 15-14 排班 | `GET/POST /biz/beauty/schedule`、`GET …/schedule/impact` | `GET /biz/schedules`、`POST /biz/schedule-rules` | **缺口 5**：「改班前看影响」没有接口（`schedule-rules` 的响应不含受影响预约） |
+| 15-15 报表 | `GET /biz/beauty/report` | 无 | **缺口 6**：服务业报表没有后端接口 |
+
+## 三、缺口清单（后端待办）
+
+| # | 缺口 | 建议 |
+|---|---|---|
+| 1 | 预约详情里的会员摘要（到店次数、偏好、储值余额） | App 用会员域 `/biz/members/{memberNo}` 与储值接口补读；或美业详情接口增加会员摘要 |
+| 2 | 结账编排（储值抵扣 + 其他付款） | 与餐饮缺口 1 合并处理，和收款、储值域一起定 |
+| 3 | 首页汇总 | 短期 App 组合读 |
+| 4 | 订金规则 | 产品先定订金怎么收、怎么抵扣尾款，再定接口 |
+| 5 | 改班影响预览 | `POST /biz/schedule-rules` 只返回 `ruleNo, resourceNo, resourceRevision, status`，不含受影响预约；需补影响预览接口 |
+| 6 | 服务业报表 | 新接口，需求先定指标（预约数、到店率、爽约、按技师业绩、热门项目） |
+
+## 四、共通约定
+
+与餐饮对照表相同：金额 `{currency, minor}`；枚举用大写机器码；写操作带 `Idempotency-Key` 和版本号；路径里的 `storeNo` 必须等于 `X-Store-No`。App 改完后从 `pendingContracts` 删除 `^/biz/beauty/` 与 `^/biz/appointment-slots/`。

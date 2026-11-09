@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -373,8 +375,8 @@ class ServiceTaskStockPreparationCoordinatorTest {
 
     @Test
     void timeoutAfterRetainRequeriesOriginalWithoutAnotherAcceptanceOrAttempt() {
-        when(bridge.retainStock(any()))
-                .thenThrow(new IllegalStateException("timeout after commit"));
+        // 重新打桩用 doX().when()：when(mock.m(any())) 会先调用 setup 里的旧 answer（参数为 null）
+        doThrow(new IllegalStateException("timeout after commit")).when(bridge).retainStock(any());
         service.prepareAcceptedOriginal(binding, grant);
         verify(bridge).retainStock(request);
         verify(bridge, org.mockito.Mockito.times(2)).queryStockOriginal(request.lookup());
@@ -393,13 +395,14 @@ class ServiceTaskStockPreparationCoordinatorTest {
 
     @Test
     void sourceChangesDuringRetainKeepsOriginalAndReportsSuspension() {
-        when(bridge.retainStock(any()))
-                .thenAnswer(
+        doAnswer(
                         call -> {
                             fence.setSuspensionIntentRevision(2L);
                             fence.setSourceFenceRevision(2L);
                             return receipt(Outcome.PENDING);
-                        });
+                        })
+                .when(bridge)
+                .retainStock(any());
         assertEquals(
                 "SOURCE_SUSPENDED",
                 service.prepareAcceptedOriginal(binding, grant).preparationState());
@@ -478,7 +481,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
 
     @Test
     void stickyAcceptedRouteAndPriorReceiptSurviveLaterUnknownObservation() {
-        when(bridge.retainStock(any())).thenReturn(receipt(Outcome.PENDING, "b".repeat(64)));
+        doReturn(receipt(Outcome.PENDING, "b".repeat(64))).when(bridge).retainStock(any());
         service.prepareAcceptedOriginal(binding, grant);
         String acceptedReceipt = stored.get().getReceiptJson();
         service.queryAcceptedOriginal(binding);
@@ -489,7 +492,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
 
     @Test
     void changedAcceptedRouteCannotOverwriteTheOriginalAssociation() {
-        when(bridge.retainStock(any())).thenReturn(receipt(Outcome.PENDING, "b".repeat(64)));
+        doReturn(receipt(Outcome.PENDING, "b".repeat(64))).when(bridge).retainStock(any());
         service.prepareAcceptedOriginal(binding, grant);
         when(bridge.queryStockOriginal(any())).thenReturn(receipt(Outcome.PENDING, "c".repeat(64)));
         service.queryAcceptedOriginal(binding);
@@ -501,7 +504,7 @@ class ServiceTaskStockPreparationCoordinatorTest {
         service.prepareAcceptedOriginal(binding, grant);
         String before = stored.get().getReceiptJson();
         org.mockito.Mockito.clearInvocations(bridge);
-        when(rows.observe(any(), anyLong(), anyLong(), anyLong(), anyLong())).thenReturn(0);
+        doReturn(0).when(rows).observe(any(), anyLong(), anyLong(), anyLong(), anyLong());
         service.queryAcceptedOriginal(binding);
         assertEquals(before, stored.get().getReceiptJson());
         verify(bridge, never()).retainStock(any());
