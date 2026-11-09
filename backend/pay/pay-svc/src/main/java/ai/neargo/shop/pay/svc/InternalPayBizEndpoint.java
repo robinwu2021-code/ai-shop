@@ -54,7 +54,8 @@ public class InternalPayBizEndpoint {
 
     @PostMapping(PayBizInternalApi.PREFIX + "/collections")
     public PortResult<?> collect(@PathVariable String storeNo, @RequestBody CollectReq req) {
-        return run(() -> biz.collect(storeNo, req.operatorNo(), req.amountMinor(), req.subject(), req.expireMinutes()));
+        return run(() -> biz.collect(storeNo, req.operatorNo(), req.amountMinor(), req.subject(), req.expireMinutes(),
+                req.bizNo()));
     }
 
     @GetMapping(PayBizInternalApi.PREFIX + "/qr-codes")
@@ -141,6 +142,12 @@ public class InternalPayBizEndpoint {
                                       @RequestParam(required = false) String cursor,
                                       @RequestParam(required = false) Integer size) {
         return run(() -> biz.paymentLinks(storeNo, operatorNo, status, cursor, size));
+    }
+
+    @GetMapping(PayBizInternalApi.PREFIX + "/order-receipts")
+    public PortResult<?> receipts(@PathVariable String storeNo, @RequestParam String operatorNo,
+                                  @RequestParam String bizNo) {
+        return run(() -> biz.receipts(storeNo, operatorNo, bizNo));
     }
 
     @PostMapping(PayBizInternalApi.PREFIX + "/payment-links/{payOrderNo}/reissue")

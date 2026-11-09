@@ -57,6 +57,33 @@ class BizRoleSeedTest {
         }
     }
 
+    private static final Path BACKFILL = Path.of(
+            "src/main/resources/db/migration/V642__builtin_role_backfill.sql");
+
+    /** `INSERT IGNORE INTO mch_role (...) VALUES ('*', 'MANAGER', '店长', '[...]', 1, ...);` */
+    private static final Pattern BACKFILL_ROW = Pattern.compile(
+            "INSERT IGNORE INTO mch_role \\([^)]*\\)\\s*VALUES\\s*\\('\\*',\\s*'([A-Z_]+)',\\s*'[^']*',\\s*'(\\[[^\\]]*\\])',\\s*1,");
+
+    @Test
+    @DisplayName("★★★ V642 补齐预置角色：六个都在，权限 = V642 之前所有迁移叠加的结果（W1.1，166 缺预置行时用）")
+    void backfillMatchesTheSeedStateBeforeIt() throws IOException {
+        String sql = Files.readString(BACKFILL);
+        Map<String, List<String>> rows = new LinkedHashMap<>();
+        Matcher m = BACKFILL_ROW.matcher(sql);
+        while (m.find()) {
+            rows.put(m.group(1), java.util.Arrays.stream(m.group(2).replaceAll("[\\[\\]\"]", "").split(","))
+                    .map(String::trim).filter(x -> !x.isEmpty()).toList());
+        }
+        Map<String, List<String>> before = parseSeedBefore(642);
+        assertThat(rows.keySet()).containsExactlyInAnyOrderElementsOf(before.keySet());
+        for (var e : before.entrySet()) {
+            assertThat(new TreeSet<>(rows.get(e.getKey()))).as("V642 的 %s", e.getKey())
+                    .isEqualTo(new TreeSet<>(e.getValue()));
+        }
+        assertThat(sql).as("只补缺失行：已有预置行（含商家已见到的版本号）一律不动")
+                .doesNotContainPattern("(?im)^\\s*(UPDATE|DELETE|REPLACE)\\b");
+    }
+
     @Test
     @DisplayName("★★ 预置角色之外没有别的 builtin —— 自定义角色不许伪装成预置")
     void onlySixBuiltinRoles() throws IOException {
@@ -79,6 +106,11 @@ class BizRoleSeedTest {
     // ---------------------------------------------------------------- 两侧解析
 
     private static Map<String, List<String>> parseSeed() throws IOException {
+        return parseSeedBefore(Integer.MAX_VALUE);
+    }
+
+    /** V71 起，逐个叠加版本号小于 {@code before} 的追加迁移后的预置角色状态 */
+    private static Map<String, List<String>> parseSeedBefore(int before) throws IOException {
         String sql = Files.readString(MIGRATION);
         Map<String, List<String>> out = new LinkedHashMap<>();
         Matcher m = SEED.matcher(sql);
@@ -92,6 +124,7 @@ class BizRoleSeedTest {
         var append = Pattern.compile("UPDATE mch_role SET perms=JSON_ARRAY_APPEND\\(perms,'\\$','([^']+)'\\)[^;]*role_code='([^']+)'[^;]*;");
         try (var files = Files.list(MIGRATION.getParent())) {
             for (var file : files.filter(f -> f.getFileName().toString().matches("V[0-9]+__.*[.]sql"))
+                    .filter(f -> Integer.parseInt(f.getFileName().toString().split("__")[0].substring(1)) < before)
                     .sorted(java.util.Comparator.comparingInt(f -> Integer.parseInt(f.getFileName().toString().split("__")[0].substring(1)))).toList()) {
                 var updates = append.matcher(Files.readString(file));
                 while (updates.find()) {

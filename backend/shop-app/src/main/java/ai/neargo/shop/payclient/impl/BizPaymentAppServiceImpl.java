@@ -56,10 +56,15 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
     }
 
     @Override
-    public CollectView collect(String storeNo, Long amountMinor, String subject, Integer expireMinutes) {
-        CollectView result = biz.collect(storeNo, operator(), amountMinor, subject, expireMinutes);
+    public CollectView collect(String storeNo, Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
+        CollectView result = biz.collect(storeNo, operator(), amountMinor, subject, expireMinutes, bizNo);
         auditLogPort.record("BIZ_PAY_COLLECT", storeNo, "代客收款 " + amountMinor);
         return result;
+    }
+
+    @Override
+    public ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts receipts(String storeNo, String bizNo) {
+        return biz.receipts(storeNo, operator(), bizNo);
     }
 
     @Override

@@ -914,6 +914,10 @@ class BizEndpointPermTest {
                     put(
                             "/biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}",
                             BizPerms.STORE_ADMIN);
+                    put(
+                            "/biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}/enabled",
+                            BizPerms.STORE);
+                    put("/biz/stores/{storeNo}/receivables/{bizNo}", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/stores/{storeNo}/channel-after-sale-decisions", BizPerms.AFTERSALE);
                     put(
                             "/biz/stores/{storeNo}/channel-after-sale-decisions/release-unissued",

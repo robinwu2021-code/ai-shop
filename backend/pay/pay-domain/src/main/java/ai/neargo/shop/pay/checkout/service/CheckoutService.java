@@ -41,6 +41,13 @@ public interface CheckoutService {
                    Integer expireMinutes);
 
     /**
+     * 同上，并把业务单号（餐饮结算单、美业工单等）写进支付单的 {@code biz_no}，供业务单收款汇总按单号查
+     * （TDD-业务单收款汇总 AC8）。{@code bizNo} 为空时与旧行为一致：{@code biz_no} 写随机的外部单号。
+     */
+    Issued collect(ai.neargo.shop.pay.access.PayCaller caller, Long storeId, long amountMinor, String subject,
+                   Integer expireMinutes, String bizNo);
+
+    /**
      * 付款链接再次分享（TDD-门店收银台与付款链接 L4）：令牌原文不落库，所以只能给同一张支付单换发新令牌、旧令牌作废。
      * 有效期从现在起按原时长（不超过上限）。只允许待付款的本店付款链接；其余按「没有」或「已失效」拒。
      */

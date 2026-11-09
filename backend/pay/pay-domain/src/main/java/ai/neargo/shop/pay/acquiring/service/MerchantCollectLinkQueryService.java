@@ -18,6 +18,16 @@ public interface MerchantCollectLinkQueryService {
     /** 一条；不是本店的付款链接按「没有」处理 */
     LinkRow row(PayCaller caller, Long storeId, String payOrderNo);
 
+    /**
+     * 本店带某个业务单号的付款链接（TDD-业务单收款汇总），按创建时间正序，最多 50 条。状态口径同 {@link #list}。
+     */
+    List<BizLink> ofBizNo(PayCaller caller, Long storeId, String bizNo);
+
+    /** @param paidMinor / refundedMinor 支付单上的实收与已退；汇总按 {@code paid - refunded} 计 */
+    record BizLink(String payOrderNo, String status, String currency, long amountMinor, long paidMinor,
+                   long refundedMinor, Long createdAt, Long paidAt) {
+    }
+
     record LinkPage(List<LinkRow> items, String nextCursor) {
     }
 

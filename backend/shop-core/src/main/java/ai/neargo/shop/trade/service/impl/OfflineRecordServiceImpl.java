@@ -60,6 +60,8 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
 
     /** 与 /biz/payment/orders 同一条：to − from ≤ 93。 */
     private static final int MAX_RANGE_DAYS = 93;
+    /** 业务单号：插件单据号的字符集，与路径变量同一规则 */
+    public static final String BIZ_NO = "[A-Za-z0-9_.:-]{1,64}";
 
     /** 实收时间允许比服务器快一点（手机时钟偏差），不允许记未来的钱。 */
     private static final Duration FUTURE_SKEW = Duration.ofMinutes(2);
@@ -168,6 +170,22 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
     }
 
     @Override
+    public List<OfflineRecordView> ofBizNo(Scope scope, String bizNo) {
+        if (bizNo == null || !bizNo.matches(BIZ_NO)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MarketBrief market = market(scope);
+        List<OrdOfflineRecord> rows = records.selectList(Wrappers.<OrdOfflineRecord>lambdaQuery()
+                .eq(OrdOfflineRecord::getTenantNo, "MAIN")
+                .eq(OrdOfflineRecord::getEntityNo, scope.entityNo())
+                .eq(OrdOfflineRecord::getStoreNo, scope.storeNo())
+                .eq(OrdOfflineRecord::getBizNo, bizNo)
+                .orderByAsc(OrdOfflineRecord::getReceivedAt).orderByAsc(OrdOfflineRecord::getId)
+                .last("LIMIT 200"));
+        return rows.isEmpty() ? List.of() : views(rows, market);
+    }
+
+    @Override
     public Summary summary(Scope scope, LocalDate from, LocalDate to) {
         MarketBrief market = market(scope);
         ZoneId zone = ZoneId.of(market.timeZone());
@@ -246,6 +264,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
         row.setCurrency(cmd.currency());
         row.setMethod(cmd.method());
         row.setOrderNo(cmd.orderNo());
+        row.setBizNo(cmd.bizNo());
         row.setNote(cmd.note());
         row.setReceivedAt(LocalDateTime.ofInstant(receivedAt, ZoneOffset.UTC));
         row.setStatus(OrdOfflineRecord.RECORDED);
@@ -354,7 +373,9 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
                 cmd.method(),
                 Objects.toString(cmd.orderNo(), ""),
                 Objects.toString(cmd.note(), ""),
-                cmd.receivedAt() == null ? "" : Long.toString(cmd.receivedAt().toEpochMilli())));
+                cmd.receivedAt() == null ? "" : Long.toString(cmd.receivedAt().toEpochMilli()))
+                // 只在带了业务单号时追加：不带的请求与加字段前算出的摘要一致，旧幂等键照常重放
+                + (cmd.bizNo() == null ? "" : "\u0001biz:" + cmd.bizNo()));
     }
 
     private static LocalDate[] range(LocalDate from, LocalDate to, ZoneId zone) {
@@ -453,6 +474,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
                     row.getCurrency(),
                     row.getMethod(),
                     row.getOrderNo(),
+                    row.getBizNo(),
                     row.getNote(),
                     iso(row.getReceivedAt(), zone),
                     row.getRecordedBy(),

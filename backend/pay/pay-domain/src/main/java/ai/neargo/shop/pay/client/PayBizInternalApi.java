@@ -35,7 +35,8 @@ public interface PayBizInternalApi {
     record GrantReq(String operatorNo, String appNo, Set<String> actions) {
     }
 
-    record CollectReq(String operatorNo, Long amountMinor, String subject, Integer expireMinutes) {
+    /** @param bizNo 业务单号（可空，TDD-业务单收款汇总 AC8）；老版本收款服务会忽略它 */
+    record CollectReq(String operatorNo, Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
     }
 
     record QrReq(String operatorNo, String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
@@ -116,6 +117,11 @@ public interface PayBizInternalApi {
                                       @RequestParam(value = "status", required = false) String status,
                                       @RequestParam(value = "cursor", required = false) String cursor,
                                       @RequestParam(value = "size", required = false) Integer size);
+
+    @GetExchange(PREFIX + "/order-receipts")
+    PortResult<ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts> receipts(@PathVariable("storeNo") String storeNo,
+                                                                        @RequestParam("operatorNo") String operatorNo,
+                                                                        @RequestParam("bizNo") String bizNo);
 
     @PostExchange(PREFIX + "/payment-links/{payOrderNo}/reissue")
     PortResult<CollectView> reissueLink(@PathVariable("storeNo") String storeNo, @PathVariable("payOrderNo") String payOrderNo,

@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 462 个受控功能点**
+统计：**50 个权限码 × 6 个角色 × 463 个受控功能点**
 （另有 0 个登录即可、21 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -1046,6 +1046,7 @@
 | `/biz/stores/{}/channel-after-sale-decisions` | `biz:aftersale` | 老板、店长、客服 |
 | `/biz/stores/{}/channel-order-policies` | `biz:store:admin` | 老板 |
 | `/biz/stores/{}/pos/access` | `biz:receive` | 老板、店长、店员、理货员 |
+| `/biz/stores/{}/receivables/{}` | `undefined` | 老板 |
 | `/biz/x/commerce/account-operations` | `biz:store:admin` | 老板 |
 | `/biz/x/commerce/accounts` | `biz:store:admin` | 老板 |
 | `/biz/x/commerce/accounts/{}` | `biz:store:admin` | 老板 |

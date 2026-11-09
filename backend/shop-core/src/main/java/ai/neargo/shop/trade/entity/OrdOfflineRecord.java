@@ -44,6 +44,9 @@ public class OrdOfflineRecord extends BaseEntity {
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private String orderNo;
 
+    /** 插件业务单号（餐饮结算单、美业工单等），只作门店内引用，供收款汇总按单号查 */
+    private String bizNo;
+
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private String note;
 

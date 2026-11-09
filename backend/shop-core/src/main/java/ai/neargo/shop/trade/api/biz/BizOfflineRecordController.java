@@ -75,7 +75,7 @@ public class BizOfflineRecordController {
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key,
             @RequestBody @Valid RecordBody body) {
         return records.record(scope(), new RecordCmd(key, body.amountMinor(), body.currency(), body.method(),
-                body.orderNo(), body.note(), body.receivedAt() == null ? null : body.receivedAt().toInstant()));
+                body.orderNo(), body.bizNo(), body.note(), body.receivedAt() == null ? null : body.receivedAt().toInstant()));
     }
 
     /** 本店记录，按实收时间倒序、游标翻页；读复用收款查看码。 */
@@ -132,6 +132,7 @@ public class BizOfflineRecordController {
             @NotNull @Pattern(regexp = "[A-Z]{3}") String currency,
             @NotNull @Pattern(regexp = METHODS) String method,
             @Size(min = 1, max = 64) String orderNo,
+            @Pattern(regexp = "[A-Za-z0-9_.:-]{1,64}") String bizNo,
             @Size(max = 100) String note,
             OffsetDateTime receivedAt) {
         /** 未知字段（含 storeNo、recordedBy、旧字段 requestId）一律 10400。 */

@@ -318,12 +318,14 @@ class StoreScopedDailyRoutesFlowTest {
                 "/biz/x/food/stores/" + o[1] + "/tables", "/biz/x/food/queue-tickets",
                 "/biz/x/food/stores/" + o[1] + "/kitchen/tasks", "/biz/x/food/reports/business-day",
                 "/biz/x/commerce/orders/CO1", "/biz/x/commerce/providers",
-                "/biz/stores/" + o[1] + "/channel-order-policies"}) {
+                "/biz/stores/" + o[1] + "/channel-order-policies",
+                "/biz/stores/" + o[1] + "/receivables/FST1?dueMinor=0&currency=TWD"}) {
             JsonNode r = call(o[0], o[1], path);
             assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
         }
         for (String path : new String[] {"/biz/x/food/queue-tickets:call-next", "/biz/x/food/tasks/T1:start",
-                "/biz/x/commerce/orders/CO1:accept"}) {
+                "/biz/x/commerce/orders/CO1:accept",
+                "/biz/stores/" + o[1] + "/channel-order-policies/" + "a".repeat(64) + "/enabled"}) {
             String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
                             .contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andReturn().getResponse().getContentAsString();

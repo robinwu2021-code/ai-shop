@@ -56094,6 +56094,14 @@
       "module": "shop-core"
     },
     {
+      "host": "OfflineRecordServiceImpl",
+      "name": "BIZ_NO",
+      "type": "String",
+      "value": "\"[A-Za-z0-9_.:-]{1,64}\"",
+      "zh": "业务单号：插件单据号的字符集，与路径变量同一规则",
+      "module": "shop-core"
+    },
+    {
       "host": "PurchaseLimitGuard",
       "name": "FLAG",
       "type": "String",

@@ -34,6 +34,17 @@ public interface IndustryChannelOrderPolicyService {
         }
     }
 
+    /** Pause / resume only: never touches limits, currency or payment modes. */
+    record EnabledReq(
+            @JsonDeserialize(using = CatalogRevisionDeserializer.class) Long version,
+            @JsonDeserialize(using = IndustryChannelOrderFacts.BooleanValue.class)
+                    Boolean enabled) {
+        @JsonAnySetter
+        public void unknown(String name, Object value) {
+            throw new IllegalArgumentException("Unknown channel admission toggle field");
+        }
+    }
+
     record Policy(
             String policyNo,
             String channelStoreKey,
@@ -52,4 +63,8 @@ public interface IndustryChannelOrderPolicyService {
     Policy get(Scope scope, String channelStoreKey);
 
     Policy save(Scope scope, String actorNo, String channelStoreKey, SaveReq request, String key);
+
+    /** Flips {@code enabled} on an existing policy; absent policies are not created. */
+    Policy setEnabled(
+            Scope scope, String actorNo, String channelStoreKey, EnabledReq request, String key);
 }
