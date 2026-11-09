@@ -111,6 +111,18 @@ class BizOfflineRecordFlowTest {
     }
 
     @Test
+    @DisplayName("★★ /biz/context 的 actorNo 与记录的 recordedBy 同值：店主、店员都能认出「我记的」（2026-11-09 166 联调）")
+    void context_actor_no_matches_recorded_by_for_owner_and_clerk() throws Exception {
+        Shop s = shop();
+        for (String token : new String[]{s.owner(), s.clerk()}) {
+            String recordedBy = data(record(token, s, key(), body(1000, "TWD", "CASH", null, null, null)))
+                    .get("recordedBy").asString();
+            JsonNode ctx = data(call(token, s, get("/biz/context")));
+            assertThat(ctx.get("actorNo").asString()).as("actorNo").isNotBlank().isEqualTo(recordedBy);
+        }
+    }
+
+    @Test
     @DisplayName("★★ AC1/AC10 币种必须是门店市场的币种：台湾店记 CNY → 10400")
     void record_rejects_currency_other_than_store_market() throws Exception {
         Shop s = shop();
