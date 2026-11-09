@@ -64,8 +64,8 @@
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 0 | ✅ | — | — | — | — | — |
-| `biz:booking:view` | `BOOKING_VIEW` | Cross-industry appointment reading | 0 | ✅ | — | — | — | — | — |
-| `biz:booking:manage` | `BOOKING_MANAGE` | Explicit appointment management, i | 0 | ✅ | — | — | — | — | — |
+| `biz:booking:view` | `BOOKING_VIEW` | Cross-industry appointment reading | 0 | ✅ | — | ✅ | — | — | — |
+| `biz:booking:manage` | `BOOKING_MANAGE` | Explicit appointment management, i | 0 | ✅ | ✅ | — | — | — | — |
 | `biz:service:task:self` | `SERVICE_TASK_SELF` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
 | `biz:service:task:view` | `SERVICE_TASK_VIEW` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
 | `biz:service:task:coordinate` | `SERVICE_TASK_COORDINATE` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |

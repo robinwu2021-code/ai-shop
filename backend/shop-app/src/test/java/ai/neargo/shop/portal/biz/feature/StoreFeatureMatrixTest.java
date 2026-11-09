@@ -83,7 +83,9 @@ class StoreFeatureMatrixTest {
 
         var f = m.features().stream().collect(Collectors.toMap(StoreFeatureMatrix.MatrixFeature::featureCode,
                 Function.identity()));
-        assertFalse(f.containsKey("GOODS"), "零售权益码没发布到餐饮方案");
+        assertFalse(f.containsKey("INVENTORY"), "零售进阶权益码没发布到餐饮方案");
+        assertEquals(PlanTier.FREE, f.get("GOODS").minTier(), "商品与订单是基础功能，FREE 即有");
+        assertEquals(PlanTier.FREE, f.get("ORDERS").minTier());
         assertFalse(f.containsKey("SVC_BOOKING"));
         assertFalse(f.containsKey("SOFTPOS"), "END_APP_POS 不在任何一档");
 
@@ -124,7 +126,9 @@ class StoreFeatureMatrixTest {
         assertEquals(PlanTier.PRO, ordering.requiredTier());
         assertFalse(ordering.canUse());
         assertEquals(PlanTier.CHAIN, f.get("CHAIN_OPS").requiredTier());
-        assertFalse(f.containsKey("GOODS"));
+        assertFalse(f.containsKey("INVENTORY"));
+        assertEquals("AVAILABLE", f.get("GOODS").status(), "FREE 店能卖货");
+        assertEquals("AVAILABLE", f.get("ORDERS").status());
     }
 
     @Test
@@ -213,7 +217,41 @@ class StoreFeatureMatrixTest {
         var f = byCode(out.features());
         assertEquals("AVAILABLE", f.get("FNB_ORDERING").status());
         assertNull(f.get("FNB_ORDERING").requiredTier());
-        assertFalse(f.containsKey("GOODS"), "仍按经营类型的方案过滤行业");
+        assertFalse(f.containsKey("INVENTORY"), "仍按经营类型的方案过滤行业");
+    }
+
+    @Test
+    @DisplayName("§4-1 预约默认授予：店长看与管、店员只看、其余没有")
+    void bookingDefaultRoles() {
+        var service = new PlanCatalog("SERVICE", 3L, "PUBLISHED", List.of(
+                plan(PlanTier.FREE, List.of(BIZ)),
+                plan(PlanTier.PRO, List.of(BIZ, "END_SERVICE")),
+                plan(PlanTier.CHAIN, List.of(BIZ, "END_SERVICE"))));
+        var booking = StoreFeatureMatrix.forBusinessType(service).features().stream()
+                .filter(x -> x.featureCode().equals("SVC_BOOKING")).findFirst().orElseThrow();
+        assertEquals(PlanTier.PRO, booking.minTier());
+        assertEquals("MANAGE", booking.roles().get("MANAGER"));
+        assertEquals("USE", booking.roles().get("CLERK"));
+        assertEquals("NONE", booking.roles().get("PICKER"));
+        assertEquals("NONE", booking.roles().get("CS"));
+    }
+
+    @Test
+    @DisplayName("§4-3 餐饮权限码与 /biz/x/food 一致：店员能出品不能作废，叫号入座用 biz:verify")
+    void foodPermissionsFollowFoodApis() {
+        var pro = freeStore(false, right(FNB, "ACTIVE", null));
+        var clerk = byCode(StoreFeatureMatrix.forStore(pro, fnbCatalog(), BizPerms.of(Set.of(BizPerms.CLERK)),
+                PayActivation.ACTIVE).features());
+        assertTrue(clerk.get("FNB_KITCHEN").canUse());
+        assertFalse(clerk.get("FNB_KITCHEN").canManage(), "作废 / 重做要 biz:aftersale");
+        var verifyOnly = byCode(StoreFeatureMatrix.forStore(pro, fnbCatalog(), Set.of(BizPerms.VERIFY),
+                PayActivation.ACTIVE).features());
+        assertEquals("AVAILABLE", verifyOnly.get("FNB_ORDERING").status());
+        assertEquals("AVAILABLE", verifyOnly.get("FNB_TABLES").status());
+        var manager = byCode(StoreFeatureMatrix.forStore(pro, fnbCatalog(), BizPerms.of(Set.of(BizPerms.MANAGER)),
+                PayActivation.ACTIVE).features());
+        assertTrue(manager.get("FNB_REPORT").canUse());
+        assertFalse(manager.get("FNB_REPORT").canManage(), "日结签核是 biz:finance，店长默认没有");
     }
 
     @Test

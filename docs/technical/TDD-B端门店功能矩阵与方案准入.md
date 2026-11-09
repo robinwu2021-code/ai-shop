@@ -1,6 +1,6 @@
 # TDD · B 端门店功能矩阵与方案准入
 
-状态：草稿 · 档位：1（新增 2 个端点；不新增表、权限码、i18n 词条与配置项）
+状态：已实现（待运营发布权益码） · 档位：1（新增 2 个端点；数据迁移 V640 补预置角色授权；不新增表、权限码、i18n 词条与配置项）
 关联需求：[注册开店与行业 Plan 商城-API 清单](../api/门店行业Plan商城-API清单.md) §2–§3、[三端角色权限功能对齐清单](../requirements/三端角色权限功能对齐清单.md)、商户 App 交接文档模块 3/7/11–19
 创建：2026-11-09 · 最后更新：2026-11-09
 
@@ -36,8 +36,8 @@
 - **角色已有**：`BizPerms` 6 个预置角色（OWNER 为 `*`），自定义角色经 `BizContext#effectivePerms` 生效。
 - **收款开通已有**：`BizPaymentAppService#collectStatus(storeNo)`（本地或远程 pay-svc）。
 - **可复用**：`AccessDecision.nextActionFor(status, canProcure)`（下一步动作同一套词）；`ShopCommerceActorAdapter.current()`；`HostStoreContext` 的取数方式。
-- **会被改到**：`CommerceRoutePolicy#match`（两条登记）；`BizEndpointPermTest`（两条登记）。
-- **明确不受影响**：现有端点的入参、出参与鉴权全不变；**本次只给端上展示用，不在服务端新增按功能拦截**（服务端拦截仍是各接口自己的权限码 + 业务端准入，见 §4 后续）。
+- **会被改到**：`CommerceRoutePolicy#match`（两条登记）；`BizEndpointPermTest`（两条登记）；预置角色店长、店员的授权（V640，§4-1 / §4-1a）。
+- **明确不受影响**：现有端点的入参、出参不变；鉴权只有 V640 带来的预置角色授权变化，商家自定义角色不动；**本次只给端上展示用，不在服务端新增按功能拦截**（服务端拦截仍是各接口自己的权限码 + 业务端准入，见 §4 后续）。
 
 ## §2 方案
 
@@ -49,9 +49,9 @@
 
 | 权益码 | 含义 | 适用经营类型（建议） | 建议档位 |
 |---|---|---|---|
-| `END_BIZ_APP`（已有） | 商户 App 基础：收款、门店、员工、列印、评价、方案 | 全部 | FREE 起（必含） |
+| `END_BIZ_APP`（已有） | 商户 App 基础：收款、商品、订单、门店、员工、列印、评价、方案 | 全部 | FREE 起（必含） |
 | `END_APP_POS`（已有） | 感应收款 / POS | 全部 | PRO 起 |
-| `END_RETAIL` | 零售作业：商品、订单履约、进销存、团购 | 零售 | PRO 起 |
+| `END_RETAIL` | 零售进阶：进销存、团购 | 零售 | PRO 起 |
 | `END_FNB` | 餐饮作业：点餐单、菜单、桌台、出品看板、餐饮报表 | 餐饮 | PRO 起 |
 | `END_SERVICE` | 服务业作业：预约、服务项目、排班技师、服务报表 | 服务业 | PRO 起 |
 | `END_MARKETING` | 会员与营销 | 全部 | PRO 起 |
@@ -71,17 +71,17 @@
 | `SUBSCRIPTION` | 方案、商城采购 | BASE | END_BIZ_APP |  | （门店成员） | `biz:store:admin` | ✓ | ✓ | ✓ | U | U | U | U | U |
 | `PRINT` | 列印 | BASE | END_BIZ_APP |  | `biz:print:read` | `biz:print:config` | ✓ | ✓ | ✓ | M | U | - | - | - |
 | `REVIEW` | 评价 | BASE | END_BIZ_APP |  | `biz:review` | `biz:review` | ✓ | ✓ | ✓ | M | - | - | - | M |
+| `GOODS` | 商品 | BASE | END_BIZ_APP |  | `biz:goods` `biz:stock` | `biz:goods` | ✓ | ✓ | ✓ | M | U | U | - | - |
+| `ORDERS` | 订单与履约 | BASE | END_BIZ_APP |  | `biz:order:view` `biz:receive` `biz:verify` `biz:ship` | `biz:aftersale` | ✓ | ✓ | ✓ | M | U | U | U | M |
 | `SOFTPOS` | 感应收款 | POS | END_APP_POS | ✓ | `biz:receive` | — | - | ✓ | ✓ | U | U | U | - | - |
-| `GOODS` | 商品 | RETAIL | END_RETAIL |  | `biz:goods` `biz:stock` | `biz:goods` | - | ✓ | ✓ | M | U | U | - | - |
-| `ORDERS` | 订单与履约 | RETAIL | END_RETAIL |  | `biz:order:view` `biz:receive` `biz:verify` `biz:ship` | `biz:aftersale` | - | ✓ | ✓ | M | U | U | U | M |
 | `INVENTORY` | 进销存 | RETAIL | END_RETAIL |  | `biz:stock` | `biz:goods` | - | ✓ | ✓ | M | U | U | - | - |
 | `GROUP_BUY` | 团购 | RETAIL | END_RETAIL |  | `biz:campaign` | `biz:campaign` | - | ✓ | ✓ | M | - | - | - | - |
-| `FNB_ORDERING` | 点餐单（堂食/外带/外送） | FNB | END_FNB |  | `biz:order:view` | `biz:aftersale` | - | ✓ | ✓ | M | U | - | U | M |
+| `FNB_ORDERING` | 点餐单、排队叫号、入座 | FNB | END_FNB |  | `biz:order:view` `biz:verify` | `biz:aftersale` | - | ✓ | ✓ | M | U | - | U | M |
 | `FNB_MENU` | 菜单、沽清、剩余份数 | FNB | END_FNB |  | `biz:order:view` `biz:goods` | `biz:goods` | - | ✓ | ✓ | M | U | - | U | U |
-| `FNB_TABLES` | 桌台与桌码 | FNB | END_FNB |  | `biz:store` | `biz:store` | - | ✓ | ✓ | M | - | - | - | - |
-| `FNB_KITCHEN` | 出品看板 | FNB | END_FNB |  | `biz:receive` | — | - | ✓ | ✓ | U | U | U | - | - |
-| `FNB_REPORT` | 餐饮报表 | FNB | END_FNB |  | `biz:customer` | — | - | ✓ | ✓ | U | - | - | - | - |
-| `SVC_BOOKING` | 预约、签到、改约、结账 | SERVICE | END_SERVICE |  | `biz:booking:view` | `biz:booking:manage` | - | ✓ | ✓ | - | - | - | - | - |
+| `FNB_TABLES` | 桌台与桌码 | FNB | END_FNB |  | `biz:verify` `biz:store` | `biz:store` | - | ✓ | ✓ | M | U | - | - | - |
+| `FNB_KITCHEN` | 出品看板 | FNB | END_FNB |  | `biz:receive` | `biz:aftersale` | - | ✓ | ✓ | M | U | U | - | - |
+| `FNB_REPORT` | 营业日报、日结 | FNB | END_FNB |  | `biz:order:view` | `biz:finance` | - | ✓ | ✓ | U | U | - | U | U |
+| `SVC_BOOKING` | 预约、签到、改约、结账 | SERVICE | END_SERVICE |  | `biz:booking:view` `biz:booking:manage` | `biz:booking:manage` | - | ✓ | ✓ | M | U | - | - | - |
 | `SVC_CATALOG` | 服务项目 | SERVICE | END_SERVICE |  | `biz:goods` | `biz:goods` | - | ✓ | ✓ | M | - | - | - | - |
 | `SVC_SCHEDULE` | 技师、资源、排班、停约 | SERVICE | END_SERVICE |  | `biz:store` | `biz:store` | - | ✓ | ✓ | M | - | - | - | - |
 | `SVC_REPORT` | 服务业报表 | SERVICE | END_SERVICE |  | `biz:customer` | — | - | ✓ | ✓ | U | - | - | - | - |
@@ -92,9 +92,10 @@
 
 角色列是从 `BizPerms` 预置角色**算出来**的（接口也是现算），不是另一份手写表。值得产品留意的几处：
 
-- `SVC_BOOKING`：`biz:booking:view/manage` 目前没有预置角色授予（`BizPerms` 注释「no seeded role grant」），只有店主能用；店长、店员要店主在自定义角色里勾。是否给店长/店员默认授予，见 §4 待决 1。
+- `SVC_BOOKING`：店长看与管、店员只看，由 V640 写进预置角色（§4-1）。
+- `COLLECT`、`CASHIER`：店长、店员的收款权限 `BizPerms` 早有，但库里一直没有（判权读库），V640 一并补齐（§4-1）。
 - `COLLECT_QR`、`PAY_STATEMENT`：沿用「店长也碰不了钱」的既有规则，默认只有店主。
-- 餐饮、服务业的专用接口（`/biz/food/*`、`/biz/beauty/*`）还没冻结，上面的权限码先借用现有码；冻结时若新增专用码，只改 `StoreFeature` 一处。
+- 餐饮权限码取自已实现的 `/biz/x/food/*`（`food-system-design.json`），服务业取自 `beauty-api-design.json`（读 = view 或 manage，写 = manage）；不另造专用码（§4-3）。
 
 ### 状态与下一步
 
@@ -115,8 +116,8 @@
 - 端点：
   - `GET /biz/business-types/{typeCode}/feature-matrix` —— `@perm.merchantAccount()`，账号通道（与 `/plans` 同）。
   - `GET /biz/stores/{storeNo}/features` —— `@perm.memberOfSelectedStore(#storeNo)`，门店引导通道（与 `/context` 同）。
-- 库表 / 迁移：无。
-- 权限码：无新增。
+- 库表 / 迁移：`V640__default_role_perms_booking_and_pay.sql`（只改预置角色数据，不改表结构；166 的应用账号可直接执行）。
+- 权限码：无新增；预置角色授权变化见 §4-1、§4-1a。
 - i18n：无（`featureCode`、`status`、`nextAction` 都是机器码，端上翻译）。
 - 配置项：无。权益码 `END_RETAIL` / `END_FNB` / `END_SERVICE` / `END_MARKETING` / `END_CHAIN` 是**目录数据约定**，由运营登记与发布；没登记的码，对应功能不出现在两个接口里。
 
@@ -171,6 +172,8 @@ GET /biz/stores/{storeNo}/features
 | 修改 | `backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java` | 登记两个端点的权限表达式 |
 | 新增 | `backend/shop-app/src/test/java/ai/neargo/shop/portal/biz/feature/StoreFeatureMatrixTest.java` | AC1–AC7 |
 | 新增 | `backend/commerce/commerce-spring-boot-starter/src/test/java/ai/neargo/commerce/starter/security/StoreFeatureRoutePolicyTest.java` | AC8 |
+| 修改 | `backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java` | 店长加预约看/管，店员加预约看（§4-1） |
+| 新增 | `backend/shop-app/src/main/resources/db/migration/V640__default_role_perms_booking_and_pay.sql` | 预置角色补授预约与收款（§4-1、§4-1a） |
 
 ### 实施计划
 
@@ -179,11 +182,46 @@ GET /biz/stores/{storeNo}/features
 3. `BizStoreFeatureController` + `BizEndpointPermTest` 登记；跑 `ArchitectureTest`、`BizEndpointPermTest`。
 4. 消融：注掉「收款前置」与「商业状态」两处判断，对应测试必须变红。
 
-## §4 待决
+## §4 决定与执行（2026-11-09）
 
-1. `biz:booking:view/manage` 是否给店长、店员默认授予（不授予则服务业预约默认只有店主能用）。
-2. 零售的「商品、订单」是否真要收进 PRO：现有零售门店已在免费使用。本设计对**旧模型门店不拦**，新模型门店按发布数据走；若产品希望 FREE 也能卖货，运营把 `END_RETAIL` 放进 FREE 档即可，代码不用改。
-3. 服务端按功能拦截（把 `/biz/food/*` 等登记为 `END_PROTECTED` 并绑权益码）留到各行业接口冻结时一起做；本次接口只做展示判定。
+| # | 原待决 | 决定 | 执行 |
+|---|---|---|---|
+| 1 | 预约权限要不要默认给店长、店员 | **给**：店长 `biz:booking:view` + `biz:booking:manage`，店员 `biz:booking:view`；理货、配送、客服不给 | `BizPerms.ROLE_PERMS` + `V640__default_role_perms_booking_and_pay.sql`；`BizRoleSeedTest` 对账 |
+| 1a | （实施中发现）店长、店员的收款权限只在 Java 表里、库里没有 | **补齐**：店长 `mch:pay:order:view` + `mch:pay:collect`，店员 `mch:pay:order:view`，与 `BizPerms` 早已写明的意图一致 | 同上 V640。此前 `BizRoleSeedTest#seedMatchesBizPerms` 在基线上就是红的，现在转绿 |
+| 2 | 零售的商品、订单进不进 PRO | **不进**：商品、订单是各行业都要的卖货基础，归 `END_BIZ_APP`（FREE 即有）；零售 PRO 只收进销存、团购 | `StoreFeature` 中 `GOODS`、`ORDERS` 改归 `BASE` |
+| 3 | 餐饮、服务业要不要专用权限码 | **不要**：后端已实现的 `/biz/x/food/*` 用的就是 `biz:order:view / verify / receive / aftersale / finance`，美业设计用 `biz:booking:*`；功能矩阵对齐它们 | `StoreFeature` 餐饮 5 行、`SVC_BOOKING` 改权限码 |
+| 4 | 服务端按功能拦截 | **现在不加逐请求拦截**，见下 | 本次只做展示判定；拦截按下面的方案在 App 接入业务端会话时落地 |
+| 5 | 新权益码谁来登记 | **运营在运营端发布**，不用 SQL 硬塞（发布器要校验端验收、三档超集、FREE 必含端） | 见下「运营发布手册」 |
+
+### 4-4 服务端拦截为什么不现在加
+
+- 读门店权益要走 `FoundationQueryService#store`，它会锁订阅账户行（`mch_subscription_account`，`lockSubscriptionAccount`）。挂到进销存、出品看板这类高频接口上，同一家店的请求会被串行化。
+- 框架里现成的拦截是业务端会话：`POST /biz/stores/{storeNo}/end-sessions` 换一张端上下文令牌，之后请求带令牌头，`CommerceRoutePolicy` 的 `END_PROTECTED` 通道验令牌，不再逐请求查库。这要求 App 先换令牌，现在的 App 还没接，直接把路由改成 `END_PROTECTED` 会让现有门店全部被拒。
+- **落地方案**（App 接入时做，作为后续任务）：
+  1. `CommerceRoutePolicy#endCode / entryPermission` 认识 `END_RETAIL / END_FNB / END_SERVICE / END_MARKETING / END_CHAIN`；
+  2. 把 `/biz/inventory/**`、`/biz/group*`（零售）、`/biz/x/food/**`（餐饮）、预约与排班接口（服务业）、`/biz/member*` 与营销（营销）登记为 `END_PROTECTED` 并绑对应权益码；
+  3. App 在 `/features` 返回某功能 `AVAILABLE` 时调 `end-sessions` 换令牌并缓存到 `nextBoundaryAt`；
+  4. 旧模型门店不走这条通道，行为不变。
+- 在此之前，商业限制靠界面（`/features` 的锁定态），授权限制仍由每个接口自己的权限码保证。
+
+### 4-5 运营发布手册
+
+运营端「经营类型、业务端与 Plan」页面操作，或直接调运营接口（需 `commerce:catalog:edit` / `commerce:catalog:publish`）：
+
+1. **登记业务端**：`POST /ops/business-ends`，每个码一条，`scope=STORE`，`clientId` 填商户 App，`allowedBusinessTypes` 填适用类型：
+
+   | code | entitlementCode | allowedBusinessTypes（按实际类型码填） |
+   |---|---|---|
+   | `RETAIL` | `END_RETAIL` | 零售类 |
+   | `FNB` | `END_FNB` | 餐饮类 |
+   | `SERVICE` | `END_SERVICE` | 服务业类 |
+   | `MARKETING` | `END_MARKETING` | 全部 |
+   | `CHAIN` | `END_CHAIN` | 全部 |
+
+   端要走完验收（`releaseStatus=VERIFIED`，带验收记录引用）才会出现在门店权益里；未验收的端，两个功能接口都不返回对应功能。
+2. **改方案版本**：每个经营类型 `POST /ops/industry-plans/{planNo}/versions`，PRO 加「行业码 + `END_MARKETING` + `END_APP_POS`」，CHAIN 在 PRO 基础上加 `END_CHAIN`；FREE 保持只有 `END_BIZ_APP`。
+3. **整体发布**：`POST /ops/business-types/{typeCode}/plan-publications`（三档版本 + SKU 版本 + `expectedCatalogVersion`）。
+4. **验证**：用店主账号调 `GET /biz/business-types/{typeCode}/feature-matrix`，确认行业功能 `minTier=PRO`、连锁 `minTier=CHAIN`；再对一家 FREE 门店调 `GET /biz/stores/{storeNo}/features`，确认行业功能为 `NEED_PLAN`。
 
 ## §5 对账三 · 实现 → 需求（测试）
 
@@ -197,56 +235,50 @@ GET /biz/stores/{storeNo}/features
 | AC6 | `StoreFeatureMatrixTest#entitlementLifecycle` | ✅ | 注掉商业状态判断 → 红 ✅ |
 | AC7 | `StoreFeatureMatrixTest#legacyStore` | ✅ | — |
 | AC8 | `StoreFeatureRoutePolicyTest`（2 个）· `BizEndpointPermTest` | ✅ | 改路由策略前先跑：2 个都红（`expected <ACCOUNT>/<BOOTSTRAP> but was <DENY>`）✅ |
+| §4-1 / 4-1a | `BizRoleSeedTest#seedMatchesBizPerms` · `StoreFeatureMatrixTest#bookingDefaultRoles` | ✅ | 删掉 V640 里店员预约那行 → `BizRoleSeedTest` 红 ✅；改前基线上它因收款权限缺漏本就是红的 |
+| §4-2 | `StoreFeatureMatrixTest#matrixForBusinessType` / `#freeStoreOwner`（商品、订单 FREE 可用） | ✅ | — |
+| §4-3 | `StoreFeatureMatrixTest#foodPermissionsFollowFoodApis` | ✅ | — |
 
 ```
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.portal.biz.feature.StoreFeatureMatrixTest
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.starter.security.StoreFeatureRoutePolicyTest
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.starter.security.MallRecoveryRoutePolicyTest
-Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.commerce.starter.security.EndContextBindingTest
-Tests run: 12, Failures: 1 -- in ai.neargo.shop.arch.BizEndpointPermTest   ← 存量，见下
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.shop.portal.biz.feature.StoreFeatureMatrixTest
+Tests run: 3,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.shop.arch.BizRoleSeedTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.shop.scenario.BizPermsTest
+Tests run: 7,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.shop.scenario.BizPaymentLinkFlowTest
+Tests run: 3,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.shop.scenario.PersonnelOperatorProtocolTest
+Tests run: 2,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.shop.portal.biz.HostStoreContextTest
+Tests run: 2,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.commerce.starter.security.StoreFeatureRoutePolicyTest
+Tests run: 2,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.commerce.starter.security.MallRecoveryRoutePolicyTest
+Tests run: 3,  Failures: 0, Errors: 0, Skipped: 0 | ai.neargo.commerce.starter.security.EndContextBindingTest
+Tests run: 12, Failures: 1 | ai.neargo.shop.arch.BizEndpointPermTest      ← 存量，见下
+Tests run: 10, Failures: 1 | ai.neargo.shop.scenario.MerchantRoleFlowTest ← 存量，见下
 ```
 
 存量红（基线 `origin/codex/ai-shop-codex` fc070b2d4 就有，失败清单里没有本次的端点或类）：
 `BizEndpointPermTest#everyBizEndpointHasADecision`（15 个 `/biz/inventory/food-*`、`/biz/personnel`、`/biz/service-orders/*` 等未登记）；
-`ArchitectureTest` 5 条（Mapper、Port 包位、全限定名、定时任务锁、Service 接口化），均指向其他模块。
+`ArchitectureTest` 5 条（Mapper、Port 包位、全限定名、定时任务锁、Service 接口化），均指向其他模块；
+`MerchantRoleFlowTest#assignablePermsComeFromBackend`：可勾清单只读 `BizPerms.LABELS`（本次未改），钉死的期望没跟上 service-task、booking、cash 等早已加进 LABELS 的码。
+
+`*IT` 结尾的美业 / 人员场景测试要真 MySQL，本次没跑。
 
 控制器 `BizStoreFeatureController` 只取数并转交，没有单独的 MockMvc 测试；它的判权由 `BizEndpointPermTest` 登记核对。
 
 ## §6 对账二 · 设计 → 实现
 
-尚未提交，文件清单取自 `git status`：
-
-```
- M backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/security/CommerceRoutePolicy.java
- M backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java
- M docs/api/backend-ui-delivery-onboarding.json
- M docs/api/openapi-b-onboarding.json
- M docs/technical/README.md                                   （生成）
- M docs/technical/reference/B端功能点-权限码-页面.md            （生成）
- M docs/technical/reference/glossary.json                     （生成）
- M docs/technical/reference/中英文对照-实体与字典.md            （生成）
- M docs/technical/reference/三端权限矩阵-按业务域.md            （生成）
- M docs/technical/reference/后端分层清单.md                     （生成）
- M docs/technical/reference/静态常量清单.md                     （生成）
-?? backend/commerce/commerce-spring-boot-starter/src/test/java/ai/neargo/commerce/starter/security/StoreFeatureRoutePolicyTest.java
-?? backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreFeatureController.java
-?? backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/feature/StoreFeature.java
-?? backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/feature/StoreFeatureMatrix.java
-?? backend/shop-app/src/test/java/ai/neargo/shop/portal/biz/feature/StoreFeatureMatrixTest.java
-?? docs/technical/TDD-B端门店功能矩阵与方案准入.md
-```
+两次提交：`4cced4691`（矩阵与接口）＋ 本次（§4 决定）。`git show --stat` 见各自提交；文件与 §2 模块设计一致，另有：
 
 | 差异 | 说明 |
 |---|---|
-| TDD 里没有、实际改了的文件 | `openapi-b-onboarding.json` + `backend-ui-delivery-onboarding.json`：两个端点的调用方是 Flutter 商户 App（ai-shop-bapp），按仓库规矩登记进它的 OpenAPI 契约与分阶段交付清单，`check-app-backend-orphan` 才不把它们算成孤儿；其余 7 个是生成器产物 |
+| TDD 里没有、实际改了的文件 | `openapi-b-onboarding.json` + `backend-ui-delivery-onboarding.json`：两个端点的调用方是 Flutter 商户 App（ai-shop-bapp），按仓库规矩登记进它的 OpenAPI 契约与分阶段交付清单；`schema-test.sql` 由 `gen-test-schema.py` 从 V640 生成；其余 `docs/technical/reference/*`、`README.md` 是生成器产物 |
 | TDD 列了、实际没动的文件 | 无 |
 
 ### 偏差说明
 
 实施计划第 1 步的测试与实现是同一轮写的，没有先单独跑红；用消融补证（见 §5）。
+§4-1a（补收款权限）不在原设计里，是做 §4-1 时 `BizRoleSeedTest` 暴露的存量缺口；它直接决定矩阵里「收款」一行对店长店员是否属实，所以一并修。
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
+| 2026-11-09 | §4 五项定案并执行：预约与收款预置授权（V640）、商品订单归基础、餐饮服务业权限码对齐既有接口；拦截方案与运营发布手册写入 §4-4 / §4-5 |
 | 2026-11-09 | 草稿；实现完成，未提交。闸门：`check-app-backend-orphan` / `check-app-contract` / `check-controller-cohesion` / `check-generated-docs` / `check-i18n-orphan` / `gen-ui-catalog --check` 绿；`check-sql-portability` 红为存量（本次未改 SQL）。后端测试只跑了 shop-app 与 commerce starter 的上述类，没跑全量 |

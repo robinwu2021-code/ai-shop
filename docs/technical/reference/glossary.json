@@ -37755,7 +37755,7 @@
         "host": "Codes",
         "name": "BIZ_APP",
         "value": "END_BIZ_APP",
-        "zh": "商户 App 基础端：收款、门店、员工、列印、评价、方案。",
+        "zh": "商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。",
         "module": "shop-app"
       },
       {
@@ -37769,7 +37769,7 @@
         "host": "Codes",
         "name": "RETAIL",
         "value": "END_RETAIL",
-        "zh": "零售作业：商品、订单履约、进销存、团购。",
+        "zh": "零售进阶：进销存、团购（商品与订单是基础功能）。",
         "module": "shop-app"
       },
       {
@@ -47271,9 +47271,9 @@
           "SUBSCRIPTION",
           "PRINT",
           "REVIEW",
-          "SOFTPOS",
           "GOODS",
           "ORDERS",
+          "SOFTPOS",
           "INVENTORY",
           "GROUP_BUY",
           "FNB_ORDERING",
@@ -54128,7 +54128,7 @@
       "name": "BOOKING_VIEW",
       "type": "String",
       "value": "\"biz:booking:view\"",
-      "zh": "Cross-industry appointment reading; grants no management capability.",
+      "zh": "Cross-industry appointment reading; grants no management capability。",
       "module": "shop-base-auth"
     },
     {
@@ -54136,7 +54136,7 @@
       "name": "BOOKING_MANAGE",
       "type": "String",
       "value": "\"biz:booking:manage\"",
-      "zh": "Explicit appointment management, independently assignable from fulfillment permissions.",
+      "zh": "Explicit appointment management, independently assignable from fulfillment permissions。",
       "module": "shop-base-auth"
     },
     {

@@ -27,27 +27,33 @@ public enum StoreFeature {
     SUBSCRIPTION(Group.BASE, Codes.BIZ_APP, false, List.of(), List.of(BizPerms.STORE_ADMIN)),
     PRINT(Group.BASE, Codes.BIZ_APP, false, List.of(BizPerms.PRINT_READ), List.of(BizPerms.PRINT_CONFIG)),
     REVIEW(Group.BASE, Codes.BIZ_APP, false, List.of(BizPerms.REVIEW), List.of(BizPerms.REVIEW)),
+    /** 商品与订单是各行业都要的基础卖货能力，FREE 即有（§4-2）；现有门店一直在免费用 */
+    GOODS(Group.BASE, Codes.BIZ_APP, false, List.of(BizPerms.GOODS, BizPerms.STOCK), List.of(BizPerms.GOODS)),
+    ORDERS(Group.BASE, Codes.BIZ_APP, false,
+            List.of(BizPerms.ORDER_VIEW, BizPerms.RECEIVE, BizPerms.VERIFY, BizPerms.SHIP),
+            List.of(BizPerms.AFTERSALE)),
 
     // ------------------------------------------------ 感应收款 / POS（已有端 END_APP_POS，入端权限 biz:receive）
     SOFTPOS(Group.POS, Codes.APP_POS, true, List.of(BizPerms.RECEIVE), List.of()),
 
-    // ------------------------------------------------ 零售
-    GOODS(Group.RETAIL, Codes.RETAIL, false, List.of(BizPerms.GOODS, BizPerms.STOCK), List.of(BizPerms.GOODS)),
-    ORDERS(Group.RETAIL, Codes.RETAIL, false,
-            List.of(BizPerms.ORDER_VIEW, BizPerms.RECEIVE, BizPerms.VERIFY, BizPerms.SHIP),
-            List.of(BizPerms.AFTERSALE)),
+    // ------------------------------------------------ 零售进阶
     INVENTORY(Group.RETAIL, Codes.RETAIL, false, List.of(BizPerms.STOCK), List.of(BizPerms.GOODS)),
     GROUP_BUY(Group.RETAIL, Codes.RETAIL, false, List.of(BizPerms.CAMPAIGN), List.of(BizPerms.CAMPAIGN)),
 
-    // ------------------------------------------------ 餐饮（/biz/food/* 冻结时若有专用码，只改这几行）
-    FNB_ORDERING(Group.FNB, Codes.FNB, false, List.of(BizPerms.ORDER_VIEW), List.of(BizPerms.AFTERSALE)),
+    // ------------------------------------------------ 餐饮：权限码与 /biz/x/food/* 已实现接口一致（food-system-design.json），不另造码
+    /** 点餐单、排队叫号与入座：看用 biz:order:view，叫号入座用 biz:verify，退菜重做用 biz:aftersale */
+    FNB_ORDERING(Group.FNB, Codes.FNB, false, List.of(BizPerms.ORDER_VIEW, BizPerms.VERIFY),
+            List.of(BizPerms.AFTERSALE)),
     FNB_MENU(Group.FNB, Codes.FNB, false, List.of(BizPerms.ORDER_VIEW, BizPerms.GOODS), List.of(BizPerms.GOODS)),
-    FNB_TABLES(Group.FNB, Codes.FNB, false, List.of(BizPerms.STORE), List.of(BizPerms.STORE)),
-    FNB_KITCHEN(Group.FNB, Codes.FNB, false, List.of(BizPerms.RECEIVE), List.of()),
-    FNB_REPORT(Group.FNB, Codes.FNB, false, List.of(BizPerms.CUSTOMER), List.of()),
+    FNB_TABLES(Group.FNB, Codes.FNB, false, List.of(BizPerms.VERIFY, BizPerms.STORE), List.of(BizPerms.STORE)),
+    /** 出品看板：开始 / 出餐 / 上菜是 biz:receive；作废、重做是 biz:aftersale */
+    FNB_KITCHEN(Group.FNB, Codes.FNB, false, List.of(BizPerms.RECEIVE), List.of(BizPerms.AFTERSALE)),
+    /** 营业日报看 biz:order:view；开业日、日结签核是 biz:finance */
+    FNB_REPORT(Group.FNB, Codes.FNB, false, List.of(BizPerms.ORDER_VIEW), List.of(BizPerms.FINANCE)),
 
     // ------------------------------------------------ 服务业
-    SVC_BOOKING(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.BOOKING_VIEW),
+    /** 与美业接口设计一致：读 = booking:view 或 booking:manage，写 = booking:manage */
+    SVC_BOOKING(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.BOOKING_VIEW, BizPerms.BOOKING_MANAGE),
             List.of(BizPerms.BOOKING_MANAGE)),
     SVC_CATALOG(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.GOODS), List.of(BizPerms.GOODS)),
     SVC_SCHEDULE(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.STORE), List.of(BizPerms.STORE)),
@@ -66,11 +72,11 @@ public enum StoreFeature {
 
     /** 业务端权益码。前两个已在 {@code CommerceRoutePolicy}；其余是运营登记业务端时用的约定码。 */
     public static final class Codes {
-        /** 商户 App 基础端：收款、门店、员工、列印、评价、方案。 */
+        /** 商户 App 基础端：收款、商品、订单、门店、员工、列印、评价、方案。 */
         public static final String BIZ_APP = "END_BIZ_APP";
         /** 感应收款 / POS 端。 */
         public static final String APP_POS = "END_APP_POS";
-        /** 零售作业：商品、订单履约、进销存、团购。 */
+        /** 零售进阶：进销存、团购（商品与订单是基础功能）。 */
         public static final String RETAIL = "END_RETAIL";
         /** 餐饮作业：点餐单、菜单、桌台、出品看板、报表。 */
         public static final String FNB = "END_FNB";

@@ -5568,7 +5568,8 @@
                           "CHAIN": true
                         },
                         "usePerms": [
-                          "biz:order:view"
+                          "biz:order:view",
+                          "biz:verify"
                         ],
                         "managePerms": [
                           "biz:aftersale"
