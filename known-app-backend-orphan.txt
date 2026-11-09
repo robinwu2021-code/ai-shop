@@ -149,3 +149,9 @@ c-app POST /mp/checkout/*/payments/lookup
 
 # 2026-11-06 商家在 App 申请支付服务（TDD-运营端申请支付服务 §7）：入口做在 Flutter 商户端（ai-shop-bapp），uni-app b-app 不接。
 b-app POST /biz/merchant/pay-service/apply
+
+# 2026-11-08 App 外收款记录的更正、作废（TDD-商户App外部记账）：出口在 Flutter 商户端（ai-shop-bapp），uni-app b-app 不接。
+# 记一笔、列表、汇总已登记在 b-app/src/api/endpoints.ts；这两条是「复数资源 + id」，登进去会撞 /biz 单数约定
+# （known-plural-paths 两份基线），而路径是 App 已定的契约，不为凑约定改名。扫描面覆盖 merchant_app 之后连同本段一起删。
+b-app POST /biz/payment/offline-records/*/correct
+b-app POST /biz/payment/offline-records/*/void

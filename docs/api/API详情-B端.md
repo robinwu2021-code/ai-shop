@@ -603,6 +603,33 @@
 | `size` | `integer` | 是 | — |
 
 
+### app
+
+#### GET `/common/app/version`
+
+版本检查（最新版 / 最低支持版 / 更新说明）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `platform` | query | `string` | 是 | — |
+| `build` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`AppVersionInfo`](#appversioninfo)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `platform` | [`AppPlatform`](#appplatform) | 是 | 归一后的平台 |
+| `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
+| `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
+| `storeUrl` | `string,null` | 是 | 商店地址（只会是 App Store 或 Google Play 的 https 地址） |
+| `upgradeRequired` | `boolean,null` | 是 | 只在请求带了 build 时有值；端上应以它为准 |
+
+
 ### appointment-slots
 
 #### POST `/biz/appointment-slots/{slotNo}/close`
@@ -931,6 +958,7 @@ _无字段_
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+| `actorNo` | `string` | 否 | — |
 
 
 ### coupon-issues
@@ -1372,6 +1400,60 @@ _无字段_
 |---|---|:---:|---|
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
+
+
+### express
+
+#### GET `/biz/express/companies`
+
+本店可选快递公司　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ExpressCompanyList`](#expresscompanylist)
+
+
+### feedback
+
+#### POST `/biz/feedback`
+
+提交问题回报（回报号即工单号）　🔒
+
+**入参**
+
+请求体：[`SubmitFeedbackReq`](#submitfeedbackreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类：BUG / PAYMENT / IDEA / OTHER |
+| `description` | `string` | 是 | 描述，去首尾空白后 1–1000 字 |
+| `errorCode` | `string` | 否 | 从哪个错误进来（≤64，超长截断） |
+| `page` | `string` | 否 | 从哪一页进来（≤128，超长截断） |
+| `storeNo` | `string` | 否 | 当前门店号；不属于本账号会被丢弃（照常落库） |
+| `appVersion` | `string` | 是 | App 版本（必填，≤32） |
+| `platform` | `string` | 否 | android / ios；其它值归 OTHER |
+| `diagnostics` | [`FeedbackDiagnostic`](#feedbackdiagnostic)\[\] | 否 | 诊断，最多留最后 300 条 |
+
+**出参**（`data`）
+
+类型：[`FeedbackReceipt`](#feedbackreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+
+
+#### GET `/biz/feedback/mine`
+
+我的回报（最近 50 条，带客服回复）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantFeedback`](#merchantfeedback)\[\]
 
 
 ### freight-template
@@ -7492,6 +7574,100 @@ _无字段_
 | `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
 
 
+#### POST `/biz/payment/offline-records`
+
+记一笔 App 外收款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`OfflineRecordCreateReq`](#offlinerecordcreatereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
+| `method` | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER` | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
+| `note` | `string` | 否 | ≤ 100 字 |
+| `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
+
+**出参**（`data`）
+
+类型：[`OfflineRecord`](#offlinerecord)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 记录号（OFR…），与支付单号空间不重叠 |
+| `amountMinor` | `number` | 是 | 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 收款方式 |
+| `orderNo` | `string,null` | 是 | 引用的本店子单号；只是引用，不推订单状态 |
+| `note` | `string,null` | 是 | 备注 |
+| `receivedAt` | `string` | 是 | 实际收款时刻，ISO 8601 带门店市场偏移 |
+| `recordedBy` | `string` | 是 | 记账人号 |
+| `recordedByName` | `string,null` | 是 | 记账人名字；取不到为 null，端上退回显示 recordedBy |
+| `recordedAt` | `string` | 是 | 记账时刻，ISO 8601 带门店市场偏移 |
+| `status` | [`OfflineRecordStatus`](#offlinerecordstatus) | 是 | 已记 / 已作废 |
+| `corrected` | `boolean` | 是 | 是否被更正过 |
+| `version` | `number` | 是 | 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 |
+| `history` | [`OfflineRecordHistory`](#offlinerecordhistory)\[\] | 是 | 留痕，按时间正序 |
+
+
+#### GET `/biz/payment/offline-records`
+
+App 外收款记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `from` | query | `string` | 否 | — |
+| `to` | query | `string` | 否 | — |
+| `method` | query | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER`\[\] | 否 | — |
+| `status` | query | `RECORDED` \| `VOIDED`\[\] | 否 | 状态筛选，取值见对应枚举 |
+| `q` | query | `string` | 否 | — |
+| `orderNo` | query | `string` | 否 | 订单单号（按商家拆单后的子订单） |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`OfflineRecordPage`](#offlinerecordpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`OfflineRecord`](#offlinerecord)\[\] | 是 | 按实收时间倒序 |
+| `nextCursor` | `string,null` | 是 | 下一页游标；null = 没有了 |
+
+
+#### GET `/biz/payment/offline-records/summary`
+
+App 外收款合计　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `from` | query | `string` | 否 | — |
+| `to` | query | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`OfflineRecordSummary`](#offlinerecordsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `to` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `count` | `number` | 是 | 未作废笔数 |
+| `amountMinor` | `number` | 是 | 未作废合计（最小单位） |
+
+
 #### GET `/biz/payment/qr-code`
 
 本店收款码　🔒
@@ -8037,6 +8213,8 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 
 #### POST `/biz/plan/trial`
@@ -8066,6 +8244,8 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 
 ### platform-activity
@@ -9464,7 +9644,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
-| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `role` | [`StaffRole`](#staffrole) \| `string` | 是 | 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS） **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。 |
 | `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 **出参**（`data`）
@@ -9520,8 +9700,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store`
@@ -9554,8 +9739,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### GET `/biz/store/{storeNo}/categories`
@@ -10261,8 +10451,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store/announcement/recent/remove`
@@ -10291,8 +10486,13 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 
 #### POST `/biz/store/create`
@@ -12410,6 +12610,28 @@ _无字段_
 - `REFUND_ONLY`
 - `RETURN_REFUND`
 
+### AppPlatform
+
+App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致
+
+枚举取值：
+
+- `ANDROID`
+- `IOS`
+
+### AppVersionInfo
+
+版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `platform` | [`AppPlatform`](#appplatform) | 是 | 归一后的平台 |
+| `latest` | `string` | 是 | 最新版；空串 = 不提示更新 |
+| `minSupported` | `string` | 是 | 最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED |
+| `notes` | `string`\[\] | 是 | 按 Accept-Language 取的更新说明，没填回落繁中 |
+| `storeUrl` | `string,null` | 是 | 商店地址（只会是 App Store 或 Google Play 的 https 地址） |
+| `upgradeRequired` | `boolean,null` | 是 | 只在请求带了 build 时有值；端上应以它为准 |
+
 ### AppealReviewReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -12618,6 +12840,7 @@ _无字段_
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+| `actorNo` | `string` | 否 | — |
 
 ### BookExpressReq
 
@@ -13158,6 +13381,46 @@ _无字段_
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
 
+### FeedbackCategory
+
+回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。
+
+枚举取值：
+
+- `BUG`
+- `PAYMENT`
+- `IDEA`
+- `OTHER`
+
+### FeedbackDiagnostic
+
+回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string,null` | 是 | 请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null |
+| `method` | `string` | 是 | HTTP 方法 |
+| `path` | `string` | 是 | 请求路径（已脱敏） |
+| `outcome` | `string` | 是 | 结果摘要，如 `ok`、`error 70006` |
+
+### FeedbackReceipt
+
+提交回报的回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+
+### FeedbackStatus
+
+回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」
+
+枚举取值：
+
+- `OPEN`
+- `REPLIED`
+- `CLOSED`
+
 ### FulfillStage
 
 履约进度五档（与后端 FulfillStage 同名同义）
@@ -13410,7 +13673,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 授权到哪家店。只能是本主体的门店 |
-| `role` | [`StaffRole`](#staffrole) | 是 | 要授予/撤销的那一个角色 |
+| `role` | [`StaffRole`](#staffrole) \| `string` | 是 | 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS） **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。 |
 | `granted` | `boolean` | 否 | true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 |
 
 ### GrantType
@@ -14635,6 +14898,21 @@ SKU 组件：一件 SKU 交付哪些东西
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
 
+### MerchantFeedback
+
+「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `feedbackNo` | `string` | 是 | 回报号，即客服工单号（TK…） |
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类 |
+| `description` | `string` | 是 | 描述原文 |
+| `status` | [`FeedbackStatus`](#feedbackstatus) | 是 | 处理状态 |
+| `reply` | `string,null` | 是 | 客服回复；没回复为 null |
+| `storeNo` | `string,null` | 是 | 提交时所在门店（核对属于本账号才存） |
+| `createdAt` | `string` | 是 | 提交时间（ISO-8601 UTC） |
+| `repliedAt` | `string,null` | 是 | 回复时间（ISO-8601 UTC）；没回复为 null |
+
 ### MerchantFulfillmentChange
 
 履约方式变更结果。
@@ -14817,6 +15095,8 @@ SKU 组件：一件 SKU 交付哪些东西
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+| `suspendedStoreDetails` | [`SuspendedStore`](#suspendedstore)\[\] | 否 | 同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。 |
+| `graceUntil` | `number,null` | 否 | 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。 **后端算好给**，端上不要再按「到期 + 7 天」自己推。 |
 
 ### MerchantProfile
 
@@ -15051,6 +15331,107 @@ SKU 组件：一件 SKU 交付哪些东西
 | `payoutStatus` | `PENDING` \| `EXPORTED` \| `PAID` \| `MATCHED` \| `FAILED` \| `null` | 否 | 本批最近一笔放款到哪一步了（V391）。空 = 还没放款。 批次状态 RELEASED 只说「放了」，没说钱到哪一步 —— 商家问客服的正是后者： PENDING / EXPORTED 财务还没打；PAID 已登记凭证；MATCHED 银行流水勾上；FAILED 退回了。 |
 | `paymentRef` | `string,null` | 否 | 凭证号（网银流水号）。商家拿它对自己的银行到账记录 |
 | `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒）。空 = 还没登记 |
+
+### OfflineRecord
+
+外部收款记录（四个接口共用）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recordNo` | `string` | 是 | 记录号（OFR…），与支付单号空间不重叠 |
+| `amountMinor` | `number` | 是 | 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 收款方式 |
+| `orderNo` | `string,null` | 是 | 引用的本店子单号；只是引用，不推订单状态 |
+| `note` | `string,null` | 是 | 备注 |
+| `receivedAt` | `string` | 是 | 实际收款时刻，ISO 8601 带门店市场偏移 |
+| `recordedBy` | `string` | 是 | 记账人号 |
+| `recordedByName` | `string,null` | 是 | 记账人名字；取不到为 null，端上退回显示 recordedBy |
+| `recordedAt` | `string` | 是 | 记账时刻，ISO 8601 带门店市场偏移 |
+| `status` | [`OfflineRecordStatus`](#offlinerecordstatus) | 是 | 已记 / 已作废 |
+| `corrected` | `boolean` | 是 | 是否被更正过 |
+| `version` | `number` | 是 | 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 |
+| `history` | [`OfflineRecordHistory`](#offlinerecordhistory)\[\] | 是 | 留痕，按时间正序 |
+
+### OfflineRecordAction
+
+留痕动作
+
+枚举取值：
+
+- `CREATE`
+- `CORRECT`
+- `VOID`
+
+### OfflineRecordCreateReq
+
+记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
+| `method` | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER` | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
+| `note` | `string` | 否 | ≤ 100 字 |
+| `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
+
+### OfflineRecordHistory
+
+一步留痕；端上按 action 与前后值自己拼文字
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `at` | `string` | 是 | 发生时刻，ISO 8601 带门店市场偏移 |
+| `by` | `string` | 是 | 操作人号 |
+| `byName` | `string,null` | 是 | 操作人名字；取不到为 null，端上退回显示 by |
+| `action` | [`OfflineRecordAction`](#offlinerecordaction) | 是 | 这一步做了什么 |
+| `reason` | `string,null` | 是 | 更正 / 作废的原因；CREATE 为 null |
+| `fromAmountMinor` | `number,null` | 是 | 改前金额（最小单位）；CREATE / VOID 为 null |
+| `toAmountMinor` | `number,null` | 是 | 改后金额（最小单位）；VOID 为 null |
+| `fromMethod` | [`OfflineRecordMethod`](#offlinerecordmethod) \| `null` | 是 | 改前方式；CREATE / VOID 为 null |
+| `toMethod` | [`OfflineRecordMethod`](#offlinerecordmethod) \| `null` | 是 | 改后方式；VOID 为 null |
+| `fromReceivedAt` | `string,null` | 是 | 改前实收时间；更正改了实收时间时才有 |
+| `toReceivedAt` | `string,null` | 是 | 改后实收时间；更正改了实收时间时才有 |
+
+### OfflineRecordMethod
+
+收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款
+
+枚举取值：
+
+- `CASH`
+- `BANK_TRANSFER`
+- `EXTERNAL_POS`
+- `OTHER`
+
+### OfflineRecordPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | [`OfflineRecord`](#offlinerecord)\[\] | 是 | 按实收时间倒序 |
+| `nextCursor` | `string,null` | 是 | 下一页游标；null = 没有了 |
+
+### OfflineRecordStatus
+
+已记 / 已作废（作废是终态，行不删）
+
+枚举取值：
+
+- `RECORDED`
+- `VOIDED`
+
+### OfflineRecordSummary
+
+区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `to` | `string` | 是 | 门店市场的 yyyy-MM-dd，含 |
+| `currency` | `string` | 是 | 门店市场币种 |
+| `count` | `number` | 是 | 未作废笔数 |
+| `amountMinor` | `number` | 是 | 未作废合计（最小单位） |
 
 ### OfflineSaleItem
 
@@ -16400,7 +16781,7 @@ Processing state of the order points refund projection.
 | `areaNo` | `string` | 否 | 业务键（服务端回填）。范围子集（P2）按它引用；端上新加的项没有，保存后才有 |
 | `mode` | [`AreaMode`](#areamode) | 否 | 覆盖方向：`INCLUDE` 纳入（默认，不传即此）/ `EXCLUDE` 排除。 它回答的是「商家框了小区，算不算覆盖里面每栋楼」—— **默认算**， 但给一个显式的出口：勾了整个小区、单独排除 3 幢。 展开时先并后减，EXCLUDE 优先；而矛盾应当在**输入端**消除 （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。 |
 | `status` | [`AreaStatus`](#areastatus) | 否 | `ACTIVE` 已生效 / `PENDING` 待运营审核。 勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。 |
-| `geometry` | `string` | 否 | 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。 |
+| `geometry` | `string` | 否 | 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。 **请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。 |
 
 ### ServiceScope
 
@@ -17328,6 +17709,7 @@ Processing state of a persisted stock synchronization command.
 | `locked` | `boolean` | 否 | 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 |
 | `scopeMode` | `string` | 否 | ALL / SUBSET（P2）：这一路只送经营范围的一个子集 |
 | `areaNos` | `string`\[\] | 否 | SUBSET 时适用的范围项 area_no |
+| `inherited` | `boolean` | 否 | 这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体 `fulfillmentReach` 兜底，兜底那一路在这里 `enabled=true, inherited=true`。 端上可标「沿用商户设置」；商家存一次之后门店有了自己的配置，就不再出现。 |
 
 ### StoreIssuerOption
 
@@ -17582,8 +17964,13 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636） |
 | `bannerUrl` | `string` | 否 | 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉 |
+| `name` | `string,null` | 否 | 门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename` |
+| `slug` | `string,null` | 否 | 门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug` |
+| `status` | [`StoreStatus`](#storestatus) \| `null` | 否 | 门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。 |
+| `isDefault` | `boolean,null` | 否 | 是不是主体的默认门店（只读） |
+| `planSuspended` | `boolean,null` | 否 | 是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」 |
 
 ### StoreQrcode
 
@@ -17604,16 +17991,32 @@ StorePointType 的 status 取值域，按服务端契约校验。
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 哪家店 |
 | `storeName` | `string` | 是 | 门店名快照，列表直接显示，省一次查询 |
-| `role` | [`StaffRole`](#staffrole) | 是 | MANAGER 店长 / CLERK 店员 |
+| `role` | [`StaffRole`](#staffrole) | 是 | 角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码 |
 
 ### StoreStatus
 
-门店状态。READONLY = 已停用（不再接新单，已有单照常履约）
+门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。
 
 枚举取值：
 
 - `ACTIVE`
 - `READONLY`
+- `SUSPENDED`
+
+### SubmitFeedbackReq
+
+提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400； 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `category` | [`FeedbackCategory`](#feedbackcategory) | 是 | 分类：BUG / PAYMENT / IDEA / OTHER |
+| `description` | `string` | 是 | 描述，去首尾空白后 1–1000 字 |
+| `errorCode` | `string` | 否 | 从哪个错误进来（≤64，超长截断） |
+| `page` | `string` | 否 | 从哪一页进来（≤128，超长截断） |
+| `storeNo` | `string` | 否 | 当前门店号；不属于本账号会被丢弃（照常落库） |
+| `appVersion` | `string` | 是 | App 版本（必填，≤32） |
+| `platform` | `string` | 否 | android / ios；其它值归 OTHER |
+| `diagnostics` | [`FeedbackDiagnostic`](#feedbackdiagnostic)\[\] | 否 | 诊断，最多留最后 300 条 |
 
 ### SubmitPaymentReq
 
@@ -17644,6 +18047,16 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `remark` | `string,null` | 否 | 备注。**引用平台档案时这一列仍归商家写** —— 那是他自己的话 |
 | `status` | `string` | 是 | ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 |
 | `fromPlatform` | `boolean` | 是 | 引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。 |
+
+### SuspendedStore
+
+被方案降级压成只读的一家店。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `name` | `string` | 是 | 门店名 |
+| `openOrders` | `number` | 是 | 还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约 |
 
 ### SvAccount
 

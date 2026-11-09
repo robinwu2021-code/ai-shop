@@ -43,6 +43,22 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
         this.accountMapper = accountMapper;
     }
 
+    /** 交易域的「未走完的单」口径（套餐页列被压门店时用）。setter 注入：手工构造本类的测试不必跟着改 */
+    private ai.neargo.shop.spi.trade.OpenOrderPort openOrders;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setOpenOrders(ai.neargo.shop.spi.trade.OpenOrderPort openOrders) {
+        this.openOrders = openOrders;
+    }
+
+    /** 宽限期截止：到期后再给 {@value #GRACE_DAYS} 天（与 {@code PlanExpiryJob} 的 GRACE 同一口径）。EXPIRED 或无到期日为 null */
+    private static Long graceUntilOf(String status, Long expireAt) {
+        if (expireAt == null || MchEntityPlan.EXPIRED.equals(status)) {
+            return null;
+        }
+        return expireAt + GRACE_DAYS * DAY_MS;
+    }
+
     @Override
     public PlanVO current(String merchantNo) {
         MchEntityPlan row = find(merchantNo);
@@ -499,11 +515,15 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
          * 商家自己停用的店混进来的话，套餐页会告诉他「补缴就能恢复」，
          * 而那家店与欠费毫无关系，补完他会发现它还是关着。
          */
-        List<String> suspended = DataScopeContext.executeWithoutScope(() ->
-                        storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
-                                .eq(ai.neargo.shop.merchant.entity.MchStore::getPlanSuspended, true)))
-                .stream().map(ai.neargo.shop.merchant.entity.MchStore::getName).toList();
+        List<ai.neargo.shop.merchant.entity.MchStore> pressed = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getPlanSuspended, true)));
+        List<String> suspended = pressed.stream().map(ai.neargo.shop.merchant.entity.MchStore::getName).toList();
+        List<SuspendedStoreVO> details = pressed.stream()
+                .map(s -> new SuspendedStoreVO(s.getStoreNo(), s.getName(),
+                        openOrders == null ? 0 : openOrders.countOpenByStore(s.getStoreNo())))
+                .toList();
 
         var tierDefs = enabledDefs();
         var trialTier = trialTargetOf(v, row);
@@ -519,7 +539,8 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
                         .map(d -> new TierVO(d.getPlanCode(), d.getName(), nz(d.getStoreQuota()),
                                 nz(d.getStaffQuota()), Boolean.TRUE.equals(d.getCrossStoreStats()),
                                 nz(d.getTrialDays()), d.getPlanCode().equals(v.planCode())))
-                        .toList());
+                        .toList(),
+                details, graceUntilOf(v.status(), v.expireAt()));
     }
 
     @Override

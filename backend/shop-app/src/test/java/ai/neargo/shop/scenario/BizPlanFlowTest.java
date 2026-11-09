@@ -253,6 +253,51 @@ class BizPlanFlowTest {
             }
         }
         assertThat(pressed).isEqualTo(1);
+
+        /*
+         * 商户 App 字段对齐 A4：套餐页要列出「哪家店、叫什么、还有几单在跑」。
+         * 旧字段 suspendedStores 仍是门店名数组 —— 老 uni-app 端直接 join 显示它。
+         */
+        assertThat(p.get("graceUntil").isNull()).as("EXPIRED 没有宽限期截止").isTrue();
+        var details = p.get("suspendedStoreDetails");
+        assertThat(details).as("A4：要给出门店号、名称、未完成订单数").hasSize(1);
+        String pressedNo = details.get(0).get("storeNo").asString();
+        assertThat(pressedNo).isNotEqualTo(selfPaused);
+        assertThat(details.get(0).get("name").asString()).isEqualTo(names.get(0));
+        assertThat(details.get(0).get("openOrders").asInt()).isZero();
+
+        /*
+         * A1：/biz/store 带上 name / slug / status / isDefault / planSuspended，
+         * 两种只读的 status 都是 READONLY，只能靠同一次读出的 planSuspended 区分。
+         */
+        JsonNode pressedProfile = storeProfile(biz, pressedNo);
+        assertThat(pressedProfile.get("status").asString()).isEqualTo("READONLY");
+        assertThat(pressedProfile.get("planSuspended").asBoolean()).isTrue();
+        assertThat(pressedProfile.get("isDefault").asBoolean()).isFalse();
+        assertThat(pressedProfile.get("name").asString()).isEqualTo(names.get(0));
+        assertThat(pressedProfile.has("slug")).as("slug 没设过也要回（null）").isTrue();
+        JsonNode pausedProfile = storeProfile(biz, selfPaused);
+        assertThat(pausedProfile.get("status").asString()).isEqualTo("READONLY");
+        assertThat(pausedProfile.get("planSuspended").asBoolean()).as("商家自停不是平台压的").isFalse();
+        assertThat(pausedProfile.get("name").asString()).isEqualTo(selfPausedName);
+    }
+
+    @Test
+    @DisplayName("★ 有效期内的方案给出宽限期截止 graceUntil = 到期 + 7 天，App 不再自己推算")
+    void activePlanCarriesGraceUntil() throws Exception {
+        String biz = merchant("12601200041", "商家套餐·宽限期");
+        String merchantNo = merchantNoOf(biz);
+        grantPro(merchantNo);
+        long expire = System.currentTimeMillis() + 20L * 86_400_000L;
+        expireAt(merchantNo, expire);
+        JsonNode p = plan(biz);
+        assertThat(p.get("status").asString()).isEqualTo(MchEntityPlan.ACTIVE);
+        assertThat(p.get("graceUntil").asLong()).isEqualTo(expire + 7L * 86_400_000L);
+        assertThat(p.get("suspendedStoreDetails")).as("没压店时是空数组，不是 null").isEmpty();
+    }
+
+    private JsonNode storeProfile(String token, String storeNo) throws Exception {
+        return okData(get("/biz/store").header("X-Store-No", storeNo), token);
     }
 
     @Test

@@ -188,12 +188,25 @@ public interface MerchantPlanService {
      * @param trialTier         可试用的目标档位码；null = 现在不能试用
      *                          （已用过、已经是付费档、或没有配置可试用的档位）
      * @param tiers             三档对比。顺序按 {@code sort}，端上照原序渲染
+     * @param suspendedStoreDetails 同 {@code suspendedStores} 那几家，带门店号与未完成订单数（商户 App 字段对齐 A4）。
+     *                          {@code suspendedStores} 保持门店名数组不变 —— 老 uni-app 端直接 join 显示它
+     * @param graceUntil        宽限期截止（毫秒）= 到期 + 7 天；EXPIRED 或无到期日为 null。
+     *                          后端算好给，端上不要再按「到期 + 7」自己推
      */
     record MinePlanVO(String planCode, String planName, String status, Long startAt, Long expireAt,
                       int storeQuota, int storeUsed, int staffQuota, int staffUsed,
                       boolean crossStoreStats, boolean trialUsed, String trialTier,
                       Integer trialDays, java.util.List<String> suspendedStores,
-                      java.util.List<TierVO> tiers) {
+                      java.util.List<TierVO> tiers,
+                      java.util.List<SuspendedStoreVO> suspendedStoreDetails, Long graceUntil) {
+    }
+
+    /**
+     * 被降级压下的一家店。
+     *
+     * @param openOrders 这家店还没走完的子订单数（不在已完成 / 已取消 / 已退款）—— 压店只停新单，这些照常履约
+     */
+    record SuspendedStoreVO(String storeNo, String name, long openOrders) {
     }
 
     /** @param current 这一档是不是他现在用的 —— 端上不必拿 planCode 再比一次 */

@@ -11221,6 +11221,32 @@ components:
         repliedBy:
           type: "string"
           description: "回复人（员工登录名）。回复署的是平台的名，必须能追到人"
+        source:
+          "$ref": "#/components/schemas/TicketSource"
+          description: "来源：C 端用户工单 / 商户 App 回报"
+        category:
+          type:
+            - "string"
+            - "null"
+          description: "商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "提交时所在门店（已核对属于该账号）"
+        storeDropped:
+          type: "boolean"
+          description: "带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了"
+        clientVersion:
+          type:
+            - "string"
+            - "null"
+          description: "App 版本"
+        clientPlatform:
+          type:
+            - "string"
+            - "null"
+          description: "ANDROID / IOS / OTHER"
       required:
         - "ticketNo"
         - "title"
@@ -11229,6 +11255,32 @@ components:
         - "createdAt"
       additionalProperties: false
       description: "客服工单（P-14.2.1）。"
+    TicketSource:
+      type: "string"
+      enum:
+        - "C_USER"
+        - "B_MERCHANT"
+      description: "工单来源。两边按它隔离，不靠账号号段恰好不撞"
+    TicketDiagnostic:
+      type: "object"
+      properties:
+        at:
+          type:
+            - "string"
+            - "null"
+        method:
+          type: "string"
+        path:
+          type: "string"
+        outcome:
+          type: "string"
+      required:
+        - "at"
+        - "method"
+        - "path"
+        - "outcome"
+      additionalProperties: false
+      description: "商户回报附带的一条诊断（`GET /ops/tickets/{ticketNo}/diagnostics`）。 `at` 以 Z 或 ±hh:mm 结尾的是 UTC；不带时区的是**设备本地时间**原文（服务端不猜时区）；null = 时间缺失。"
     FaqEntry:
       type: "object"
       properties:
@@ -12488,6 +12540,111 @@ components:
           description: "每页条数"
       additionalProperties: false
       description: "待回收清单的筛选。`includeQual` 默认 false —— 证件留存期是法务口径。"
+    AppVersionPolicy:
+      type: "object"
+      properties:
+        appCode:
+          type: "string"
+          description: "哪个 App。首期只有 MERCHANT"
+        platform:
+          "$ref": "#/components/schemas/AppVersionPlatform"
+          description: "ANDROID / IOS"
+        latest:
+          type: "string"
+          description: "最新版；空 = 不提示更新"
+        minSupported:
+          type: "string"
+          description: "最低支持版；空 = 不拦写"
+        notes:
+          "$ref": "#/components/schemas/Partial%3CRecord%3CAppVersionLang%2Cstring%5B%5D%3E%3E"
+          description: "更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+          description: "商店地址，只收 https://apps.apple.com/… 或 https://play.google.com/…"
+        updatedBy:
+          type:
+            - "string"
+            - "null"
+          description: "最后修改人"
+        updatedAt:
+          type:
+            - "number"
+            - "null"
+          description: "最后修改时间（毫秒）；没配过为 null"
+        revision:
+          type: "number"
+          description: "乐观锁版本：保存时原样带回 expectedRevision，别人先改了就 10409"
+      required:
+        - "appCode"
+        - "platform"
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "updatedBy"
+        - "updatedAt"
+        - "revision"
+      additionalProperties: false
+      description: "App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报与版本 V6）。\n\n没配过的平台也会列出来：`revision=0`、字段为空 —— 那就是「App 不提示」的首发状态。 改「最低支持版」影响面是**全部**商户：低于它的包写请求立刻被拒（10426），所以改它要单独的 `system:app-version:update`，技术运维的 `system:param:update` 改不了。"
+    AppVersionPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "版本策略按平台分行（sys_app_version.platform）"
+    "Partial<Record<AppVersionLang,string[]>>":
+      type: "object"
+      properties:
+        zh-Hant:
+          type: "array"
+          items:
+            type: "string"
+        zh-Hans:
+          type: "array"
+          items:
+            type: "string"
+        en:
+          type: "array"
+          items:
+            type: "string"
+        ar:
+          type: "array"
+          items:
+            type: "string"
+      additionalProperties: false
+    AppVersionLang:
+      type: "string"
+      enum:
+        - "zh-Hant"
+        - "zh-Hans"
+        - "en"
+        - "ar"
+      description: "更新说明的四种语言"
+    SaveAppVersionPolicy:
+      type: "object"
+      properties:
+        latest:
+          type: "string"
+        minSupported:
+          type: "string"
+        notes:
+          "$ref": "#/components/schemas/Partial%3CRecord%3CAppVersionLang%2Cstring%5B%5D%3E%3E"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+        expectedRevision:
+          type: "number"
+      required:
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "expectedRevision"
+      additionalProperties: false
+      description: "保存一行策略"
     JobStatus:
       type: "string"
       enum:
@@ -29166,6 +29323,40 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/tickets/{no}/diagnostics":
+    get:
+      operationId: "ticketDiagnostics"
+      summary: "商户 App 回报附带的诊断资料（TDD-商户App问题回报与版本 F7）"
+      tags:
+        - "message"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/TicketDiagnostic"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/message":
     get:
       operationId: "listInbox"
@@ -33729,6 +33920,77 @@ paths:
                   - "data"
       parameters:
         - name: "templateNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/app-versions":
+    get:
+      operationId: "listAppVersions"
+      summary: "每个平台一行，没配过的也列出来（revision=0） */"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/AppVersionPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/app-versions/{appCode}/{platform}":
+    put:
+      operationId: "saveAppVersion"
+      summary: "改一行"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/AppVersionPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "appCode"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "platform"
           in: "path"
           required: true
           schema:

@@ -3,6 +3,7 @@ package ai.neargo.shop.commercebridge;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -111,6 +112,34 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ App 外收款记录（/biz/payment/offline-records*）在新模型门店上能进门店：记一笔、列表、汇总都是 0，不是 70006")
+    void new_model_store_member_reaches_offline_records() throws Exception {
+        String[] o = newModelOwner("15965020117");
+        jdbc.update("update mch_entity set market='TW' where entity_no=(select entity_no from mch_store where store_no=?)",
+                o[1]);
+        String body = mvc.perform(post("/biz/payment/offline-records").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).header("Idempotency-Key", "daily-routes-offline-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountMinor\":48000,\"currency\":\"TWD\",\"method\":\"CASH\"}"))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode created = json.readTree(body);
+        assertTrue(created.has("code"), body);
+        assertEquals(0, created.path("code").asInt(), body);
+        for (String path : new String[] {"/biz/payment/offline-records", "/biz/payment/offline-records/summary"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertTrue(r.has("code") && r.path("data").isObject(), path + " → " + r);
+            assertEquals(0, r.path("code").asInt(), path + " → " + r);
+        }
+        String no = created.path("data").path("recordNo").asText();
+        assertTrue(no.startsWith("OFR"), body);
+        String voided = mvc.perform(post("/biz/payment/offline-records/" + no + "/void")
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"测试\",\"expectedVersion\":1}"))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals(0, json.readTree(voided).path("code").asInt(), voided);
+    }
+
+    @Test
     @DisplayName("★★★ App 的店员角色、管理空间、证照协议、地图选址与看板，在新模型门店上都能进门店（不是 70006）")
     void appAdminAndOnboardingRoutesPassAdmission() throws Exception {
         String[] o = newModelOwner("15965020107");
@@ -120,6 +149,173 @@ class StoreScopedDailyRoutesFlowTest {
                 "/biz/dashboard/todo", "/biz/dashboard/stats", "/biz/merchant/pay-service"}) {
             JsonNode r = call(o[0], o[1], path);
             assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ App 第二批（门店资料 / 方案 / 评价 / 列印 / 通知 / 自提 / 进销存 / 会员营销 / 团购 / 平台活动）读接口在新模型门店上能进门店（2026-11-08 台北早餐 166 上 70006）")
+    void appSecondBatchReadsPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020110");
+        String s = "/biz/store/" + o[1] + "/";
+        for (String path : new String[] {
+                "/biz/store", "/biz/store/share-kit", "/biz/store/poster", "/biz/store/qrcode", "/biz/plan",
+                "/biz/review", "/biz/print/printers", "/biz/print/health", "/biz/print/jobs", "/biz/print/scene-policies",
+                "/biz/notify/setting", "/biz/pickup/overview", "/biz/pickup/orders", "/biz/pickup-points/candidates",
+                "/biz/inventory/summary", "/biz/inventory/balances", "/biz/inventory/ledger",
+                "/biz/inventory/category-setting", "/biz/inventory/report/monthly",
+                s + "offline-sale", s + "stock-overview", s + "stock-alignment", s + "stock-reconcile/records",
+                "/biz/members", "/biz/members/stats", "/biz/member-tags", "/biz/member-segments", "/biz/member-settings",
+                "/biz/member-reach/task", "/biz/coupons", "/biz/coupon-issues", "/biz/points/store-account",
+                "/biz/points/store-statements", "/biz/groups", "/biz/group/pickups", "/biz/group-request/pool",
+                "/biz/period", "/biz/platform-activity", "/biz/activity-presets", "/biz/marketing-summary"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ App 第二批写接口（门店公告、改店名、评价回复、加打印机）在新模型门店上能进门店（不是 70006）")
+    void appSecondBatchWritesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020111");
+        for (String path : new String[] {"/biz/store/announcement", "/biz/store/" + o[1] + "/rename",
+                "/biz/review/R1/reply", "/biz/print/printers", "/biz/coupons", "/biz/member-tags"}) {
+            String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertNotEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 账号级接口（改显示名、推送注册 / 解绑）在新模型门店账号上不选门店也能调（ACCOUNT 通道，不是 70006）")
+    void accountScopedRoutesWorkWithoutStoreSelection() throws Exception {
+        String[] o = newModelOwner("15965020113");
+        String[][] calls = {
+                {"/biz/merchant/display-name", "{\"displayName\":\"Robin\"}"},
+                {"/biz/push-token", "{\"platform\":\"android\",\"clientId\":\"cid-daily-routes\"}"},
+                {"/biz/push-token/unregister", "{\"clientId\":\"cid-daily-routes\"}"}};
+        for (String[] c : calls) {
+            for (String store : new String[] {null, o[1]}) {
+                var b = post(c[0]).header("Authorization", "Bearer " + o[0])
+                        .contentType(MediaType.APPLICATION_JSON).content(c[1]);
+                if (store != null) {
+                    b.header("X-Store-No", store);
+                }
+                String body = mvc.perform(b).andReturn().getResponse().getContentAsString();
+                assertEquals(0, json.readTree(body).path("code").asInt(), c[0] + " store=" + store + " → " + body);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 问题回报（提交 / 我的回报）是账号级：新模型门店账号不选门店也能调（ACCOUNT 通道，不是 70006）")
+    void feedbackRoutesWorkWithoutStoreSelection() throws Exception {
+        String[] o = newModelOwner("15965020118");
+        for (String store : new String[] {null, o[1]}) {
+            var b = post("/biz/feedback").header("Authorization", "Bearer " + o[0])
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"category\":\"BUG\",\"description\":\"选不了店\",\"appVersion\":\"0.1.0\","
+                            + "\"platform\":\"android\",\"storeNo\":\"" + o[1] + "\"}");
+            if (store != null) {
+                b.header("X-Store-No", store);
+            }
+            String body = mvc.perform(b).andReturn().getResponse().getContentAsString();
+            assertEquals(0, json.readTree(body).path("code").asInt(), "POST /biz/feedback store=" + store + " → " + body);
+            JsonNode mine = call(o[0], store, "/biz/feedback/mine");
+            assertEquals(0, mine.path("code").asInt(), "GET /biz/feedback/mine store=" + store + " → " + mine);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 出款账户（收款账户 F06）在新模型门店上能进门店（不是 70006）")
+    void payoutAccountPassesAdmission() throws Exception {
+        String[] o = newModelOwner("15965020114");
+        JsonNode r = call(o[0], o[1], "/biz/payout-account");
+        assertNotEquals(70006, r.path("code").asInt(), r.toString());
+        String body = mvc.perform(post("/biz/payout-account").header("Authorization", "Bearer " + o[0])
+                        .header("X-Store-No", o[1]).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn().getResponse().getContentAsString();
+        assertNotEquals(70006, json.readTree(body).path("code").asInt(), body);
+    }
+
+    @Test
+    @DisplayName("★★★ 门店级配送方式（App W05 多选）在新模型门店上能读能存；没配过的店如实回「沿用商户设置」那一路")
+    void storeFulfillmentWorksOnNewModelStores() throws Exception {
+        String[] o = newModelOwner("15965020115");
+        String path = "/biz/stores/" + o[1] + "/fulfillment";
+
+        JsonNode before = call(o[0], o[1], path);
+        assertEquals(0, before.path("code").asInt(), before.toString());
+        /*
+         * 新建门店没有门店级配置行，买家侧按主体 fulfillment_reach 兜底（StoreRoutes）。
+         * 读接口若照实回「四路全关」，App 会显示一家「谁也看不到」的店，而买家其实看得到 ——
+         * 所以兜底那一路要标成开着、并注明 inherited。
+         */
+        var inherited = new java.util.ArrayList<String>();
+        for (JsonNode ch : before.path("data").path("channels")) {
+            if (ch.path("enabled").asBoolean()) {
+                assertTrue(ch.path("inherited").asBoolean(), "兜底开着的那一路要标 inherited：" + ch);
+                inherited.add(ch.path("channel").asText());
+            }
+        }
+        assertEquals(java.util.List.of("STORE_PICKUP"), inherited, "主体 fulfillment_reach 为空按自提兜底");
+
+        String saved = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(path)
+                        .header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channels\":[{\"channel\":\"EXPRESS\",\"enabled\":true}]}"))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode s = json.readTree(saved);
+        assertEquals(0, s.path("code").asInt(), saved);
+        for (JsonNode ch : s.path("data").path("channels")) {
+            assertFalse(ch.path("inherited").asBoolean(), "存过之后就是门店自己的配置，不再沿用：" + ch);
+            assertEquals("EXPRESS".equals(ch.path("channel").asText()), ch.path("enabled").asBoolean(), ch.toString());
+        }
+
+        /*
+         * 关路前的影响清单仍走 LEGACY_PREVIEW、只给老模型门店（见 ShopStoreMemberRoutes 的说明），
+         * 新模型门店上是 70006。这里钉住现状：哪天开放了，这条会变红提醒同步改 App 与 TDD。
+         */
+        JsonNode impact = call(o[0], o[1], path + "/EXPRESS/impact");
+        assertEquals(70006, impact.path("code").asInt(), impact.toString());
+    }
+
+    @Test
+    @DisplayName("★★★ 台湾主体：加员工、建会员收 +886 号码（此前只认 11 位大陆号，台湾店主加不了员工）；大陆主体口径不变")
+    void taiwanEntityAcceptsTaiwanPhones() throws Exception {
+        String[] o = newModelOwner("15965020119");
+        String entity = jdbc.queryForObject("select entity_no from mch_store where store_no=?", String.class, o[1]);
+        String staffBody = "{\"loginPhone\":\"+886912345678\",\"displayName\":\"阿明\"}";
+        String memberBody = "{\"phone\":\"+886912345679\"}";
+
+        // 大陆主体：台湾号照旧拒（大陆号段校验不放宽）
+        assertEquals(10400, postCode(o, "/biz/staff", staffBody));
+        assertNotEquals(0, postCode(o, "/biz/members", memberBody));
+
+        jdbc.update("update mch_entity set market='TW' where entity_no=?", entity);
+        assertEquals(0, postCode(o, "/biz/staff", staffBody), "台湾主体加员工");
+        assertEquals("+886912345678", jdbc.queryForObject(
+                "select login_phone from mch_account where entity_no=? and login_phone like '+886%'", String.class, entity),
+                "按 App 送来的 E.164 原样存 —— 员工登录按同一个号匹配");
+        assertEquals(0, postCode(o, "/biz/members", memberBody), "台湾主体建会员");
+        // 明显不是号码的仍然拒
+        assertEquals(10400, postCode(o, "/biz/staff", "{\"loginPhone\":\"abc\",\"displayName\":\"x\"}"));
+    }
+
+    private int postCode(String[] o, String path, String body) throws Exception {
+        String r = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(r).path("code").asInt();
+    }
+
+    @Test
+    @DisplayName("★★ 逐条登记、不放开兜底：本店下未登记的子路径仍然 70006")
+    void unregisteredStoreSubpathStillDenied() throws Exception {
+        String[] o = newModelOwner("15965020112");
+        for (String path : new String[] {"/biz/store/" + o[1] + "/not-registered", "/biz/store/not-registered"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertEquals(70006, r.path("code").asInt(), path + " → " + r);
         }
     }
 
@@ -162,6 +358,15 @@ class StoreScopedDailyRoutesFlowTest {
                 .andReturn().getResponse().getContentAsString();
         assertEquals(0, json.readTree(body).path("code").asInt(), body);
         assertEquals("CAT210", json.readTree(body).path("data").path(0).path("categoryNo").asText(), body);
+    }
+
+    @Test
+    @DisplayName("★★★ 快递公司清单（TDD-商户App快递公司 E7）在新模型门店上能进门店，且店主读得到（不是 70006）")
+    void express_companies_pass_admission_for_new_model_store() throws Exception {
+        String[] o = newModelOwner("15965020116");
+        JsonNode r = call(o[0], o[1], "/biz/express/companies");
+        assertEquals(0, r.path("code").asInt(), r.toString());
+        assertFalse(r.path("data").path("companies").isEmpty(), r.toString());
     }
 
     @Test

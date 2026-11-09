@@ -99,6 +99,36 @@ export interface Ticket {
   repliedAt?: string;
   /** 回复人（员工登录名）。回复署的是平台的名，必须能追到人 */
   repliedBy?: string;
+  /*
+   * 以下六个是商户 App 问题回报加的（TDD-商户App问题回报与版本 F7），后端 `TicketVO` 尾部的可空字段。
+   * C 端工单 source=C_USER、其余为空。
+   */
+  /** 来源：C 端用户工单 / 商户 App 回报 */
+  source?: TicketSource;
+  /** 商户回报分类 BUG / PAYMENT / IDEA / OTHER；读到不认识的按「其他」显示 */
+  category?: string | null;
+  /** 提交时所在门店（已核对属于该账号） */
+  storeNo?: string | null;
+  /** 带了门店号但不属于该账号而被丢弃 —— 他提交时已经进不去那家店了 */
+  storeDropped?: boolean;
+  /** App 版本 */
+  clientVersion?: string | null;
+  /** ANDROID / IOS / OTHER */
+  clientPlatform?: string | null;
+}
+
+/** 工单来源。两边按它隔离，不靠账号号段恰好不撞 */
+export type TicketSource = "C_USER" | "B_MERCHANT";
+
+/**
+ * 商户回报附带的一条诊断（`GET /ops/tickets/{ticketNo}/diagnostics`）。
+ * `at` 以 Z 或 ±hh:mm 结尾的是 UTC；不带时区的是**设备本地时间**原文（服务端不猜时区）；null = 时间缺失。
+ */
+export interface TicketDiagnostic {
+  at: string | null;
+  method: string;
+  path: string;
+  outcome: string;
 }
 
 /** 帮助中心条目（P-14.2.4）。 */

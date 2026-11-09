@@ -4733,6 +4733,8 @@ components:
           items:
             type: "string"
           description: "这些角色合起来的权限码，**已取并集**（老板是 `[\"*\"]`）。\n\n端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。"
+        actorNo:
+          type: "string"
       required:
         - "merchantNo"
         - "currentStoreNo"
@@ -5568,7 +5570,8 @@ components:
       enum:
         - "ACTIVE"
         - "READONLY"
-      description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+        - "SUSPENDED"
+      description: "门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。"
     BusinessMode:
       type: "string"
       enum:
@@ -5617,7 +5620,7 @@ components:
           description: "门店名快照，列表直接显示，省一次查询"
         role:
           "$ref": "#/components/schemas/StaffRole"
-          description: "MANAGER 店长 / CLERK 店员"
+          description: "角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码"
       required:
         - "storeNo"
         - "storeName"
@@ -6450,6 +6453,16 @@ components:
           items:
             "$ref": "#/components/schemas/PlanTier"
           description: "三档对比，顺序即展示顺序（后端按 sort 排好）"
+        suspendedStoreDetails:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SuspendedStore"
+          description: "同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。"
+        graceUntil:
+          type:
+            - "number"
+            - "null"
+          description: "宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。\n**后端算好给**，端上不要再按「到期 + 7 天」自己推。"
       required:
         - "planCode"
         - "planName"
@@ -6498,6 +6511,24 @@ components:
         - "current"
       additionalProperties: false
       description: "档位对比的一行。"
+    SuspendedStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "门店号"
+        name:
+          type: "string"
+          description: "门店名"
+        openOrders:
+          type: "number"
+          description: "还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约"
+      required:
+        - "storeNo"
+        - "name"
+        - "openOrders"
+      additionalProperties: false
+      description: "被方案降级压成只读的一家店。"
     MerchantApplyStatus:
       type: "object"
       properties:
@@ -6895,6 +6926,141 @@ components:
         - "read"
         - "at"
       additionalProperties: false
+    FeedbackCategory:
+      type: "string"
+      enum:
+        - "BUG"
+        - "PAYMENT"
+        - "IDEA"
+        - "OTHER"
+      description: "回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。"
+    FeedbackStatus:
+      type: "string"
+      enum:
+        - "OPEN"
+        - "REPLIED"
+        - "CLOSED"
+      description: "回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」"
+    FeedbackDiagnostic:
+      type: "object"
+      properties:
+        at:
+          type:
+            - "string"
+            - "null"
+          description: "请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null"
+        method:
+          type: "string"
+          description: "HTTP 方法"
+        path:
+          type: "string"
+          description: "请求路径（已脱敏）"
+        outcome:
+          type: "string"
+          description: "结果摘要，如 `ok`、`error 70006`"
+      required:
+        - "at"
+        - "method"
+        - "path"
+        - "outcome"
+      additionalProperties: false
+      description: "回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。"
+    MerchantFeedback:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类"
+        description:
+          type: "string"
+          description: "描述原文"
+        status:
+          "$ref": "#/components/schemas/FeedbackStatus"
+          description: "处理状态"
+        reply:
+          type:
+            - "string"
+            - "null"
+          description: "客服回复；没回复为 null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "提交时所在门店（核对属于本账号才存）"
+        createdAt:
+          type: "string"
+          description: "提交时间（ISO-8601 UTC）"
+        repliedAt:
+          type:
+            - "string"
+            - "null"
+          description: "回复时间（ISO-8601 UTC）；没回复为 null"
+      required:
+        - "feedbackNo"
+        - "category"
+        - "description"
+        - "status"
+        - "reply"
+        - "storeNo"
+        - "createdAt"
+        - "repliedAt"
+      additionalProperties: false
+      description: "「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数"
+    FeedbackReceipt:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+      required:
+        - "feedbackNo"
+      additionalProperties: false
+      description: "提交回报的回执"
+    AppPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致"
+    AppVersionInfo:
+      type: "object"
+      properties:
+        platform:
+          "$ref": "#/components/schemas/AppPlatform"
+          description: "归一后的平台"
+        latest:
+          type: "string"
+          description: "最新版；空串 = 不提示更新"
+        minSupported:
+          type: "string"
+          description: "最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED"
+        notes:
+          type: "array"
+          items:
+            type: "string"
+          description: "按 Accept-Language 取的更新说明，没填回落繁中"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+          description: "商店地址（只会是 App Store 或 Google Play 的 https 地址）"
+        upgradeRequired:
+          type:
+            - "boolean"
+            - "null"
+          description: "只在请求带了 build 时有值；端上应以它为准"
+      required:
+        - "platform"
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "upgradeRequired"
+      additionalProperties: false
+      description: "版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。"
     SpecValueAdded:
       type: "object"
       properties:
@@ -8196,7 +8362,7 @@ components:
           description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
         geometry:
           type: "string"
-          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。"
+          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。\n**请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。"
       required:
         - "level"
         - "refCode"
@@ -8665,6 +8831,9 @@ components:
           items:
             type: "string"
           description: "SUBSET 时适用的范围项 area_no"
+        inherited:
+          type: "boolean"
+          description: "这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体 `fulfillmentReach` 兜底，兜底那一路在这里 `enabled=true, inherited=true`。 端上可标「沿用商户设置」；商家存一次之后门店有了自己的配置，就不再出现。"
       required:
         - "channel"
         - "enabled"
@@ -8817,10 +8986,35 @@ components:
           type:
             - "number"
             - "null"
-          description: "经度 ×1e6。**全站坐标一律 gcj02**"
+          description: "经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636）"
         bannerUrl:
           type: "string"
           description: "门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉"
+        name:
+          type:
+            - "string"
+            - "null"
+          description: "门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename`"
+        slug:
+          type:
+            - "string"
+            - "null"
+          description: "门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug`"
+        status:
+          anyOf:
+            - "$ref": "#/components/schemas/StoreStatus"
+            - type: "null"
+          description: "门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。"
+        isDefault:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是主体的默认门店（只读）"
+        planSuspended:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」"
       required:
         - "announcement"
         - "openHours"
@@ -11926,6 +12120,54 @@ components:
     MerchantApplyReqBody:
       "$ref": "#/components/schemas/MerchantApplyReq"
       description: "入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名"
+    SubmitFeedbackReq:
+      type: "object"
+      properties:
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类：BUG / PAYMENT / IDEA / OTHER"
+        description:
+          type: "string"
+          description: "描述，去首尾空白后 1–1000 字"
+        errorCode:
+          type: "string"
+          description: "从哪个错误进来（≤64，超长截断）"
+        page:
+          type: "string"
+          description: "从哪一页进来（≤128，超长截断）"
+        storeNo:
+          type: "string"
+          description: "当前门店号；不属于本账号会被丢弃（照常落库）"
+        appVersion:
+          type: "string"
+          description: "App 版本（必填，≤32）"
+        platform:
+          type: "string"
+          description: "android / ios；其它值归 OTHER"
+        diagnostics:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/FeedbackDiagnostic"
+          description: "诊断，最多留最后 300 条"
+      required:
+        - "category"
+        - "description"
+        - "appVersion"
+      additionalProperties: false
+      description: "提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400； 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。"
+    AppVersionQuery:
+      type: "object"
+      properties:
+        platform:
+          type: "string"
+          description: "android / ios，不分大小写"
+        build:
+          type: "string"
+          description: "当前版本号；带了才回 upgradeRequired"
+      required:
+        - "platform"
+      additionalProperties: false
+      description: "版本检查的查询参数"
     SaveStoreReqBody:
       "$ref": "#/components/schemas/StoreProfile"
     ShareKitQuery:
@@ -12927,8 +13169,10 @@ components:
           type: "string"
           description: "授权到哪家店。只能是本主体的门店"
         role:
-          "$ref": "#/components/schemas/StaffRole"
-          description: "要授予/撤销的那一个角色"
+          anyOf:
+            - "$ref": "#/components/schemas/StaffRole"
+            - type: "string"
+          description: "要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS）\n**或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。 不能是 `OWNER`（老板不在门店角色表里）。"
         granted:
           type: "boolean"
           description: "true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他"
@@ -14862,6 +15106,129 @@ components:
         - "managementNo"
         - "commandKey"
       additionalProperties: false
+    OfflineRecordCreateReq:
+      type: "object"
+      properties:
+        amountMinor:
+          type: "number"
+          description: "金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元）"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "必须等于门店市场币种（台湾 TWD）"
+        method:
+          type: "string"
+          enum:
+            - "CASH"
+            - "BANK_TRANSFER"
+            - "EXTERNAL_POS"
+            - "OTHER"
+          description: "现金 / 银行转账 / 外部刷卡机 / 其他"
+        orderNo:
+          type: "string"
+          description: "本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404"
+        note:
+          type: "string"
+          description: "≤ 100 字"
+        receivedAt:
+          type: "string"
+          description: "实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00"
+      required:
+        - "amountMinor"
+        - "currency"
+        - "method"
+      additionalProperties: false
+      description: "记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里"
+    OfflineRecordListQuery:
+      type: "object"
+      properties:
+        from:
+          type: "string"
+          description: "yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93"
+        to:
+          type: "string"
+        method:
+          type: "array"
+          items:
+            type: "string"
+            enum:
+              - "CASH"
+              - "BANK_TRANSFER"
+              - "EXTERNAL_POS"
+              - "OTHER"
+        status:
+          type: "array"
+          items:
+            type: "string"
+            enum:
+              - "RECORDED"
+              - "VOIDED"
+        q:
+          type: "string"
+          description: "1–32 字，命中订单号或备注"
+        orderNo:
+          type: "string"
+          description: "精确匹配订单号：订单详情据此判断「已有外部記錄」"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+          description: "1–50，默认 20"
+      additionalProperties: false
+      description: "列表查询"
+    OfflineRecordSummaryQuery:
+      type: "object"
+      properties:
+        from:
+          type: "string"
+        to:
+          type: "string"
+      additionalProperties: false
+      description: "汇总查询；区间规则同列表"
+    OfflineRecordCorrectReq:
+      type: "object"
+      properties:
+        amountMinor:
+          type: "number"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "必须等于原记录币种"
+        method:
+          type: "string"
+          enum:
+            - "CASH"
+            - "BANK_TRANSFER"
+            - "EXTERNAL_POS"
+            - "OTHER"
+        receivedAt:
+          type: "string"
+          description: "新的实收时刻；不传 = 不改"
+        reason:
+          type: "string"
+          description: "1–100 字"
+        expectedVersion:
+          type: "number"
+          description: "列表里拿到的 version；不符 → 10409"
+      required:
+        - "amountMinor"
+        - "currency"
+        - "method"
+        - "reason"
+        - "expectedVersion"
+      additionalProperties: false
+      description: "更正：店主 / 店长，记账后 31 天内"
+    OfflineRecordVoidReq:
+      type: "object"
+      properties:
+        reason:
+          type: "string"
+          description: "1–100 字"
+        expectedVersion:
+          type: "number"
+      required:
+        - "reason"
+        - "expectedVersion"
+      additionalProperties: false
+      description: "作废：店主 / 店长，记账后 31 天内"
     MallQuoteRequest:
       type: "object"
       properties:
@@ -15239,6 +15606,206 @@ components:
       enum:
         - "ACTIVE"
         - "REVOKED"
+    OfflineRecord:
+      type: "object"
+      properties:
+        recordNo:
+          type: "string"
+          description: "记录号（OFR…），与支付单号空间不重叠"
+        amountMinor:
+          type: "number"
+          description: "金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数）"
+        currency:
+          type: "string"
+          description: "门店市场币种"
+        method:
+          "$ref": "#/components/schemas/OfflineRecordMethod"
+          description: "收款方式"
+        orderNo:
+          type:
+            - "string"
+            - "null"
+          description: "引用的本店子单号；只是引用，不推订单状态"
+        note:
+          type:
+            - "string"
+            - "null"
+          description: "备注"
+        receivedAt:
+          type: "string"
+          description: "实际收款时刻，ISO 8601 带门店市场偏移"
+        recordedBy:
+          type: "string"
+          description: "记账人号"
+        recordedByName:
+          type:
+            - "string"
+            - "null"
+          description: "记账人名字；取不到为 null，端上退回显示 recordedBy"
+        recordedAt:
+          type: "string"
+          description: "记账时刻，ISO 8601 带门店市场偏移"
+        status:
+          "$ref": "#/components/schemas/OfflineRecordStatus"
+          description: "已记 / 已作废"
+        corrected:
+          type: "boolean"
+          description: "是否被更正过"
+        version:
+          type: "number"
+          description: "每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回"
+        history:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/OfflineRecordHistory"
+          description: "留痕，按时间正序"
+      required:
+        - "recordNo"
+        - "amountMinor"
+        - "currency"
+        - "method"
+        - "orderNo"
+        - "note"
+        - "receivedAt"
+        - "recordedBy"
+        - "recordedByName"
+        - "recordedAt"
+        - "status"
+        - "corrected"
+        - "version"
+        - "history"
+      additionalProperties: false
+      description: "外部收款记录（四个接口共用）"
+    OfflineRecordMethod:
+      type: "string"
+      enum:
+        - "CASH"
+        - "BANK_TRANSFER"
+        - "EXTERNAL_POS"
+        - "OTHER"
+      description: "收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款"
+    OfflineRecordStatus:
+      type: "string"
+      enum:
+        - "RECORDED"
+        - "VOIDED"
+      description: "已记 / 已作废（作废是终态，行不删）"
+    OfflineRecordHistory:
+      type: "object"
+      properties:
+        at:
+          type: "string"
+          description: "发生时刻，ISO 8601 带门店市场偏移"
+        by:
+          type: "string"
+          description: "操作人号"
+        byName:
+          type:
+            - "string"
+            - "null"
+          description: "操作人名字；取不到为 null，端上退回显示 by"
+        action:
+          "$ref": "#/components/schemas/OfflineRecordAction"
+          description: "这一步做了什么"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "更正 / 作废的原因；CREATE 为 null"
+        fromAmountMinor:
+          type:
+            - "number"
+            - "null"
+          description: "改前金额（最小单位）；CREATE / VOID 为 null"
+        toAmountMinor:
+          type:
+            - "number"
+            - "null"
+          description: "改后金额（最小单位）；VOID 为 null"
+        fromMethod:
+          anyOf:
+            - "$ref": "#/components/schemas/OfflineRecordMethod"
+            - type: "null"
+          description: "改前方式；CREATE / VOID 为 null"
+        toMethod:
+          anyOf:
+            - "$ref": "#/components/schemas/OfflineRecordMethod"
+            - type: "null"
+          description: "改后方式；VOID 为 null"
+        fromReceivedAt:
+          type:
+            - "string"
+            - "null"
+          description: "改前实收时间；更正改了实收时间时才有"
+        toReceivedAt:
+          type:
+            - "string"
+            - "null"
+          description: "改后实收时间；更正改了实收时间时才有"
+      required:
+        - "at"
+        - "by"
+        - "byName"
+        - "action"
+        - "reason"
+        - "fromAmountMinor"
+        - "toAmountMinor"
+        - "fromMethod"
+        - "toMethod"
+        - "fromReceivedAt"
+        - "toReceivedAt"
+      additionalProperties: false
+      description: "一步留痕；端上按 action 与前后值自己拼文字"
+    OfflineRecordAction:
+      type: "string"
+      enum:
+        - "CREATE"
+        - "CORRECT"
+        - "VOID"
+      description: "留痕动作"
+    OfflineRecordPage:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/OfflineRecord"
+          description: "按实收时间倒序"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+          description: "下一页游标；null = 没有了"
+      required:
+        - "items"
+        - "nextCursor"
+      additionalProperties: false
+    OfflineRecordSummary:
+      type: "object"
+      properties:
+        from:
+          type: "string"
+          description: "门店市场的 yyyy-MM-dd，含"
+        to:
+          type: "string"
+          description: "门店市场的 yyyy-MM-dd，含"
+        currency:
+          type: "string"
+          description: "门店市场币种"
+        count:
+          type: "number"
+          description: "未作废笔数"
+        amountMinor:
+          type: "number"
+          description: "未作废合计（最小单位）"
+      required:
+        - "from"
+        - "to"
+        - "currency"
+        - "count"
+        - "amountMinor"
+      additionalProperties: false
+      description: "区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额"
     MallStorefront:
       type: "object"
       properties:
@@ -29039,6 +29606,34 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/express/companies":
+    get:
+      operationId: "mExpressCompanies"
+      summary: "本店可选快递公司"
+      tags:
+        - "express"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/ExpressCompanyList"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/order/{orderNo}/express/quotes":
     get:
       operationId: "mExpressQuotes"
@@ -30181,6 +30776,166 @@ paths:
                   data:
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/payment/offline-records":
+    post:
+      operationId: "mPayRecordOffline"
+      summary: "记一笔 App 外收款"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OfflineRecord"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/OfflineRecordCreateReq"
+    get:
+      operationId: "mPayOfflineRecords"
+      summary: "App 外收款记录"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "method"
+          in: "query"
+          required: false
+          schema:
+            type: "array"
+            items:
+              type: "string"
+              enum:
+                - "CASH"
+                - "BANK_TRANSFER"
+                - "EXTERNAL_POS"
+                - "OTHER"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "array"
+            items:
+              type: "string"
+              enum:
+                - "RECORDED"
+                - "VOIDED"
+        - name: "q"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "1–32 字，命中订单号或备注"
+        - name: "orderNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "精确匹配订单号：订单详情据此判断「已有外部記錄」"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "1–50，默认 20"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OfflineRecordPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/payment/offline-records/summary":
+    get:
+      operationId: "mPayOfflineSummary"
+      summary: "App 外收款合计"
+      tags:
+        - "payment"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OfflineRecordSummary"
                 required:
                   - "code"
                   - "msg"
@@ -33284,6 +34039,109 @@ paths:
                   data:
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/feedback":
+    post:
+      operationId: "mSubmitFeedback"
+      summary: "提交问题回报（回报号即工单号）"
+      tags:
+        - "feedback"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/FeedbackReceipt"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SubmitFeedbackReq"
+  "/biz/feedback/mine":
+    get:
+      operationId: "mMyFeedback"
+      summary: "我的回报（最近 50 条，带客服回复）"
+      tags:
+        - "feedback"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MerchantFeedback"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/common/app/version":
+    get:
+      operationId: "mAppVersion"
+      summary: "版本检查（最新版 / 最低支持版 / 更新说明）"
+      tags:
+        - "app"
+      security: []
+      parameters:
+        - name: "platform"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "android / ios，不分大小写"
+        - name: "build"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            description: "当前版本号；带了才回 upgradeRequired"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/AppVersionInfo"
                 required:
                   - "code"
                   - "msg"

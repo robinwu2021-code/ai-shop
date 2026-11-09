@@ -178,6 +178,14 @@ public final class BizPerms {
      * 店员要能对着顾客手机查「这笔付了没」，所以店长、店员默认都有；汇总仍是 {@link #PAY_STATEMENT}，退款仍是 {@link #PAY_REFUND}。
      */
     public static final String PAY_ORDER_VIEW = "mch:pay:order:view";
+    /**
+     * 记一笔 App 外收款（TDD-商户App外部记账）：现金、外部刷卡机、银行转账在 App 里留痕。
+     * 平台不经手、不进拨款、不能退款，所以与 {@link #PAY_COLLECT}、{@link #CASH_RECEIVE} 分开 ——
+     * 后两者会出码收钱或把订单推成已付，给店员范围太大；店员模板默认有本码。读列表复用 {@link #PAY_ORDER_VIEW}。
+     */
+    public static final String PAY_OFFLINE_RECORD = "mch:pay:offline:record";
+    /** 更正与作废 App 外收款记录（原因必填、留痕）。店长默认有，店员没有 —— 改账的人与记账的人分开。 */
+    public static final String PAY_OFFLINE_MANAGE = "mch:pay:offline:manage";
 
     public static final String PRINT_READ = "biz:print:read";
     public static final String PRINT_SUBMIT = "biz:print:submit";
@@ -193,11 +201,12 @@ public final class BizPerms {
             OWNER, List.of("*"),
             MANAGER, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
                     GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE, PAY_ORDER_VIEW, PAY_COLLECT,
+                    PAY_OFFLINE_RECORD, PAY_OFFLINE_MANAGE,
                     // 预约：店长看与管、店员只看（TDD-B端门店功能矩阵与方案准入 §4-1，V640）
                     BOOKING_VIEW, BOOKING_MANAGE,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
                     PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
-            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW, BOOKING_VIEW,
+            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK, PAY_ORDER_VIEW, PAY_OFFLINE_RECORD, BOOKING_VIEW,
                     PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
@@ -272,6 +281,8 @@ public final class BizPerms {
             Map.entry(PAY_APP_GRANT, "授权第三方代本店收款或退款"),
             Map.entry(PAY_QR, "生成与停用本店收款码"),
             Map.entry(PAY_ORDER_VIEW, "查看本店收款记录（列表与详情）"),
+            Map.entry(PAY_OFFLINE_RECORD, "记录 App 外收款"),
+            Map.entry(PAY_OFFLINE_MANAGE, "更正与作废 App 外收款"),
             Map.entry(FINANCE, "结算账单与收款进件"));
 
     /**

@@ -23,6 +23,7 @@ import { AuthCodeTab } from "./auth-code-tab";
 import { ServiceScopeTab } from "./service-scope-tab";
 import { StorageTab } from "./storage-tab";
 import { TestPhoneTab } from "./test-phone-tab";
+import { AppVersionTab } from "./app-version-tab";
 import { TestIdentitySection } from "./test-identity-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
 const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "authCode", "scope",
-  "testPhone"] as const;
+  "testPhone", "appVersion"] as const;
 
 export default function SystemPage() {
   return <Suspense fallback={null}><SystemInner /></Suspense>;
@@ -287,6 +288,9 @@ function SystemInner() {
           <TestIdentitySection c={c} canWrite={allow("system:testphone:update")} />
         </>
       )}
+
+      {/* App 版本：看用 param:read（菜单），改最低版用单独的 app-version:update（已拍板 P5） */}
+      {tab === "appVersion" && <AppVersionTab c={c} canWrite={allow("system:app-version:update")} />}
 
       {tab === "flags" && (
         <>

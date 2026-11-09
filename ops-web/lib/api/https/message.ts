@@ -31,6 +31,7 @@ export const messageHttp: MessageApi = {
   replyTicket: (no, reply) => client.post(`/ops/tickets/${no}/reply`, { reply }),
   addProxyAction: (no, action) => client.post(`/ops/tickets/${no}/proxy-actions`, { action }),
   closeTicket: (no) => client.post(`/ops/tickets/${no}/close`),
+  ticketDiagnostics: (no) => client.get(`/ops/tickets/${no}/diagnostics`),
   listInbox: () => client.get("/ops/message"),
   inboxUnread: () => client.get("/ops/message/unread-count"),
   readInbox: (no) => client.post(`/ops/message/${no}/read`),

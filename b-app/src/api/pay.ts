@@ -1,4 +1,5 @@
 // 商家端支付（/biz/pay，TDD-支付服务-I5接入层 S8）。金额一律最小单位；币种由服务端给。
+import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery } from "./requests";
 
 /** 流水行：收款 / 退款 */
 export type PayStatementKind = "PAYMENT" | "REFUND";
@@ -111,6 +112,95 @@ export interface PayAppGrant {
   grantedAt: number | null;
 }
 
+// ---------------------------------------------------------------- App 外收款记录（TDD-商户App外部记账）
+// 商家在 App 外收到的钱（现金、外部刷卡机、银行转账）记一笔账：平台不经手、不进拨款、不进通道对账、不能退款、不改订单状态。
+
+/** 收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款 */
+export type OfflineRecordMethod = "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+/** 已记 / 已作废（作废是终态，行不删） */
+export type OfflineRecordStatus = "RECORDED" | "VOIDED";
+/** 留痕动作 */
+export type OfflineRecordAction = "CREATE" | "CORRECT" | "VOID";
+
+/** 一步留痕；端上按 action 与前后值自己拼文字 */
+export interface OfflineRecordHistory {
+  /** 发生时刻，ISO 8601 带门店市场偏移 */
+  at: string;
+  /** 操作人号 */
+  by: string;
+  /** 操作人名字；取不到为 null，端上退回显示 by */
+  byName: string | null;
+  /** 这一步做了什么 */
+  action: OfflineRecordAction;
+  /** 更正 / 作废的原因；CREATE 为 null */
+  reason: string | null;
+  /** 改前金额（最小单位）；CREATE / VOID 为 null */
+  fromAmountMinor: number | null;
+  /** 改后金额（最小单位）；VOID 为 null */
+  toAmountMinor: number | null;
+  /** 改前方式；CREATE / VOID 为 null */
+  fromMethod: OfflineRecordMethod | null;
+  /** 改后方式；VOID 为 null */
+  toMethod: OfflineRecordMethod | null;
+  /** 改前实收时间；更正改了实收时间时才有 */
+  fromReceivedAt: string | null;
+  /** 改后实收时间；更正改了实收时间时才有 */
+  toReceivedAt: string | null;
+}
+
+/** 外部收款记录（四个接口共用） */
+export interface OfflineRecord {
+  /** 记录号（OFR…），与支付单号空间不重叠 */
+  recordNo: string;
+  /** 金额（最小单位；按门店市场 currencyScale 解释，TWD 必为 100 的倍数） */
+  amountMinor: number;
+  /** 门店市场币种 */
+  currency: string;
+  /** 收款方式 */
+  method: OfflineRecordMethod;
+  /** 引用的本店子单号；只是引用，不推订单状态 */
+  orderNo: string | null;
+  /** 备注 */
+  note: string | null;
+  /** 实际收款时刻，ISO 8601 带门店市场偏移 */
+  receivedAt: string;
+  /** 记账人号 */
+  recordedBy: string;
+  /** 记账人名字；取不到为 null，端上退回显示 recordedBy */
+  recordedByName: string | null;
+  /** 记账时刻，ISO 8601 带门店市场偏移 */
+  recordedAt: string;
+  /** 已记 / 已作废 */
+  status: OfflineRecordStatus;
+  /** 是否被更正过 */
+  corrected: boolean;
+  /** 每次更正 / 作废 +1；更正、作废时作为 expectedVersion 带回 */
+  version: number;
+  /** 留痕，按时间正序 */
+  history: OfflineRecordHistory[];
+}
+
+export interface OfflineRecordPage {
+  /** 按实收时间倒序 */
+  items: OfflineRecord[];
+  /** 下一页游标；null = 没有了 */
+  nextCursor: string | null;
+}
+
+/** 区间内未作废记录的合计：报表单列「外部記帳（商家自報）」，不并入渠道营业额 */
+export interface OfflineRecordSummary {
+  /** 门店市场的 yyyy-MM-dd，含 */
+  from: string;
+  /** 门店市场的 yyyy-MM-dd，含 */
+  to: string;
+  /** 门店市场币种 */
+  currency: string;
+  /** 未作废笔数 */
+  count: number;
+  /** 未作废合计（最小单位） */
+  amountMinor: number;
+}
+
 export interface PayApi {
   mPayCollect(v: { amountMinor: number; subject?: string; expireMinutes?: number }): Promise<PayCollectResult>;
   mPayRefunds(): Promise<PayRefundItem[]>;
@@ -123,4 +213,8 @@ export interface PayApi {
   mPayAppGrants(): Promise<PayAppGrant[]>;
   mPayGrantApp(v: { appNo: string; actions: PayGrantAction[] }): Promise<PayAppGrant>;
   mPayRevokeGrant(id: number): Promise<void>;
+  /** 记一笔 App 外收款；key 为打开记账表单时生成的幂等键，重送沿用 */
+  mPayRecordOffline(body: OfflineRecordCreateReq, key: string): Promise<OfflineRecord>;
+  mPayOfflineRecords(query?: OfflineRecordListQuery): Promise<OfflineRecordPage>;
+  mPayOfflineSummary(query?: OfflineRecordSummaryQuery): Promise<OfflineRecordSummary>;
 }

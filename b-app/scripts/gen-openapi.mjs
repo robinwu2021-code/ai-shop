@@ -343,6 +343,9 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mPayAppGrants: "PayAppGrant[]",
   mPayGrantApp: "PayAppGrant",
   mPayRevokeGrant: "void",
+  mPayRecordOffline: "OfflineRecord",
+  mPayOfflineRecords: "OfflineRecordPage",
+  mPayOfflineSummary: "OfflineRecordSummary",
   // 平台商城（./mall.ts）
   mMallStorefront: "MallStorefront",
   mMallOfflineQuote: "MallQuote",
@@ -361,6 +364,7 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mSubmitPayoutAccount: "PayoutAccount",
   mCloseAppointmentSlot: "AppointmentSlot",
   mConfirmOfflinePay: "Order",
+  mExpressCompanies: "ExpressCompanyList",
   mExpressQuotes: "ExpressQuote[]",
   mBookExpress: "ExpressPickup",
   mExpressPickup: "ExpressPickup",
@@ -597,6 +601,9 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
   mSubscribeReport: "void",
   mRegisterPushToken: "void",
   mUnregisterPushToken: "void",
+  mSubmitFeedback: "FeedbackReceipt",
+  mMyFeedback: "MerchantFeedback[]",
+  mAppVersion: "AppVersionInfo",
   mGoodsList: "PageResult<Goods>",
   mGoodsDetail: "Goods",
   // 双版本（V279）。mGoodsDraft 的线上形状是 SaveGoodsReqBody（提交体镜像），
@@ -679,6 +686,11 @@ mSvFinancialBrandResume:"SvFinancialBrandChange",
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mPayRecordOffline: "OfflineRecordCreateReq",
+  mPayOfflineRecords: "OfflineRecordListQuery",
+  mPayOfflineSummary: "OfflineRecordSummaryQuery",
+  mSubmitFeedback: "SubmitFeedbackReq",
+  mAppVersion: "AppVersionQuery",
  mSvFinancialBrandOriginal:"SvFinancialOriginalQuery",
  mSvPrepareFinancePermissions:"SvFinanceManagementQuery",
 mSvFinancialBrandStart:"SvFinancialBrandRequest",mSvFinancialBrandChange:"SvFinanceManagementQuery",mSvFinancialBrandResume:"SvFinanceManagementQuery",
@@ -931,7 +943,7 @@ for (const [key, ep] of Object.entries(endpoints)) {
   if ((ep.method === "GET" || ep.method === "DELETE") && reqType) params.push(...queryParams(reqType));
 
   // Existing published P6 Java routes require the original command identity for all finance mutations.
-  if (["mSvFinancialBrandStart", "mSvSettlementGenerate", "mSvSettlementReconcile", "mSvSettlementDispute", "mSvSettlementResolveDispute", "mSvSettlementAdjust", "mSvSettlementRegister", "mSvSettlementReceipt", "mSvSettlementVoid"].includes(key)) params.push({name:"Idempotency-Key",in:"header",required:true,schema:{type:"string"}});
+  if (["mSvFinancialBrandStart", "mSvSettlementGenerate", "mSvSettlementReconcile", "mSvSettlementDispute", "mSvSettlementResolveDispute", "mSvSettlementAdjust", "mSvSettlementRegister", "mSvSettlementReceipt", "mSvSettlementVoid", "mPayRecordOffline"].includes(key)) params.push({name:"Idempotency-Key",in:"header",required:true,schema:{type:"string"}});
   const op = {
     operationId: key,
     summary: ep.summary,

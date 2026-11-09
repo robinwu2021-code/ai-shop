@@ -93,6 +93,15 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 而 stl_bill 注册了 MERCHANT 锚点、那条主查询已经过域 —— 这一步只按那个主体点查一行，
    * 不放大任何可见范围。与 toOpsVO 的回捞同一类。
    */
+  /*
+   * 门店配送方式读接口的「沿用商户设置」判定（TDD-商户App接口字段对齐 已拍板 2）。
+   * 运营门店列表（OpsStoreController）经 StoreFulfillmentService#get 可达：门店那一行已经由上一步
+   * 列表过了数据域，这里只按该门店的 entity_no 点查一行主体、读它的 fulfillment_reach 算兜底那一路，
+   * 不放大可见范围。B 端商家会话里没有运营数据域，不绕的话直查会 SELECT 不到。
+   */
+  "StoreFulfillmentServiceImpl#inheritedChannelOf":
+    "按已授权门店的 entity_no 回捞主体一行，只读 fulfillment_reach 算兜底配送路；门店已在上一步过数据域，"
+    + "不放大可见范围。方法同时服务 B 端（商家会话无运营数据域）",
   "PayoutAccountServiceImpl#activeAccount":
     "按已授权的 entityNo 回捞该主体生效中的收款账户；主体来自已过数据域的 opsPayables 结算单列表，"
     + "不放大可见范围。方法本身要绕域是因为 B 端商家会话里没有运营的数据域",

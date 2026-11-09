@@ -3,6 +3,7 @@ package ai.neargo.shop.message.api.ops;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.dto.MessageVOs.DiagnosticVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
@@ -54,14 +55,26 @@ public class OpsTicketController {
      * <p>工单量级小，全量算完再包一层就够，不必下推到 SQL。
      *
      * @param status 为空给全部；传 {@code OPEN} 就是待处理队列
+     * @param source 为空给全部；{@code C_USER} / {@code B_MERCHANT}（商户 App 的问题回报）
      */
     @GetMapping("/ops/tickets")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_READ + "')")
     public ai.neargo.shop.common.PageData<TicketVO> list(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String source,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
-        return ai.neargo.shop.common.PageData.ofAll(messageService.opsTickets(status), page, size);
+        return ai.neargo.shop.common.PageData.ofAll(messageService.opsTickets(status, source), page, size);
+    }
+
+    /**
+     * 商户回报附带的诊断资料（TDD-商户App问题回报与版本 F7）。抽屉里点开才调 —— 一张单最多 300 条，
+     * 不该跟着列表一起下发。C 端工单与 90 天后已清空的回报给空数组。
+     */
+    @GetMapping("/ops/tickets/{ticketNo}/diagnostics")
+    @PreAuthorize("@perm.can('" + Perms.MESSAGE_TICKET_READ + "')")
+    public List<DiagnosticVO> diagnostics(@PathVariable String ticketNo) {
+        return messageService.ticketDiagnostics(ticketNo);
     }
 
     /**

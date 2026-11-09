@@ -53,6 +53,34 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
 
+    /** 主体表：只为取市场（号码按市场校验）。setter 注入，手工构造本类的测试不必跟着改；缺省按大陆口径 */
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setEntityMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper) {
+        this.entityMapper = entityMapper;
+    }
+
+    /**
+     * 大陆主体保持原口径（11 位数字，不收紧成号段规则 —— 那会让存量里的号加不回来）；
+     * 其它市场用 {@link ai.neargo.shop.common.Phones#INTL_MOBILE} 宽判据。
+     */
+    static boolean validStaffPhone(String phone, String market) {
+        boolean mainland = market == null || market.isBlank() || "CN".equals(market);
+        return mainland ? phone.matches("\\d{11}") : phone.matches(ai.neargo.shop.common.Phones.INTL_MOBILE);
+    }
+
+    /** 主体的市场码；查不到或未设返回 null，{@code Phones.valid} 把 null 当大陆 */
+    private String marketOf(String merchantNo) {
+        if (entityMapper == null || merchantNo == null) {
+            return null;
+        }
+        var e = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> entityMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+        return e == null ? null : e.getMarket();
+    }
+
     public MerchantStaffServiceImpl(MchAccountMapper staffMapper,
                                     ai.neargo.shop.auth.TokenStores tokenStores, MchStoreMapper storeMapper,
                                     MchStoreRoleMapper roleMapper, MchStaffLogMapper logMapper,
@@ -185,7 +213,11 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Override
     @Transactional
     public StaffVO add(String merchantNo, String loginPhone, String displayName) {
-        if (loginPhone == null || !loginPhone.matches("\\d{11}")) {
+        /*
+         * 按主体市场校验（商户App服务端能力清单 P0）。此前写死 \d{11}：台湾店主送 +886… 一律 10400，
+         * 加不了员工。号码按端上送来的原样存（App 送 E.164）——员工登录按同一个号匹配，这里不改写格式。
+         */
+        if (loginPhone == null || !validStaffPhone(loginPhone, marketOf(merchantNo))) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MchAccount existing = accounts(merchantNo).stream()

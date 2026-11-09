@@ -4734,6 +4734,8 @@ components:
           items:
             type: "string"
           description: "这些角色合起来的权限码，**已取并集**（老板是 `[\"*\"]`）。\n\n端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。"
+        actorNo:
+          type: "string"
       required:
         - "merchantNo"
         - "currentStoreNo"
@@ -5569,7 +5571,8 @@ components:
       enum:
         - "ACTIVE"
         - "READONLY"
-      description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+        - "SUSPENDED"
+      description: "门店状态。READONLY = 已停用（商家自停或方案降级；不再接新单，已有单照常履约）； SUSPENDED = 平台强制下线（只能由平台解除，商家点「启用」无效）。"
     BusinessMode:
       type: "string"
       enum:
@@ -5618,7 +5621,7 @@ components:
           description: "门店名快照，列表直接显示，省一次查询"
         role:
           "$ref": "#/components/schemas/StaffRole"
-          description: "MANAGER 店长 / CLERK 店员"
+          description: "角色码：预置（MANAGER 店长 / CLERK 店员 / PICKER / COURIER / CS）或本商户的自定义角色码"
       required:
         - "storeNo"
         - "storeName"
@@ -6451,6 +6454,16 @@ components:
           items:
             "$ref": "#/components/schemas/PlanTier"
           description: "三档对比，顺序即展示顺序（后端按 sort 排好）"
+        suspendedStoreDetails:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SuspendedStore"
+          description: "同 `suspendedStores` 那几家，带门店号与未完成订单数。 `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。"
+        graceUntil:
+          type:
+            - "number"
+            - "null"
+          description: "宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。\n**后端算好给**，端上不要再按「到期 + 7 天」自己推。"
       required:
         - "planCode"
         - "planName"
@@ -6499,6 +6512,24 @@ components:
         - "current"
       additionalProperties: false
       description: "档位对比的一行。"
+    SuspendedStore:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "门店号"
+        name:
+          type: "string"
+          description: "门店名"
+        openOrders:
+          type: "number"
+          description: "还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约"
+      required:
+        - "storeNo"
+        - "name"
+        - "openOrders"
+      additionalProperties: false
+      description: "被方案降级压成只读的一家店。"
     MerchantApplyStatus:
       type: "object"
       properties:
@@ -6896,6 +6927,141 @@ components:
         - "read"
         - "at"
       additionalProperties: false
+    FeedbackCategory:
+      type: "string"
+      enum:
+        - "BUG"
+        - "PAYMENT"
+        - "IDEA"
+        - "OTHER"
+      description: "回报分类。**冻结这四个**（已拍板 P4）：以后加分类要服务端与 App 同发； 端上读到不认识的码一律按「其他」显示，这样加码不用强更。"
+    FeedbackStatus:
+      type: "string"
+      enum:
+        - "OPEN"
+        - "REPLIED"
+        - "CLOSED"
+      description: "回报状态。`CLOSED` 是客服直接结案（没回复也可能关），端上显示「已结案」"
+    FeedbackDiagnostic:
+      type: "object"
+      properties:
+        at:
+          type:
+            - "string"
+            - "null"
+          description: "请求时刻。带时区的值存成 UTC（…Z）；不带时区的原样（设备本地时间）；解析不了为 null"
+        method:
+          type: "string"
+          description: "HTTP 方法"
+        path:
+          type: "string"
+          description: "请求路径（已脱敏）"
+        outcome:
+          type: "string"
+          description: "结果摘要，如 `ok`、`error 70006`"
+      required:
+        - "at"
+        - "method"
+        - "path"
+        - "outcome"
+      additionalProperties: false
+      description: "回报附带的一条诊断。服务端只留这四个字段，路径去查询串、8 位以上数字只留后 4 位。"
+    MerchantFeedback:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+        category:
+          "$ref": "#/components/schemas/FeedbackCategory"
+          description: "分类"
+        description:
+          type: "string"
+          description: "描述原文"
+        status:
+          "$ref": "#/components/schemas/FeedbackStatus"
+          description: "处理状态"
+        reply:
+          type:
+            - "string"
+            - "null"
+          description: "客服回复；没回复为 null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "提交时所在门店（核对属于本账号才存）"
+        createdAt:
+          type: "string"
+          description: "提交时间（ISO-8601 UTC）"
+        repliedAt:
+          type:
+            - "string"
+            - "null"
+          description: "回复时间（ISO-8601 UTC）；没回复为 null"
+      required:
+        - "feedbackNo"
+        - "category"
+        - "description"
+        - "status"
+        - "reply"
+        - "storeNo"
+        - "createdAt"
+        - "repliedAt"
+      additionalProperties: false
+      description: "「我的回报」一条（`GET /biz/feedback/mine`）。时间是 ISO-8601 字符串，不是毫秒数"
+    FeedbackReceipt:
+      type: "object"
+      properties:
+        feedbackNo:
+          type: "string"
+          description: "回报号，即客服工单号（TK…）"
+      required:
+        - "feedbackNo"
+      additionalProperties: false
+      description: "提交回报的回执"
+    AppPlatform:
+      type: "string"
+      enum:
+        - "ANDROID"
+        - "IOS"
+      description: "App 平台（版本策略按它分行）。与后端 sys_app_version.platform 一致"
+    AppVersionInfo:
+      type: "object"
+      properties:
+        platform:
+          "$ref": "#/components/schemas/AppPlatform"
+          description: "归一后的平台"
+        latest:
+          type: "string"
+          description: "最新版；空串 = 不提示更新"
+        minSupported:
+          type: "string"
+          description: "最低支持版；低于它的包写请求会收到 10426 CLIENT_UPGRADE_REQUIRED"
+        notes:
+          type: "array"
+          items:
+            type: "string"
+          description: "按 Accept-Language 取的更新说明，没填回落繁中"
+        storeUrl:
+          type:
+            - "string"
+            - "null"
+          description: "商店地址（只会是 App Store 或 Google Play 的 https 地址）"
+        upgradeRequired:
+          type:
+            - "boolean"
+            - "null"
+          description: "只在请求带了 build 时有值；端上应以它为准"
+      required:
+        - "platform"
+        - "latest"
+        - "minSupported"
+        - "notes"
+        - "storeUrl"
+        - "upgradeRequired"
+      additionalProperties: false
+      description: "版本检查（`GET /common/app/version`，匿名）。该平台没配置时 `latest`/`minSupported` 为空串、 `notes` 为空数组、`storeUrl` 为 null —— 端上据此不提示。"
     SpecValueAdded:
       type: "object"
       properties:
@@ -8197,7 +8363,7 @@ components:
           description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
         geometry:
           type: "string"
-          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。"
+          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。\n**请求、回读、范围预览三处同一格式**：JSON 字符串，经度在前、整数 E6；坐标系跟门店（`coordSys`）。 图形不合法（顶点不足 3 个、超过 200 个、越界、退化为零面积）回 10473。"
       required:
         - "level"
         - "refCode"
@@ -8666,6 +8832,9 @@ components:
           items:
             type: "string"
           description: "SUBSET 时适用的范围项 area_no"
+        inherited:
+          type: "boolean"
+          description: "这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体 `fulfillmentReach` 兜底，兜底那一路在这里 `enabled=true, inherited=true`。 端上可标「沿用商户设置」；商家存一次之后门店有了自己的配置，就不再出现。"
       required:
         - "channel"
         - "enabled"
@@ -8818,10 +8987,35 @@ components:
           type:
             - "number"
             - "null"
-          description: "经度 ×1e6。**全站坐标一律 gcj02**"
+          description: "经度 ×1e6。坐标系跟门店（`coordSys`）：大陆高德 gcj02，台湾 / 阿联酋 Google wgs84（V630 / V636）"
         bannerUrl:
           type: "string"
           description: "门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉"
+        name:
+          type:
+            - "string"
+            - "null"
+          description: "门店名（只读，与 `/biz/stores/mine` 门店行同义）。改名走 `POST /biz/store/{storeNo}/rename`"
+        slug:
+          type:
+            - "string"
+            - "null"
+          description: "门店代码（立牌链接 /h5/s/{代码}）；没设过为 null。只读，设置走 `POST /biz/store/{storeNo}/slug`"
+        status:
+          anyOf:
+            - "$ref": "#/components/schemas/StoreStatus"
+            - type: "null"
+          description: "门店状态（只读）：`ACTIVE` 营业中 / `READONLY` 已停用（不接新单，已有单照常履约）。 商家自停与方案压店都是 `READONLY`，**靠同一次读出的 `planSuspended` 区分**。"
+        isDefault:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是主体的默认门店（只读）"
+        planSuspended:
+          type:
+            - "boolean"
+            - "null"
+          description: "是不是被方案降级压成只读的（只读）。true 时下一步是续费，不是「恢复营业」"
       required:
         - "announcement"
         - "openHours"

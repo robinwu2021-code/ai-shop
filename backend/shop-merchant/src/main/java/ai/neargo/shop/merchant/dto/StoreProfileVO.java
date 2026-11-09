@@ -32,7 +32,15 @@ public record StoreProfileVO(String announcement, Long announcementUntil,
                              List<String> serviceCommunityNos, String serviceCityCode,
                              String fulfillmentReach, List<ServiceAreaVO> serviceAreas,
                              Integer latE6, Integer lngE6,
-                             String bannerUrl) {
+                             String bannerUrl,
+                             /*
+                              * 以下 5 个与 /biz/stores/mine 门店行同义（商户 App 字段对齐 A1），
+                              * 取自同一行 mch_store、同一次读取：商家自停与方案压店在 status 里都是
+                              * READONLY，App 只能靠 planSuspended 区分 —— 两个字段若分两次读，
+                              * 中间被压店的那一刻会给出「READONLY + 不是平台压的」，App 就把续费引成了「恢复营业」。
+                              */
+                             String name, String slug, String status,
+                             Boolean isDefault, Boolean planSuspended) {
 
     /**
      * 一条覆盖项。

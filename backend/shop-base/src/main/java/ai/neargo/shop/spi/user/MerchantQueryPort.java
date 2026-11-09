@@ -125,8 +125,10 @@ public interface MerchantQueryPort {
      * <p>{@code EXCLUDE} 的减法用的也是传进来的这一份（不掺库里的旧行）：
      * 预览要回答的是「改成这样之后」，不是「改成这样再叠上旧的」。
      *
-     * @param areas 端上正要保存的那一份，每条是 {@code [level, refCode, mode]}；
-     *              {@code mode} 空按 INCLUDE
+     * @param areas 端上正要保存的那一份，每条是 {@code [level, refCode, mode, geometry?]}；
+     *              {@code mode} 空按 INCLUDE。{@code level=POLYGON} 时第 4 项是顶点 JSON
+     *              {@code [[lngE6,latE6],…]}，refCode 可空（服务端用几何指纹）；
+     *              图形不合法抛 {@code SERVICE_AREA_POLYGON_INVALID}（10473），与保存同一个码
      */
     java.util.List<String> previewReachable(String merchantNo, java.util.List<String[]> areas);
 
@@ -157,6 +159,14 @@ public interface MerchantQueryPort {
      *     调用方自己决定显示门店号还是留空 —— 那两件事不一样
      */
     java.util.Map<String, String> storeNames(java.util.Collection<String> storeNos);
+
+    /**
+     * 这些操作人（C 端用户号，或手机号登录店员的店员账号号）在该主体下的店员显示名（「我的 › 显示名」/ 店员管理里填的姓名）。
+     * 外部记账的记录人、留痕操作人显示它：账号昵称多半是注册默认的「微信用户」，认不出是谁。
+     *
+     * @return 操作人号 → 显示名；没有店员账号或显示名为空的不出现在结果里
+     */
+    java.util.Map<String, String> staffDisplayNames(String entityNo, java.util.Collection<String> userNos);
 
     /**
      * 批量取默认门店号。

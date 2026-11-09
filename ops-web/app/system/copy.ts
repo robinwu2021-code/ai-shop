@@ -261,6 +261,29 @@ const zh = {
   tiFieldValuePh: "手机号带国码（如 +886900000102）或邮箱",
   tiFieldRemarkPh: "为什么加这一条",
   tiAdd: "加入",
+
+  // ── App 版本（TDD-商户App问题回报与版本 V6）──
+  avNotice: "每个平台一行。「最新版」只决定 App 提不提示更新；「最低支持版」决定低于它的包还能不能写入 —— 设了之后，低于它的商户 App 所有写操作都会被拒（要求升级），全部商户同时生效。没配过的平台 App 不做任何提示。",
+  avReadOnlyWhat: "App 版本策略",
+  avEmpty: "没有版本策略。正常情况下这里总有安卓与 iOS 两行 —— 看到空表请刷新，仍为空就是后端没装上版本策略接口。",
+  avColPlatform: "平台",
+  avColLatest: "最新版",
+  avColMin: "最低支持版",
+  avColStore: "商店地址",
+  avColUpdated: "最后修改",
+  avNotSet: "未设置",
+  avEdit: "修改",
+  avView: "查看",
+  avSave: "保存",
+  avSaved: "已保存。版本检查立即生效；写入拦截各服务器最多 60 秒内生效",
+  avSectionVersion: "版本",
+  avSectionNotes: "更新说明",
+  avMinHint: "必须不高于最新版。留空 = 不拦任何版本。",
+  avStoreHint: "只收 https://apps.apple.com/… 或 https://play.google.com/…",
+  avNotesHint: "一行一条。繁中（zh-Hant）必填，其它语言没填时 App 显示繁中。",
+  /** `{platform}` 平台，`{min}` 新的最低支持版 */
+  avConfirmTitle: "确认修改最低支持版本",
+  avConfirmBody: "{platform} 的最低支持版将改为 {min}。低于此版本的商户将无法写入（下单、收款、改商品等全部被拒，并被要求升级），保存即对全部商户生效。",
 };
 
 const en: typeof zh = {
@@ -517,6 +540,27 @@ const en: typeof zh = {
   tiFieldValuePh: "Phone with country code (e.g. +886900000102) or email",
   tiFieldRemarkPh: "Why this entry exists",
   tiAdd: "Add",
+
+  avNotice: "One row per platform. \"Latest\" only decides whether the app suggests an update; \"minimum supported\" decides whether older builds may still write \u2014 once set, every write from a merchant app below it is rejected (upgrade required), for all merchants at once. Platforms never configured get no prompt.",
+  avReadOnlyWhat: "App version policy",
+  avEmpty: "No version policy. There should always be an Android and an iOS row \u2014 refresh; if it stays empty the version policy endpoint is not deployed.",
+  avColPlatform: "Platform",
+  avColLatest: "Latest",
+  avColMin: "Minimum supported",
+  avColStore: "Store URL",
+  avColUpdated: "Last changed",
+  avNotSet: "Not set",
+  avEdit: "Edit",
+  avView: "View",
+  avSave: "Save",
+  avSaved: "Saved. The version check updates now; write blocking takes up to 60 seconds per server",
+  avSectionVersion: "Versions",
+  avSectionNotes: "Release notes",
+  avMinHint: "Must not be above the latest version. Leave empty to block no version.",
+  avStoreHint: "Only https://apps.apple.com/… or https://play.google.com/…",
+  avNotesHint: "One item per line. Traditional Chinese (zh-Hant) is required; other languages fall back to it.",
+  avConfirmTitle: "Change the minimum supported version",
+  avConfirmBody: "The minimum supported version for {platform} becomes {min}. Merchants below it will not be able to write (orders, payments, product edits are all rejected and they are asked to update). This applies to all merchants as soon as you save.",
 };
 
 export const SYSTEM_COPY: PageCopy<typeof zh> = { zh, en };

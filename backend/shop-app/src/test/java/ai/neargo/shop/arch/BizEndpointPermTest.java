@@ -670,6 +670,11 @@ class BizEndpointPermTest {
                     put("/biz/payment/links", BizPerms.PAY_ORDER_VIEW);
                     put("/biz/payment/links/{payOrderNo}/reissue", BizPerms.PAY_COLLECT);
                     put("/biz/payment/links/{payOrderNo}/void", BizPerms.PAY_COLLECT);
+                    // App 外收款记录（TDD-商户App外部记账）：表按路径一行，同一路径的 GET 列表读 PAY_ORDER_VIEW、POST 记一笔读 PAY_OFFLINE_RECORD
+                    put("/biz/payment/offline-records", BizPerms.PAY_OFFLINE_RECORD);
+                    put("/biz/payment/offline-records/summary", BizPerms.PAY_ORDER_VIEW);
+                    put("/biz/payment/offline-records/{recordNo}/correct", BizPerms.PAY_OFFLINE_MANAGE);
+                    put("/biz/payment/offline-records/{recordNo}/void", BizPerms.PAY_OFFLINE_MANAGE);
                     put("/biz/settle/bills", BizPerms.FINANCE);
                     put("/biz/settle/income", BizPerms.FINANCE);
                     put("/biz/settle/daily-flow", BizPerms.FINANCE);
@@ -920,8 +925,11 @@ class BizEndpointPermTest {
      * 汇总型端点：一次返回好几件互不相干的事，<b>任一权限即可进</b>， 粒度由端上按 {@code perms} 裁。
      *
      * <p>单独列一张表而不是丢进 {@link #PUBLIC}：它们仍然要求「在这家店有角色」， 空角色的人一样进不来。混进 PUBLIC 会让人以为这类端点谁都能调。
+     *
+     * <p>{@code /biz/express/companies} 是另一类「任一」：发货页（{@code biz:ship}）与发货设置页（{@code biz:store}）
+     * 都要读这份快递公司清单（TDD-商户App快递公司 E6）。
      */
-    private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
+    private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo", "/biz/express/companies");
 
     /*
      * 注册开店与商城（commerce）。三类判权都不进 REQUIRED，因为它们不是一个固定的 BizPerms 码：
@@ -935,6 +943,9 @@ class BizEndpointPermTest {
             "/biz/merchant/store-setup", "@perm.merchantAccount()",
             "/biz/business-types", "@perm.merchantAccount()",
             "/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()",
+            // 问题回报（TDD-商户App问题回报与版本）：账号级，店员一个 biz 码都没有也要能报，「选不了店」本身就是要报的问题
+            "/biz/feedback", "@perm.merchantAccount()",
+            "/biz/feedback/mine", "@perm.merchantAccount()",
             "/biz/business-types/{typeCode}/feature-matrix", "@perm.merchantAccount()",
             "/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)",
             "/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)",

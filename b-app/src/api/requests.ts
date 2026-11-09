@@ -102,6 +102,41 @@ export interface MerchantLoginReqBody {
 /** 入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名 */
 export type MerchantApplyReqBody = MerchantApplyReq;
 
+// ---------------------------------------------------------------- 问题回报与版本（TDD-商户App问题回报与版本）
+
+import type { FeedbackCategory, FeedbackDiagnostic } from "@shared/types";
+
+/**
+ * 提交问题回报。**正文严、附带资料宽**：分类、描述（去首尾空白 1–1000 字）、版本号不合规 → 10400；
+ * 其余字段超长截断、不认得的平台归 OTHER，一律不拒单。端上输入框「至少 4 字、最多 500 字」是更严的端上约束。
+ */
+export interface SubmitFeedbackReq {
+  /** 分类：BUG / PAYMENT / IDEA / OTHER */
+  category: FeedbackCategory;
+  /** 描述，去首尾空白后 1–1000 字 */
+  description: string;
+  /** 从哪个错误进来（≤64，超长截断） */
+  errorCode?: string;
+  /** 从哪一页进来（≤128，超长截断） */
+  page?: string;
+  /** 当前门店号；不属于本账号会被丢弃（照常落库） */
+  storeNo?: string;
+  /** App 版本（必填，≤32） */
+  appVersion: string;
+  /** android / ios；其它值归 OTHER */
+  platform?: string;
+  /** 诊断，最多留最后 300 条 */
+  diagnostics?: FeedbackDiagnostic[];
+}
+
+/** 版本检查的查询参数 */
+export interface AppVersionQuery {
+  /** android / ios，不分大小写 */
+  platform: string;
+  /** 当前版本号；带了才回 upgradeRequired */
+  build?: string;
+}
+
 // ---------------------------------------------------------------- 店铺
 
 export type SaveStoreReqBody = StoreProfile;
@@ -720,8 +755,12 @@ export interface AddStaffReq {
 export interface GrantStoreReq {
   /** 授权到哪家店。只能是本主体的门店 */
   storeNo: string;
-  /** 要授予/撤销的那一个角色 */
-  role: StaffRole;
+  /**
+   * 要授予/撤销的那一个角色：预置角色码（MANAGER / CLERK / PICKER / COURIER / CS）
+   * **或本商户的自定义角色码**（`POST /biz/roles` 建的那些；V71 起按 `mch_role` 有无该行判）。
+   * 不能是 `OWNER`（老板不在门店角色表里）。
+   */
+  role: StaffRole | (string & {});
   /** true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 */
   granted?: boolean;
 }
@@ -1140,6 +1179,68 @@ export interface SvBrandActivationRequest {
 managementNo:string;
 /** Previously observed resource revision; stale writes are rejected. */
 expectedRevision:number}
+
+// ---------------------------------------------------------------- App 外收款记录（TDD-商户App外部记账）
+// 门店、主体、记账人一律由服务端取；请求体里多一个字段（含旧字段 requestId、storeNo）就是 10400。
+
+/** 记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里 */
+export interface OfflineRecordCreateReq {
+  /** 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） */
+  amountMinor: number;
+  /** 必须等于门店市场币种（台湾 TWD） */
+  currency: CurrencyCode;
+  /** 现金 / 银行转账 / 外部刷卡机 / 其他 */
+  method: "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+  /** 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 */
+  orderNo?: string;
+  /** ≤ 100 字 */
+  note?: string;
+  /** 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 */
+  receivedAt?: string;
+}
+
+/** 列表查询 */
+export interface OfflineRecordListQuery {
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93 */
+  from?: string;
+  to?: string;
+  method?: Array<"CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER">;
+  status?: Array<"RECORDED" | "VOIDED">;
+  /** 1–32 字，命中订单号或备注 */
+  q?: string;
+  /** 精确匹配订单号：订单详情据此判断「已有外部記錄」 */
+  orderNo?: string;
+  cursor?: string;
+  /** 1–50，默认 20 */
+  size?: number;
+}
+
+/** 汇总查询；区间规则同列表 */
+export interface OfflineRecordSummaryQuery {
+  from?: string;
+  to?: string;
+}
+
+/** 更正：店主 / 店长，记账后 31 天内 */
+export interface OfflineRecordCorrectReq {
+  amountMinor: number;
+  /** 必须等于原记录币种 */
+  currency: CurrencyCode;
+  method: "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+  /** 新的实收时刻；不传 = 不改 */
+  receivedAt?: string;
+  /** 1–100 字 */
+  reason: string;
+  /** 列表里拿到的 version；不符 → 10409 */
+  expectedVersion: number;
+}
+
+/** 作废：店主 / 店长，记账后 31 天内 */
+export interface OfflineRecordVoidReq {
+  /** 1–100 字 */
+  reason: string;
+  expectedVersion: number;
+}
 
 // 平台商城的请求体住在 ./mall.ts（与 commerce-mall-openapi.json 逐字一致）；转出给 OpenAPI 生成器
 export type { MallQuoteRequest, MallPlaceRequest, MallOfflineClaimRequest } from "./mall";

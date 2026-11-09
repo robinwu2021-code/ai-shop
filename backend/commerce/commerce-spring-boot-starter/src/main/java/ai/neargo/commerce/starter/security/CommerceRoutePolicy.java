@@ -84,7 +84,14 @@ public final class CommerceRoutePolicy {
                     "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
                     "GET /biz/merchant/store-setup",
-                    "GET /biz/business-types");
+                    "GET /biz/business-types",
+                    // 账号本人的设置：按登录人定位，与门店无关；推送注册在登录后、选店前就会调
+                    "POST /biz/merchant/display-name",
+                    "POST /biz/push-token",
+                    "POST /biz/push-token/unregister",
+                    // 问题回报（TDD-商户App问题回报与版本 F10）：账号级。「选不了店」本身就是要回报的问题，不能逼人先选店
+                    "POST /biz/feedback",
+                    "GET /biz/feedback/mine");
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
     private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/([^/]+)/(.+)");
 

@@ -1,12 +1,15 @@
 package ai.neargo.shop.message;
 
+import ai.neargo.shop.message.dto.MessageVOs.DiagnosticVO;
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
+import ai.neargo.shop.message.dto.MessageVOs.FeedbackVO;
 import ai.neargo.shop.message.dto.MessageVOs.InAppLogVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
 import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /** 消息与客服（[API 清单 §2.13]）。 */
@@ -89,6 +92,43 @@ public interface MessageService {
 
     List<FaqVO> faq();
 
+    // ---------------------------------------------------------------- 商户问题回报（TDD-商户App问题回报与版本）
+
+    /**
+     * 商户 App 的问题回报：落成一张 {@code source=B_MERCHANT} 的工单，提单人是当前登录的商户账号。
+     *
+     * <p>正文（分类、描述、版本）由调用方的 Bean Validation 卡住；这里只<b>归一附带资料</b>
+     * （截断、平台归类、诊断清洗），一律不拒单。同一账号 10 分钟 5 条（已拍板 P3），
+     * 超了 10429，被拒的那次不计数。新回报与 C 端工单一样推给有权处理工单的客服。
+     *
+     * @return 回报号就是工单号（{@code TK…}）
+     */
+    FeedbackVO createMerchantFeedback(MerchantFeedbackCommand cmd);
+
+    /**
+     * @param storeNo      已核对属于该账号的门店号；没带或核对不过为 null
+     * @param storeDropped 带了门店号、但不属于该账号而被丢弃
+     * @param platform     App 送的原值（{@code android} / {@code ios} / 桌面上的 {@code macOS}…），这里归一
+     * @param diagnostics  未清洗的诊断，见 {@link FeedbackDiagnostics}
+     */
+    record MerchantFeedbackCommand(String category, String description, String errorCode, String page,
+                                   String storeNo, boolean storeDropped, String appVersion, String platform,
+                                   List<DiagnosticVO> diagnostics) {
+    }
+
+    /** 当前商户账号的回报，最近 50 条，新的在前。只看 {@code source=B_MERCHANT}。 */
+    List<FeedbackVO> myMerchantFeedback();
+
+    /** 运营端诊断抽屉：清洗后的诊断；C 端工单与已清空的回报给空数组。 */
+    List<DiagnosticVO> ticketDiagnostics(String ticketNo);
+
+    /**
+     * 清空创建早于 {@code createdBefore} 的回报的诊断资料，工单本身保留（已拍板 P7：90 天）。
+     *
+     * @return 清掉了几张单的诊断
+     */
+    int purgeTicketDiagnostics(LocalDateTime createdBefore);
+
     // ---------------------------------------------------------------- 运营侧 FAQ（P-14.2.4）
 
     /**
@@ -153,6 +193,9 @@ public interface MessageService {
      * @param status 为空给全部；传 {@code OPEN} 就是待处理队列
      */
     List<TicketVO> opsTickets(String status);
+
+    /** 同 {@link #opsTickets(String)}，多一个来源筛选（{@code C_USER} / {@code B_MERCHANT}，空 = 不筛）。 */
+    List<TicketVO> opsTickets(String status, String source);
 
     /**
      * 客服回复。工单从 {@code OPEN} → {@code REPLIED}。

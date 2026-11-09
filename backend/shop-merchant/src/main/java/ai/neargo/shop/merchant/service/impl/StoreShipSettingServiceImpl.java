@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExpressCompanies;
+import ai.neargo.shop.common.StoreMarkets;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.StoreShipSettingService;
@@ -24,10 +25,13 @@ public class StoreShipSettingServiceImpl implements StoreShipSettingService {
 
     private final MchStoreMapper storeMapper;
     private final StoreSenderResolver senderResolver;
+    private final StoreMarkets markets;
 
-    public StoreShipSettingServiceImpl(MchStoreMapper storeMapper, StoreSenderResolver senderResolver) {
+    public StoreShipSettingServiceImpl(MchStoreMapper storeMapper, StoreSenderResolver senderResolver,
+                                       StoreMarkets markets) {
         this.storeMapper = storeMapper;
         this.senderResolver = senderResolver;
+        this.markets = markets;
     }
 
     @Override
@@ -46,11 +50,14 @@ public class StoreShipSettingServiceImpl implements StoreShipSettingService {
         String name = blankToNull(cmd.senderName());
         String phone = blankToNull(cmd.senderPhone());
         String address = blankToNull(cmd.address());
-        String carrier = blankToNull(cmd.carrier());
+        // 默认承运商与发货同一口径：按本店市场校验，本市场名称归一成码再存（TDD-商户App快递公司 E3）
+        String requested = blankToNull(cmd.carrier());
+        String carrier = requested == null ? null
+                : ExpressCompanies.resolve(markets.of(storeNo), requested)
+                        .orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
         Integer weight = cmd.weightG();
         if ((name != null && name.length() > 64) || (address != null && address.length() > 255)
                 || (phone != null && !PHONE.matcher(phone).matches())
-                || (carrier != null && !ExpressCompanies.isValid(carrier))
                 || (weight != null && (weight < MIN_WEIGHT_G || weight > MAX_WEIGHT_G))) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }

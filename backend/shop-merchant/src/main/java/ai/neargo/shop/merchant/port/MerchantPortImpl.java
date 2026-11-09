@@ -323,6 +323,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 预览<b>这家店</b>改成这份范围后覆盖哪儿（V381 范围门店级）。门店为空 = 默认店 */
     @Override
     public List<String> previewReachable(String merchantNo, String storeNo, List<String[]> areas) {
+        /*
+         * 图形先校验、再看主体：待补证照的新店也在画范围，若先按「主体没激活」回空，
+         * 不合法的图形就拿到 code 0 + 覆盖 0（166 台北早餐实测），与保存的 10473 不一致。
+         */
+        if (areas != null) {
+            areas.stream().filter(a -> a != null && a.length >= 2 && a[0] != null && isPolygon(a))
+                    .forEach(a -> parsePolygon(a[3]));
+        }
         // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
         MchEntity m = activeEntity(merchantNo);
         if (m == null) {
@@ -333,12 +341,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 所有粒度都自选即生效（2026-08-24 起），预览没有「待审」这一档。
          */
         List<MchServiceArea> rows = areas == null ? List.<MchServiceArea>of() : areas.stream()
-                .filter(a -> a != null && a.length >= 2 && a[0] != null && a[1] != null && !a[1].isBlank())
+                .filter(a -> a != null && a.length >= 2 && a[0] != null
+                        && (a[1] != null && !a[1].isBlank() || isPolygon(a)))
                 .map(a -> {
                     var r = new MchServiceArea();
                     r.setEntityNo(merchantNo);
                     r.setLevel(a[0]);
                     r.setRefCode(a[1]);
+                    if (isPolygon(a)) {
+                        /*
+                         * 自画范围（商户 App 字段对齐 A2）：与保存同一道解析与同一个错误码 10473。
+                         * 此前这里不收 geometry，画出来的范围在预览里整片消失，
+                         * 商家看着「覆盖 0」不敢保存，或者保存了才发现预览从来不算它。
+                         */
+                        r.setRefCode(parsePolygon(a[3]).fingerprint());
+                        r.setGeometry(a[3]);
+                    }
                     r.setStatus(AREA_ACTIVE);
                     r.setMode(a.length > 2 && MchServiceArea.MODE_EXCLUDE.equals(a[2])
                             ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
@@ -351,6 +369,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
          */
         return reachMatcher.previewReachable(m, storeNo, rows);
+    }
+
+    /** 与保存同一道解析、同一个错误码 10473 */
+    private ai.neargo.shop.geo.GeoPolygon parsePolygon(String geometry) {
+        try {
+            return ai.neargo.shop.geo.GeoPolygon.parse(geometry, geoProps.getPolygonMaxVertices());
+        } catch (IllegalArgumentException e) {
+            throw ai.neargo.shop.common.BizException.of(
+                    ai.neargo.shop.common.ErrorCode.SERVICE_AREA_POLYGON_INVALID, e.getMessage());
+        }
+    }
+
+    /** 预览项是不是带了几何的多边形：{@code [POLYGON, refCode?, mode, geometry]} */
+    private static boolean isPolygon(String[] a) {
+        return MchServiceArea.LEVEL_POLYGON.equals(a[0]) && a.length > 3 && a[3] != null && !a[3].isBlank();
     }
 
     @Override
@@ -451,6 +484,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         // 「有行但全关」与「无行」都返回空集：前者写入口本就拦着（READONLY 门店除外，
         // 而它不接新单），调用方把空集一律当「未迁移，按旧口径放行」不会放出真单
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> staffDisplayNames(String entityNo, java.util.Collection<String> userNos) {
+        if (entityNo == null || userNos == null || userNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // 调用方只传本店记录里的用户号，且限定在当前主体内：不解数据域也不会多看到别家的人
+        var rows = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, entityNo)
+                        .and(w -> w.in(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNos)
+                                .or().in(ai.neargo.shop.merchant.entity.MchAccount::getMchAccountNo, userNos))));
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (var a : rows) {
+            if (a.getDisplayName() == null || a.getDisplayName().isBlank()) {
+                continue;
+            }
+            // 店主按 C 端用户号登录，手机号登录的店员主体号是店员账号号：两种都认
+            for (String key : new String[]{a.getUserNo(), a.getMchAccountNo()}) {
+                if (key != null && userNos.contains(key)) {
+                    out.putIfAbsent(key, a.getDisplayName().trim());
+                }
+            }
+        }
         return out;
     }
 

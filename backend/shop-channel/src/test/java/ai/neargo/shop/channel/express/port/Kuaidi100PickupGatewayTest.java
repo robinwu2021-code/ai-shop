@@ -74,7 +74,7 @@ class Kuaidi100PickupGatewayTest {
     @Test
     @DisplayName("★★ 公司码：键都是微信认得的码；不放顺丰（微信上报要收件人手机号，还没接）")
     void carrierCodes() {
-        assertThat(Kuaidi100PickupGateway.CODES.keySet()).allMatch(ExpressCompanies::isValid);
+        assertThat(Kuaidi100PickupGateway.CODES.keySet()).allMatch(c -> ExpressCompanies.isValidFor("CN", c));
         assertThat(Kuaidi100PickupGateway.CODES).doesNotContainKey("SF");
     }
 

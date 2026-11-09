@@ -418,7 +418,12 @@ export interface BizScope {
    * 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔，
    * 而分岔的表现是「看得见但点了报错」。
    */
-  perms: string[];
+  perms: string[];  /**
+   * 当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值**
+   * （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。
+   * 老后端不下发 → 当成不认识，显示「店內人員」。
+   */
+  actorNo?: string;
 }
 /**
  * 结算流水状态。**与后端 `StlBill` 逐字一致**。
@@ -1741,6 +1746,25 @@ export interface MerchantPlan {
   suspendedStores: string[];
   /** 三档对比，顺序即展示顺序（后端按 sort 排好） */
   tiers: PlanTier[];
+  /**
+   * 同 `suspendedStores` 那几家，带门店号与未完成订单数。
+   * `suspendedStores` 保持门店名数组不变（老端直接 join 显示它），新端读这个。
+   */
+  suspendedStoreDetails?: SuspendedStore[];
+  /**
+   * 宽限期截止（epoch 毫秒）= 到期 + 7 天；`EXPIRED` 或没有到期日为 null。
+   * **后端算好给**，端上不要再按「到期 + 7 天」自己推。
+   */
+  graceUntil?: number | null;
+}
+/** 被方案降级压成只读的一家店。 */
+export interface SuspendedStore {
+  /** 门店号 */
+  storeNo: string;
+  /** 门店名 */
+  name: string;
+  /** 还没走完的子订单数（不在已完成 / 已取消 / 已退款）。压店只停新单，这些照常履约 */
+  openOrders: number;
 }
 /** 档位对比的一行。 */
 export interface PlanTier {

@@ -53,7 +53,15 @@ public interface StoreFulfillmentService {
                      /** ALL / SUBSET（P2） */
                      String scopeMode,
                      /** SUBSET 时适用的范围项 area_no（P2） */
-                     List<String> areaNos) {
+                     List<String> areaNos,
+                     /**
+                      * 这一路是「沿用商户设置」开着的：门店还没有任何生效的门店级配置，买家侧按主体
+                      * {@code fulfillment_reach} 兜底（{@code StoreRoutes}），兜底的那一路在这里标成
+                      * {@code enabled=true, inherited=true}。读接口要说的是买家此刻实际看到的 ——
+                      * 照实回「四路全关」的话，端上会画出一家谁也看不到的店，而买家其实看得到。
+                      * 商家存一次之后门店有了自己的配置，这个标记就不再出现。
+                      */
+                     boolean inherited) {
     }
 
     /** 运营锁路/解锁（P2）。不存在的 channel 行会先建一行（enabled=0）再锁，锁态不依赖商家配过 */

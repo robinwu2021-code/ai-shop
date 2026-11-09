@@ -24,6 +24,8 @@ final class ShopStoreMemberRoutes {
             // 订单与售后
             HostRoute.of("GET,POST", "/biz/order(?:/.*)?"),
             HostRoute.of("GET,POST", "/biz/after-sale(?:/.*)?"),
+            // 本店可选快递公司（发货页 / 改运单 / 发货设置的承运商清单，TDD-商户App快递公司 E7）
+            HostRoute.of("GET", "/biz/express/companies"),
             // 收款（「收款」Tab、收款码、退款、代客收款）
             HostRoute.of("GET,POST,PUT,DELETE", "/biz/payment(?:/.*)?"),
             // 商户主体（「我的门店 › 商户」）
@@ -46,11 +48,53 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/qualifications(?:/recognize|/save)?"),
             HostRoute.of("POST", "/biz/merchant/agreement/accept"),
             HostRoute.of("GET", "/biz/merchant/pay-channel"),
+            // 出款账户（App F06 收款账户；按选中门店所属主体取数，权限码 biz:finance 由控制器判）
+            HostRoute.of("GET,POST", "/biz/payout-account"),
             // 申请支付服务不在这里：它要主体级收款目标，登记在 CommerceRoutePolicy 的 foundation 通道（同 pay-channel）
             // 地图选点（门店地址）
             HostRoute.of("GET", "/biz/geo/(?:tips|reverse)"),
             // 首页看板
-            HostRoute.of("GET", "/biz/dashboard/(?:todo|stats)"));
+            HostRoute.of("GET", "/biz/dashboard/(?:todo|stats)"),
+
+            // —— App 第二批（2026-11-08 台北早餐 166 上 70006；TDD-账户登录与选店校验 §2 第三步）——
+            // 门店资料、公告、分享物料。/biz/store 不按族登记：/{门店}/pay-setting 要业务端权益，整族会绕过它
+            HostRoute.of("GET,POST", "/biz/store"),
+            HostRoute.of("POST", "/biz/store/(?:announcement|announcement/recent/remove|scope-preview)"),
+            HostRoute.of("GET", "/biz/store/(?:share-kit|poster|qrcode)"),
+            HostRoute.of("POST", STORE + "(?:rename|status)"),
+            // 方案（含试用）
+            HostRoute.of("GET", "/biz/plan"),
+            HostRoute.of("POST", "/biz/plan/trial"),
+            // 评价
+            HostRoute.of("GET,POST", "/biz/review(?:/.*)?"),
+            // 列印：打印机、任务、模板、场景、监控
+            HostRoute.of("GET,POST,PUT", "/biz/print/.+"),
+            // 通知设置
+            HostRoute.of("GET,PUT", "/biz/notify/(?:setting|sms-phones|email|wecom)"),
+            // 自提与自提点
+            HostRoute.of("GET,POST", "/biz/pickup(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/pickup-points(?:/candidates)?"),
+            // 进销存，及本店线下销售、库存总览 / 对齐 / 对账（sell-rules、stock-sync 见上）
+            HostRoute.of("GET,POST,PUT", "/biz/inventory/.+"),
+            HostRoute.of("GET,POST", STORE + "(?:offline-sale|stock-overview|stock-alignment|stock-reconcile)(?:/.*)?"),
+            // 门店级配送方式（App W05 多选；取代主体级 fulfillmentReach 单选。TDD-商户App接口字段对齐「已拍板 2」）
+            HostRoute.of("GET,PUT", "/biz/stores/[A-Za-z0-9_-]{1,64}/fulfillment"),
+            // 关掉一路前的影响清单（…/fulfillment/{channel}/impact）**刻意不在这里登记**：它走 LEGACY_PREVIEW，
+            // 老模型账号的「目标店必须在本人范围内」靠那条通道校验（CommerceAccessSecurityFlowTest#assertLegacyImpact）。
+            // 登记成门店成员路由会让老账号跳过它。新模型门店怎么开放另行处理（TDD-商户App接口字段对齐 §6）
+            // 会员、标签、分群、设置、触达
+            HostRoute.of("GET,POST,PUT", "/biz/(?:members|member-tags|member-segments|member-reach)(?:/.*)?"),
+            HostRoute.of("GET,PUT", "/biz/member-settings"),
+            // 优惠券与核销、门店积分
+            HostRoute.of("GET,POST,PUT", "/biz/coupons(?:/.*)?"),
+            HostRoute.of("GET", "/biz/coupon-issues"),
+            HostRoute.of("GET,POST", "/biz/coupon-redeem(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/points/store-[a-z-]+(?:/[a-z-]+)?"),
+            // 团购 / 接龙 / 报价、账期
+            HostRoute.of("GET,POST", "/biz/(?:groups|group|group-request|quote|period)(?:/.*)?"),
+            // 平台活动与营销活动
+            HostRoute.of("GET,POST", "/biz/(?:platform-activity|activities|campaign)(?:/.*)?"),
+            HostRoute.of("GET,POST", "/biz/(?:activity-presets|activity-conflicts|marketing-summary|marketing/summary)"));
 
     private ShopStoreMemberRoutes() {
     }

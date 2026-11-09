@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -113,7 +114,8 @@ public class BizPickupController {
                          * 两件事一旦要对齐时刻，中间那段就是商家点得动一个
                          * 其实不作数的按钮。
                          */
-                        "stockByInventory", "INVENTORY".equals(stockAuthority)));
+                        "stockByInventory", "INVENTORY".equals(stockAuthority)),
+                SecurityUtils.currentUserNo());
     }
 
     /**
@@ -145,7 +147,13 @@ public class BizPickupController {
                                 * <p>搭这个接口的车而不是新开一个：它启动就拉、切门店重拉，
                                 * 而开关一年动不了几次 —— 为它单开一次请求不值。
                                 */
-                               Map<String, Boolean> switches) {
+                               Map<String, Boolean> switches,
+                               /**
+                                * 当前登录的操作人号：与外部记账 {@code recordedBy}、留痕 {@code by} 等
+                                * 「谁做的」字段<b>同一个值</b>（店主是 C 端用户号，手机号登录的店员是店员账号号）。
+                                * 端上拿它比对，显示「我」—— 不另起一个「用户号」，免得两种身份取错值。
+                                */
+                               String actorNo) {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.VERIFY + "')")

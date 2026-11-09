@@ -333,6 +333,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mDelivered: { method: "POST", path: "/biz/order/:orderNo/delivered", auth: true, summary: "自送已送达" },
   mPrepare: { method: "POST", path: "/biz/order/:orderNo/prepare", auth: true, summary: "开始备货" },
   mConfirmOfflinePay: { method: "POST", path: "/biz/order/:orderNo/confirm-offline-pay", auth: true, summary: "确认线下收款" },
+  mExpressCompanies: { method: "GET", path: "/biz/express/companies", auth: true, summary: "本店可选快递公司" },
   mExpressQuotes: { method: "GET", path: "/biz/order/:orderNo/express/quotes", auth: true, summary: "快递报价" },
   mBookExpress: { method: "POST", path: "/biz/order/:orderNo/express", auth: true, summary: "叫快递上门取件" },
   mExpressPickup: { method: "GET", path: "/biz/order/:orderNo/express", auth: true, summary: "取件单" },
@@ -381,6 +382,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPayAppGrants: { method: "GET", path: "/biz/payment/app-grant", auth: true, summary: "已授权的第三方" },
   mPayGrantApp: { method: "POST", path: "/biz/payment/app-grant", auth: true, summary: "授权第三方" },
   mPayRevokeGrant: { method: "DELETE", path: "/biz/payment/app-grant/{id}", auth: true, summary: "撤销第三方授权" },
+  // App 外收款记录（TDD-商户App外部记账）：商家自报流水，不进支付域；读复用收款查看码。
+  // 更正 / 作废（POST /biz/payment/offline-records/{recordNo}/correct|void）是 Flutter 商户 App 已定的路径，
+  // 「复数资源 + id」撞 /biz 单数约定且基线只准变短，本端也不调，所以不登记在这里；请求体类型仍在 requests.ts
+  mPayRecordOffline: { method: "POST", path: "/biz/payment/offline-records", auth: true, summary: "记一笔 App 外收款" },
+  mPayOfflineRecords: { method: "GET", path: "/biz/payment/offline-records", auth: true, summary: "App 外收款记录" },
+  mPayOfflineSummary: { method: "GET", path: "/biz/payment/offline-records/summary", auth: true, summary: "App 外收款合计" },
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
 
   // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：
@@ -534,6 +541,13 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     auth: true,
     summary: "解绑推送设备（登出前，共用设备换班必须解）",
   },
+
+  // ---------------------------------------------------------------- 问题回报与版本（TDD-商户App问题回报与版本）
+  // 账号级：不要求选门店（CommerceRoutePolicy.ACCOUNT），「选不了店」本身就是要回报的问题
+  mSubmitFeedback: { method: "POST", path: "/biz/feedback", auth: true, summary: "提交问题回报（回报号即工单号）" },
+  mMyFeedback: { method: "GET", path: "/biz/feedback/mine", auth: true, summary: "我的回报（最近 50 条，带客服回复）" },
+  // 匿名：令牌过期的旧包也要读得到「该升级了」，所以在 /common 而不是 /biz
+  mAppVersion: { method: "GET", path: "/common/app/version", auth: false, summary: "版本检查（最新版 / 最低支持版 / 更新说明）" },
 
   // ── 通知设置（TDD-来单四渠道与商家通知设置）。开关与群都是**门店级**，
   // 作用于请求头 X-Store-No 指定的那一家。

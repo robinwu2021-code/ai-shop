@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExpressCompanies;
+import ai.neargo.shop.common.StoreMarkets;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
@@ -123,6 +124,13 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private PaymentResolutionService paymentResolutions;
 
     /** Express commands need package facts before the legacy JSON view is reconstructed. */
+    private StoreMarkets storeMarkets;
+
+    @Autowired
+    public void setStoreMarkets(StoreMarkets markets) {
+        this.storeMarkets = markets;
+    }
+
     @Autowired
     public void setOrderShippingService(OrderShippingService service) {
         this.orderShippingService = service;
@@ -331,9 +339,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     /** Preserve nonexpress route semantics; only the first state transition uses the canonical CAS/log gate. */
-    private OrderVO shipLegacy(OrdSubOrder sub, String expressNo, String expressCompany, String operatorNo) {
-        if (!ExpressCompanies.isValid(expressCompany)
-                || expressNo == null || expressNo.isBlank()) {
+    private OrderVO shipLegacy(OrdSubOrder sub, String expressNo, String requestedCompany, String operatorNo) {
+        // 市场取订单自己的门店（TDD-商户App快递公司 §2）：叫快递回填时调用方门店号为空；本市场名称归一成码再存
+        String expressCompany = ExpressCompanies.resolve(storeMarkets.of(sub.getStoreNo()), requestedCompany)
+                .orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
+        if (expressNo == null || expressNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         String no = expressNo.trim();

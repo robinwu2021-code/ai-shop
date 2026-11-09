@@ -33,6 +33,31 @@ function normIdentity(type: string, value: string): string | null {
 }
 
 export const systemMock: SystemApi = {
+  // ── App 版本策略 ── 与后端同一组护栏（版本前缀、min ≤ latest、两家商店、zh-Hant 必填、revision）
+  listAppVersions: async () => wait(db.appVersions.map((r) => ({ ...r, notes: { ...r.notes } }))),
+
+  saveAppVersion: async (appCode, platform, v) => {
+    const row = db.appVersions.find((r) => r.appCode === appCode && r.platform === platform);
+    if (!row) notFound("平台", "Platform", `${appCode}/${platform}`);
+    if (row.revision !== v.expectedRevision) fail("别人刚改过，请刷新后再改", "Someone changed it just now — refresh and try again");
+    const ver = (x: string) => x.trim().match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+    const latest = v.latest.trim();
+    const min = v.minSupported.trim();
+    if ((latest && !ver(latest)) || (min && !ver(min))) fail("版本号要以数字开头，如 0.2.0", "Versions must start with digits, e.g. 0.2.0");
+    const num = (x: string) => (ver(x) ?? []).slice(1, 4).map((p) => Number(p ?? 0));
+    const cmp = (a: string, b: string) => { const x = num(a), y = num(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+    if (min && (!latest || cmp(min, latest) > 0)) fail("最低支持版不能高于最新版", "The minimum version cannot be above the latest");
+    if (v.storeUrl && !/^https:\/\/(apps\.apple\.com|play\.google\.com)\//.test(v.storeUrl)) {
+      fail("商店地址只能是 App Store 或 Google Play 的 https 地址", "Store URL must be an https App Store or Google Play link");
+    }
+    if (latest && !(v.notes["zh-Hant"] ?? []).some((l) => l.trim())) fail("繁中更新说明必填", "Traditional Chinese release notes are required");
+    Object.assign(row, {
+      latest, minSupported: min, notes: v.notes, storeUrl: v.storeUrl || null,
+      updatedBy: "admin", updatedAt: Date.now(), revision: row.revision + 1,
+    });
+    return wait({ ...row, notes: { ...row.notes } });
+  },
+
   // ── 测试身份白名单（与后端同口径：规范化、启用上限 10 条）──
   listTestIdentities: async () => wait(identityList()),
   saveTestIdentity: async (v) => {
@@ -55,10 +80,10 @@ export const systemMock: SystemApi = {
   setTestIdentityEnabled: async (id, enabled) => {
     const row = db.testIdentities.find((x) => x.id === id);
     if (!row) notFound("测试身份", "Test identity", String(id));
-    if (enabled && !row!.enabled && db.testIdentities.filter((x) => x.enabled).length >= 10) {
+    if (enabled && !row.enabled && db.testIdentities.filter((x) => x.enabled).length >= 10) {
       fail("启用中的测试身份最多 10 条", "At most 10 active test identities");
     }
-    row!.enabled = enabled;
+    row.enabled = enabled;
     return wait(identityList());
   },
   removeTestIdentity: async (id) => {

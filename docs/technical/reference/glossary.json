@@ -31029,6 +31029,12 @@
           "ar": "الفئات مستويان كحد أقصى، لا يمكن إنشاء فئة فرعية تحت المستوى الثاني"
         },
         {
+          "key": "err.client.upgrade_required",
+          "zh-CN": "App 版本过旧，请升级后再操作",
+          "en": "This app version is no longer supported. Please update the app to continue",
+          "ar": "إصدار التطبيق هذا لم يعد مدعومًا، يرجى تحديث التطبيق للمتابعة"
+        },
+        {
           "key": "err.community.already_open",
           "zh-CN": "「{0}」已经开通了，直接在列表里勾选即可，不用提报",
           "en": "\"{0}\" is already open — just tick it in the list, no need to submit a request",
@@ -34186,6 +34192,20 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_offline_record",
+      "class": "OrdOfflineRecord",
+      "zh": "商家自报的一笔 App 外收款（TDD-商户App外部记账）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_offline_record_event",
+      "class": "OrdOfflineRecordEvent",
+      "zh": "App 外收款记录的一步留痕：CREATE / CORRECT / VOID，带前后值、原因与操作人。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "ord_order",
       "class": "OrdOrder",
       "zh": "主订单：**用户视角**——一次支付、一个支付单号（ADR-002 / E3）。",
@@ -35514,6 +35534,13 @@
       "zh": "",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sys_app_version",
+      "class": "SysAppVersion",
+      "zh": "App 版本策略：一个 App、一个平台一行（TDD-商户App问题回报与版本 V2–V7）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.platform.entity"
     },
     {
       "table": "sys_audit_log",
@@ -37861,6 +37888,13 @@
         "name": "AFTER_SALE",
         "value": "AS",
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "OFFLINE_RECORD",
+        "value": "OFR",
+        "zh": "App 外收款记录（ord_offline_record）：商家自报流水，与支付单号空间不重叠，退款接口按它查不到",
         "module": "shop-base"
       },
       {
@@ -40440,6 +40474,48 @@
         "module": "shop-core"
       },
       {
+        "host": "MsgTicket",
+        "name": "SOURCE_C_USER",
+        "value": "C_USER",
+        "zh": "C 端用户提的工单（存量行的默认值）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "SOURCE_B_MERCHANT",
+        "value": "B_MERCHANT",
+        "zh": "商户 App 的问题回报（TDD-商户App问题回报与版本）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_BUG",
+        "value": "BUG",
+        "zh": "商户回报分类：冻结这四个（已拍板 P4），以后加分类要服务端与 App 同发",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_PAYMENT",
+        "value": "PAYMENT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_IDEA",
+        "value": "IDEA",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgTicket",
+        "name": "CATEGORY_OTHER",
+        "value": "OTHER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "NotifyChannel",
         "name": "TYPE_SMS",
         "value": "SMS",
@@ -42347,6 +42423,41 @@
         "host": "OrdInvoiceRequest",
         "name": "TITLE_COMPANY",
         "value": "COMPANY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecord",
+        "name": "RECORDED",
+        "value": "RECORDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecord",
+        "name": "VOIDED",
+        "value": "VOIDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecordEvent",
+        "name": "CREATE",
+        "value": "CREATE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecordEvent",
+        "name": "CORRECT",
+        "value": "CORRECT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdOfflineRecordEvent",
+        "name": "VOID",
+        "value": "VOID",
         "zh": "",
         "module": "shop-core"
       },
@@ -44612,6 +44723,7 @@
           "NOT_FOUND",
           "CONFLICT",
           "TOO_MANY_REQUESTS",
+          "CLIENT_UPGRADE_REQUIRED",
           "GEO_UNAVAILABLE",
           "RESOURCE_DEPENDENCY_UNAVAILABLE",
           "OTP_TOO_FREQUENT",
@@ -47644,6 +47756,35 @@
         "zh": "售后类型。"
       },
       {
+        "name": "AppPlatform",
+        "client": "shared",
+        "values": [
+          "ANDROID",
+          "IOS"
+        ],
+        "zh": "App 平台（版本策略按它分行）。"
+      },
+      {
+        "name": "AppVersionLang",
+        "client": "ops-web",
+        "values": [
+          "zh-Hant",
+          "zh-Hans",
+          "en",
+          "ar"
+        ],
+        "zh": "更新说明的四种语言"
+      },
+      {
+        "name": "AppVersionPlatform",
+        "client": "ops-web",
+        "values": [
+          "ANDROID",
+          "IOS"
+        ],
+        "zh": "版本策略按平台分行（sys_app_version.platform）"
+      },
+      {
         "name": "AppealStatus",
         "client": "ops-web",
         "values": [
@@ -48125,6 +48266,27 @@
           "PLATFORM"
         ],
         "zh": "费率适用的流量来源。"
+      },
+      {
+        "name": "FeedbackCategory",
+        "client": "shared",
+        "values": [
+          "BUG",
+          "PAYMENT",
+          "IDEA",
+          "OTHER"
+        ],
+        "zh": "回报分类。"
+      },
+      {
+        "name": "FeedbackStatus",
+        "client": "shared",
+        "values": [
+          "OPEN",
+          "REPLIED",
+          "CLOSED"
+        ],
+        "zh": "回报状态。"
       },
       {
         "name": "FieldType",
@@ -49014,6 +49176,36 @@
           "FAILED"
         ],
         "zh": "发送结果。"
+      },
+      {
+        "name": "OfflineRecordAction",
+        "client": "b-app",
+        "values": [
+          "CREATE",
+          "CORRECT",
+          "VOID"
+        ],
+        "zh": "留痕动作"
+      },
+      {
+        "name": "OfflineRecordMethod",
+        "client": "b-app",
+        "values": [
+          "CASH",
+          "BANK_TRANSFER",
+          "EXTERNAL_POS",
+          "OTHER"
+        ],
+        "zh": "收款方式。"
+      },
+      {
+        "name": "OfflineRecordStatus",
+        "client": "b-app",
+        "values": [
+          "RECORDED",
+          "VOIDED"
+        ],
+        "zh": "已记 / 已作废（作废是终态，行不删）"
       },
       {
         "name": "OnboardingStatus",
@@ -50496,7 +50688,8 @@
         "client": "shared",
         "values": [
           "ACTIVE",
-          "READONLY"
+          "READONLY",
+          "SUSPENDED"
         ],
         "zh": "门店状态。"
       },
@@ -50584,6 +50777,15 @@
           "EMAIL"
         ],
         "zh": "测试身份类型"
+      },
+      {
+        "name": "TicketSource",
+        "client": "ops-web",
+        "values": [
+          "C_USER",
+          "B_MERCHANT"
+        ],
+        "zh": "工单来源。"
       },
       {
         "name": "TicketStatus",
@@ -54229,6 +54431,22 @@
     },
     {
       "host": "BizPerms",
+      "name": "PAY_OFFLINE_RECORD",
+      "type": "String",
+      "value": "\"mch:pay:offline:record\"",
+      "zh": "记一笔 App 外收款（TDD-商户App外部记账）：现金、外部刷卡机、银行转账在 App 里留痕。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_OFFLINE_MANAGE",
+      "type": "String",
+      "value": "\"mch:pay:offline:manage\"",
+      "zh": "更正与作废 App 外收款记录（原因必填、留痕）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "PRINT_READ",
       "type": "String",
       "value": "\"biz:print:read\"",
@@ -54303,7 +54521,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(SERVICE_TASK_SELF, \"操作本人服务任务\"), Map.entry(SERVICE_TASK_VIEW, \"查看门店服务任务\"), Map.entry(SERVICE_TASK_COORDINATE, \"协调服务任务\"), Map.entry(SERVICE_TASK_APPROVE, \"审核服务调整\"), Map.entry(SERVICE_TASK_CLOSE, \"关闭已结清服务工单\"), Map.entry(BOOKING_VIEW, \"查看预约\"), Map.entry(BOOKING_MANAGE, \"创建、调整及取消预约\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(CASH_RECEIVE, \"确认线下实收\"), Map.entry(CHECKOUT_PREPARE, \"准备服务购买报价\"), Map.entry(MANUAL_CONFIRM, \"人工确认服务收款\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(PAY_ORDER_VIEW, \"查看本店收款记录（列表与详情）\"), Map.entry(PAY_OFFLINE_RECORD, \"记录 App 外收款\"), Map.entry(PAY_OFFLINE_MANAGE, \"更正与作废 App 外收款\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -55357,6 +55575,14 @@
     },
     {
       "host": "Perms",
+      "name": "SYSTEM_APP_VERSION_UPDATE",
+      "type": "String",
+      "value": "\"system:app-version:update\"",
+      "zh": "改 App 版本策略（最新版、最低支持版、更新说明、商店地址。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SYSTEM_TESTPHONE_READ",
       "type": "String",
       "value": "\"system:testphone:read\"",
@@ -55508,6 +55734,14 @@
       "module": "shop-core"
     },
     {
+      "host": "FeedbackDiagnostics",
+      "name": "MAX_ENTRIES",
+      "type": "int",
+      "value": "300",
+      "zh": "App 内存里最多 300 条（system_status.dart）。",
+      "module": "shop-core"
+    },
+    {
       "host": "NotifyScene",
       "name": "ALL",
       "type": "Set<String>",
@@ -55593,6 +55827,14 @@
       "type": "String",
       "value": "\"zh-CN\"",
       "zh": "默认语言。",
+      "module": "shop-core"
+    },
+    {
+      "host": "MsgTicket",
+      "name": "CATEGORY_PATTERN",
+      "type": "String",
+      "value": "\"BUG|PAYMENT|IDEA|OTHER\"",
+      "zh": "请求体校验用（编译期常量，可放进 @Pattern）",
       "module": "shop-core"
     },
     {

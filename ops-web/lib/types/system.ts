@@ -340,3 +340,46 @@ export type MediaBizType = "GOODS" | "QUAL" | "AFTERSALE";
  * （多半是已经不在了），归进 DONE 会让人以为清干净了，归进失败会让人重跑一遍。
  */
 export type MediaPurgeStatus = "QUEUED" | "RUNNING" | "DONE" | "PARTIAL";
+
+/**
+ * App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报与版本 V6）。
+ *
+ * 没配过的平台也会列出来：`revision=0`、字段为空 —— 那就是「App 不提示」的首发状态。
+ * 改「最低支持版」影响面是**全部**商户：低于它的包写请求立刻被拒（10426），所以改它要单独的
+ * `system:app-version:update`，技术运维的 `system:param:update` 改不了。
+ */
+export interface AppVersionPolicy {
+  /** 哪个 App。首期只有 MERCHANT */
+  appCode: string;
+  /** ANDROID / IOS */
+  platform: AppVersionPlatform;
+  /** 最新版；空 = 不提示更新 */
+  latest: string;
+  /** 最低支持版；空 = 不拦写 */
+  minSupported: string;
+  /** 更新说明：语言 → 条目。zh-Hant 必填，其它语言没填时回落 zh-Hant */
+  notes: Partial<Record<AppVersionLang, string[]>>;
+  /** 商店地址，只收 https://apps.apple.com/… 或 https://play.google.com/… */
+  storeUrl: string | null;
+  /** 最后修改人 */
+  updatedBy: string | null;
+  /** 最后修改时间（毫秒）；没配过为 null */
+  updatedAt: number | null;
+  /** 乐观锁版本：保存时原样带回 expectedRevision，别人先改了就 10409 */
+  revision: number;
+}
+
+/** 版本策略按平台分行（sys_app_version.platform） */
+export type AppVersionPlatform = "ANDROID" | "IOS";
+
+/** 更新说明的四种语言 */
+export type AppVersionLang = "zh-Hant" | "zh-Hans" | "en" | "ar";
+
+/** 保存一行策略 */
+export interface SaveAppVersionPolicy {
+  latest: string;
+  minSupported: string;
+  notes: Partial<Record<AppVersionLang, string[]>>;
+  storeUrl: string | null;
+  expectedRevision: number;
+}
