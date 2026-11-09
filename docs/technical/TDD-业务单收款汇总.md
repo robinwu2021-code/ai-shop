@@ -69,7 +69,8 @@ GET /biz/stores/{storeNo}/receivables/{bizNo}?dueMinor=500&currency=TWD      权
 ### 部署
 
 - **V641 带 DDL**（`ALTER TABLE ord_offline_record ADD COLUMN biz_no …` + 建索引）：166 应用库账号无改表权限，部署前由 root 执行或临时授权。
-- 宿主与收款服务（near-pay）**一起发**：只升宿主时，收款服务会忽略 `bizNo`，汇总读口调 `order-receipts` 会失败。
+- **166 的收款服务是另一个仓库**（near-pay，codeup `develop/s1`），不是本仓库的 `backend/pay`。本仓库的收款侧改动（`collect` 带 `bizNo`、`order-receipts` 读口）要**移植到 near-pay 并单独发版**，否则在 166 上：付款链接带不进业务单号、汇总读口调 `order-receipts` 失败。外部记账（主库）一侧不受影响。
+- 兼容：`CollectReq.bizNo` 为空时不序列化（`@JsonInclude(NON_NULL)`），宿主先升、near-pay 未升时，不带单号的代客收款请求体与此前完全一样（`PayBizInternalApiRoundTripTest#collectWithoutBizNoKeepsTheOldWireShape`）。
 
 ## §4 待决
 

@@ -35,7 +35,11 @@ public interface PayBizInternalApi {
     record GrantReq(String operatorNo, String appNo, Set<String> actions) {
     }
 
-    /** @param bizNo 业务单号（可空，TDD-业务单收款汇总 AC8）；老版本收款服务会忽略它 */
+    /**
+     * @param bizNo 业务单号（可空，TDD-业务单收款汇总 AC8）。为空时不序列化：请求体与加字段前一字不差，
+     *              独立部署、尚未升级的收款服务照常收（166 的 near-pay 是另一个仓库，见 D16）
+     */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     record CollectReq(String operatorNo, Long amountMinor, String subject, Integer expireMinutes, String bizNo) {
     }
 
