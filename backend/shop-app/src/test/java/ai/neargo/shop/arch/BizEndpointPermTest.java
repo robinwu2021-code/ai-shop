@@ -918,6 +918,27 @@ class BizEndpointPermTest {
                     put(
                             "/biz/stores/{storeNo}/channel-after-sale-decisions/release-unissued",
                             BizPerms.AFTERSALE);
+                    // ---- 存量补登记（门店功能矩阵开发计划 E9，2026-11-09）：以下接口代码里早有 @PreAuthorize，只是表没跟上 ----
+                    // 餐饮库存投影（进销存只读看餐饮占用）
+                    put("/biz/inventory/food-stock-projections", BizPerms.STOCK);
+                    put("/biz/inventory/food-stock-projections/{sourceItemNo}", BizPerms.STOCK);
+                    // 服务业人员、资源、排班：改的是门店结构，只有店主（biz:store:admin）
+                    put("/biz/personnel", BizPerms.STORE_ADMIN);
+                    put("/biz/resources", BizPerms.STORE_ADMIN);
+                    put("/biz/schedule-rules", BizPerms.STORE_ADMIN);
+                    put("/biz/schedules", BizPerms.STORE_ADMIN);
+                    // 人工服务单与柜台收款（BizManualServiceAdmissionController）：多数是多个码同时要求，
+                    // 这里登记最外层的那个；完整条件见各方法的 @PreAuthorize
+                    put("/biz/service-orders/counter-quotes", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW
+                    put("/biz/service-orders/counter-quotes/{operationNo}", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW
+                    put("/biz/service-orders/counter-quotes/{operationNo}/acceptances", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW + CASH_RECEIVE + MANUAL_CONFIRM
+                    put("/biz/service-orders/counter-quotes/{operationNo}/orders", BizPerms.CHECKOUT_PREPARE); // + ORDER_VIEW + CASH_RECEIVE + MANUAL_CONFIRM
+                    put("/biz/service-orders/manual-quotes", BizPerms.CHECKOUT_PREPARE);
+                    put("/biz/service-orders/{orderNo}/manual-receipts", BizPerms.CASH_RECEIVE); // + MANUAL_CONFIRM
+                    put("/biz/service-orders/{orderNo}/manual-admission", BizPerms.ORDER_VIEW);
+                    put("/biz/service-orders/{orderNo}/manual-source", BizPerms.ORDER_VIEW);
+                    // 门店可售目录（商品维护用）
+                    put("/biz/store-sales-catalog", BizPerms.GOODS);
                 }
             };
 
@@ -1155,7 +1176,10 @@ class BizEndpointPermTest {
                                     || s.startsWith("pay:ent:")
                                     || s.startsWith("pay:sv:")
                                     || s.startsWith("mch:pay:")
-                                    || s.equals(BizPerms.CASH_RECEIVE))) {
+                                    || s.equals(BizPerms.CASH_RECEIVE)
+                                    // 柜台结账与人工服务确认（BizManualServiceAdmissionController 在用）
+                                    || s.equals(BizPerms.CHECKOUT_PREPARE)
+                                    || s.equals(BizPerms.MANUAL_CONFIRM))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {
