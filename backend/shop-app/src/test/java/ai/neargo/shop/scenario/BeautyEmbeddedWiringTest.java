@@ -131,8 +131,13 @@ class BeautyEmbeddedWiringTest {
                 .flatMap(scan -> Arrays.stream(scan.excludeFilters()))
                 .flatMap(filter -> Arrays.stream(filter.pattern()))
                 .map(Pattern::compile).toList();
+        // 进销存 2026-10-29 拆为独立服务（ADR-046），包名改为 ai.neargo.inventory，本来就不在 ai.neargo.shop 扫描范围内
+        var bases = Arrays.stream(MybatisPlusConfig.class.getAnnotationsByType(MapperScan.class))
+                .flatMap(scan -> Arrays.stream(scan.basePackages())).toList();
+        assertThat(bases.stream().noneMatch("ai.neargo.inventory.domain.mapper"::startsWith))
+                .as("global scan must not reach the standalone inventory service mappers").isTrue();
         for (String excluded : new String[] {"ai.neargo.shop.beauty.mapper.BeautyMappers$TableMapper",
-                "ai.neargo.inventory.domain.mapper.InventoryMappers$StockMapper",
+                "ai.neargo.shop.inventory.mapper.InventoryMappers$StockMapper",
                 "ai.neargo.shop.food.mapper.FoodMappers$TableMapper",
                 "ai.neargo.shop.pay.mapper.PayMappers$SettleMapper"}) {
             assertThat(filters.stream().anyMatch(pattern -> pattern.matcher(excluded).matches()))

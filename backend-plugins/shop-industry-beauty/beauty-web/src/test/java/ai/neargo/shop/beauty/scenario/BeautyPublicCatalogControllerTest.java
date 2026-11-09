@@ -114,16 +114,26 @@ class BeautyPublicCatalogControllerTest {
                     "A", "店", "E", null, "ACTIVE", true, null, null, null, null, 0, 0)));
             return stores;
         }
+        /*
+         * 与生产 SecurityConfig 一致分两条链：BizContextFilter 只挂在 /biz/** 商家链上
+         * （它对非 /biz 路径一律 400 NONCANONICAL_MERCHANT_PATH），/mp/** 匿名公开接口走自己的链。
+         */
         @Bean
+        @org.springframework.core.annotation.Order(1)
         SecurityFilterChain chain(HttpSecurity http, MemoryTokenStore tokens) throws Exception {
             var context = new BizContextFilter((actor, store) -> new BizContext("E", Set.of(), Set.of(),
                     Set.of("A"), "A", false, Map.of(), Map.of("A", Set.of("biz:store"))));
-            return http.csrf(csrf -> csrf.disable())
-                    .authorizeHttpRequests(auth ->
-                            auth.requestMatchers("/mp/**").permitAll().anyRequest().authenticated())
+            return http.securityMatcher("/biz/**").csrf(csrf -> csrf.disable())
+                    .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                     .exceptionHandling(errors -> errors.authenticationEntryPoint((req, res, ex) -> res.sendError(401)))
                     .addFilterBefore(new MerchantTokenAuthFilter(tokens), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(context, MerchantTokenAuthFilter.class).build();
+        }
+        @Bean
+        @org.springframework.core.annotation.Order(2)
+        SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
+            return http.securityMatcher("/mp/**").csrf(csrf -> csrf.disable())
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll()).build();
         }
     }
 }

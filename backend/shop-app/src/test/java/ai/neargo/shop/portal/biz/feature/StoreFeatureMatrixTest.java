@@ -227,8 +227,17 @@ class StoreFeatureMatrixTest {
                 plan(PlanTier.FREE, List.of(BIZ)),
                 plan(PlanTier.PRO, List.of(BIZ, "END_SERVICE")),
                 plan(PlanTier.CHAIN, List.of(BIZ, "END_SERVICE"))));
-        var booking = StoreFeatureMatrix.forBusinessType(service).features().stream()
+        var features = StoreFeatureMatrix.forBusinessType(service).features();
+        var booking = features.stream()
                 .filter(x -> x.featureCode().equals("SVC_BOOKING")).findFirst().orElseThrow();
+        // 开发计划 B4：与美业 / 共用人员接口的实际判权一致——服务项目、门店政策 biz:store；人员、资源、排班 biz:store:admin
+        var catalog = features.stream().filter(x -> x.featureCode().equals("SVC_CATALOG")).findFirst().orElseThrow();
+        assertEquals(List.of(BizPerms.STORE), catalog.usePerms());
+        assertEquals("MANAGE", catalog.roles().get("MANAGER"));
+        var schedule = features.stream().filter(x -> x.featureCode().equals("SVC_SCHEDULE")).findFirst().orElseThrow();
+        assertEquals(List.of(BizPerms.STORE_ADMIN), schedule.usePerms());
+        assertEquals("MANAGE", schedule.roles().get("OWNER"));
+        assertEquals("NONE", schedule.roles().get("MANAGER"), "人员、排班接口只给 biz:store:admin");
         assertEquals(PlanTier.PRO, booking.minTier());
         assertEquals("MANAGE", booking.roles().get("MANAGER"));
         assertEquals("USE", booking.roles().get("CLERK"));

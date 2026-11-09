@@ -9,6 +9,7 @@ import ai.neargo.shop.beauty.service.AppointmentAvailabilityService;
 import ai.neargo.shop.beauty.service.ServiceOperationQueryService;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
+import ai.neargo.shop.svc.InternalBindings;
 import ai.neargo.shop.svc.InternalHttp;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,9 @@ class BookingChannelWiringTest {
                 AutoConfigurations.of(BeautyChannelAutoConfiguration.class))
                 .withBean(InternalHttp.class, () -> new InternalHttp(service -> {
                     throw new AssertionError("HTTP target lookup during bean construction creates topology cycle");
-                }, "key"));
+                }, "key"))
+                // 87311602b 起任务准备的远程端口要用宿主的 InternalBindings（独立部署时由平台装配）
+                .withBean(InternalBindings.class, () -> new InternalBindings("key"));
         runner.withPropertyValues("shop.beauty.enabled=true", "shop.beauty.deployment=standalone").run(ctx -> {
             assertThat(ctx).hasNotFailed().hasSingleBean(ResourceSourceAuthorityPort.class)
                     .hasSingleBean(AppointmentService.class).hasSingleBean(AppointmentAvailabilityService.class)

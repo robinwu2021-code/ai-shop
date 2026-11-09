@@ -182,6 +182,9 @@ class RemotePersonnelOperatorFactsPortTest {
                         new PersonnelOperatorFactsPort.OperatorPersonnelFact(
                                 "P", "A", 7, 11, 13, AT.minusSeconds(1), null));
         assertThat(wire.get()).doesNotContain("accountNo", "contact", "role");
+        // 只由 scripts/verify-personnel-operator.mjs 传入源码根目录；直接跑 verify 时跳过而不是空指针
+        org.junit.jupiter.api.Assumptions.assumeTrue(System.getProperty("personnel.operator.test.source-root") != null,
+                "run via scripts/verify-personnel-operator.mjs");
         var sourceRoot = Path.of(System.getProperty("personnel.operator.test.source-root"));
         assertThat(
                         Path.of(

@@ -55,8 +55,10 @@ public enum StoreFeature {
     /** 与美业接口设计一致：读 = booking:view 或 booking:manage，写 = booking:manage */
     SVC_BOOKING(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.BOOKING_VIEW, BizPerms.BOOKING_MANAGE),
             List.of(BizPerms.BOOKING_MANAGE)),
-    SVC_CATALOG(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.GOODS), List.of(BizPerms.GOODS)),
-    SVC_SCHEDULE(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.STORE), List.of(BizPerms.STORE)),
+    /** 服务项目与门店政策：美业接口 @PreAuthorize biz:store（开发计划 B2 审计） */
+    SVC_CATALOG(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.STORE), List.of(BizPerms.STORE)),
+    /** 技师（人员）、资源、周排班：共用接口只给 biz:store:admin，店长默认没有（开发计划 B2 审计） */
+    SVC_SCHEDULE(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.STORE_ADMIN), List.of(BizPerms.STORE_ADMIN)),
     SVC_REPORT(Group.SERVICE, Codes.SERVICE, false, List.of(BizPerms.CUSTOMER), List.of()),
 
     // ------------------------------------------------ 会员与营销
