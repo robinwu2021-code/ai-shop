@@ -37,7 +37,7 @@ App mock 把一张「点餐单」画成一个对象（`DiningOrder`）。插件�
 | 14-11 | `POST …/items/{id}/remaining` 今日剩余份数 | `POST /stores/{storeNo}/sales-restrictions`（每日限量，按门店营业日截止自动恢复） | `null` 取消 = 清除限售 |
 | 14-12 | 桌台增删改、桌码 | `GET/POST /stores/{storeNo}/tables`、`POST /tables/{tableNo}`、`POST /tables/{tableNo}:archive`（删除）、`:set-status`；区域 `/table-areas`；桌码 `POST /tables/{tableNo}:rotate-token\|revoke-token` | 删除改为归档；`area` 是区域编号不是名称 |
 | 14-13 | `GET /biz/food/kitchen`、`start\|done` | `GET /stores/{storeNo}/kitchen/tasks`、`POST /tasks/{taskNo}:start\|ready\|serve`、`:urge`；推送 `POST /kitchen-subscriptions` + `GET /kitchen-events` | App 的 `done` = 插件 `ready`；催菜标记读任务字段 |
-| 14-14 | `GET/POST /biz/food/platforms` 外送平台 | `GET /biz/x/commerce/stores/{storeNo}/connections`（已连接平台）、`GET …/stores/{storeNo}/statistics/providers`（按平台统计）、`GET/POST /biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}`（接单策略，含暂停） | 暂停 / 恢复接单对应接单策略（缺口 3）；今日单量读按平台统计 |
+| 14-14 | `GET/POST /biz/food/platforms` 外送平台 | `GET /biz/x/commerce/stores/{storeNo}/connections`（已连接平台）、`GET …/stores/{storeNo}/statistics/providers`（按平台统计今日单量）；暂停 / 恢复接单：`GET/POST /biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}` 的 `enabled` 字段 | 接单策略只有店主能改（`biz:store:admin`），App 原设计店长也能操作，需产品确认是否放宽 |
 | 14-15 | `GET /biz/food/report` 报表 | `GET /operating-reports/{daily\|period\|trend\|rankings\|…}`、`GET /operating-reports/metrics`；营业日报 `GET /reports/business-day` | 时段图、热销、翻台率逐项对照指标名 |
 
 ## 三、缺口清单（后端待办）
@@ -46,7 +46,6 @@ App mock 把一张「点餐单」画成一个对象（`DiningOrder`）。插件�
 |---|---|---|
 | 1 | 结账多付款方式编排 | 与收款域对齐：二维码 / 刷卡走付款链接或感应收款，现金走外部记账；餐饮侧只做报价确认与结算单 |
 | 2 | 首页汇总 | 短期 App 组合读；长期视性能补 `GET /stores/{storeNo}/summary` |
-| 3 | 暂停 / 恢复接单 | 对照 `channel-order-policies` 的字段，确认「暂停」是否已有对应开关 |
 
 ## 四、共通约定（App 改造时统一）
 

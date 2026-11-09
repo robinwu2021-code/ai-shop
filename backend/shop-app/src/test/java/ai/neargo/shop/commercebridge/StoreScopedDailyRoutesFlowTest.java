@@ -317,7 +317,8 @@ class StoreScopedDailyRoutesFlowTest {
         for (String path : new String[] {
                 "/biz/x/food/stores/" + o[1] + "/tables", "/biz/x/food/queue-tickets",
                 "/biz/x/food/stores/" + o[1] + "/kitchen/tasks", "/biz/x/food/reports/business-day",
-                "/biz/x/commerce/orders/CO1", "/biz/x/commerce/providers"}) {
+                "/biz/x/commerce/orders/CO1", "/biz/x/commerce/providers",
+                "/biz/stores/" + o[1] + "/channel-order-policies"}) {
             JsonNode r = call(o[0], o[1], path);
             assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
         }

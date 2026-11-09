@@ -35,7 +35,7 @@ class MerchantFactsTransportTest {
             calls.incrementAndGet();
             String body = exchange.getRequestURI().getPath().endsWith("resources")
                     ? "[{\"resourceNo\":\"R\",\"resourceType\":\"ROOM\",\"storeNo\":\"S\","
-                        + "\"name\":\"room\",\"capacity\":2,\"openOccupied\":false}]" : "[]";
+                        + "\"name\":\"room\",\"capacity\":2,\"openOccupied\":false,\"actualUsed\":0}]" : "[]";
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(status.get(), bytes.length);

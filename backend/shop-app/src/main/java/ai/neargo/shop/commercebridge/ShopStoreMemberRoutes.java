@@ -14,6 +14,7 @@ import java.util.List;
 final class ShopStoreMemberRoutes {
 
     private static final String STORE = "/biz/store/[A-Za-z0-9_-]{1,64}/";
+    private static final String STORE_PLURAL = "/biz/stores/[A-Za-z0-9_-]{1,64}/";
 
     static final List<HostRoute> ALL = List.of(
             // 商品：列表、编辑、草稿与发布、版本、库存与本店价、识别与规格
@@ -87,6 +88,8 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST,PUT", "/biz/x/food/.+"),
             // 外卖平台接单 / 拒单、渠道连接与对账（餐饮首批的外送部分）：68 个商家接口同样各自 @PreAuthorize
             HostRoute.of("GET,POST,PUT", "/biz/x/commerce/.+"),
+            // 外卖接单策略（含暂停 / 恢复接单的 enabled 开关；类级 @PreAuthorize biz:store:admin）：App 餐饮 14-14
+            HostRoute.of("GET,POST", STORE_PLURAL + "channel-order-policies(?:/[A-Za-z0-9_.:-]{1,64})?"),
             // 美业插件（开发计划 B3）：26 个商家接口在服务层判权（AppointmentAccess / ReceptionAccess /
             // ServiceSubmissionAccess / ServiceExecutionAccess），另 5 个 @PreAuthorize；逐条审计见开发计划第八节
             HostRoute.of("GET,POST", "/biz/x/beauty/.+"),

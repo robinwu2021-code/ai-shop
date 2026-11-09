@@ -161,7 +161,12 @@ public final class RemoteServiceExecutionPreparationPort
     private static void requireStock(
             RetentionLookup lookup, ExecutionStockRetentionPreparationObservation result) {
         if (result == null) throw unavailable();
-        result.validate(lookup);
+        try {
+            result.validate(lookup);
+        } catch (RuntimeException malformed) {
+            // 与 queryStockOriginal 同一口径：远程应答不完整（如缺冻结名单）一律是依赖不可用，不把校验异常漏给调用方
+            throw unavailable();
+        }
     }
 
     private static BizException unavailable() {

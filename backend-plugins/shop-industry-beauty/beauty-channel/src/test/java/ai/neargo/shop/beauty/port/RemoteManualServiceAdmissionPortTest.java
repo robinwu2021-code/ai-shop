@@ -377,11 +377,13 @@ class RemoteManualServiceAdmissionPortTest {
                                         value,
                                         "\"admissionState\":\"AWAITING_RECEIPT\"",
                                         "\"admissionState\":\"ADMITTED\""),
+                        // 只改外层事实的 admissionState。Jackson 3 默认按字母序输出属性，外层之后紧跟
+                        // "currency","declaration"，内层声明之后是 "currency","declaredMinor"，借此区分两处
                         value ->
                                 resultOnly(
                                         value,
-                                        "\"admissionState\":\"AWAITING_RECEIPT\",\"lines\":",
-                                        "\"admissionState\":\"UNKNOWN\",\"lines\":"),
+                                        "\"admissionState\":\"AWAITING_RECEIPT\",\"currency\":\"CNY\",\"declaration\":",
+                                        "\"admissionState\":\"UNKNOWN\",\"currency\":\"CNY\",\"declaration\":"),
                         value -> resultOnly(value, "\"orderRevision\":0", "\"orderRevision\":1"),
                         value ->
                                 resultOnly(

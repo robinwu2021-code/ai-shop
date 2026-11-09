@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -133,13 +134,15 @@ class RemoteServiceExecutionPreparationPortTest {
         var missingRoster =
                 new ExecutionStockRetentionPreparationObservation(
                         observation.schema(), observation.receipt(), null);
-        when(api.queryStockOriginal(any()))
-                .thenAnswer(
+        // 重新打桩用 doAnswer().when()：when(mock.m(any())) 会先调用上面的旧 answer（参数为 null）
+        doAnswer(
                         invocation -> {
                             StockCall call = invocation.getArgument(0);
                             return new StockReply(
                                     call.binding(), bindings.digest(call), missingRoster);
-                        });
+                        })
+                .when(api)
+                .queryStockOriginal(any());
         assertThrows(BizException.class, () -> remote.queryStockOriginal(original.lookup()));
         verify(api, never()).retainStock(any());
     }
@@ -246,7 +249,7 @@ class RemoteServiceExecutionPreparationPortTest {
                         "SERVICE_EXECUTION_ORIGINAL_EVIDENCE_V1",
                         ref,
                         ExecutionOriginalEvidence.EvidenceOutcome.UNKNOWN,
-                        "UNKNOWN",
+                        "SOURCE_UNKNOWN", // 原因码须是 ServiceExecutionContract.Reason 的枚举值
                         null,
                         Instant.EPOCH,
                         null)
