@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import tools.jackson.databind.ObjectMapper;
 
 class CoreSpecValueCatalogQueryPortTest {
     private static SpecValueFact fact(String value, String valueScope, String valueOwner,
@@ -49,6 +50,8 @@ class CoreSpecValueCatalogQueryPortTest {
         server.start();
         try {
             new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                     .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire",
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort())
                     .run(c -> {
@@ -74,6 +77,8 @@ class CoreSpecValueCatalogQueryPortTest {
         server.start();
         try {
             new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                     .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire",
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort())
                     .run(c -> assertThatThrownBy(() -> c.getBean(SpecValueCatalogQueryPort.class)
@@ -134,6 +139,8 @@ class CoreSpecValueCatalogQueryPortTest {
         assertThatThrownBy(() -> port.getValues("E", List.of("V", "V"))).isInstanceOf(BizException.class);
         assertThat(count).hasValue(0);
         new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=true").run(c -> {
                     assertThat(c).hasNotFailed().hasSingleBean(SpecValueCatalogQueryPort.class);
                     assertThatThrownBy(() -> c.getBean(SpecValueCatalogQueryPort.class).getValues("E", List.of("V")))
@@ -143,6 +150,8 @@ class CoreSpecValueCatalogQueryPortTest {
 
     @Test void disabledRestaurantDoesNotRegisterExternalCatalogAdapters() {
         new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=false").run(c -> assertThat(c).hasNotFailed()
                         .doesNotHaveBean(SpecValueCatalogQueryPort.class)
                         .doesNotHaveBean(SpecValueCatalogInternalApi.class));

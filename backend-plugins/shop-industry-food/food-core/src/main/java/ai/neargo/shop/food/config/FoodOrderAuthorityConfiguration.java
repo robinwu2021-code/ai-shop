@@ -28,7 +28,7 @@ public class FoodOrderAuthorityConfiguration {
             DiningPricingFactsService facts,
             DiningIdentityService identities,
             ConfigRevisionService revisions,
-            ai.neargo.shop.food.service.FoodMaterialSource materials,
+            ai.neargo.shop.food.spi.FoodMaterialSource materials,
             ObjectMapper json,@org.springframework.beans.factory.annotation.Value("${shop.food.local-stock.enabled:false}")boolean localStock) {
         return new DiningOrderAuthorityServiceImpl(facts, identities, revisions, materials.port(), json).localStock(localStock);
     }

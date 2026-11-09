@@ -90,7 +90,10 @@ class CartServiceTest extends FoodWriteGuardFixture {
     static final Instant NOW = Instant.parse("2026-10-22T04:00:00Z");
     record State(Fixture f, CheckCartServiceImpl service, AtomicBoolean outage, AtomicBoolean fail) { }
     void run(Consumer<State> test) {
-        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
+        runner()
+                // 按「无订阅者」语义验证（866e3870f）：这里登记自己的仅归档路由，不用共享夹具的测试订阅者
+                .withPropertyValues("test.policy.subscriber=false")
+                .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
             var f = prepare(c); var template = c.getBean(SqlSessionTemplate.class);
             for (var type : List.of(CheckCartMapper.class, CheckCartItemMapper.class, CheckMapper.class,
                     GuestSessionMapper.class, SeatMapper.class, TableOccupancyMapper.class,

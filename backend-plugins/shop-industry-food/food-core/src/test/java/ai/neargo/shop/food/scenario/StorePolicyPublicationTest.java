@@ -8,6 +8,10 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxEnvelope;
+import ai.neargo.shop.event.outbox.OutboxHandler;
+import ai.neargo.shop.spi.food.FoodOutboxRouting;
 import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
@@ -167,26 +171,28 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             empty(f);
         });
     }
-    @Test void missingUnifiedSourceRollsBackPolicyAuditAndIdempotency() {
+    @Test void missingUnifiedSourceStillPublishesPolicyWithoutAnOutboxEvent() {
+        // 866e3870f：归档类事实（FoodOutboxRouting.ARCHIVE_ONLY）不依赖发件箱，业务照常写入、不产生事件；
+        // 与 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 同一规则。
         runner().withUserConfiguration(Publication.class)
                 .withPropertyValues("test.policy.source=false").run(context -> {
             var f = fixture(context);
-            assertThatThrownBy(() -> context.getBean(StoreOperationService.class)
-                    .createPolicy("E", "A", "actor", request(0, FIRST), "key"))
-                    .isInstanceOf(IllegalStateException.class);
-            empty(f);
+            assertThat(context.getBean(StoreOperationService.class)
+                    .createPolicy("E", "A", "actor", request(0, FIRST), "key")).isNotNull();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_store_policy", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
-    @Test void missingConsumerPreservesPlatformFailedEventForRecovery() {
+    @Test void noConsumerPublishesPolicyWithoutAnOutboxEvent() {
+        // 866e3870f：归档类事实（FoodOutboxRouting.ARCHIVE_ONLY）不依赖发件箱，业务照常写入、不产生事件；
+        // 与 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 同一规则。
         runner().withUserConfiguration(Publication.class)
-                .withPropertyValues("test.policy.archive=false").run(context -> {
+                .withPropertyValues("test.policy.subscriber=false", "test.policy.archive=false").run(context -> {
             var f = fixture(context);
             assertThat(context.getBean(StoreOperationService.class)
                     .createPolicy("E", "A", "actor", request(0, FIRST), "key")).isNotNull();
-            assertThat(f.sql().queryForObject("SELECT status FROM sys_outbox", String.class)).isEqualTo("FAILED");
-            assertThat(f.sql().queryForObject("SELECT last_error FROM sys_outbox", String.class))
-                    .isEqualTo("NO_CONSUMER");
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_store_policy", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
         });
     }
     @Test void rollbackAfterActualOutboxFlushAlsoRemovesPolicyAndAudit() {
@@ -296,12 +302,27 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
         UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager,
                 ObjectMapper json, Environment env) {
             var facade = new UnifiedOutboxFacade(json);
-            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            if (env.getProperty("test.policy.archive", Boolean.class, true)) {
+            // 866e3870f 起，归档类事件（FoodOutboxRouting.ARCHIVE_ONLY）没有真实订阅者就不写发件箱。
+            // 这里默认登记一个订阅者，让场景测试继续验证「有下游时事件与业务写入同事务、失败整笔回滚」；
+            // 「无订阅者不写发件箱」由 FoodOutboxWiringTest#ordinaryMaintenanceDoesNotNeedOrWriteAnOutbox 覆盖。
+            boolean subscribed = env.getProperty("test.policy.subscriber", Boolean.class, true);
+            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json),
+                    subscribed ? List.of(new ArchivedFactSubscriber()) : List.of());
+            // 门面不允许同一类型既「仅归档」又有消费者，有订阅者时不登记仅归档路由
+            if (!subscribed && env.getProperty("test.policy.archive", Boolean.class, true)) {
                 facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
                     "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED", "PLATFORM:FOOD_DINING_SESSION_CHANGED", "PLATFORM:FOOD_CHECK_CHANGED"));
             }
             return facade;
         }
+    }
+
+    /** 测试用订阅者：接收全部归档类事件，代表「这类事实有了下游」。 */
+    static final class ArchivedFactSubscriber implements OutboxHandler {
+        @Override public String handlerId() { return "test-archived-fact-subscriber"; }
+        @Override public boolean supports(String type) {
+            return FoodOutboxRouting.ARCHIVE_ONLY.contains("PLATFORM:" + type);
+        }
+        @Override public DeliveryResult handle(OutboxEnvelope event) { return DeliveryResult.sent(); }
     }
 }

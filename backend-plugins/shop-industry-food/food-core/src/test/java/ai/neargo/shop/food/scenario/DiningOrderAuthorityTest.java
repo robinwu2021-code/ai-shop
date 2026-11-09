@@ -286,16 +286,29 @@ class DiningOrderAuthorityTest {
                         });
     }
 
+    /**
+     * b91bcc006 起，加料单位必须对应恰好一个已选的加料选项，并按冻结的加料定义展开；
+     * 只有一个裸 ADDON 单位、没有选项来源时不得凭空产生库存需求。
+     * 加料按定义展开、叶子身份互不重复的正路由 {@code DiningChannelModifierDemandTest} 覆盖。
+     */
     @Test
-    void additiveModifierRetainsMainDemandAndEveryLeafHasDistinctBoundedIdentity() {
+    void addonWithoutItsSelectedModifierIsRejectedInsteadOfInventingDemand() {
         source(
                 List.of(unit("SKU", "a", "MAIN", "1"), unit("ADD", "b", "ADDON", "2")),
                 new MeasurementPolicy("EA", "COUNT", 0, null),
                 null);
         material("SKU", "EA");
         material("ADD", "EA");
+        assertThatThrownBy(() -> service.demandPlan(command, "ORDER", "SUB"))
+                .isInstanceOf(BizException.class);
+        var mainOnly =
+                source(
+                        List.of(unit("SKU", "a", "MAIN", "1")),
+                        new MeasurementPolicy("EA", "COUNT", 0, null),
+                        null);
+        assertThat(mainOnly).isNotNull();
         var plan = service.demandPlan(command, "ORDER", "SUB");
-        assertThat(InventoryDemandPlanFacts.validate(plan).branches()).hasSize(2);
+        assertThat(InventoryDemandPlanFacts.validate(plan).branches()).hasSize(1);
         assertThat(
                         plan.branches().stream()
                                 .flatMap(branch -> branch.leaves().stream())

@@ -62,6 +62,8 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             AssertableApplicationContext context) { }
     void run(Consumer<Menus> action) {
         runner().withBean(FoodDataScopeRegistration.class, FoodDataScopeRegistration::new)
+                // 按「无订阅者」语义验证（866e3870f）：这里登记自己的仅归档路由，不用共享夹具的测试订阅者
+                .withPropertyValues("test.policy.subscriber=false")
                 .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
             var f = prepare(c);
             StorePolicyPublicationTest.createPolicyTables(f);

@@ -28,6 +28,7 @@ import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsSummary;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import tools.jackson.databind.ObjectMapper;
 
 class CoreGoodsCatalogQueryPortTest {
     @Test void skuLookupValidatesIdentityOwnerAndTransportWithoutRetry() {
@@ -63,7 +64,9 @@ class CoreGoodsCatalogQueryPortTest {
             exchange.getResponseBody().write(response);exchange.close();
         });server.start();
         try {
-            new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class).withPropertyValues("shop.food.enabled=true")
+            new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new).withPropertyValues("shop.food.enabled=true")
                     .withPropertyValues("shop.services.targets.PLATFORM=http://127.0.0.1:"+server.getAddress().getPort(),
                             "shop.services.internal-token=wire").run(c -> {
                         assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(GoodsCatalogQueryPort.class);
@@ -89,7 +92,9 @@ class CoreGoodsCatalogQueryPortTest {
         }
     }
     @Test void missingConfigurationAndEmptyResponseNeverBecomeEmptyOrSellableFacts() {
-        new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class).withPropertyValues("shop.food.enabled=true").run(c ->
+        new ApplicationContextRunner().withUserConfiguration(FoodCatalogClientConfiguration.class)
+                    // 生产 food-server 由 Spring Boot 自动配置 Jackson；这里只装了一个配置类，需显式给 ObjectMapper（库存投影端口要用）
+                    .withBean(ObjectMapper.class, ObjectMapper::new).withPropertyValues("shop.food.enabled=true").run(c ->
                 assertThatThrownBy(() -> c.getBean(GoodsCatalogQueryPort.class).getGoods("E","S","G"))
                         .isInstanceOf(ServiceCallException.class));
         var wrong=new CoreGoodsCatalogQueryPortImpl(() -> single(q -> new GoodsFact("G","OTHER","S","private",null,true,"APPROVED",0,List.of())));

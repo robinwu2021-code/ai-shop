@@ -50,7 +50,6 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
                 + "status VARCHAR(16))");
         f.sql().execute("CREATE TABLE fnb_modifier_component (" + common + "component_no VARCHAR(32) UNIQUE,"
                 + "combo_no VARCHAR(32),member_no VARCHAR(32),quantity DECIMAL(12,3),UNIQUE(combo_no,member_no))");
-        c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MODIFIER_CHANGED"));
         return f;
     }
 

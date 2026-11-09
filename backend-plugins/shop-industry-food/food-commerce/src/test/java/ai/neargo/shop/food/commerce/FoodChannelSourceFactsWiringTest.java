@@ -8,6 +8,7 @@ import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.spi.DiningChannelSourceFactsPort;
 import ai.neargo.shop.spi.commerce.ChannelOrderSourceEvidencePort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
+import ai.neargo.shop.food.spi.FoodMaterialSource;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -26,8 +27,8 @@ class FoodChannelSourceFactsWiringTest {
                         ChannelOrderSourceEvidencePort.class,
                         () -> mock(ChannelOrderSourceEvidencePort.class))
                 .withBean(ConfigRevisionService.class, () -> mock(ConfigRevisionService.class))
-                .withBean(
-                        MaterialCatalogQueryPort.class, () -> mock(MaterialCatalogQueryPort.class))
+                // b91bcc006 起配置依赖餐饮自己的 FoodMaterialSource，而不是全局的 MaterialCatalogQueryPort
+                .withBean(FoodMaterialSource.class, () -> () -> mock(MaterialCatalogQueryPort.class))
                 .withBean(ObjectMapper.class, ObjectMapper::new);
     }
 

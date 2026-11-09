@@ -1,5 +1,5 @@
 package ai.neargo.shop.food.config;
-import ai.neargo.shop.food.service.FoodMaterialSource;
+import ai.neargo.shop.food.spi.FoodMaterialSource;
 import ai.neargo.shop.food.port.FoodLocalMaterialCatalog;
 import ai.neargo.shop.food.port.LazyMaterialCatalogQueryPortImpl;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
