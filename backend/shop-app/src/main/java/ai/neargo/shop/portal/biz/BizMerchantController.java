@@ -344,7 +344,7 @@ public class BizMerchantController {
         var user = BizAuthController.personalUser();
         String userNo = user.userNo();
         // 校验先于建壳：市场或行业不对时什么都不建（TDD-注册地区与三步建店 AC6）
-        var created = merchantAdminPort.quickStart(quickStartCommand(userNo, marketFor(userNo, req), req));
+        var created = merchantAdminPort.quickStart(quickStartCommand(userNo, marketFor(userNo, req), req, industries()));
         /*
          * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
          * 解析的：那时这个人还没有任何主体，merchantNo 是空的。主体是刚刚在这个请求里
@@ -421,7 +421,12 @@ public class BizMerchantController {
         var authService = auth == null ? null : auth.getIfAvailable();
         String accountMarket = authService == null ? defaultMarket
                 : authService.accountMarket(userNo).trim().toUpperCase(Locale.ROOT);
-        return resolveMarket(accountMarket, markets.getIfAvailable(), req, otherBusinessType);
+        return resolveMarket(accountMarket, markets.getIfAvailable(), req, otherBusinessType, industries());
+    }
+
+    /** 行业表（V643）；未接入时为空，校验回落一对一默认映射 */
+    private List<MerchantQueryPort.IndustryRow> industries() {
+        return merchantQueryPort == null ? List.of() : merchantQueryPort.industries();
     }
 
     static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req) {
@@ -430,9 +435,14 @@ public class BizMerchantController {
 
     static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req,
                                 String otherBusinessType) {
+        return resolveMarket(accountMarket, markets, req, otherBusinessType, List.of());
+    }
+
+    static String resolveMarket(String accountMarket, MarketPort markets, QuickStartReq req,
+                                String otherBusinessType, List<MerchantQueryPort.IndustryRow> industries) {
         String requested = req.market() == null || req.market().isBlank() ? accountMarket : req.market();
         if (!accountMarket.equals(requested)) throw BizException.of(ErrorCode.BAD_REQUEST);
-        requireIndustry(req, otherBusinessType);
+        requireIndustry(req, otherBusinessType, industries);
         if (tooLong(req.addressDetail(), MAX_ADDRESS_DETAIL)) throw BizException.of(ErrorCode.BAD_REQUEST);
         requireCoordinates(req);
         if (markets != null && markets.find(requested).filter(MarketPort.MarketBrief::enabled).isEmpty())
@@ -449,7 +459,8 @@ public class BizMerchantController {
      *   <li>两级都是已有项：默认一对一映射，都必须等于经营类型（改动前的规则）</li>
      * </ul>
      */
-    private static void requireIndustry(QuickStartReq req, String otherBusinessType) {
+    private static void requireIndustry(QuickStartReq req, String otherBusinessType,
+                                        List<MerchantQueryPort.IndustryRow> industries) {
         String industry = req.industryCode();
         String sub = req.subIndustryCode();
         String type = req.businessTypeCode();
@@ -462,12 +473,42 @@ public class BizMerchantController {
                     && otherBusinessType != null && !otherBusinessType.isBlank()
                     && otherBusinessType.equals(type);
         } else if (BizFoundationController.OTHER.equals(sub)) {
-            ok = industry != null && industry.equals(type)
+            // 已登记行业：经营类型取行业表；未登记（旧形状）：行业即经营类型
+            var row = industryRow(industries, industry, null);
+            ok = industry != null && (row != null ? row.businessTypeCode() : industry).equals(type)
                     && filled(req.subIndustryText(), MAX_INDUSTRY_TEXT);
         } else {
-            ok = Objects.equals(industry, type) && Objects.equals(sub, type);
+            // 登记过的子行业（TDD-子行业与能力端验收 B4）：须属于该行业，经营类型须是子行业的；
+            // 未登记的按旧一对一形状（B5）：行业 = 子行业 = 经营类型
+            var row = industryRow(industries, industry, sub);
+            ok = row != null ? row.businessTypeCode().equals(type)
+                    : Objects.equals(industry, type) && Objects.equals(sub, type);
         }
         if (!ok) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    private static MerchantQueryPort.IndustryRow industryRow(List<MerchantQueryPort.IndustryRow> industries,
+                                                             String industry, String sub) {
+        if (industries == null || industry == null) return null;
+        return industries.stream()
+                .filter(r -> industry.equals(r.industryCode()) && Objects.equals(sub, r.subIndustryCode()))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * 门店要存的行业码（TDD-子行业与能力端验收 B4/B5）：登记过的两级都存；子行业「其他」只存行业；
+     * 旧一对一形状、顶层「其他」、没选都不存（回显时回落经营类型）。请求须已通过 {@link #requireIndustry}。
+     */
+    static List<String> storedIndustry(QuickStartReq req, List<MerchantQueryPort.IndustryRow> industries) {
+        String industry = req.industryCode();
+        String sub = req.subIndustryCode();
+        if (industry == null || BizFoundationController.OTHER.equals(industry)) return java.util.Arrays.asList(null, null);
+        if (BizFoundationController.OTHER.equals(sub)) {
+            return industryRow(industries, industry, null) != null ? java.util.Arrays.asList(industry, null)
+                    : java.util.Arrays.asList(null, null);
+        }
+        return industryRow(industries, industry, sub) != null ? java.util.Arrays.asList(industry, sub)
+                : java.util.Arrays.asList(null, null);
     }
 
     static final int MAX_LAT_E6 = 90_000_000;
@@ -490,6 +531,12 @@ public class BizMerchantController {
 
     /** 已校验的请求 → 建店命令。自填文字只在对应那一级是「其他」时才带上，其余情况不存 */
     static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req) {
+        return quickStartCommand(userNo, market, req, List.of());
+    }
+
+    static MerchantAdminPort.QuickStartCommand quickStartCommand(String userNo, String market, QuickStartReq req,
+                                                                 List<MerchantQueryPort.IndustryRow> industries) {
+        var stored = storedIndustry(req, industries);
         String industryText = BizFoundationController.OTHER.equals(req.industryCode()) ? trimmed(req.industryText())
                 : null;
         String subText = BizFoundationController.OTHER.equals(req.subIndustryCode()) ? trimmed(req.subIndustryText())
@@ -497,7 +544,8 @@ public class BizMerchantController {
         boolean located = req.latE6() != null && req.lngE6() != null;
         return new MerchantAdminPort.QuickStartCommand(userNo, req.storeName(), req.address(),
                 req.businessTypeCode(), market, industryText, subText, trimmed(req.addressDetail()),
-                located ? req.latE6() : null, located ? req.lngE6() : null, located ? req.coordSys() : null);
+                located ? req.latE6() : null, located ? req.lngE6() : null, located ? req.coordSys() : null,
+                stored.get(0), stored.get(1));
     }
 
     private static boolean filled(String text, int max) {

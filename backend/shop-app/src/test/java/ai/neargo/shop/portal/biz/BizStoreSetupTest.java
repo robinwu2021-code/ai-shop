@@ -16,6 +16,8 @@ import ai.neargo.shop.spi.platform.GeoPort;
 import ai.neargo.shop.user.service.AuthService;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import java.util.Locale;
 
 import java.util.List;
 import java.util.Map;
@@ -238,5 +240,105 @@ class BizStoreSetupTest {
         assertNull(mapped.industryText(), "不是「其他」时不存自填文字");
         assertNull(mapped.subIndustryText());
         assertNull(mapped.addressDetail());
+    }
+
+    // ---------------------------------------------------------------- TDD-子行业与能力端验收
+
+    static ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow row(String industry, String sub, String type,
+                                                                    String zh, String tw, int sort) {
+        return new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(industry, sub, type, zh, tw, null, sort);
+    }
+
+    static final List<ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow> ROWS = List.of(
+            row("FOOD", null, "FOOD", "餐饮", "餐飲", 1),
+            row("FOOD", "FOOD_BREAKFAST", "FOOD", "早餐店", "早餐店", 1),
+            row("FOOD", "FOOD_CAFE", "FOOD", "咖啡厅", "咖啡廳", 2),
+            row("RETAIL", null, "RETAIL", "零售", "零售", 2),
+            row("RETAIL", "RETAIL_CVS", "RETAIL", "便利店 / 超市", "便利商店 / 超市", 1),
+            row("SERVICE", null, "SERVICE", "服务业", "服務業", 3),
+            row("SERVICE", "SERVICE_HAIR", "SERVICE", "美发", "美髮", 1));
+
+    static final List<BusinessType> FOOD_AND_RETAIL =
+            List.of(new BusinessType("RETAIL", "零售", 3), new BusinessType("FOOD", "餐飲", 1));
+
+    @Test
+    @DisplayName("B1 两级树：只列已发布经营类型的子行业，行业下没有可用子行业就不列")
+    void b1StoreSetupListsRealSubIndustriesOfPublishedTypesOnly() {
+        var tw = markets(true).find("TW").orElseThrow();
+        var setup = BizFoundationController.storeSetup(tw, FOOD_AND_RETAIL, null, null, ROWS, Locale.TAIWAN);
+        var industries = setup.markets().getFirst().industries();
+        assertEquals(List.of("FOOD", "RETAIL"),
+                industries.stream().map(BizFoundationController.StoreSetupIndustry::industryCode).toList(),
+                "SERVICE 未发布，整个行业不列");
+        var food = industries.getFirst();
+        assertEquals("餐飲", food.displayName());
+        assertEquals(List.of("FOOD_BREAKFAST", "FOOD_CAFE"),
+                food.subIndustries().stream().map(BizFoundationController.StoreSetupSubIndustry::subIndustryCode)
+                        .toList());
+        var cafe = food.subIndustries().get(1);
+        assertEquals(List.of("咖啡廳", "FOOD", "餐飲", 1L),
+                List.of(cafe.displayName(), cafe.businessTypeCode(), cafe.businessTypeDisplayName(),
+                        cafe.catalogVersion()));
+    }
+
+    @Test
+    @DisplayName("B2 行业表为空：回落一对一默认映射，与改动前一致")
+    void b2EmptyCatalogFallsBackToTheDefaultMapping() {
+        var tw = markets(true).find("TW").orElseThrow();
+        assertEquals(BizFoundationController.storeSetup(tw, FOOD_AND_RETAIL, null, null),
+                BizFoundationController.storeSetup(tw, FOOD_AND_RETAIL, null, null, List.of(), Locale.TAIWAN));
+    }
+
+    @Test
+    @DisplayName("B3 显示名按语言：繁体取繁体、英文缺省回落简体、其余取简体")
+    void b3DisplayNamesFollowTheRequestLanguage() {
+        var cafe = row("FOOD", "FOOD_CAFE", "FOOD", "咖啡厅", "咖啡廳", 2);
+        assertEquals("咖啡廳", cafe.displayName(Locale.forLanguageTag("zh-TW")));
+        assertEquals("咖啡廳", cafe.displayName(Locale.forLanguageTag("zh-Hant-HK")));
+        assertEquals("咖啡厅", cafe.displayName(Locale.SIMPLIFIED_CHINESE));
+        assertEquals("咖啡厅", cafe.displayName(Locale.ENGLISH), "没有英文名时回落简体");
+        assertEquals("Cafe", new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(
+                "FOOD", "FOOD_CAFE", "FOOD", "咖啡厅", "咖啡廳", "Cafe", 2).displayName(Locale.ENGLISH));
+    }
+
+    static BizMerchantController.QuickStartReq pick(String type, String industry, String sub) {
+        return new BizMerchantController.QuickStartReq("店", "地址", type, "TW", industry, sub);
+    }
+
+    @Test
+    @DisplayName("B4/B5 建店校验：子行业须属于该行业、经营类型须是子行业的；旧形状与「其他」规则照旧")
+    void b4QuickStartValidatesSubIndustryAgainstTheCatalog() {
+        var tw = markets(true);
+        assertEquals("TW", BizMerchantController.resolveMarket("TW", tw, pick("FOOD", "FOOD", "FOOD_CAFE"), null, ROWS));
+        assertThrows(BizException.class, () -> BizMerchantController.resolveMarket("TW", tw,
+                pick("FOOD", "RETAIL", "FOOD_CAFE"), null, ROWS), "子行业不属于该行业");
+        assertThrows(BizException.class, () -> BizMerchantController.resolveMarket("TW", tw,
+                pick("RETAIL", "FOOD", "FOOD_CAFE"), null, ROWS), "经营类型不是子行业的");
+        assertThrows(BizException.class, () -> BizMerchantController.resolveMarket("TW", tw,
+                pick("FOOD", "FOOD", "FOOD_UNKNOWN"), null, ROWS), "未登记的子行业");
+        assertEquals("TW", BizMerchantController.resolveMarket("TW", tw, pick("FOOD", "FOOD", "FOOD"), null, ROWS),
+                "旧形状：行业 = 子行业 = 经营类型");
+        assertEquals("TW", BizMerchantController.resolveMarket("TW", tw,
+                new BizMerchantController.QuickStartReq("店", "地址", "FOOD", "TW", "FOOD", "OTHER", null, "饭团",
+                        null), null, ROWS), "已登记行业 + 子行业「其他」");
+        assertThrows(BizException.class, () -> BizMerchantController.resolveMarket("TW", tw,
+                new BizMerchantController.QuickStartReq("店", "地址", "RETAIL", "TW", "FOOD", "OTHER", null, "饭团",
+                        null), null, ROWS), "子行业「其他」时经营类型仍须是行业的");
+    }
+
+    @Test
+    @DisplayName("B4/B5 落库的行业码：登记的两级都存；子行业「其他」只存行业；旧形状与顶层「其他」都不存")
+    void b4StoredCodesFollowWhatWasActuallyChosen() {
+        assertEquals(java.util.Arrays.asList("FOOD", "FOOD_CAFE"),
+                BizMerchantController.storedIndustry(pick("FOOD", "FOOD", "FOOD_CAFE"), ROWS));
+        assertEquals(java.util.Arrays.asList("FOOD", null), BizMerchantController.storedIndustry(
+                new BizMerchantController.QuickStartReq("店", "地址", "FOOD", "TW", "FOOD", "OTHER", null, "饭团",
+                        null), ROWS));
+        assertEquals(java.util.Arrays.asList(null, null),
+                BizMerchantController.storedIndustry(pick("FOOD", "FOOD", "FOOD"), ROWS));
+        assertEquals(java.util.Arrays.asList(null, null),
+                BizMerchantController.storedIndustry(other("RETAIL", "花艺", "永生花"), ROWS));
+        assertEquals(java.util.Arrays.asList(null, null),
+                BizMerchantController.storedIndustry(pick(null, null, null), ROWS));
     }
 }

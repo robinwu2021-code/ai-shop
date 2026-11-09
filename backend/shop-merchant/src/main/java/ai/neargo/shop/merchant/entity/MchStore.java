@@ -192,6 +192,12 @@ public class MchStore extends BaseEntity {
     /** 同上，子业态选「其他」时自填的那一级（V629，≤20 字） */
     private String subIndustryText;
 
+    /** 建店选的行业码（V643，TDD-子行业与能力端验收 B4）；存量门店或顶层「其他」为空 */
+    private String industryCode;
+
+    /** 建店选的子行业码（V643）；子行业「其他」时为空 */
+    private String subIndustryCode;
+
     /** JSON 数组：主推商品 goods_no，<b>有序</b>。顺序是门面的编排，不是商品自身属性。 */
     private String featured;
 

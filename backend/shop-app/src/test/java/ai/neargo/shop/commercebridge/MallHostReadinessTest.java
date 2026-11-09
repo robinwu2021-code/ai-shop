@@ -108,4 +108,53 @@ class MallHostReadinessTest {
                                                 "proof")),
                                 Map.of()));
     }
+
+    private static BusinessEndDeploymentOption capability(String code, String entitlement, String route) {
+        return new BusinessEndDeploymentOption(
+                "ume-" + code, code, code, entitlement, List.of("FOOD"), "biz-app", route, "ume-acceptance-2026-11");
+    }
+
+    /** TDD-子行业与能力端验收 A1：行业 / 营销 / 连锁码是商户 App 里的功能，挂 BIZ 路由验收 */
+    @Test
+    void capabilityEndsRideOnTheBizRouteAndCanBeVerified() {
+        for (String code : List.of("END_RETAIL", "END_FNB", "END_SERVICE", "END_MARKETING", "END_CHAIN")) {
+            var option = capability(code, code, "commerce-route-v1:BIZ");
+            var registry = new ShopMallDeploymentRegistry(List.of(option), Map.of());
+            assertTrue(
+                    registry.verified(
+                            "MAIN",
+                            new BusinessEndDraft(
+                                    code,
+                                    code,
+                                    code,
+                                    EndScope.STORE,
+                                    List.of("FOOD"),
+                                    ReleaseStatus.VERIFIED,
+                                    false,
+                                    false,
+                                    true,
+                                    "biz-app",
+                                    "commerce-route-v1:BIZ",
+                                    "ume-acceptance-2026-11",
+                                    0,
+                                    "publish")),
+                    code);
+        }
+    }
+
+    /** A2：白名单之外、挂 POS 路由、码与权益码不一致都拒绝 */
+    @Test
+    void capabilityEndsStayWithinTheirContract() {
+        for (var bad :
+                List.of(
+                        capability("END_LOYALTY", "END_LOYALTY", "commerce-route-v1:BIZ"),
+                        capability("END_FNB", "END_FNB", "commerce-route-v1:POS"),
+                        capability("END_FNB", "END_RETAIL", "commerce-route-v1:BIZ"),
+                        capability(CommerceRoutePolicy.POS, CommerceRoutePolicy.POS, "commerce-route-v1:BIZ"))) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> new ShopMallDeploymentRegistry(List.of(bad), Map.of()),
+                    bad.code() + " via " + bad.routePolicyRef());
+        }
+    }
 }

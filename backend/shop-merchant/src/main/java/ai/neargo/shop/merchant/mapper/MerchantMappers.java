@@ -799,6 +799,10 @@ public final class MerchantMappers {
     public interface MchStoreMapper extends BaseMapper<MchStore> {
     }
 
+    /** 平台行业与子行业（V643） */
+    public interface SysStoreIndustryMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysStoreIndustry> {
+    }
+
     /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
     public interface MchAccountMapper extends BaseMapper<MchAccount> {
         /** Personnel account linking and suspension serialize on the existing canonical membership row. */

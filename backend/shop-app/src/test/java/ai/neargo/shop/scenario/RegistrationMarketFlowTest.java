@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import tools.jackson.databind.JsonNode;
@@ -169,6 +170,35 @@ class RegistrationMarketFlowTest {
         JsonNode store = json.readTree(body).path("data").path(0).path("stores").path(0);
         assertThat(store.path("industryText").asString()).as(body).isEqualTo("花艺");
         assertThat(store.path("subIndustryText").asString()).as(body).isEqualTo("永生花");
+    }
+
+    @Test
+    @DisplayName("TDD-子行业与能力端验收 B4/B6 建店存下行业与子行业码，/biz/stores/mine 原样带回；存量门店回落经营类型")
+    void subIndustryCodesAreStoredAndReadBack() throws Exception {
+        var mvc = mvc();
+        String phone = probePhone();
+        login(mvc, phone, "CN");
+        merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(userNoOf(phone), "早安小馆", "中山路 2 号",
+                null, null, null, null, null, null, null, null, "RETAIL", "RETAIL_CVS"));
+        assertThat(jdbc.queryForMap("select s.industry_code, s.sub_industry_code from mch_store s"
+                + " join mch_account a on a.entity_no = s.entity_no where a.user_no=?", userNoOf(phone)))
+                .containsEntry("industry_code", "RETAIL").containsEntry("sub_industry_code", "RETAIL_CVS");
+
+        String token = login(mvc, phone, null);
+        String body = mvc.perform(get("/biz/stores/mine").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode store = json.readTree(body).path("data").path(0).path("stores").path(0);
+        assertThat(store.path("industryCode").asString()).as(body).isEqualTo("RETAIL");
+        assertThat(store.path("subIndustryCode").asString()).as(body).isEqualTo("RETAIL_CVS");
+
+        jdbc.update("update mch_store set industry_code=null, sub_industry_code=null where entity_no ="
+                + " (select entity_no from mch_account where user_no=?)", userNoOf(phone));
+        body = mvc.perform(get("/biz/stores/mine").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        store = json.readTree(body).path("data").path(0).path("stores").path(0);
+        // 测试环境不走 commerce 建店，经营类型为空；回落的口径是「等于经营类型」，与改动前一致
+        assertThat(List.of(store.path("industryCode"), store.path("subIndustryCode")))
+                .as("存量门店没存码：回落经营类型 " + body).containsOnly(store.path("businessTypeCode"));
     }
 
     @Test

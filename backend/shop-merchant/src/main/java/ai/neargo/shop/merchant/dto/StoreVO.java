@@ -52,7 +52,8 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                       /*
                        * 以下 7 项是 B 端建店（TDD-B端建店默认经营市场 AC5）用的门店经营上下文，均可为空：
                        * market 取门店所属主体（mch_entity.market），currency / currencyScale / timeZone 取 sys_market；
-                       * businessTypeCode 取 mch_store，industryCode / subIndustryCode 按默认映射等于经营类型。
+                       * businessTypeCode 取 mch_store；industryCode / subIndustryCode 取建店存下的码（V643），
+                       * 没存时按默认映射等于经营类型。
                        * App 建店后按「店号 + 主体号 + 市场」认出新店，缺 market 会被当成「没建成」。
                        */
                       String market,
@@ -100,8 +101,9 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
      * 自填过文字的那一级报 {@link #OTHER} —— 与建店时提交的一致，端上回显不用自己猜。
      */
     public StoreVO withMarket(String market, String currency, Integer currencyScale, String timeZone) {
-        String industry = industryText != null ? OTHER : businessTypeCode;
-        String sub = subIndustryText != null ? OTHER : businessTypeCode;
+        // 自填的那一级报 OTHER；建店存了码（V643）就用存的，没存（存量门店）回落经营类型 —— 与改动前一致
+        String industry = industryText != null ? OTHER : industryCode != null ? industryCode : businessTypeCode;
+        String sub = subIndustryText != null ? OTHER : subIndustryCode != null ? subIndustryCode : businessTypeCode;
         return new StoreVO(storeNo, name, address, isDefault, status, payMerchantNo, payReady, staffCount,
                 planSuspended, rating, ratingCount, businessMode, selfOperated, slug, shareUrl,
                 market, currency, currencyScale, timeZone, industry, sub, businessTypeCode,

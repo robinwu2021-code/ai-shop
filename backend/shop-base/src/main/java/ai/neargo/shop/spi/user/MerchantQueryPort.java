@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.user;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -390,7 +391,43 @@ public interface MerchantQueryPort {
      *
      * @param market 主体 {@code mch_entity.market} 原值；未填为空，<b>不回落 CN</b> —— 核验要的是事实
      */
-    record StoreProfile(String storeNo, String entityNo, String name, String address, String market) {
+    /**
+     * @param industryCode    门店建店时选的行业（TDD-子行业与能力端验收 B4）；存量门店或选「其他」时为空
+     * @param subIndustryCode 门店选的子行业；同上
+     */
+    record StoreProfile(String storeNo, String entityNo, String name, String address, String market,
+                        String industryCode, String subIndustryCode) {
+        /** 没有行业码的旧形状 */
+        public StoreProfile(String storeNo, String entityNo, String name, String address, String market) {
+            this(storeNo, entityNo, name, address, market, null, null);
+        }
+    }
+
+    /**
+     * 平台行业与子行业（{@code sys_store_industry}，TDD-子行业与能力端验收 B1–B3）。
+     *
+     * @param subIndustryCode  为空 = 行业本身那一行
+     * @param businessTypeCode 对应经营类型：子行业决定建店的经营类型；不影响方案
+     */
+    record IndustryRow(String industryCode, String subIndustryCode, String businessTypeCode,
+                       String nameZh, String nameTw, String nameEn, int sort) {
+        /** 繁体（zh-TW / zh-HK / zh-MO / Hant）取繁体名，英文取英文名，其余与缺省都取简体 */
+        public String displayName(java.util.Locale locale) {
+            if (locale != null && "zh".equals(locale.getLanguage())
+                    && ("Hant".equals(locale.getScript())
+                    || java.util.Set.of("TW", "HK", "MO").contains(locale.getCountry()))) {
+                return nameTw == null || nameTw.isBlank() ? nameZh : nameTw;
+            }
+            if (locale != null && "en".equals(locale.getLanguage()) && nameEn != null && !nameEn.isBlank()) {
+                return nameEn;
+            }
+            return nameZh;
+        }
+    }
+
+    /** 启用的行业与子行业，按行业、子行业排序；未接入时为空（store-setup 回落一对一默认映射） */
+    default List<IndustryRow> industries() {
+        return List.of();
     }
 
     /** 门店号 → 门店资料；门店不存在为空。 */
