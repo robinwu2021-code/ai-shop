@@ -8,6 +8,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AllowanceQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.DetailQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
+import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort.UseFact;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.CancelUse;
@@ -89,7 +90,7 @@ public class EntitlementServiceUseCoordinatorImpl implements EntitlementServiceU
         if (order.command() == null && List.of("CREATED", "PREVIEWED").contains(order.status())) {
             return view(operation, State.WAIT_AUTH);
         }
-        return pay.query(order.context(), entity, operation);
+        return originalObservation(order);
     }
     @Override public HoldView recover(EntitlementContext ctx, String entity, String operation) {
         var order = orders.findOperation(ctx.tenantNo(), entity, operation);
@@ -106,13 +107,16 @@ public class EntitlementServiceUseCoordinatorImpl implements EntitlementServiceU
             if (List.of("CANCEL_DECIDED", "RELEASED").contains(order.status())) {
                 var released = pay.release(order.context(), new CancelUse(order.operationNo(), order.fact().source(),
                         order.decision()));
+                if (!order.operationNo().equals(released.operationNo())) return processing(order);
                 orders.acknowledge(order.context(), order.fact().entityNo(), released); return released;
             }
             if ("PENDING".equals(order.status())) {
                 var held = pay.prepare(order.context(), order.command());
-                if (held.status() != State.HELD && held.status() != State.COMMITTED) return processing(order);
+                if (!order.operationNo().equals(held.operationNo())
+                        || (held.status() != State.HELD && held.status() != State.COMMITTED)) return processing(order);
                 var fact = facts.query(order.context(), order.fact().entityNo(), order.operationNo());
-                if (fact.operation().status() != State.HELD && fact.operation().status() != State.COMMITTED) {
+                if (!matchesOriginal(order, fact)
+                        || (fact.operation().status() != State.HELD && fact.operation().status() != State.COMMITTED)) {
                     return processing(order);
                 }
                 order = orders.accept(order.context(), order.fact().entityNo(), fact);
@@ -121,7 +125,7 @@ public class EntitlementServiceUseCoordinatorImpl implements EntitlementServiceU
                 pay.commit(order.context(), new UseDecision(order.operationNo(), order.fact().source(),
                         order.decision()));
             }
-            var result = pay.query(order.context(), order.fact().entityNo(), order.operationNo());
+            var result = originalObservation(order);
             if (result.status() != State.COMMITTED) return processing(order);
             orders.acknowledge(order.context(), order.fact().entityNo(), result); return result;
         } catch (BizException failure) {
@@ -132,6 +136,17 @@ public class EntitlementServiceUseCoordinatorImpl implements EntitlementServiceU
             }
             return processing(order);
         } catch (RuntimeException unknown) { return processing(order); }
+    }
+    private HoldView originalObservation(ServiceOrderSnapshot order) {
+        var fact = facts.query(order.context(), order.fact().entityNo(), order.operationNo());
+        return matchesOriginal(order, fact) ? fact.operation() : processing(order);
+    }
+
+    private static boolean matchesOriginal(ServiceOrderSnapshot order, UseFact fact) {
+        if (!order.operationNo().equals(fact.operation().operationNo())) return false;
+        if (fact.operation().status() != State.HELD && fact.operation().status() != State.COMMITTED) return true;
+        return order.command() != null && order.command().equals(fact.command())
+                && order.fact().orderSnapshotHash().equals(fact.orderSnapshotHash());
     }
     private static boolean definitive(BizException failure) {
         return switch (failure.errorCode()) {
