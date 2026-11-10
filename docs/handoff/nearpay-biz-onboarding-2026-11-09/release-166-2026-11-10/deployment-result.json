@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "opsDeployed": false,
+  "inventoryReplaced": false,
+  "target": "166",
+  "prepare": {
+    "backup": "/data0/app/n1-n2-backups/aaf7a862",
+    "stopped": [
+      "ai-shop-api",
+      "nearpay-prod"
+    ]
+  },
+  "cutover": {
+    "checks": {
+      "apiHealth": 200,
+      "opsHealth": 200,
+      "inventoryHealth": 200,
+      "hostClaimUnauthenticated": 401,
+      "payClaimUnauthenticated": 401
+    },
+    "oldApiContainer": "ai-shop-api-before-aaf7a862",
+    "apiEnvironmentLoaded": true,
+    "newSourceClaimsEnabled": false,
+    "channelClaimsEnabled": true,
+    "opsRestarted": false
+  }
+}

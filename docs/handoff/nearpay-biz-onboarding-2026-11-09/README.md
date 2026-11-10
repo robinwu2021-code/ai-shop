@@ -1,3 +1,5 @@
+> **166 发布更新（2026-11-10）**：ai-shop API 与独立 near-pay 已部署；库存核验保留现版，OPS 未重启，App 未发包。提交、迁移与回退证据见 [166 发布记录](./release-166-2026-11-10/README.md)。下文“未部署”保留为当时历史记录。
+
 # B 端进件经 ai-shop 接入 near-pay：开发交接
 
 > **本批 N1/N2 已本地验收**：[N1 认领与恢复](./n1-local-acceptance-2026-11-10/README.md)、[N2 独立PAY认领关联](./n2-local-acceptance-2026-11-10/README.md)。默认关闭新增入口，保留现有未提交改动，166 未部署。

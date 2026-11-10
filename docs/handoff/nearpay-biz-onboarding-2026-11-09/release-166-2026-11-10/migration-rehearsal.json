@@ -1,0 +1,12 @@
+{
+  "host": {
+    "exit": 0,
+    "target": "647",
+    "log": "/tmp/n1-n2-aaf7a862/host-rehearsal-migration.log"
+  },
+  "pay": {
+    "exit": 0,
+    "target": "79",
+    "log": "/tmp/n1-n2-aaf7a862/pay-rehearsal-migration.log"
+  }
+}

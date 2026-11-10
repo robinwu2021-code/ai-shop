@@ -1,0 +1,14 @@
+{
+  "pay": {
+    "rehearsal": "n1n2_pay_aaf7a862",
+    "bytes": 7888905,
+    "sha256": "3035ddc981d6ca2cf0c5cb2854cb747bb36764b2eeca91795b30c92e01f751f1",
+    "backup": "/data0/backups/n1-n2-aaf7a862/nearpay_prod.sql.gz"
+  },
+  "host": {
+    "rehearsal": "n1n2_host_aaf7a862",
+    "bytes": 301364,
+    "sha256": "198fca66ee37f62c2b81c6928fe29a9f200fc8845f40974a22bb2a8c10a4d6d2",
+    "backup": "/data0/backups/n1-n2-aaf7a862/ai_shop_ume.sql.gz"
+  }
+}
