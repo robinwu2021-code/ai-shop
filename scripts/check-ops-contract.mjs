@@ -39,6 +39,7 @@ const shape = (p) => p.replace(/[:{]\w+\}?/g, "*").replace(/\/$/, "") || "/";
  * gen-api-index.mjs 里那份目录清单漏了 shop-base 与 shop-notify —— 漏扫的后果不是
  * 报错，是把「后端明明有」算成「零实现」，然后有人照着这张表去补一个已经存在的接口。
  */
+// Include native ai.neargo.commerce handlers as well as host ai.neargo.shop handlers.
 function backendRoutes() {
   const out = new Set();
   const walk = (d) => {
@@ -61,14 +62,14 @@ function backendRoutes() {
     }
   };
   for (const m of readdirSync(join(ROOT, "backend"))) {
-    const d = join(ROOT, "backend", m, "src/main/java/ai/neargo/shop");
+    const d = join(ROOT, "backend", m, "src/main/java/ai/neargo");
     if (existsSync(d)) walk(d);
     // 分组模块（backend/pay/pay-portal、backend/secret/*）：多一层目录。此前只扫一层，
     // 于是 /pay-ops/v1 的端点全被报成「前端在调、后端没有」
     const group = join(ROOT, "backend", m);
     if (!statSync(group).isDirectory()) continue;
     for (const sub of readdirSync(group)) {
-      const sd = join(group, sub, "src/main/java/ai/neargo/shop");
+      const sd = join(group, sub, "src/main/java/ai/neargo");
       if (existsSync(sd)) walk(sd);
     }
   }
