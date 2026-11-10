@@ -33,6 +33,14 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     /** 配送半径默认 3km：「先跑起来再说」，而不是 0（那等于谁都送不到）。 */
     private static final int DEFAULT_RADIUS_M = 3000;
 
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) { this.ownership=ownership; }
+    private void lockOwnership(String entity,String store) {
+        if(store==null || store.isBlank()) ownership.lockEntityAndCheck("MAIN",entity);
+        else ownership.lockAndCheck("MAIN",entity,store);
+    }
+
     private final MerchantStoreCreation commerce;
     private final MchStoreMapper storeMapper;
     private final PayMerchantMirror payMirror;
@@ -129,6 +137,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public StoreProfileVO saveBanner(String merchantNo, String storeNo, String bannerUrl) {
+        lockOwnership(merchantNo, storeNo);
         MchStore store = row(merchantNo, storeNo);
         if (store == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -149,6 +158,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Transactional
     public StoreProfileVO saveAnnouncement(String merchantNo, String storeNo, String announcement, Long until,
                                            List<String> alsoStoreNos) {
+        lockOwnership(merchantNo, storeNo);
         MchStore store = row(merchantNo, storeNo);
         if (store == null) {
             // 还没建过门店就改公告：这条路只在异常状态下走得到，直接拒比默默建一行安全
@@ -176,6 +186,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     /** 写一家店的公告：正文、有效期、常用三样一起，别处不动 */
     private void applyAnnouncement(MchStore store, String announcement, Long until) {
+        lockOwnership(store.getEntityNo(), store.getStoreNo());
         stampAnnouncedAt(store, announcement);
         store.setAnnouncement(announcement);
         store.setAnnouncementUntil(until);
@@ -207,6 +218,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public StoreProfileVO dropRecentAnnouncement(String merchantNo, String storeNo, String text) {
+        lockOwnership(merchantNo, storeNo);
         MchStore store = row(merchantNo, storeNo);
         if (store == null || text == null || text.isBlank()) {
             return profile(merchantNo, storeNo);
@@ -228,6 +240,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public StoreProfileVO save(String merchantNo, String storeNo, SaveCommand cmd) {
+        lockOwnership(merchantNo, storeNo);
         /*
          * 先过值域与一期启用白名单，再谈默认值。
          *
@@ -390,6 +403,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
      * <p>读、删、插都带上 {@code storeNo}（V381）：别的门店那一份一行都不碰。
      */
     private void replaceAreas(String merchantNo, String storeNo, List<AreaCommand> areas, String onlyLevel) {
+        lockOwnership(merchantNo, storeNo);
         List<MchServiceArea> current = DataScopeContext.executeWithoutScope(() ->
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                         .eq(MchServiceArea::getEntityNo, merchantNo)
@@ -659,6 +673,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public void syncCommunities(String merchantNo, List<String> communityNos) {
+        ownership.lockEntityAndCheck("MAIN", merchantNo);
         if (communityNos == null) {
             return;
         }
@@ -667,6 +682,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     }
 
     private void syncCommunities(String merchantNo, String storeNo, List<String> communityNos) {
+        lockOwnership(merchantNo, storeNo);
         if (communityNos == null) {
             return;
         }
@@ -738,6 +754,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @org.springframework.transaction.annotation.Transactional
     public DeliveryRuleVO saveDeliveryRule(String merchantNo, String storeNo, DeliveryRuleVO rule) {
+        lockOwnership(merchantNo, storeNo);
         if (rule == null || rule.radius() <= 0
                 || rule.minOrderMinor() < 0 || rule.feeMinor() < 0 || rule.freeThresholdMinor() < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

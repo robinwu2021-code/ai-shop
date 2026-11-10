@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -55,6 +59,12 @@ import java.util.stream.Collectors;
  */
 @Service
 public class OfflineRecordServiceImpl implements OfflineRecordService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     /** 补记与更正 / 作废的窗口（已拍板 D4、D7）：门店市场时区「今天 − 31 天」00:00 起。 */
     private static final int WINDOW_DAYS = 31;
 
@@ -255,6 +265,7 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
 
     private OrdOfflineRecord insert(
             Scope scope, RecordCmd cmd, String keyHash, String requestHash, Instant receivedAt, Instant now) {
+        ownershipWrites.lockAndCheck("MAIN", scope.entityNo(), scope.storeNo());
         OrdOfflineRecord row = new OrdOfflineRecord();
         row.setTenantNo("MAIN");
         row.setRecordNo(BizKey.next(BizKey.OFFLINE_RECORD));

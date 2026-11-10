@@ -10,7 +10,7 @@ import tools.jackson.databind.ObjectMapper;
         afterName = "org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration")
 @ConditionalOnBeautyEnabled
 @ConditionalOnBean(ObjectMapper.class)
-@Import({BeautyWriteGuardConfiguration.class, BeautyPolicyConfiguration.class,
+@Import({ai.neargo.shop.beauty.port.BeautyStoreRelinkFactsPortImpl.class, BeautyWriteGuardConfiguration.class, BeautyPolicyConfiguration.class,
         BeautyDefinitionConfiguration.class, BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class})
 public class BeautyBusinessAutoConfiguration {
 }

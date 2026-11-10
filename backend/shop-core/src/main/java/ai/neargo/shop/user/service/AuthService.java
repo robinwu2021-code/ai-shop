@@ -48,6 +48,15 @@ public interface AuthService {
      */
     LoginResult login(LoginCommand req);
 
+    record VerifiedPrincipal(String type, String value, String userNo) {}
+
+    /** Verify only: no account, credential or session writes. */
+    VerifiedPrincipal verify(LoginCommand req);
+
+    /** Trusted verified credential entry; never verifies a consumed OTP twice. */
+    ai.neargo.shop.user.entity.UsrAccount enterVerified(VerifiedPrincipal principal, Boolean agreed, String marketCode);
+
+
     /** Verified phone chooses the canonical account; requires a valid mini session, never moves credentials/assets. */
     WxPhoneLoginResult loginByWxPhone(String currentToken, WxPhoneLoginCommand req);
 

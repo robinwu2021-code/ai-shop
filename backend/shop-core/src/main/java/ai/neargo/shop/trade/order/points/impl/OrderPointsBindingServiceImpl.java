@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.order.points.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper;
@@ -19,6 +23,10 @@ import java.util.*;
 @Service
 @Transactional("transactionManager")
 public class OrderPointsBindingServiceImpl implements OrderPointsBindingService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final OrderPointsBindingMapper mapper;
     private final PointsIntegrationPolicyService policies;
     private final ObjectProvider<CompletionGuard> guards;
@@ -36,6 +44,7 @@ public class OrderPointsBindingServiceImpl implements OrderPointsBindingService 
     @Override
     public Binding admit(Admission c) {
         validate(c);
+        ownershipWrites.lockAndCheck("MAIN", c.merchantNo(), c.storeNo());
         return DataScopeContext.executeWithoutScope(
                 () -> {
                     var policy = policies.policy(c.storeNo(), c.scene());

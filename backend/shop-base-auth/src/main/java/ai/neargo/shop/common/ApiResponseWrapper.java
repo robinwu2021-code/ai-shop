@@ -65,7 +65,7 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
      * 支付接入层的开放 API 与收银台（ADR-044；安全规范 §5.2）：它们有自己的响应体
      * {@code {code, message, data, requestId}} 与真 HTTP 状态，是对第三方公开的契约，不能被内部信封再包一层。
      */
-    private static final String[] PAY_PORTAL_PATH_PREFIXES = {"/open/pay/", "/checkout/"};
+    private static final String[] PAY_PORTAL_PATH_PREFIXES = {"/open/pay/", "/checkout/", "/biz/pay/v2/"};
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {

@@ -208,6 +208,7 @@ public enum ErrorCode {
     ZIP_TOO_LARGE(10472, "err.zip.too_large"),
     /** 商家画的配送范围多边形不合法（顶点太少/太多、坐标越界、退化成零面积）。ADR-034 */
     SERVICE_AREA_POLYGON_INVALID(10473, "err.service_area.polygon_invalid"),
+    LOGIN_TICKET_INVALID(10474, "err.auth.login_ticket_invalid"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。

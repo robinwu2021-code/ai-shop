@@ -25,10 +25,12 @@ class SelfRenameTest {
     private final MerchantMappers.MchAccountMapper staffMapper = mock(MerchantMappers.MchAccountMapper.class);
 
     private MerchantStaffServiceImpl svc() {
-        return new MerchantStaffServiceImpl(staffMapper, mock(TokenStores.class),
+        var service = new MerchantStaffServiceImpl(staffMapper, mock(TokenStores.class),
                 mock(MerchantMappers.MchStoreMapper.class), mock(MerchantMappers.MchStoreRoleMapper.class),
                 mock(MerchantMappers.MchStaffLogMapper.class), mock(MerchantMappers.MchRoleMapper.class),
                 mock(StaffAuditLogger.class), mock(TokenStore.class), mock(OtpStore.class));
+        service.setOwnership(mock(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class));
+        return service;
     }
 
     private static MchAccount account(String displayName) {

@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
@@ -149,6 +151,12 @@ import tools.jackson.databind.SerializationFeature;
 @Service
 public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService,
                 CheckoutOrderWriter {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     @Autowired(required = false) private IndustryOrderSourceMapper industryOrderSources;
     /** 支付单（支付服务 I3）：去支付先建一张，通道尝试挂在它下面。没装（独立形态未接上）时照旧走原路 */
     @Autowired(required = false) private PaymentPort paymentPort;
@@ -2295,6 +2303,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
         var group = pricing.group();
         var storeOfMerchant = pricing.stores();
+        // All ownership roots precede stock/order/coupon locks; shared readers serialize with claim.
+        split.groups().stream().map(Group::merchantNo).distinct().sorted()
+                .forEach(entity -> ownershipWrites.lockEntityAndCheck("MAIN", entity));
+        split.groups().stream().sorted(java.util.Comparator.comparing(Group::merchantNo)
+                .thenComparing(g -> java.util.Objects.toString(storeOfMerchant.get(g.key()), "")))
+                .forEach(g -> {
+                    String store = storeOfMerchant.get(g.key());
+                    if (store != null && !store.isBlank()) ownershipWrites.lockAndCheck("MAIN", g.merchantNo(), store);
+                });
         String payMode = pricing.payMode();
         String clientScene = pricing.clientScene();
         var pointDecisions = pricing.pointDecisions();

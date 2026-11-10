@@ -1,5 +1,9 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
@@ -43,6 +47,12 @@ import java.util.Map;
  */
 @Service
 public class PmtCouponServiceImpl implements CouponService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     private CoreMarketingDocumentNumbers documentNumbers;
     @org.springframework.beans.factory.annotation.Autowired
     public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
@@ -268,6 +278,7 @@ public class PmtCouponServiceImpl implements CouponService {
             // 定向券、到店券不能自己领：它们的对象是商家选的，不是谁点到谁拿
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         if (!PmtCoupon.ACTIVE.equals(c.getStatus()) || !inWindow(c, now)) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
@@ -366,11 +377,13 @@ public class PmtCouponServiceImpl implements CouponService {
     }
 
     private CouponVO saveNumbered(String entityNo, CouponSaveCmd cmd, String operatorNo) {
+        ownershipWrites.lockEntityAndCheck("MAIN", entityNo);
         PmtCoupon c = cmd.couponNo() == null || cmd.couponNo().isBlank()
                 ? null : require(entityNo, cmd.couponNo());
         boolean create = c == null;
         if (!create) {
-            sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+            if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
             // 「发行量不能改到低于已领」要按加锁之后的已领数判：读行与加锁之间可能有人领走了几张
             c.setReceivedCount(lockedRow(c.getCouponNo()).getReceivedCount());
         }
@@ -548,6 +561,7 @@ public class PmtCouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         PmtCoupon c = require(entityNo, couponNo);
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         // 已结束不可复活：券的有效期与预算都是按那个终点算过的
         if (PmtCoupon.ENDED.equals(c.getStatus())) {
@@ -577,7 +591,8 @@ public class PmtCouponServiceImpl implements CouponService {
         // issueNumbered rechecks the same source under the final write transaction.
         documentNumbers.transaction(Map.of(), () -> {
             PmtCoupon candidate = require(entityNo, couponNo);
-            sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
+            if (candidate.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", candidate.getEntityNo());
+        sourceFence.requireWritable(candidate.getTenantNo(), SourceSystem.PMT, candidate.getCouponNo(), false);
             if (!PmtCoupon.ACTIVE.equals(candidate.getStatus())) {
                 throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
             }
@@ -599,6 +614,7 @@ public class PmtCouponServiceImpl implements CouponService {
         boolean byItems = audiences != null && !audiences.isEmpty();
 
         PmtCoupon c = require(entityNo, couponNo);
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
         /*
          * 余量与预算按**加锁之后**的已领数算。上面那次读在锁之前：另一批在这中间发完、提交，

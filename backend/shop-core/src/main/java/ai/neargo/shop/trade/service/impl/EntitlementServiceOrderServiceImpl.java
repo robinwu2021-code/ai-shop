@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.hash;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.sourceHash;
 import static ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.orderNo;
@@ -67,6 +71,10 @@ import tools.jackson.databind.ObjectMapper;
 /** A performed service and its consent are core facts. Resource preparation and consumption stay in pay. */
 @Service
 public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrderService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final EntitlementServiceOrderMapper orders;
     private final EntitlementAuthorizationMapper authorizations;
     private final CustomerIdentityPort customers;
@@ -122,6 +130,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
             List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder) {
         if (key == null || key.isBlank() || key.length() > 128) badRequest();
+        ownershipWrites.lockAndCheck(ctx.tenantNo(), entity, storeNo);
         String no = orderNo(ctx, entity, key, json);
         var previous = orders.find(ctx.tenantNo(), no);
         if (previous != null) return replay(previous, ctx, entity, storeNo, payload);

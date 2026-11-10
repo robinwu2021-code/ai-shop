@@ -50,6 +50,9 @@ class BizEndpointPermTest {
                     "/biz/geo/estates",
                     "/biz/geo/estates/counts",
                     "/biz/auth/login",
+                    "/biz/auth/identities",
+                    "/biz/auth/identities/enter",
+                    "/biz/auth/identities/mine",
                     "/biz/auth/otp/send",
                     // 邮箱验证码（ADR-051）：与短信验证码同性质 —— 登录前发码，作用对象是填的那个邮箱
                     "/biz/auth/email-otp/send",
@@ -60,10 +63,29 @@ class BizEndpointPermTest {
                     // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
                     // 而他一个 biz:* 都可能没有
                     "/biz/auth/password",
+                    // near-pay BIZ: fresh host account authentication; all payment membership,
+                    // action and store scope decisions belong to near-pay, never local biz:*.
+                    "/biz/auth/session",
+                    "/biz/pay/v2/memberships",
+                    "/biz/pay/v2/capability-progress",
+                    "/biz/pay/v2/onboardings",
+                    "/biz/pay/v2/onboardings/{no}",
+                    "/biz/pay/v2/onboardings/{no}/draft",
+                    "/biz/pay/v2/onboardings/{no}/draft/confirm",
+                    "/biz/pay/v2/onboardings/{no}/newebpay-materials",
+                    "/biz/pay/v2/onboardings/{no}/draft/commands/{requestNo}",
+                    "/biz/pay/v2/onboardings/{no}/readiness",
+                    "/biz/pay/v2/onboardings/{no}/files",
+                    "/biz/pay/v2/onboardings/{no}/files/{fileNo}",
+                    "/biz/pay/v2/onboardings/{no}/cancel",
                     // 入驻链路：申请人此刻还没有 merchantNo，一律 403 的话被驳回的人
                     // 就永远看不到驳回原因，闭环在这里断掉
                     "/biz/merchant/apply",
                     "/biz/merchant/profile",
+                    // Original ownership command recovery is bound to authenticated USR+owner, without old store scope.
+                    "/biz/merchant/store-claims/by-request/{requestNo}",
+                    "/biz/merchant/store-claims/{claimNo}",
+                    "/biz/merchant/store-claims/{claimNo}/resume",
                     "/biz/merchant/display-name",
                     /*
                      * 补勾《商家服务协议》（三期）。与上面同一条理由，而且更硬：
@@ -692,7 +714,18 @@ class BizEndpointPermTest {
                     put("/biz/merchant/pay-channel", BizPerms.FINANCE);
                     // 申请支付服务（near-pay 平台商户）：与提交进件同一个财务码
                     put("/biz/merchant/pay-service/apply", BizPerms.FINANCE);
+                    put("/biz/merchant/onboarding", BizPerms.FINANCE);
+                    put("/biz/store/{storeNo}/entity/relink-check", BizPerms.STORE_ADMIN);
+                    put("/biz/store/{storeNo}/entity", BizPerms.STORE_ADMIN);
                     put("/biz/merchant/pay-service", BizPerms.FINANCE);
+                    // N2 independent PAY authority; host finance/foundation/source mapping still required.
+                    put("/biz/pay/v2/channel-account-claims", BizPerms.FINANCE);
+                    put("/biz/pay/v2/channel-account-claims/by-request/{requestNo}", BizPerms.FINANCE);
+                    put("/biz/pay/v2/channel-account-claims/{claimNo}", BizPerms.FINANCE);
+                    put("/biz/pay/v2/channel-account-claims/{claimNo}/files", BizPerms.FINANCE);
+                    put("/biz/pay/v2/channel-account-claims/{claimNo}/files/{fileNo}", BizPerms.FINANCE);
+                    put("/biz/pay/v2/channel-account-claims/{claimNo}/commands/{requestNo}", BizPerms.FINANCE);
+                    put("/biz/pay/v2/channel-account-claims/{claimNo}/submit", BizPerms.FINANCE);
                     // 欠款：商家要看得到「为什么欠、扣到哪了」，与看账同一档
                     put("/biz/merchant/debt", BizPerms.FINANCE);
                     put("/biz/merchant/payment/{payChannel}/refresh", BizPerms.FINANCE);

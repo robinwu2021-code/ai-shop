@@ -1,5 +1,9 @@
 package ai.neargo.shop.promotion.migration.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -32,6 +36,12 @@ import tools.jackson.databind.ObjectMapper;
 /** Dedup, all source barriers and the permanent decision are one core transaction. */
 @Service
 public class LegacyCouponSourceCommitServiceImpl implements LegacyCouponSourceCommitService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     private final LegacyCouponSourceCommitMapper decisions;
     private final LegacyCouponSourceFenceService fences;
     private final ActivityCommandDeduplicator commands;
@@ -49,6 +59,7 @@ public class LegacyCouponSourceCommitServiceImpl implements LegacyCouponSourceCo
         ContractChecks.require(reason!=null && !reason.isBlank() && reason.length()<=500);
         if(!"MAIN".equals(ctx.tenantNo()) || !ctx.tenantNo().equals(plan.tenantNo()))
             throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        ownershipWrites.lockEntityAndCheck(ctx.tenantNo(), plan.entityNo());
         return DataScopeContext.executeWithoutScope(()->{
             var actor=new ActivityActor(ctx.tenantNo(),plan.entityNo(),ctx.actorNo(),null);
             var payload=List.of(plan,reason);

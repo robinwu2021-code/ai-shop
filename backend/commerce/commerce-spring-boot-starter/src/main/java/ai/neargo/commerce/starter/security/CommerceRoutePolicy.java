@@ -73,6 +73,9 @@ public final class CommerceRoutePolicy {
     private static final Set<String> ACCOUNT =
             Set.of(
                     "POST /biz/auth/login",
+                    "POST /biz/auth/identities",
+                    "POST /biz/auth/identities/enter",
+                    "GET /biz/auth/identities/mine",
                     "POST /biz/auth/staff-login",
                     "POST /biz/auth/otp/send",
                     "POST /biz/auth/email-otp/send",
@@ -93,6 +96,25 @@ public final class CommerceRoutePolicy {
                     "POST /biz/feedback",
                     "GET /biz/feedback/mine");
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
+    // P1 management resources have their own actor/scope authorization, independent of store selection.
+    private static final List<HostRoute> MANAGEMENT_ACCOUNT = List.of(
+            HostRoute.of("GET", "/biz/merchant/store-claims/by-request/" + ID),
+            HostRoute.of("GET", "/biz/merchant/store-claims/" + ID),
+            HostRoute.of("POST", "/biz/merchant/store-claims/" + ID + "/resume"),
+            HostRoute.of("GET", "/biz/management/context"),
+            HostRoute.of("POST", "/biz/management/spaces"),
+            HostRoute.of("GET", "/biz/management/spaces/" + ID + "/(?:resources|recipients|entities|stores)"),
+            HostRoute.of("POST", "/biz/management/spaces/" + ID + "/grants"),
+            HostRoute.of("DELETE", "/biz/management/spaces/" + ID + "/grants/" + ID),
+            HostRoute.of("GET,POST", "/biz/management/brands"),
+            HostRoute.of("GET,PUT", "/biz/management/brands/" + ID),
+            HostRoute.of("POST", "/biz/management/brands/" + ID + "/status-changes"),
+            HostRoute.of("GET", "/biz/management/brands/" + ID + "/(?:stores|audit-events)"),
+            HostRoute.of("GET", "/biz/stores/" + ID + "/operating-context"),
+            HostRoute.of("POST", "/biz/stores/" + ID + "/brand-changes(?:/check)?"),
+            HostRoute.of("GET", "/biz/management/brand-changes/" + ID),
+            HostRoute.of("POST", "/biz/management/brand-changes/" + ID + "/decisions"),
+            HostRoute.of("GET", "/biz/management/entities/" + ID + "/payment-merchants"));
     private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/([^/]+)/(.+)");
 
     /** Recovery routes may be used without a selection. An explicit selection must be verified. */
@@ -113,11 +135,18 @@ public final class CommerceRoutePolicy {
         return "POST".equals(method)
                 && Set.of(
                                 "/biz/auth/login",
+                                "/biz/auth/identities", "/biz/auth/identities/enter",
                                 "/biz/auth/staff-login",
                                 "/biz/auth/otp/send",
                                 "/biz/auth/email-otp/send",
                                 "/biz/auth/logout")
                         .contains(path);
+    }
+
+    private static boolean channelAccountClaim(String method,String path) {
+        String root="/biz/pay/v2/channel-account-claims",id="[A-Za-z0-9_-]{1,64}";
+        if(method.equals("GET"))return path.matches(root+"(?:/by-request/"+id+"|/"+id+"(?:/commands/"+id+"|/files(?:/[a-f0-9]{32})?)?)?");
+        return method.equals("POST")&&(path.equals(root)||path.matches(root+"/"+id+"/(?:files|submit)"));
     }
 
     public Route match(String method, String path) {
@@ -126,7 +155,11 @@ public final class CommerceRoutePolicy {
                 || method.equals("GET")
                         && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/(?:plans|feature-matrix)"))
             return new Route(Lane.ACCOUNT, null, null, null);
-        var foundation =
+        for (HostRoute management : MANAGEMENT_ACCOUNT) {
+            if (management.matches(method, path))
+                return new Route(Lane.ACCOUNT, null, null, null);
+        }
+        var foundation = channelAccountClaim(method,path) ? "biz:finance" :
                 switch (method + " " + path) {
                     case "POST /biz/store/create" -> "biz:store:admin";
                     case "GET /biz/merchant/payment",
@@ -134,6 +167,7 @@ public final class CommerceRoutePolicy {
                                     "GET /biz/merchant/pay-channel",
                                     // 申请支付服务与查状态：控制器要主体级收款目标（FoundationTarget），只有 foundation 通道会绑定它
                                     "GET /biz/merchant/pay-service",
+                                    "POST /biz/merchant/onboarding",
                                     "POST /biz/merchant/pay-service/apply" ->
                             "biz:finance";
                     case "GET /biz/qualifications",

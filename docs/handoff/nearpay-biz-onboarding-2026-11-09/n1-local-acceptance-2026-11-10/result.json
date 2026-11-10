@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "remoteAccess": false,
+  "vendorAccess": false,
+  "scope": "real DB login, Tomcat, independent PAY, MySQL9, Dart production coordinator",
+  "stage": "complete",
+  "projectionDelivery": {
+    "consumerHook": true,
+    "outboxWorker": false,
+    "oldSourceRejected": true,
+    "projections": [
+      [
+        "S",
+        "T",
+        "1794328237446"
+      ],
+      [
+        "S2",
+        "T",
+        "1794328239240"
+      ]
+    ]
+  },
+  "fault": {
+    "armed": false,
+    "drops": 1,
+    "restarts": 1
+  },
+  "hostStates": "COMPLETED\t2",
+  "payStates": "COMMITTED\t2"
+}

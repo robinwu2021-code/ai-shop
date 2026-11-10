@@ -99,6 +99,16 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    void selectedNewModelStoreCanReadClaimDiagnosticsWithoutOpeningMutation() throws Exception {
+        String[] owner = newModelOwner("15965020129");
+        var result = call(owner[0], owner[1], "/biz/store/"+owner[1]+"/entity/relink-check?entityNo=OTHER");
+        assertEquals(0, result.path("code").asInt(), result.toString());
+        assertFalse(result.path("data").path("executionReady").asBoolean());
+        assertFalse(result.path("data").path("allowed").asBoolean());
+        assertTrue(result.path("data").path("blockers").toString().contains("RELINK_CONCURRENCY_UNAVAILABLE"));
+    }
+
+    @Test
     @DisplayName("★★★ 新模型门店的店主选了门店：商品、订单、主体、收款这些日常接口按门店成员放行，不再 70006")
     void selectedStoreOpensDailyRoutes() throws Exception {
         String[] o = newModelOwner("15965020101");

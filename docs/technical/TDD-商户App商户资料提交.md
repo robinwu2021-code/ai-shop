@@ -1,6 +1,6 @@
 # TDD-商户App商户资料提交
 
-状态：已确认（2026-11-08：用户按「已拍板」一节各条的建议全部接受；未实现，§5 测试未写）
+状态：N3平台资料提交/N4审核回显已本地实现（2026-11-10）；N1写入/恢复与N2独立PAY认领关联已完成本地真实HTTP联调。N3旧渠道透传方案由文末2026-11-10用户确认的独立near-pay拆分替代；旧§5未实现条目不代表本批结论。
 ADR：[ADR-055](./ADR/ADR-055-门店改挂主体限于占位认领.md) · [ADR-056](./ADR/ADR-056-商户自带渠道商户号的录入与核实路径.md)
 档位：**2**。N3（一次提交资料）、N4（主体读接口补审核字段）、N1 预检单看都是 1 档（新端点或响应加字段、复用已有权限码、ai-shop 不加表）；
 N1（门店改挂主体）改门店与主体的关系、牵动 near-pay 门店投影与商城订阅，N2（绑定已有渠道商户号）决定商户渠道凭据从哪条路进系统 —— 两者都不可逆，按 2 档写 §3 §4。**需要两份 ADR（本文不写）**：「门店改挂主体（占位认领）」「商户自带渠道商户号的录入路径」。
@@ -575,3 +575,166 @@ near-pay 依赖：新内部端点 `POST /internal/pay/v2/source-links/channel-ac
 | 11 | **占位主体被认领后怎么处理？** | ①逻辑删除（`deleted=1`，`ShopCommerceStoreAdapter` 的 SQL 已按 `m.deleted=0` 过滤），成员行停用；②新增主体状态值：要改 B 端状态映射 `bizStatus` 与 App 枚举 | ① |
 | 12 | **N1 撤销员工授权要不要先确认？** | ①要：App 先调预检拿 `revokedStaff`，确认页写明「本店 n 名員工的授權會失效，需在新商戶下重新授權」，后端只执行不询问；②不确认：员工突然进不了店，店主不知道原因 | ① |
 | 13 | **旧进件 `POST /biz/merchant/payment` 在台湾怎么办？** 它只有 stub 网关，正式环境 70045 | ①App 正式包台湾市场不再走它，渠道状态以 `GET /biz/merchant/pay-service` 为准；`/biz/merchant/payment` 行状态与 near-pay 真实状态的同步另立题目；②继续走：台湾上线即 70045 | ① |
+
+
+## 2026-11-10 N3/N4 增量执行（用户确认最新独立near-pay链路）
+
+状态：本地实现/验证通过，166未访问或部署；旧N3渠道材料/结算账户透传设计由本节替代，N1/N2仍待实现。
+
+- N4沿D1–D4，批量按已授权实体查当前账号最新申请，列表/详情追加审核字段，冷启动选店目录不额外公开申请详情；ACTIVE证号来自正式资质。旧status语义保持。
+- N3仅提交平台商户资料/平台营业资质与协议，必选门店，按原foundation授权/头体一致校验。`profile`与`agreed`沿旧请求；`licenses`只收平台营业登记的assetKey，PERSONAL不要求渠道身份证。请求不接受非空结算账户或渠道证照，渠道敏感材料必须走已接入独立near-pay私有API。平台审核不代表渠道进件。
+- 占位主体新建/同内容重放/同单PENDING修改，原一人一份唯一键、REVIEWING不可编辑、REJECTED新单及原审核激活语义保留；本地申请与协议同事务。ACTIVE不修改核准主体，由前端转进独立渠道旅程。
+- 执行顺序：N4 DTO/批量读取/前端解析与测试；N3平台编排/请求校验/正式准入；bapp平台表单与私有渠道入口分离；集中相关编译/测试与本地验证；回填矩阵。
+- 无新表/迁移、权限码或配置。旧source-links/apply不加settlement，亦不接收渠道证照；独立near-pay业务合同保持。
+
+
+### 本批三处对账与验证
+
+| 本批AC | 场景/API/数据落点 | 验证 |
+|---|---|---|
+| P1 平台新建/协议原子提交/同内容重放/同单修改 | N3→OpsService.submitMerchantProfile，原申请表/active-owner唯一键，事务内改PENDING/协议；不新建渠道行 | `MerchantPlatformOnboardingFlowTest#createReplayReviseAndReviewLockKeepOneApplicationAndAgreement` |
+| P2 渠道敏感信息不进入平台N3 | Submit DTO拒非空settleAccount/非空channels；平台表单仅营业登记assetKey，不收渠道身份证/银行户 | `#privateChannelFieldsAndMissingAgreementAreRejectedBeforeWriting`；Dart `merchant_platform_contract_test.dart` |
+| P3 显式门店/头体/所有权 | foundation finance与原店主查询；缺店70198、错实体拒绝 | `#missingStoreAndMismatchedEntityCannotWrite`；实际Dart HTTP错实体403 |
+| P4 驳回回显/新单重提/本人主体范围 | OpsService.latestAppliesOf(user,authorized entityNos)批量取最新；EntityReviewAssembler，列表/详情同字段 | `#rejectionReadbackAndResubmissionUseEntityLatestApplication` |
+| P5 营业资质归属、申请证号/正式证号分流 | 平台assetKey受目录/归属约束；待审取申请BUSINESS_LICENSE、核准取正式mch_qualification | `#platformBusinessAssetsAreScopedAndTaxNumberUsesApprovedQualification` |
+| P6 主数据与一人一份原约束 | 入驻行业/启用主体主数据检查；另主体在途10409，REVIEWING不可编辑 | `#unknownIndustryAndAnotherEntityActiveApplicationCannotBeSubmitted`及P1 |
+| P7 端上分离渠道与平台表单 | 三步表单、N4权威review、不用生命周期推审核；渠道补件不再进入N3，不拿A店提交B主体预填 | Dart2项合同、平台表单widget、`channel materials never reopen a cross-entity platform form` |
+
+实现文件：EntityVO追加5字段并保留8参数构造；OpsService/Impl新增提交与按主体批量读方法；BizEntityController只编排已授权结果，EntityReviewAssembler跨模块组装；新BizMerchantOnboardingController使用框架输入约束/原foundation；CommerceRoutePolicy仅加精确N3路径。与原设计的偏差：正式资质批量读放应用组合层，不改MerchantEntityService构造和选店目录、不向stores/mine扩申请详情；PERSONAL映射使用当前权威NATURAL_PERSON，旧MICRO已淘汰。无DDL/依赖/权限码变化。
+
+后端6项新增场景与12项准入守卫通过；6项场景最终日志`/tmp/ai-shop-platform-final-recheck.log`。首轮旧MICRO映射失败已修，企业用例仅因fixture缺qual_name/时间失败后补齐，未削弱表约束。前端合同2项、平台表单与跨主体补件2项widget通过，定向分析无问题。补件缺陷已先复现：旧入口可见；修后卡片/详情sheet均无平台补件按钮。
+
+实际Dart→loopback ai-shop JVM→test-profile H2验证真实密码/身份票据登录、选店、平台提交、协议、重放、修订、N4列表/详情回读、错实体拒绝与退出；`MerchantPlatformLocalHttpTest`为本地驱动器，不重复计作第二条端上旅程。最终证据`/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/bapp-platform-http-13761271846009594916/result.json`；私有ready文件已删除。H2不可标成MySQL或166。原统一身份→独立near-pay双JVM/MySQL9旅程因共享EntityVO/fixture变化补回归通过，证据`/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/bapp-unified-nearpay-z4kpcwt7/result.json`，隔离库与私有文件清理完成。
+
+`nextStep=PRIVATE_CHANNEL_ONBOARDING`只表示下一条旅程；不表示来源投影/typed成员授权已具备，不自动建支付商户、渠道申请或收款资格。来源与真实成员配置、渠道材料/OPS补件/真实渠道仍归T08/T10，独立near-pay合同不变。精确宿主来源与构建记录见进件发布闭包§10，未部署/提交/推送。
+
+
+## 2026-11-10 N1 只读预检与写入前置复核
+
+档位2，沿ADR055；本轮先实现可独立验证的GET预检，POST认领继续关闭。旧设计两项前提经真实代码核对不成立：host交易写入未共享门店锁；host支付申请RPC超时后near-pay可能晚提交，source status NONE又不查询门店关联历史。另PayMerchantMirror是旧支付商户双写，不等于StoreSyncPublisher；FREE period也冻结entity_no，不能只改subscription account。
+
+只读实现顺序：已选店/USR/在职店主与头路径一致→目标本人ACTIVE/源PENDING_LICENSE→host订单/线下记录/在途平台申请→commerce订阅及商城历史→支付来源状态及依赖完整性→返回blockers/revokedStaff。各域通过自有只读接口提供事实，禁止跨模块直接更新表。GET不写审计/命令/认领/订阅/支付资料。
+
+本批合同追加executionReady=false；allowed必须将RELINK_CONCURRENCY_UNAVAILABLE、FINANCIAL_HISTORY_UNKNOWN等真实能力缺口纳入阻断，不将snapshot干净等同于可原子执行。未提供完整历史证明时不能因为余额0或source NONE放行。POST不注册、不移除App写门禁；页面仅查看预检，不发改挂。写入需要补共享写侧门闩与支付申请持久在途/未知结果屏障（候选方案待用户范围回复），以及commerce纯FREE account+period同事务改属、员工撤权/空占位退休/真实投影同步。新增写表/恢复合同应另补ADR，不在此伪实现。
+
+
+### 本批落点、AC与验证（只读子集）
+
+- `StoreRelinkHostFactsPort`（shop-base）和core自有实现只查询订单/子单/售后/线下记录及在途平台申请；任意状态、软删、VOID、旧主体无法归属门店的行也计历史。显式tenant+store/entity，缺表不返回clean。
+- 应用层`StoreRelinkPrecheck`组合已授权商户事实与支付来源状态；`BizStoreEntityController`只暴露GET，原USR+store-admin+源店主、路径/头/BizContext门店一致校验。跨主体查询不能用目标替换源头。distinct员工数不把一人多角色算多人。原写门禁不变。
+- bapp只从本人ACTIVE实体中选择目标，查看只读blockers/人数；`review=APPROVED`不能替代生命周期ACTIVE。TW独立入口、迟到响应隔离，不POST、不换店、不启用渠道。四语增量文案已生成，原本地改动保留。
+
+| 原AC | 本批状态 |
+|---|---|
+| C2/C3（来源/目标约束） | 只读诊断实现；跨主体无详情泄露，不能当执行验收 |
+| C4（历史/依赖） | host已实现；完整PAY历史与commerce全历史明确UNKNOWN，不能从NONE/余额0放行 |
+| C8（STORE_V1准入） | GET精确登记并实际通过；POST不登记 |
+| C9（只读预检） | 已实现诊断子集，追加executionReady=false；allowed始终false并带明确缺口 |
+| C1/C5/C6/C7/C10（迁移/撤权/同步/写回执） | 尚未实现，不因GET通过关闭 |
+
+30项不同后端用例通过：core12、Spring/H2端点5、精确权限12、新增STORE_V1路由1。前端4项定向通过（首轮2项断言错误读取Dio独立query map，改检查实际URI query后仅重跑失败2项；GET/原头/目标/门禁断言未削弱）；定向分析无问题。实际密码/票据登录→选店→读取本人ACTIVE候选→GET诊断→外部目标拒绝→原门店主体不变→退出，Dart→本地JVM→H2通过，证据`/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/bapp-platform-http-17146407855989602522/result.json`及同目录flutter-http.log（driver为通用平台本地驱动器，不重复计作第二旅程），私有ready文件已删除。
+
+日志：`/tmp/ai-shop-relink-precheck-tests.log`、`/tmp/ai-shop-relink-runtime-tests.log`、`/tmp/bapp-relink-tests.log`（仅首轮2通过有效）、`/tmp/bapp-relink-tests-recheck.log`、`/tmp/bapp-relink-analyze-final.log`。未运行无关全量回归、未访问/部署166、未提交/推送。
+
+### 写入与N2的后续工作（尚未实施）
+
+1. 写侧门闩：订单/首次线下记录等交易写事务与认领共用门店身份锁并重验expected entity；主体级券/积分及服务订单也需纳入归属协议。当前只锁认领本身无法防止新历史并发进入。
+2. 支付在途/未知结果屏障：BIZ/OPS所有来源apply应与claim串行，并持久记录已发/未知请求；RPC超时后不能因status NONE释放认领。还需明确是否采用host持久attempt屏障或PAY预留/恢复协议及已登记来源凭据的唯一调用方边界，涉及新表/恢复合同的范围问题已发用户，回复前不开放执行。
+3. 完整金融历史证据：PAY需查source link真实行（merchant缺失不能降NONE）、projection坐标、所有association历史、pay/refund/store旧流水、零余额/取消/软删储值账户与充值；券/积分/品牌钱包和无法归属旧数据不完整即拒绝。现有organization-impact余额汇总不够。host `ord_offline_record`也必须保留。
+4. commerce认领端口：锁原subscription account，确认无任意付费期/商城订单/credit/预留/转换历史后，同一事务更新纯FREE account及初始化FREE period的entity_no；不在merchant直接写commerce表。品牌绑定/待决品牌变更及金融关系需先明确不支持边界，不能默默转移。
+5. 原子执行/回执：员工撤权、空占位逻辑退休、critical审计、真实StoreSyncPublisher投影同步、失败/未知恢复与旧X-Entity-No重选；C1/C5/C6/C7/C10需真实MySQL并发与本地端到端验收。
+6. N2独立冻结：已在独立near-pay生产源码重新检索`channel-account-claims`/`ChannelAccountClaim`/`claimChannelAccount`，未有实现；当前15路由不含此能力。需先落独立near-pay TDD/typed成员权限、原requestNo恢复/运营核实和私有证明引用合同，再接宿主及App；不扩大白名单或借旧payment表/假ACTIVE。旧ADR056的host QUAL证明引用还需与最新私有证照链对齐；密钥仍仅在near-pay运营端录入，ai-shop只留掩码。
+
+
+## 2026-11-10 N1/N2 写入与恢复实施定稿（用户确认执行）
+
+状态：本批实现及本地验收完成（证据见文末），未部署。用户已明确批准“先修TDD/ADR，补N1写入及恢复，再N2，本地联调，不部署166”。本节替代只读阶段“扩展范围待回复”，N1范围仍沿ADR055。
+
+### N1 数据/API与状态
+
+宿主新增`mch_store_entity_claim`业务单（tenant、claim_no、owner_user_no、request_no、request_hash、source_entity_no、target_entity_no、store_no、expected_store_version、state、remote_ref、result_json、version、last_error等）；唯一(owner_user_no,request_no)，仅同key同hash重放。`mch_entity`/`mch_store`追加nullable `ownership_change_no`归属冻结指向业务单，无新实体生命周期枚举。新迁移预留V647，已应用迁移不改。
+
+POST `/biz/store/{storeNo}/entity` 体 `{requestNo,entityNo:target,expectedStoreVersion}`；源店头/源entity与路径、个人USR店主+store-admin不变。GET既有relink-check追加当前门店版本/实际可执行能力。响应 `{claimNo,requestNo,state,storeNo,previousEntityNo,entityNo,stores?,revokedStaff?,placeholderRetired?}`；仅COMPLETED是成功迁移，PENDING/UNKNOWN不可伪成功。
+
+恢复为精确ACCOUNT端点，不依赖已失效旧店头：GET `/biz/merchant/store-claims/by-request/{requestNo}`、GET `/biz/merchant/store-claims/{claimNo}`，POST `/biz/merchant/store-claims/{claimNo}/resume`；实际会话USR+claim.owner_user_no校验，GET无业务写；恢复只推进原单，不改目标/请求体、不重新授权新迁移。后台同一恢复实现按业务单状态推进，不建第二套任务真源。新建开关默认关闭，已有原单恢复不因新建关闭而丢失。
+
+阶段：FROZEN→PAY_PREPARED→LOCAL_COMMITTED→COMPLETED；提交前明确失败先持久ABORTING→远端确认取消→ABORTED。远端结果未知保持原阶段和原requestNo查询/重放；不因TTL/source NONE自动解冻。LOCAL_COMMITTED后只向前完成支付确认，不自动回滚归属/员工。阶段转换由业务单行锁+version条件更新；ABORTING与LOCAL_COMMITTED互斥。
+
+本地冻结短事务：固定序锁源/目标实体、门店与订阅，校验真实owner/status/version/完整历史，记录业务单与源实体/店冻结标记。认领阶段使用READ_COMMITTED短事务：等待已有写事务完成并获得排他锁后，历史查询读取已提交最新事实，避免先查幂等单形成旧RR快照。来源source_scope随原单持久化，恢复沿用原值，不随运行配置变化。相关写事务经`StoreOwnershipWritePort.lockAndCheck(tenant,expectedEntity,store)`或entity版本持共享锁并复核冻结/归属，先取得锁再写业务行；无实际事务不允许调用。认领排他锁与之串行，不在本地事务内等待远程HTTP。
+
+PAY准备：固定可信来源+同requestNo/hash，真实全历史检查，持久预留并与来源apply共同锁定稳定source控制行；即使来源link尚不存在也有唯一锚点。独立PAY新增V77业务source control/claim intent（由PAY拥有），prepare/query/commit/abort沿internal可信来源鉴权。所有来源apply必须参加控制行锁；预留期间拒绝冲突申请。提交时CAS验证from/to/原projection revision并保留拒绝已有关联的旧保障，不从认领产生渠道ready。旧/乱序投影同步不能覆盖已确认新归属。
+
+PAY接口前缀 `/internal/pay/v2/source-links/store-claims`：POST `/prepare`，GET `/{requestNo}`（sourceScope为query），POST `/{requestNo}/commit`/`abort`。prepare请求 `{requestNo,requestHash,sourceScope,sourceEntityRef,targetEntityRef,storeRef,storeNo,expectedRevision}`；storeRef为host数值id十进制字符串。结果 `{requestNo,state,claimRef,sourceEntityRef,targetEntityRef,storeRef,storeNo}`。配套GET `/internal/pay/v2/source-links/relink-check`只读历史与coverage，不用余额零/source status NONE代替完整史。请求hash含完整from/to/版本事实，不含渠道/结算明文。
+
+PAY_PREPARED后本地事务再次校验被冻结实体/门店/owner/version及当前历史，原子改店主体/is_default/pay_merchant_no/payment_changed_at、经commerce改纯FREE account+初始FREE period、撤非店主store角色、空源主体逻辑删除/成员停用、critical审计，并记LOCAL_COMMITTED；保持店冻结。远端commit完成可信投影映射后，本地解除标记、保存最终目录回执、COMPLETED；使用既有StoreSyncPublisher同步恢复，不增加通用Outbox。目标未有支付来源/渠道时仍不可收款。品牌/金融/无法归属历史在未有明确安全迁移合同前作为明确blocker拒绝。
+
+空源退休与多店留存：冻结时在源实体排他锁内统计未删除门店，记录不可变`source_retire_planned`；PAY prepare/commit/abort原命令追加`retireSource`。本地改挂后实际空源结果必须与该计划一致。PAY commit对退休源写永久tombstone，来源apply与实体级金融首次写入均拒绝迟到旧源请求；abort不退休。源仍有其他门店时释放实体预留，保留已认领门店的新主体约束，不阻止剩余门店经营。该事实随原单恢复，重放不可将true降为false。
+
+### N2 按独立PAY真源实现
+
+N1闭环后新增PAY商户渠道认领业务单（预留V79），原requestNo/hash/版本/查询结果恢复，状态待核实→核实通过/拒绝，核实通过也不自动等于渠道启用或门店ready。密钥仅PAY运营域；私有证明绑定支付商户及claim资源，不走host QUAL。宿主保留finance foundation/目标一致约束，PAY另验真实typed支付成员与渠道/来源归属；host只留必要掩码/引用，不再建立第二套权威绑定状态。旧APPLY状态机不改。仅新增合同明确的路径到白名单，不泛放现15路由。
+
+### 优先实现与验收
+
+1. 冻结N1持久化/接口，补业务写侧门闩、CORE/PAY/commerce历史和FREE领域移户能力。
+2. PAY source申请互斥+预留/确认/取消/回执；保留既有SourceLink幂等事件，不复制造册。
+3. 宿主分阶段原子执行/单向恢复/ACCOUNT原单查询，bapp持久原requestNo并只在COMPLETED重新选店。
+4. MySQL9并发新交易/申请晚落/重复请求/进程重启/提交失败定向验收，实际App→双JVM本地旅程。
+5. N2独立合同/私有证明/typed授权→运营核实→host/App接线与本地验收。
+
+首批接口签名与状态按本节共享；实际代码若因已有基础设施可简化，回填偏差，不静默改变权限/冻结/未知结果语义。编译测试遵循Java规范§八增量约定，无166部署/远端写入、无自动提交/推送。
+
+### N2 2026-11-10 实施接口定稿
+
+本节替代旧host `mch_payment_merchant.source=BIND` 与QUAL证明路径。N2唯一业务真源在独立PAY；宿主和App不维护第二套绑定审核行。N1真实双端验收后依次实施下列合同。
+
+- BIZ前缀 `/biz/pay/v2/channel-account-claims`。POST集合创建DRAFT：`{requestNo,payChannel,channelMerchantId,subMerchantId?,credential?}`，credential非空拒绝；GET集合、GET `/by-request/{requestNo}`、GET `/{claimNo}`。真实merchant和typed actor均取PAY Guard已校验成员，要求`store.bind`管理员能力，不扩大bootstrap。
+- POST `/{claimNo}/files` multipart `{requestNo,expectedVersion,file}`，GET同资源列表及`/files/{fileNo}`鉴权读取。证明可选，创建草稿不要求证明；上传后归属tenant+environment+merchant+claim，AES-GCM/Vault封存，不能以假onboarding号复用进件表。图片类型/大小沿既有私有文件能力，提交原子检查版本/有效期并pin，响应不带公开地址。
+- POST `/{claimNo}/submit`：`{requestNo,expectedVersion}`。DRAFT→PENDING_VERIFY；所有写命令保留原requestNo/hash/结果（含上传与submit），相同key变体拒绝，重放先于旧版本检查。GET `/{claimNo}/commands/{requestNo}`仅查询原结果，无业务写；未知先查原单/原命令，不重新生成请求号。
+- OPS前缀 `/pay-ops/v2/channel-account-claims`，GET列表/详情/私有文件，POST `/{claimNo}/resolve`：`{requestNo,expectedVersion,result,payMerchantNo?,expectedAccountVersion?,reason}`，result为LINKED/REJECTED。关联仅选同tenant、同平台商户、同市场/渠道及完整MID事实的既有MERCHANT渠道账户；不建/核验/启用账户，不替代现有运营账户登记和审批。命令持久结果与critical审计同行事务。
+- 持久状态DRAFT/PENDING_VERIFY/LINKED/REJECTED；LINKED表示运营确认了关联对象，不表示渠道核验通过。返回`claimNo,requestNo,merchantNo,payChannel,channelMerchantMasked,state,version,files,reason,payMerchantNo,accountVerificationStatus,accountStatus`，号码明文仅PAY内部存储。当前账户核验/状态从实际ChannelAccount读取，渠道核验仍走既有审批、异人复核；不因claim关联设置ACTIVE，不自动绑门店。门店可收款继续读取既有readiness。
+- V79预留claim/命令回执/私有文件表，按实际PAY执行环境登记表分区约束；原申请唯一键包含tenant+environment+merchant+subjectType+subjectRef+requestNo，作用域错配不可读写。
+- 宿主精确转发新增路径，原15路由不扩大。claim路径须运行真实DB会话鉴权、BizContext/commerce foundation admission和`biz:finance`，再通过`FoundationTarget`核对当前主体/门店及可信source status的merchantRef与`X-Merchant-No`一致；独立PAY另外检查真实typed支付成员。现有Order(0)通用BIZ转发链缺foundation，不直接借用。以专用精确安全链承接该路径，不混入内嵌PAY PortalGuard。两端未知结果沿原业务单恢复，host不存文件字节/密钥/审核状态。
+- App保留env+typed身份+支付商户+requestNo草稿日志，未知查询并显式续原命令；账号/支付商户切换后丢弃迟到响应。入口放在已有真实支付来源与管理员能力可用时，独立页收渠道号和可选证明；不放N3表单，不保留HashKey输入或mock立即ACTIVE语义。
+
+验证限于本次增量：PAY typed越权/跨merchant文件/幂等冲突/上传与提交未知恢复/运营关联错号与审批不绕过；host foundation与支付商户错配拒绝；App实际HTTP草稿、上传、提交、恢复及LINKED不变ready。无166部署或远端写入。
+
+N2实施接线补充：V78已被另一会话的NewebPay运行时迁移占用，保留该改动，本批使用V79。新claim/命令/私有文件表属于isolated，沿EnvironmentSchema的execution_environment/execution_partition列、CHECK及自然唯一键分区；业务SQL不手写执行环境列，取Guard可信主体绑定。日志对精确claim路由整段省略请求body，含被拒绝的credential及multipart；新文件路由登记Guard精确multipart处理，避免落默认1MiB正文缓存。BIZ作者/回执始终含subjectType+subjectRef；OPS遵循实际view/manage和merchant数据范围。critical审计在同行事务检查成功（现有record空结果视失败回滚），不忽略其吞异常返回。关联账户时核对完整MID/subMID、market/merchant/channel及真实锁定版本，保留原审批与异人核验。
+
+N1执行环境补充：source control/claim intent属于跨环境共享稳定归属（与source link、store projection同类），不拆成两套归属。金融历史在启用隔离时分别进入SANDBOX/PRODUCTION的REQUIRES_NEW只读短事务检查并合并事实；prepare父事务继续持有跨环境source/financial首次写门闩。不能在已绑定连接内切环境，也不能unwrap绕过隔离。任一环境历史或覆盖不可用都不得认领。
+
+N1独立进销存边界：inventory.enabled或shop.inventory.enabled开启时，返回INVENTORY_HISTORY_UNKNOWN并阻止新认领。独立inventory有自己的DataSource/事务，不能把host“有事务”当作跨库原子锁；本批不擅自迁库存或以零余额放行。商品/旧店库存由CORE自有事实检查并参加host写锁；独立库存需另有owned完整事实与首次建业主/远端写入预留协议后再解除部署阻断。该限制不阻止原认领单向恢复，也不改变独立库存原业务流程。
+
+
+### 2026-11-10 N1 商品事实遗漏修正
+
+只读复核确认占位主体可在经营台保存商品草稿与设置库存；上架准入不等于建品门槛。认领不得留下仍归旧主体的商品、SKU、草稿或门店商品/库存/价格行：产品自有事实按明确tenant及源entity或认领store检查全部状态（含软删），存在即阻断，不在N1迁移产品数据。商品建品/改品、SKU及库存写事务参与既有归属共享门闩，保持entity→store顺序，与认领排他锁串行。
+
+独立库存使用独立事务管理器/远端部署，host门闩不能证明其原子性；本批不修改库存领域或跨库迁移，库存启用而未具备完整归属协议的部署由host显式INVENTORY_HISTORY_UNKNOWN阻断。
+
+N1投影修订补充：V647将mch_store.updated_at精度提升为DATETIME(3)（不改变非空/默认规则），本地改挂采用数据库CURRENT_TIMESTAMP(3)与原快照+1毫秒的较大值。避免用原秒精度时间强推未来一整秒后，紧接的正常门店编辑把修订时间写回较小值，导致最终投影被当作旧修订丢弃。源身份约束和PAY要求新修订严格大于expectedRevision保持不变。
+
+N2号码展示：BIZ回执只返回商户号掩码；受现有OPS view/manage与数据范围保护的运营详情可读取完整渠道MID/subMID，供人工与既有账户逐字核对，不能据掩码匹配。渠道密钥在任何claim DTO/日志/证明说明字段中均不收集，继续只在既有PAY凭据中心登记。
+
+
+### 2026-11-10 N1 门店经营配置边界补充
+
+merchant自有范围/履约行仍持entity_no，仅改mch_store会导致迁后按主体读取丢失配置。本批不迁经营配置：任意状态/软删的本tenant本store mch_service_area或mch_fulfillment_channel，或源entity的mch_entity_community存在，即STORE_CONFIGURATION_HISTORY阻断。channel-area/pickup仅按店关联，不另加无依据门禁；不扩展独立库存迁移。MerchantStoreService与StoreFulfillmentService实际写事务参加entity→store归属共享门闩，不能依赖忽略updateById零行后的旁表写入获得原子拒绝。
+
+
+N2 host接线偏差：旧15路由的BizOnboardingForwarder及Order(0)认证链保持原样，新增host专用claims forwarder及Order(-1)精确资源链；沿原HTTP超时/不重试/不重定向/原token和字节/私有响应头白名单策略，不构造第二支付authority、不转发X-Internal-*用户头。新链真实DB会话→BizContext+既有commerce admission→finance/FoundationPaymentAccess→可信source status的merchantRef与X-Merchant-No一致后才转发；NONE回409、映射错配403、依赖不可用503。新增开关shop.pay.channel-account-claims.enabled默认false，不建host影子BIND状态或私有文件。
+
+### N2 原操作拒绝回执修订（2026-11-10，本地实施）
+
+成功写接口仍返回View。两个原操作查询（GET `/channel-account-claims/by-request/{requestNo}`、GET `/{claimNo}/commands/{requestNo}`，OPS命令查询同样）统一返回`CommandReceipt {requestNo,outcome:SUCCEEDED|REJECTED,result?:View,failure?:{code,reasonCode,message}}`。普通详情/列表不变。客户端只在SUCCEEDED接收result；REJECTED明确结束原日志并显示记录的业务拒绝，修正后另开新意图。404只表示尚无回执，不能单凭404换键。
+
+在实际身份/资源归属校验之后，业务单锁内持久化确定的版本、草稿状态、材料过期、账户坐标/市场不匹配等拒绝（原hash保留）；创建草稿的可变市场/目录拒绝也需保留原key的拒绝回执，命令表允许失败CREATE未有claim引用。相同key同hash重放固定成功/拒绝；不同hash仍冲突。确定拒绝记录不得保留部分业务写，采用局部验证或业务事务savepoint保持原单/文件原子性。身份/权限不可用、传输未知、SQL、Vault及critical审计失败不记成REJECTED，仍保原键查询/重放。
+
+渠道准入复用实际MarketService启用市场及PayChannelMasterPort.enabledChannels(market)，不用全局channels.containsKey或DomainChannelProductCatalog对未知组合的兼容放行。测试目录可启用实际NEWEBPAY产品/本币限额以允许核实认领；这只表示目录可申请，不创建/核验/启用账户或门店ready。
+
+
+### 2026-11-10 本批实现与本地验收结果
+
+N1 写入/恢复已实现：真实 USR 登录及选店、短事务冻结、PAY 持久预留/确认/取消、本地提交后单向恢复、员工撤权和最终投影验收通过；[N1 证据与范围](../handoff/nearpay-biz-onboarding-2026-11-09/n1-local-acceptance-2026-11-10/README.md)。N2 已实现独立 PAY 业务单/私有证明/原操作回执、host 精确权限转发、App 冷恢复及 OPS 核实关联；真实双 JVM 重启、上传响应丢失与 OPS 成功/拒绝响应丢失旅程通过；[N2 证据、发布开关和剩余项](../handoff/nearpay-biz-onboarding-2026-11-09/n2-local-acceptance-2026-11-10/README.md)。
+
+最终 LINKED 不代表实际账户已核验、启用或门店可收款；本次账户仍 UNVERIFIED/PENDING，门店绑定数零，host 没有新增影子 payment/qualification。新增开关默认关闭，App N2 依赖既有 BIZ 基础开关提供会话/成员；首批 UI 仅 NEWEBPAY。独立库存/商品/经营配置迁移及真实供应商收款仍按证据页剩余项推进。本地增量检查范围及已知 H2 限制如证据页，未宣称全量或生产验收。保留三仓现有未提交改动，无提交/推送，166 不部署。

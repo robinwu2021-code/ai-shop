@@ -25,6 +25,9 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
     @Value("${shop.store.max-per-entity:1}")
     private int fallbackStoreQuota;
 
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {this.ownership=ownership;}
     private final EntityPlanMapper planMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.PlanDefMapper defMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
@@ -108,6 +111,7 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
      * 应该是把回填补齐让每个主体都有行，而不是在这里加一把锁不住的锁。
      */
     private PlanVO lockAndRead(String merchantNo) {
+        ownership.lockEntityAndCheck("MAIN",merchantNo);
         MchEntityPlan row = DataScopeContext.executeWithoutScope(() ->
                 planMapper.selectOne(Wrappers.<MchEntityPlan>lambdaQuery()
                         .eq(MchEntityPlan::getEntityNo, merchantNo)

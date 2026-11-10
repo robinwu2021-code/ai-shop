@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
@@ -59,6 +61,10 @@ import java.util.function.Supplier;
  */
 @Component
 public final class IndustryChannelOrderStore {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites=ownershipWrites; }
+
     final ChannelImportMapper imports;
     final ChannelAdmissionGuardMapper guards;
     final ChannelQuoteMapper quotes;
@@ -171,6 +177,7 @@ public final class IndustryChannelOrderStore {
         try {
             atomic(
                     () -> {
+                        ownershipWrites.lockAndCheck(ref.scope().tenantNo(), ref.scope().entityNo(), ref.scope().storeNo());
                         if (guard(ref, true) != null) return null;
                         var row = new OrdChannelAdmissionGuard();
                         audit(row, ref.scope());
@@ -326,6 +333,7 @@ public final class IndustryChannelOrderStore {
                                             DocumentType.TRADE_SUBORDER,
                                             1),
                                     () -> {
+                                        ownershipWrites.lockAndCheck(ref.scope().tenantNo(), ref.scope().entityNo(), ref.scope().storeNo());
                                         activeGuard(ref);
                                         var prior = find(ref, true);
                                         if (prior != null) return prior;

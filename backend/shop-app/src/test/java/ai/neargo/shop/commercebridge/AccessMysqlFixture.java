@@ -29,7 +29,8 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 final class AccessMysqlFixture implements AutoCloseable {
-    final String schema = "commerce_test_" + UUID.randomUUID().toString().replace("-", "");
+    final String schema;
+    private final boolean preserveSchema;
     final javax.sql.DataSource ds;
     final JdbcTemplate admin, jdbc;
     final DataSourceTransactionManager manager;
@@ -49,55 +50,69 @@ final class AccessMysqlFixture implements AutoCloseable {
     AccessMysqlFixture(Clock clock) throws Exception { this(clock, java.util.function.UnaryOperator.identity()); }
 
     AccessMysqlFixture(Clock clock, java.util.function.UnaryOperator<javax.sql.DataSource> wrapper) throws Exception {
+        this(clock, wrapper, null, false);
+    }
+
+    /** Test launchers may reopen only their explicitly named disposable schema after process restart. */
+    AccessMysqlFixture(Clock clock, java.util.function.UnaryOperator<javax.sql.DataSource> wrapper,
+            String existingSchema, boolean preserveSchema) throws Exception {
         this.clock = clock;
+        if (existingSchema != null && !existingSchema.matches("commerce_test_[0-9a-f]{32}"))
+            throw new IllegalArgumentException("Only a disposable commerce_test schema may be reopened");
+        this.schema = existingSchema == null ? "commerce_test_" + UUID.randomUUID().toString().replace("-", "") : existingSchema;
+        this.preserveSchema = preserveSchema;
         String url = System.getenv("COMMERCE_MYSQL_URL"),
                 user = System.getenv("COMMERCE_MYSQL_USER"),
                 password = System.getenv("COMMERCE_MYSQL_PASSWORD");
         assertTrue(url.matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/\\?.*"));
         admin = new JdbcTemplate(new DriverManagerDataSource(url, user, password));
-        admin.execute("CREATE DATABASE " + schema);
+        if (existingSchema == null) admin.execute("CREATE DATABASE " + schema);
         ds = wrapper.apply(new DriverManagerDataSource(url.replace("/?", "/" + schema + "?"), user, password));
         jdbc = new JdbcTemplate(ds);
         manager = new DataSourceTransactionManager(ds);
-        var ddl =
-                new ClassPathResource("schema-test.sql").getContentAsString(StandardCharsets.UTF_8);
-        for (String table :
-                List.of(
-                        "cmt_community",
-                        "cmt_pickup_point",
-                        "mch_session",
-                        "mch_login_log",
-                        "mch_account",
-                        "usr_account",
-                        "mch_entity",
-                        "mch_qualification",
-                        "mch_payment_merchant",
-                        "sys_audit_log",
-                        "mch_entity_apply",
-                        "mch_entity_plan",
-                        "sys_merchant_plan_def",
-                        "mch_store",
-                        "mch_store_role",
-                        "mch_role", "ops_session", "sys_ops_staff", "sys_role", "sys_role_point", "sys_function_point")) {
-            var m =
-                    Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS " + table + "\\s*\\(.*?\n\\);")
-                            .matcher(ddl);
-            assertTrue(m.find(), table);
-            jdbc.execute(m.group());
+        if (existingSchema == null) {
+            var ddl =
+                    new ClassPathResource("schema-test.sql").getContentAsString(StandardCharsets.UTF_8);
+            for (String table :
+                    List.of(
+                            "cmt_community",
+                            "cmt_pickup_point",
+                            "mch_session",
+                            "mch_login_log",
+                            "mch_account",
+                            "usr_account",
+                            "mch_entity",
+                            "mch_qualification",
+                            "mch_payment_merchant",
+                            "sys_audit_log",
+                            "mch_entity_apply",
+                            "mch_entity_plan",
+                            "sys_merchant_plan_def",
+                            "mch_store",
+                            "mch_store_role",
+                            "mch_role", "ops_session", "sys_ops_staff", "sys_role", "sys_role_point", "sys_function_point")) {
+                var m =
+                        Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS " + table + "\\s*\\(.*?\n\\);")
+                                .matcher(ddl);
+                assertTrue(m.find(), table);
+                jdbc.execute(m.group());
+            }
+            new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                    new ClassPathResource("db/migration/V647__store_entity_claim.sql")).execute(ds);
+            jdbc.update(
+                    "INSERT INTO usr_account(user_no,created_at,updated_at) VALUES ('U',NOW(),NOW())");
+            jdbc.update(
+                    "INSERT INTO"
+                        + " mch_account(mch_account_no,user_no,entity_no,is_owner,created_at,updated_at)"
+                        + " VALUES ('MA','U','M',1,NOW(),NOW())");
+            jdbc.update(
+                    "INSERT INTO mch_entity(entity_no,name,created_at,updated_at) VALUES"
+                            + " ('M','merchant',NOW(),NOW())");
+            jdbc.update(
+                    "INSERT INTO"
+                        + " mch_store(entity_no,store_no,name,commerce_model,business_type_code,created_at,updated_at)"
+                        + " VALUES ('M','S','store','STORE_V1','RETAIL',NOW(),NOW())");
         }
-        jdbc.update(
-                "INSERT INTO usr_account(user_no,created_at,updated_at) VALUES ('U',NOW(),NOW())");
-        jdbc.update(
-                "INSERT INTO"
-                    + " mch_account(mch_account_no,user_no,entity_no,is_owner,created_at,updated_at)"
-                    + " VALUES ('MA','U','M',1,NOW(),NOW())");
-        jdbc.update(
-                "INSERT INTO mch_entity(entity_no,name,created_at,updated_at) VALUES"
-                        + " ('M','merchant',NOW(),NOW())");
-        jdbc.update(
-                "INSERT INTO"
-                    + " mch_store(entity_no,store_no,name,commerce_model,business_type_code,created_at,updated_at)"
-                    + " VALUES ('M','S','store','STORE_V1','RETAIL',NOW(),NOW())");
         var cfg = new MybatisConfiguration();
         var factory = new MybatisSqlSessionFactoryBean();
         factory.setConfiguration(cfg);
@@ -154,6 +169,6 @@ final class AccessMysqlFixture implements AutoCloseable {
         audit.close();
         sc.close();
         ic.close();
-        admin.execute("DROP DATABASE " + schema);
+        if (!preserveSchema) admin.execute("DROP DATABASE " + schema);
     }
 }

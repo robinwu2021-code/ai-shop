@@ -149,6 +149,17 @@ class BackendI18nParityTest {
         assertThat(keysOf(BASE)).containsAll(notificationKeys);
         referenced.addAll(notificationKeys);
 
+        // Identity role labels are response text, not ErrorCodes. Discover the literal
+        // MessageSource calls in the actual producer so removing one makes its key orphaned.
+        Set<String> identityKeys = new LinkedHashSet<>();
+        var identityCalls = Pattern.compile("messages\\.getMessage\\(\\s*\"([^\"]+)\"");
+        var identitySource = java.nio.file.Path.of(
+                "src/main/java/ai/neargo/shop/merchantbridge/LoginIdentityServiceImpl.java");
+        var identityMatcher = identityCalls.matcher(java.nio.file.Files.readString(identitySource));
+        while (identityMatcher.find()) identityKeys.add(identityMatcher.group(1));
+        assertThat(keysOf(BASE)).containsAll(identityKeys);
+        referenced.addAll(identityKeys);
+
         List<String> orphans = new ArrayList<>();
         for (String key : keysOf(BASE)) {
             if (!referenced.contains(key)) {
@@ -162,7 +173,7 @@ class BackendI18nParityTest {
          * err.settle.split_reverse_failed 就这样从初始提交一路被翻进阿语文件，
          * 从来没有任何一个 ErrorCode 指过它（2026-09-06 查出并删除）。
          *
-         * 错误提示经 ErrorCode.msgKey()，消息通知经生产者的 Messages.get 字面量调用，
+         * 错误提示经 ErrorCode.msgKey()，消息通知经生产者的 Messages.get、身份角色经 MessageSource.getMessage 字面量调用，
          * 所以这个反向集合没有误报来源；将来出现第二种键的生产者，改的是这里的 referenced。
          */
         assertThat(orphans)

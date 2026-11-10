@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "remoteAccess": false,
+  "vendorAccess": false,
+  "opsSessionKind": "CONTROLLED_DB_SESSION_NOT_PASSWORD_LOGIN",
+  "stage": "complete",
+  "fault": {
+    "uploadDrop": false,
+    "holdReceipts": false,
+    "opsDrop": false,
+    "uploadDrops": 1,
+    "opsDrops": 2,
+    "restarts": 1,
+    "opsRuns": 1
+  },
+  "claimStates": "LINKED\t1",
+  "accountStates": "UNVERIFIED\tPENDING\t1",
+  "hostEntity": "M",
+  "hostPaymentRows": 0,
+  "hostQualificationRows": 0,
+  "sealedFiles": 1,
+  "commandOutcomes": "REJECTED\t2\nSUCCEEDED\t4"
+}

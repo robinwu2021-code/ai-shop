@@ -1,0 +1,555 @@
+{
+  "status": "SOURCE_CLOSURE_NOT_DEPLOYED",
+  "scope": "Baseline HEAD + explicit production/migration deltas and build anchors; N1 read-only diagnostic after N3/N4/B02. No write-side N1 release, tests, credentials or whole-worktree archive. Near-pay source remains pinned to prior built artifact; unlisted/current workspace changes are not adopted.",
+  "repositories": [
+    {
+      "id": "ai-shop",
+      "head": "c390e6ac4dbfa8c049e2ad99b5a00fe166d69957",
+      "files": [
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/BizOnboardingForwarder.java",
+          "role": "production-delta",
+          "sha256": "24ba2772436568231a8996d1e6c85e4a3150d3c06684492cb3980eba0256a392"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/config/PayBizOnboardingConfiguration.java",
+          "role": "production-delta",
+          "sha256": "2d75e7aa51b5e9ad6b1189c8984695481206ea600075a1e70e4b69bc4cb4194f"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java",
+          "role": "production-delta",
+          "sha256": "e43ec5b567b37feb06b373171a859dad2bfa0df6a60d2c98353793339f803250"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPaySessionController.java",
+          "role": "production-delta",
+          "sha256": "735c1de64dbc8ffe0af4d506f4206ebbd6def6ea482001a14e07823b8498e443"
+        },
+        {
+          "path": "backend/shop-app/src/main/resources/application.yml",
+          "role": "production-delta",
+          "sha256": "64ee65d5c1ebe5d67988acb8977e4f6fa26bcb6448e306517b1968cd9beeb1c5",
+          "revision": "B02 unified identity routes, currentIdentity profile and ticket TTL; preserves prior B01/B04/T01 behavior"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/common/ApiResponseWrapper.java",
+          "role": "production-delta",
+          "sha256": "d89a521f6dcef3238a2130f428bf2637b892311957433c65baf3368f3eb64043"
+        },
+        {
+          "path": "backend/shop-channel/src/main/java/ai/neargo/shop/channel/media/MediaHostRewriteFilter.java",
+          "role": "production-delta",
+          "sha256": "69065bdd345811e32b9edb3cddd2b2f2b3b0999483aced793cf3ec340df1eb62"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayBizAuthenticationFilter.java",
+          "role": "production-delta",
+          "sha256": "bd6ea1200f43fca6fd8b6b4ce6980c1f4a498a3d22cb78dfd12b269b437794ce"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayBizException.java",
+          "role": "production-delta",
+          "sha256": "bc5c4978551b2ffbb0e489d3a28219c28bb57ca7c3742e96fad60f8a2485af71"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayBizExceptionHandler.java",
+          "role": "production-delta",
+          "sha256": "46cd78281584865d0b1de472b2e364b38ece9fb163019494055bb3bfb6ba8819"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayBizRequestBody.java",
+          "role": "production-delta",
+          "sha256": "5cd7afc8eb910428879d43c871b3d9d51ad5c7619dd8617508fd5086f2db5e2e"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayBizSessionVerifier.java",
+          "role": "production-delta",
+          "sha256": "c06edd9e1ba450749d719275bdd80d21ce3f272deff4451afefbf166c705610e"
+        },
+        {
+          "path": "backend/pom.xml",
+          "role": "build-anchor",
+          "sha256": "77b11938fc1724f376d66a0cf8e3c7cf02fe3cfc294ebe33f0a71c7f7abde340"
+        },
+        {
+          "path": "backend/shop-app/pom.xml",
+          "role": "build-anchor",
+          "sha256": "bcb9d02ad1243d18fa01f788786ba192241ae330414954a9dfe2b8b587a98711"
+        },
+        {
+          "path": "backend/pay/pay-domain/pom.xml",
+          "role": "build-anchor",
+          "sha256": "530447698679884649f8d2e88208e80aea83a5dba03d6b200cc5503936193418"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopStoreMemberRoutes.java",
+          "role": "production-delta",
+          "sha256": "c0a7a6cacc3d85cb2644a2673f076a774ffbc96449db9124d38c00a474c6d37e",
+          "revision": "N1 exact GET store entity/relink-check only; POST remains absent"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+          "role": "production-delta",
+          "sha256": "67d46b95b4db45556a0614ae7b0a5511b0a4f77e3840e1cdf9368bc8e8911ab4",
+          "revision": "B02 unified identity routes, currentIdentity profile and ticket TTL; preserves prior B01/B04/T01 behavior"
+        },
+        {
+          "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/security/CommerceRoutePolicy.java",
+          "role": "production-delta",
+          "sha256": "82d5494fa8d1a48bc0ec0b8c1c7069c765cfd620e454588ac6f774d76bd550c8",
+          "revision": "N3: exact POST /biz/merchant/onboarding foundation finance admission; preserves B02/P1 routes"
+        },
+        {
+          "path": "backend/shop-auth-store/src/main/java/ai/neargo/auth/store/SessionDao.java",
+          "role": "production-delta",
+          "sha256": "b91ad03e2f32d8b6251fc7dfed1468f6eeff3cccbadc6cf874cfac8fc8f44431",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/TokenStore.java",
+          "role": "production-delta",
+          "sha256": "ec392c19824b8d3e32dbe3327382738e448fb20c5f97fd40f39a7bf3cbc5231b",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/store/DbTokenStore.java",
+          "role": "production-delta",
+          "sha256": "70a051e997fdf52d77e4a49a4bc60729ddb9b6873c520bd44edf29c30a72e172",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/store/EhcacheTokenStore.java",
+          "role": "production-delta",
+          "sha256": "a255c13429ee0bbb89e58b475a69f3ca6e6bf220976c0c014cc36bbc0a64e1da",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/store/MemoryTokenStore.java",
+          "role": "production-delta",
+          "sha256": "8f54fe59c20477449c1a96a582ecb4fa423a5c813cc54996caf532c811b28c43",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/store/RedisTokenStore.java",
+          "role": "production-delta",
+          "sha256": "25dbbd5ae5f777401fce9f4f69dd5034687e6279e883eea9d539bae61f2ffe1a",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizContextFilter.java",
+          "role": "production-delta",
+          "sha256": "d28159df5afbd0c8177a8e82eb01223bf449214769b8c9553f1357258c82f307",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/user/service/AuthService.java",
+          "role": "production-delta",
+          "sha256": "d857af7aec01ebd1b9d9d25fe865f0b4b131284594062e13100875a3ff889c61",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/user/service/impl/AuthServiceImpl.java",
+          "role": "production-delta",
+          "sha256": "e754a08c7682ae594a153d3fd2e8b1461be618eab65f456cec397eff8ef0b24e",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/user/service/LoginTicketService.java",
+          "role": "production-delta",
+          "sha256": "4b28fc0ecd9819e188dede43828491825d6f39d36664ec130365c41d4822ef34",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/user/service/impl/LoginTicketServiceImpl.java",
+          "role": "production-delta",
+          "sha256": "1db57214ab7dd2435b827f0a8899cc4c01d7198e0168fa08f9e833eda95a41b8",
+          "revision": "B02 final DB-clock expiry: TIMESTAMPADD at issue; current DB clock at locked/consume"
+        },
+        {
+          "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/LoginIdentityService.java",
+          "role": "production-delta",
+          "sha256": "3dc02bc2106d22f92f140992189f6031dc658c73490b0ac3e91c8dee4e2b4053",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/LoginIdentityServiceImpl.java",
+          "role": "production-delta",
+          "sha256": "a3c222cbe7e85baffc88919b0f4b0af259dce47841e4b6b57f5529e079f72ffe",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java",
+          "role": "production-delta",
+          "sha256": "b00e6fe5ce5ecd5496f3106c288d60f94381e38bdfea365c1d84a9b6f08f1c5d",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/config/SecurityConfig.java",
+          "role": "production-delta",
+          "sha256": "8015a9754a5d98666ec78347f15ffee1ffc55287d55356623b12f90378697b0d",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/commercebridge/ShopCommerceEndContextAdapter.java",
+          "role": "production-delta",
+          "sha256": "6066a8b3979f12f6b91b413296cc14f968127077580a23e045492fb53c537f7a",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java",
+          "role": "production-delta",
+          "sha256": "931a8ae72a6e0fa98bf39671f75d6719bfdfb7ce97ab50c15b6bfdd20baa02d7",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/resources/i18n/messages.properties",
+          "role": "production-delta",
+          "sha256": "197030be30487bc0b3f9cf4e6f8dadfe9529944b96466fd9c398258f582b0130",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/resources/i18n/messages_en.properties",
+          "role": "production-delta",
+          "sha256": "025579b2031fca0393360e472d398b62676667e9ef13b336013882b217351d97",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/resources/i18n/messages_ar.properties",
+          "role": "production-delta",
+          "sha256": "6bcfc9538f6744deda2f735cb9f32318f7968e9d63b77628c36932c3f22dff4a",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-app/src/main/resources/db/migration/V645__merchant_login_ticket.sql",
+          "role": "migration-delta",
+          "sha256": "36152a5c3db6fc66e85fcb128a153d28dda9ba69b1d752c3364fd8233fa52640",
+          "revision": "B02 unified identity entry, typed exact source-session lifecycle; V645 only"
+        },
+        {
+          "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/EntityVO.java",
+          "role": "production-delta",
+          "sha256": "765bbc9384c727230aafdc611a4f42bdc84cc1646510da2e0ba946fa57464a61",
+          "revision": "N3/N4 host platform profile, operating qualifications/agreement and scoped review readback; private channel flow remains independent"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/OpsService.java",
+          "role": "production-delta",
+          "sha256": "9129f06b1c4403c8f86c99829c743a7e68b32ed9fee2e4fee3b71310e1401084",
+          "revision": "N3/N4 host platform profile, operating qualifications/agreement and scoped review readback; private channel flow remains independent"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/impl/OpsServiceImpl.java",
+          "role": "production-delta",
+          "sha256": "b5769e2b823683f5c1fcc726a4c9c892c11c29dea4f22570e2503c6cdd41f0c2",
+          "revision": "N3/N4 host platform profile, operating qualifications/agreement and scoped review readback; private channel flow remains independent"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizEntityController.java",
+          "role": "production-delta",
+          "sha256": "be3a038dbdbbd0d56ebd5a4787b01ea8d9a10aa87c719260a3e2e64801152c71",
+          "revision": "N3/N4 host platform profile, operating qualifications/agreement and scoped review readback; private channel flow remains independent"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantOnboardingController.java",
+          "role": "production-delta",
+          "sha256": "cefe2a4931cb2b22d65b5f347c21a9f9fa4f74dff4300625ab3db5d6a6770125",
+          "revision": "N3/N4 host platform profile, operating qualifications/agreement and scoped review readback; private channel flow remains independent"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/EntityReviewAssembler.java",
+          "role": "production-delta",
+          "sha256": "544d276ab7fa3cca2de1930353c782e70357e59041746d3e14ad79e62558a517",
+          "revision": "N3/N4 host platform profile, operating qualifications/agreement and scoped review readback; private channel flow remains independent"
+        },
+        {
+          "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/user/StoreRelinkHostFactsPort.java",
+          "role": "production-delta",
+          "sha256": "2b8b7485ff93e2f3e4764ec3cf8c37669f052e65013f5eee2643e5e9fe92589a",
+          "revision": "N1 read-only diagnostics only; allowed/executionReady=false; no POST or write fence"
+        },
+        {
+          "path": "backend/shop-core/src/main/java/ai/neargo/shop/platform/port/StoreRelinkHostFactsPortImpl.java",
+          "role": "production-delta",
+          "sha256": "4e62ce6f2348471fc8a92500bbfea50b8f756281c642bc421fcb85ef275b3d45",
+          "revision": "N1 read-only diagnostics only; allowed/executionReady=false; no POST or write fence"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/StoreRelinkPrecheck.java",
+          "role": "production-delta",
+          "sha256": "ca3b7eb2a5eeaaf281464c133cab201c86e7e0a73da519f8f1a4866620992f49",
+          "revision": "N1 read-only diagnostics only; allowed/executionReady=false; no POST or write fence"
+        },
+        {
+          "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java",
+          "role": "production-delta",
+          "sha256": "b6cefc2c7160a4701456d47d68b53e2336a397f9cc319c8c41477d8b0d9e2c50",
+          "revision": "N1 read-only diagnostics only; allowed/executionReady=false; no POST or write fence"
+        }
+      ]
+    },
+    {
+      "id": "near-pay",
+      "head": "54303402078ae166e4e568eca3b0ddf61e1d6f27",
+      "files": [
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/approval/ApprovalFlowService.java",
+          "role": "production-delta",
+          "sha256": "d839f67cd9b80dc7aaec1426b7acb0ab92e88385b43a37d3ead41800ea69b5d8"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/approval/integration/ApprovalSubjectPort.java",
+          "role": "production-delta",
+          "sha256": "80b6a67fc513caf4616488b97deda957d2f2d8997f1a52450183b328180adaaf"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/credential/PayCredentialService.java",
+          "role": "production-delta",
+          "sha256": "75f6f4b35d106e3b8f4e1b7b8fe20138e5c01c95ab48e61070861912d24d5f61"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountCandidateIntake.java",
+          "role": "production-delta",
+          "sha256": "4d450e44c9a91f1569519dd1a760f7dbbb52d0c02664a2a55c28ef7b079e1dde"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/ChannelAccountCandidatePort.java",
+          "role": "production-delta",
+          "sha256": "934174ef84028070b9add35619fcd1f04f57ecf2e1413591dfac85b79582f44c"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingApplicationService.java",
+          "role": "production-delta",
+          "sha256": "4759c0ed413aed56507d5559221c2b845c35b9b5b9473f9536c818ed8c32784f"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingReviewSubject.java",
+          "role": "production-delta",
+          "sha256": "21618b2ae0166c05f3e573a07de8f3dfccd3dd1269c61796cb68236e68d890c9"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingAttachmentService.java",
+          "role": "production-delta",
+          "sha256": "f77e28855c0413910ce10861f7b4fa49749a1d21e56bffeb18739e9f64cd0d3c"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingDraftService.java",
+          "role": "production-delta",
+          "sha256": "0a02ef4d9978ca18d753d52f4fbeb5c0aa2271a5f29105e7323edd7de2df912b"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingFileStore.java",
+          "role": "production-delta",
+          "sha256": "5c6a8b591a21e794329691fbd7387070838e73233ac342ce2c646dcb6a791b98"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingMaterialFiles.java",
+          "role": "production-delta",
+          "sha256": "4c176fc14e6932d3e6b0df6379e567874cafc90f9c141c00b5b4aabfc12494f1"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/OnboardingReadinessService.java",
+          "role": "production-delta",
+          "sha256": "bde29495e60fc8f1646a223c03ddb95c9d83d3c13ac233dd4226a00dc5995958"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/newebpay/NewebPayOnboardingCredentials.java",
+          "role": "production-delta",
+          "sha256": "8aceb6ad21918b562028335150178078ee990deba366756d678f39b80a0c67ad"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/newebpay/NewebPayOnboardingFields.java",
+          "role": "production-delta",
+          "sha256": "3262db3fba17a1640e602e37778678acf7b0b129dee6caf5ccc88e4af7f4e148"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/newebpay/NewebPayOnboardingMaterialVault.java",
+          "role": "production-delta",
+          "sha256": "2e5e63b846e2ae0e928626de639a885e70c77a2bcff6f29629055d2374ea1537"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/onboarding/newebpay/NewebPayOnboardingPreparation.java",
+          "role": "production-delta",
+          "sha256": "f697703aff2dcc0104bd4b933c5f05879afa1d612f0b4ffbca2a256fac1b106c"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/member/MembershipAuthority.java",
+          "role": "production-delta",
+          "sha256": "a8f7220c24bf4ebd5150ee188ea794302f47d29f0346776db2989e860ae298db"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/member/MembershipService.java",
+          "role": "production-delta",
+          "sha256": "35f2a6976229881fbc078fff137415abf3c5ac69b7d17c71d17b12391b803632"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/platmch/member/MembershipStore.java",
+          "role": "production-delta",
+          "sha256": "f71a636591d39cd8ac74765e4fbfb1e86d193f6d3b4dc9924fc117719b1b8f4c"
+        },
+        {
+          "path": "backend/pay/pay-channel/src/main/java/ai/neargo/shop/pay/channel/newebpay/NewebPayOnboardingProtocol.java",
+          "role": "production-delta",
+          "sha256": "296ab5b977efc7a96a26512dc9b1a3143f1fc8a882b47f60a97df5bdf2819c82"
+        },
+        {
+          "path": "backend/pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/biz/BizSessionAuthenticator.java",
+          "role": "production-delta",
+          "sha256": "6d74fa6d61e4afa4b1a8b672075b3dfe48b8fd07a63016336079315383a38f49"
+        },
+        {
+          "path": "backend/pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/core/CachedBodyRequest.java",
+          "role": "production-delta",
+          "sha256": "b18f6d278770fa1bfc8bb43dbcd4b4272c2917886a8b3f63ecbda5de4ae3dfe7"
+        },
+        {
+          "path": "backend/pay/pay-guard/src/main/java/ai/neargo/shop/pay/api/guard/core/GuardFilter.java",
+          "role": "production-delta",
+          "sha256": "7e9e943871c3c67ab1878bce0b90063c62061b4e00fd04b00bfbb8962b698553"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/biz/v2/BizMemberController.java",
+          "role": "production-delta",
+          "sha256": "7f58931d9b75085380dc516615d393c170b89802af4c07794fe0abd0ea354763"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/biz/v2/BizOnboardingDraftController.java",
+          "role": "production-delta",
+          "sha256": "a247c5d41a761505c5ac24442d95cd8cf5586254cf92d9186472705c37e471ad"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/biz/v2/BizOnboardingFileController.java",
+          "role": "production-delta",
+          "sha256": "6b391789c7f282c0eacf4315ea212a9d9deee0cf656635999f1347c3ce6db125"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsOnboardingDtos.java",
+          "role": "production-delta",
+          "sha256": "df8fd4cacf34445f547c88ded1eadc501d1d616870c7ae7a498d014ea4828f7d"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsNewebPayOnboardingMaterialController.java",
+          "role": "production-delta",
+          "sha256": "d3b3c1c27d9d49be26721d20394dbc257467e6be08acd71e93f4922d89558f79"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsOnboardingDraftController.java",
+          "role": "production-delta",
+          "sha256": "8f3e18567558f138f091e6071e38a9f4090a9345352d0f78c417c331b425d448"
+        },
+        {
+          "path": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsOnboardingFileController.java",
+          "role": "production-delta",
+          "sha256": "74aac74a95ff248db8f29ca54516f1520cc9f5ec92d73f4a554b7ab30d87df11"
+        },
+        {
+          "path": "backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/identity/AiShopBizIdentityClient.java",
+          "role": "production-delta",
+          "sha256": "c9098fb4815465e96d4afed9bd32735080b4c14278750076d5907e246be4f808"
+        },
+        {
+          "path": "backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/identity/AiShopBizIdentityConfiguration.java",
+          "role": "production-delta",
+          "sha256": "d3444eb784bc01ca34241d110bfd2130dc9272ad25770b2111091f19fd019279"
+        },
+        {
+          "path": "backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/identity/AiShopBizSessionFilter.java",
+          "role": "production-delta",
+          "sha256": "3fefbe7993ffad1f2be953491a68b3176a0d21d10fc159ca28e28e6d199da7ea"
+        },
+        {
+          "path": "backend/pay/pay-svc/src/main/java/ai/neargo/shop/pay/svc/identity/StandaloneBizIdentityRequired.java",
+          "role": "production-delta",
+          "sha256": "d445bd69bbdc0d86c7a40c5ca62c31a564cd64b8cf763ccb9728b99b5d9716b4"
+        },
+        {
+          "path": "backend/pay/pay-svc/src/main/resources/application.yml",
+          "role": "production-delta",
+          "sha256": "ae7d774f94408530423ee6f4fdbe5dab8a3deefec15562805aa3f6fac86951d6"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/resources/db/pay/V72__newebpay_onboarding_credential.sql",
+          "role": "migration-delta",
+          "sha256": "123877d8947a8a1c6ce96e86bea25f4140f8a71f8745116f26287685876f6c53"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/resources/db/pay/V74__pay_onboarding_draft.sql",
+          "role": "migration-delta",
+          "sha256": "2bfeee6fe5e39bdb42b3a675e415c324ea99b79d1026d82b2b2f784f608c0795"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/resources/db/pay/V75__pay_onboarding_file.sql",
+          "role": "migration-delta",
+          "sha256": "5c456c1d1139cfb4e71cefc64d6aa5d4ba0e92a63201d33c76a443efe7faf916"
+        },
+        {
+          "path": "backend/pay/pay-domain/src/main/resources/db/pay/V76__pay_membership_subject_type.sql",
+          "role": "migration-delta",
+          "sha256": "3817262d11a2994b65ba2085d1f1a06392f91df0ee3533da3cd5dc4602a41a65"
+        },
+        {
+          "path": "backend/pom.xml",
+          "role": "build-anchor",
+          "sha256": "93653bfd0daaf45d2b72faccd16ba071ee8fb748e4126c711d5614f003a3e1ea"
+        },
+        {
+          "path": "backend/pay/pom.xml",
+          "role": "build-anchor",
+          "sha256": "f8803deacc2c8e11289c2c677843eabb62f5bcd32ba17fe670dad040aea6d0d8"
+        },
+        {
+          "path": "backend/pay/pay-domain/pom.xml",
+          "role": "build-anchor",
+          "sha256": "2b76c77596f2a22dea0cd4a0382f9200f531cd49bd820688dae2138e55708d35"
+        },
+        {
+          "path": "backend/pay/pay-channel/pom.xml",
+          "role": "build-anchor",
+          "sha256": "5d9db2ac6687dbbc505907b632a1c204d46927a39f6e682eb203d09880839f88"
+        },
+        {
+          "path": "backend/pay/pay-guard/pom.xml",
+          "role": "build-anchor",
+          "sha256": "51ccd8a5d0a503539e69b2d7845621006b817cb126fca648d19790bcfe8a8a54"
+        },
+        {
+          "path": "backend/pay/pay-portal/pom.xml",
+          "role": "build-anchor",
+          "sha256": "ccbf543274fdb0a70146458fc94c452260c951f8f2e77b558e035bebd562fd90"
+        },
+        {
+          "path": "backend/pay/pay-svc/pom.xml",
+          "role": "build-anchor",
+          "sha256": "ea791a623b773389bf49aa64099f5080345c35b790c5a73ffc3b85606962f8df"
+        }
+      ]
+    },
+    {
+      "id": "bapp-reference",
+      "head": "b79e7a4bf4d230ffaff918e0178187b2c2ede5f4",
+      "files": [
+        {
+          "path": "apps/merchant_app/lib/features/payment_onboarding/data/biz_onboarding_client.dart",
+          "role": "read-only-api-evidence",
+          "sha256": "464f3ac15f46b2f187810ffeb7d7ef4f232a8499050b0657e672b23814f3110e"
+        },
+        {
+          "path": "apps/merchant_app/lib/features/payment_onboarding/presentation/pay_intake_page.dart",
+          "role": "read-only-api-evidence",
+          "sha256": "63104d20ec91713a372a7841273b5c4af0266f970d9d58ead7c6f41c0a0fe421"
+        },
+        {
+          "path": "apps/merchant_app/lib/features/payment_onboarding/presentation/payment_management_pages.dart",
+          "role": "read-only-api-evidence",
+          "sha256": "157763fdde378f652c97245fb4b6f093c9f3d0b5858bffda4958d165c4d93d59"
+        },
+        {
+          "path": "apps/merchant_app/lib/features/standard_onboarding/onboarding_payments.dart",
+          "role": "read-only-api-evidence",
+          "sha256": "a2dd76962fba321d2ad7b9eedf847164e2c39983627e19d12a980999595eac8f"
+        }
+      ],
+      "revision": "B01/B03/B04 read-only references refreshed; not an App release artifact"
+    }
+  ]
+}

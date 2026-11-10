@@ -1,5 +1,7 @@
 package ai.neargo.shop.beauty.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
 import ai.neargo.shop.beauty.dto.AppointmentItemReq;
@@ -19,6 +21,12 @@ import java.util.List;
 
 /** Durable verified claim intents contain only canonical references, never tickets or contact fingerprints. */
 public final class ReceptionPreparation {
+    private StoreOwnershipWritePort ownershipWrites;
+    // Embedded host capability only. Standalone preserves its own original transaction contract;
+    // its relink evidence stays incomplete when this capability is absent.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final AppointmentPersistence db;
     private final BeautyMappers.ReceptionOperationMapper operations;
     public ReceptionPreparation(AppointmentPersistence db, BeautyMappers.ReceptionOperationMapper operations) {
@@ -50,7 +58,7 @@ public final class ReceptionPreparation {
         op.setIdentityKind("USER"); op.setIdentityRef(target); op.setPhase("RECEIVED");
         op.setDerivedKeyHash(derived(entity, store, "BAPI-032", key));
         op.setFrozenPayload(db.json.writeValueAsString(new ClaimPayload(1, guest, target)));
-        try { db.tx(() -> { operations.insert(op); return null; }); }
+        try { db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck(user.tenantNo(), entity, store); operations.insert(op); return null; }); }
         catch (DuplicateKeyException raced) {
             var winner = findClaim(entity, store, key, hash);
             if (winner == null) { throw raced; }
@@ -132,9 +140,12 @@ public final class ReceptionPreparation {
         if (identity != null) { op.setIdentityKind(identity.kind()); op.setIdentityRef(identity.reference()); }
         op.setDerivedKeyHash(derived(entity, store, endpoint, key));
         op.setFrozenPayload(db.json.writeValueAsString(payload));
-        if (TransactionSynchronizationManager.isActualTransactionActive()) { operations.insert(op); }
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            if (ownershipWrites != null) ownershipWrites.lockAndCheck(user.tenantNo(), entity, store);
+            operations.insert(op);
+        }
         else {
-            try { db.tx(() -> { operations.insert(op); return null; }); }
+            try { db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck(user.tenantNo(), entity, store); operations.insert(op); return null; }); }
             catch (DuplicateKeyException raced) {
                 var winner = find(entity, store, actor, endpoint, key, hash);
                 if (winner == null) { throw raced; }

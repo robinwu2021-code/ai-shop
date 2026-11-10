@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
@@ -112,6 +114,10 @@ import java.util.function.Supplier;
  */
 @Service("tradeCheckoutServiceImpl")
 public class CheckoutServiceImpl implements CheckoutService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final CheckoutMappers.OperationMapper operations;
     private final CheckoutMappers.QuoteMapper quotes;
     private final CheckoutMappers.ConfirmationMapper confirmations;
@@ -306,6 +312,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                     () ->
                             writes.execute(
                                     status -> {
+                                        ownershipWrites.lockAndCheck(scope.tenantNo(), operation.getEntityNo(), operation.getStoreNo());
                                         operations.insert(operation);
                                         var economic =
                                                 writer.quoteManualFor(
@@ -385,6 +392,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                     () ->
                             writes.execute(
                                     status -> {
+                                        ownershipWrites.lockAndCheck(scope.tenantNo(), scope.entityNo(), scope.storeNo());
                                         var op =
                                                 operations.lock(
                                                         request.operation().caller(),
@@ -879,6 +887,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                     () ->
                             writes.execute(
                                     status -> {
+                                        ownershipWrites.lockAndCheck(scope.tenantNo(), operation.getEntityNo(), operation.getStoreNo());
                                         operations.insert(operation);
                                         if (manual) {
                                             var sealed =
@@ -948,12 +957,16 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 request.quoteNo(),
                                 request.quoteRevision(),
                                 request.quoteHash()));
+        var ownership = unscoped(() -> operations.findForBuyer(
+                request.operation().caller(), request.operation().operationNo(), buyer));
+        if (ownership == null) throw BizException.of(ErrorCode.NOT_FOUND);
         try {
             BuyerConfirmation result =
                     unscoped(
                             () ->
                                     writes.execute(
                                             status -> {
+                                                ownershipWrites.lockAndCheck(ownership.getTenantNo(), ownership.getEntityNo(), ownership.getStoreNo());
                                                 var operation =
                                                         operations.lock(
                                                                 request.operation().caller(),

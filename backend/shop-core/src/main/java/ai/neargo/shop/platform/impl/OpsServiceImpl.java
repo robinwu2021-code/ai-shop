@@ -1,5 +1,9 @@
 package ai.neargo.shop.platform.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.common.ratelimit.RateRule;
 import ai.neargo.shop.common.ratelimit.RateLimiter;
 import ai.neargo.shop.spi.notify.MailPort;
@@ -54,6 +58,10 @@ import java.util.regex.Pattern;
 
 @Service
 public class OpsServiceImpl implements OpsService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(OpsServiceImpl.class);
@@ -368,6 +376,7 @@ public class OpsServiceImpl implements OpsService {
     @Transactional
     public void acceptApply(String applyNo) {
         MchEntityApply apply = requireApply(applyNo);
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
         move(apply, MchEntityApply.REVIEWING);
         // 不动 activeOwner：受理不是终态，这份申请仍占着「一人一份」的名额
         DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(apply));
@@ -384,6 +393,7 @@ public class OpsServiceImpl implements OpsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         MchEntityApply apply = requireApply(applyNo);
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
 
         /*
          * ★ **代填的人不能审自己填的那一张。**（三期）
@@ -506,6 +516,55 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     @Transactional
+    public MerchantProfileSubmission submitMerchantProfile(SubmitApplyCommand cmd, String selectedEntityNo) {
+        // Preserve owner/placeholder eligibility and the existing one-active-owner unique key.
+        var master = masterDataService.snapshot();
+        if (master.industries().stream().noneMatch(i -> i.industry().equals(cmd.industry()))
+                || master.subjects().stream().noneMatch(s -> s.subjectType().equals(cmd.subject())))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        var active = DataScopeContext.executeWithoutScope(() -> applyMapper.selectOne(
+                Wrappers.<MchEntityApply>lambdaQuery().eq(MchEntityApply::getActiveOwner, cmd.userNo())
+                        .last("limit 1 for update")));
+        boolean replayed = false, revised = false;
+        if (active == null) {
+            createMerchantApply(cmd, selectedEntityNo);
+        } else {
+            merchantAdminPort.merchantApplicationEntity(cmd.userNo(), selectedEntityNo);
+            if (!java.util.Objects.equals(selectedEntityNo, active.getEntityNo()))
+                throw BizException.of(ErrorCode.CONFLICT);
+            if (!MchEntityApply.PENDING.equals(active.getStatus()))
+                throw BizException.of(ErrorCode.APPLY_NOT_EDITABLE);
+            requireSubjectAllowedByIndustry(cmd.industry(), cmd.subject());
+            requireLicenseIfNeeded(cmd);
+            String canonical = masterDataService.canonicalSubject(cmd.subject());
+            String subject = canonical == null ? cmd.subject() : canonical;
+            String items = writeItemsJson(cmd.qualificationItems());
+            String licenses = writeJson(cmd.qualifications());
+            replayed = java.util.Objects.equals(active.getName(), cmd.name())
+                    && java.util.Objects.equals(active.getLegalForm(), subject)
+                    && java.util.Objects.equals(active.getContactName(), cmd.contactName())
+                    && java.util.Objects.equals(active.getContactPhone(), cmd.contactPhone())
+                    && java.util.Objects.equals(active.getIndustry(), cmd.industry())
+                    && java.util.Objects.equals(active.getIndustryNote(), normalizeIndustryNote(cmd))
+                    && java.util.Objects.equals(active.getQualificationItems(), items)
+                    && java.util.Objects.equals(active.getQualifications(), licenses);
+            if (!replayed) {
+                DataScopeContext.executeWithoutScope(() -> applyMapper.update(null,
+                        Wrappers.<MchEntityApply>lambdaUpdate().eq(MchEntityApply::getId, active.getId())
+                                .set(MchEntityApply::getName, cmd.name()).set(MchEntityApply::getLegalForm, subject)
+                                .set(MchEntityApply::getContactName, cmd.contactName()).set(MchEntityApply::getContactPhone, cmd.contactPhone())
+                                .set(MchEntityApply::getIndustry, cmd.industry()).set(MchEntityApply::getIndustryNote, normalizeIndustryNote(cmd))
+                                .set(MchEntityApply::getQualificationItems, items).set(MchEntityApply::getQualifications, licenses)));
+                audit("MERCHANT_APPLY_UPDATE", active.getApplyNo(), "商户修订平台资料");
+                revised = true;
+            }
+        }
+        acceptAgreement(cmd.userNo(), selectedEntityNo);
+        return new MerchantProfileSubmission(myApply(cmd.userNo()), replayed, revised);
+    }
+
+    @Override
+    @Transactional
     public String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy) {
         if (submittedBy == null || submittedBy.isBlank()) {
             /*
@@ -585,6 +644,7 @@ public class OpsServiceImpl implements OpsService {
          * 而那家有货的店还在另一个看不见的主体下 —— 两家店，他只认得出一家。
          */
         applicationEntity.apply(cmd.userNo()).ifPresent(apply::setEntityNo);
+        if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(apply));
         notifyOpsOfNewApply(apply);
         return apply.getApplyNo();
@@ -862,6 +922,18 @@ public class OpsServiceImpl implements OpsService {
                         .eq(MchEntityApply::getUserNo, userNo)
                         .orderByDesc(MchEntityApply::getId).last("limit 1")));
         return apply == null ? null : toVO(apply);
+    }
+
+
+    @Override
+    public java.util.Map<String, MerchantApplyVO> latestAppliesOf(String userNo, List<String> entityNos) {
+        if (entityNos.isEmpty()) return java.util.Map.of();
+        var rows = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                Wrappers.<MchEntityApply>lambdaQuery().eq(MchEntityApply::getUserNo, userNo)
+                        .in(MchEntityApply::getEntityNo, entityNos).orderByDesc(MchEntityApply::getId)));
+        var latest = new java.util.LinkedHashMap<String, MerchantApplyVO>();
+        for (var row : rows) latest.putIfAbsent(row.getEntityNo(), toVO(row));
+        return latest;
     }
 
 

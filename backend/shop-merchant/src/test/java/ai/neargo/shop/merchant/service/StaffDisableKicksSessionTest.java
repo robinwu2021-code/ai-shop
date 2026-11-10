@@ -52,6 +52,7 @@ class StaffDisableKicksSessionTest {
                 mock(ai.neargo.shop.merchant.service.impl.StaffAuditLogger.class),
                 mock(TokenStore.class),
                 mock(ai.neargo.shop.common.OtpStore.class));
+        service.setOwnership(mock(ai.neargo.shop.spi.user.StoreOwnershipWritePort.class));
     }
 
     private void staffExists(String no, boolean owner) {

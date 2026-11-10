@@ -56,6 +56,9 @@ public class MediaHostRewriteFilter extends OncePerRequestFilter {
         // The internal digest binds canonical URLs; public delivery rewriting would invalidate it.
         String path = request.getRequestURI().substring(request.getContextPath().length());
         return MediaPublicSourceInternalApi.CAPTURE_PATH.equals(path)
+                // near-pay owns these raw bytes and private attachments. Reading/replacing JSON
+                // here would also run before the relay's bounded input and authentication.
+                || path.startsWith("/biz/pay/v2/")
                 || request.getRequestURI().endsWith("/stream")
                 || (accept != null && accept.contains("text/event-stream"));
     }

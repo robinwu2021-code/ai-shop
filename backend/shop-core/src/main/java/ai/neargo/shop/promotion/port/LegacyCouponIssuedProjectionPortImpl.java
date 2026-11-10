@@ -1,4 +1,8 @@
 package ai.neargo.shop.promotion.port;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.promotion.mapper.*;
@@ -13,6 +17,12 @@ import org.springframework.transaction.annotation.*;
 import tools.jackson.databind.ObjectMapper;
 @Component
 public class LegacyCouponIssuedProjectionPortImpl implements LegacyCouponIssuedProjectionPort {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     private final PmtPayCouponProjectionMapper projections;
     private final LegacyCouponSourceCommitMapper decisions;
     private final ObjectMapper json;
@@ -22,6 +32,8 @@ public class LegacyCouponIssuedProjectionPortImpl implements LegacyCouponIssuedP
     @Transactional(propagation=Propagation.REQUIRES_NEW)
     public void record(EntitlementContext ctx,List<Right> rights) {
         check(ctx);ContractChecks.require(rights!=null && rights.size()<=1000);
+        rights.stream().map(Right::entityNo).distinct().sorted()
+                .forEach(entity -> ownershipWrites.lockEntityAndCheck(ctx.tenantNo(), entity));
         DataScopeContext.executeWithoutScope(()->{
             for(var r:rights.stream().sorted(Comparator.comparing(Right::instanceNo)).toList()) {
                 var source=decisions.findSource(ctx.tenantNo(),r.sourceSystem(),r.sourceTemplateNo());

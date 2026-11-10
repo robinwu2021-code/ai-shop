@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: ai-shop required BIZ session contract
+  version: 2026-11-09
+  description: New ai-shop endpoint required by near-pay. Not implemented in ai-shop by this delivery.
+paths:
+  /biz/auth/session:
+    get:
+      operationId: getTrustedMerchantSession
+      security:
+        - merchantBearer: []
+      responses:
+        '200':
+          description: Trusted current session; no payment role or PII.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, data]
+                properties:
+                  code: {type: integer, enum: [0]}
+                  data:
+                    type: object
+                    required: [realm, subjectType, subjectRef, tenantNo, status]
+                    properties:
+                      realm: {type: string, enum: [MERCHANT]}
+                      subjectType: {type: string, enum: [USER, MCH_ACCOUNT]}
+                      subjectRef: {type: string, pattern: '^[A-Za-z0-9_-]{1,64}$'}
+                      tenantNo: {type: string, enum: [MAIN]}
+                      status: {type: string, enum: [ACTIVE]}
+        '401': {description: Missing invalid expired or revoked merchant session}
+        '403': {description: Wrong realm or disabled identity}
+        '503': {description: Session store unavailable}
+components:
+  securitySchemes:
+    merchantBearer:
+      type: http
+      scheme: bearer
+      description: Original opaque btk_ user session token; never a service token.

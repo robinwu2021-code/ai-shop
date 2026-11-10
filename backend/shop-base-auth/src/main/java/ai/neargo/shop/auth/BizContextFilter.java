@@ -77,7 +77,7 @@ public class BizContextFilter extends OncePerRequestFilter {
             // store, its status or a failing membership lookup cannot select a login identity.
             if ("POST".equals(req.getMethod()) && java.util.Set.of(
                     "/biz/auth/login", "/biz/auth/staff-login", "/biz/auth/otp/send", "/biz/auth/email-otp/send",
-                    "/biz/auth/logout").contains(path)) {
+                    "/biz/auth/logout", "/biz/auth/identities", "/biz/auth/identities/enter").contains(path)) {
                 chain.doFilter(req, resp);
                 return;
             }

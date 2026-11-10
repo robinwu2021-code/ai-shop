@@ -156,7 +156,7 @@ SELECT s.entity_no,s.business_type_code,m.market FROM mch_store s
 JOIN mch_entity m ON m.tenant_no=s.tenant_no AND m.entity_no=s.entity_no AND m.deleted=0
 JOIN mch_account a ON a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no
 WHERE s.tenant_no=? AND s.store_no=? AND s.commerce_model='STORE_V1' AND s.status='ACTIVE'
-  AND s.deleted=0 AND %s=? AND a.is_owner=1 AND a.status='ACTIVE' AND a.deleted=0 FOR SHARE
+  AND s.deleted=0 AND s.ownership_change_no IS NULL AND m.ownership_change_no IS NULL AND %s=? AND a.is_owner=1 AND a.status='ACTIVE' AND a.deleted=0 FOR SHARE
 """
                                 .formatted(ownerKey()),
                         (r, i) ->

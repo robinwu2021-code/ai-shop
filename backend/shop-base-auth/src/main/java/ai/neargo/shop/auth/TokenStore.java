@@ -34,6 +34,16 @@ public interface TokenStore {
 
     void revoke(String token);
 
+    /** Hash-only switch tickets never persist bearer credentials. Explicit pool required. */
+    default Optional<SessionData> getByHash(String hash, String principal) {
+        throw new UnsupportedOperationException("Hash lookup requires a concrete session pool");
+    }
+
+    default void revokeByHash(String hash, String principal) {
+        throw new UnsupportedOperationException("Hash revocation requires a concrete session pool");
+    }
+
+
     /**
      * 踢掉某个主体的**全部**在线会话。
      *

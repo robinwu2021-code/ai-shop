@@ -1,5 +1,7 @@
 package ai.neargo.shop.beauty.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentReq;
 import ai.neargo.shop.beauty.dto.AppointmentAssignmentVO;
@@ -49,6 +51,12 @@ import java.util.stream.IntStream;
 
 /** All owner observations precede the one short atomic scope transaction. */
 public final class WorkOrderCoordinator {
+    private StoreOwnershipWritePort ownershipWrites;
+    // Embedded host capability only. Standalone preserves its own original transaction contract;
+    // its relink evidence stays incomplete when this capability is absent.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final ReceptionAccess receptionAccess;
@@ -514,6 +522,7 @@ public final class WorkOrderCoordinator {
     private WorkOrderVO openPrepared(BtyAppointment observed, String actor, BtyReceptionOperation op,
             PreparedWorkOrderScope prepared, long revision) {
         return db.tx(() -> {
+            if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", prepared.scope().entityNo(), prepared.scope().storeNo());
             if (observed != null) {
                 db.lock(observed);
                 db.fences.selectScopedForUpdate(observed.getEntityNo(), observed.getStoreNo(),
@@ -590,6 +599,7 @@ public final class WorkOrderCoordinator {
     }
     private WorkOrderVO persist(BtyReceptionOperation op, PreparedWorkOrderScope prepared) {
         var scope = prepared.scope();
+        if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", scope.entityNo(), scope.storeNo());
         var root = new BtyWorkOrder(); root.setEntityNo(scope.entityNo()); root.setStoreNo(scope.storeNo());
         root.setWorkOrderNo(BizKey.next("BTWO")); root.setAppointmentNo(op.getAppointmentNo());
         root.setCustomerRef(prepared.identity().kind() + ":" + prepared.identity().reference());

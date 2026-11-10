@@ -90,6 +90,52 @@ class EmailOtpAuthTest {
                 mock(PersonService.class), "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email);
     }
 
+    @Test
+    void verificationConsumesOtpWithoutCreatingAccountOrSession() {
+        String code = send();
+        var verified = auth.verify(new AuthService.LoginCommand("EMAIL_OTP", "Person@Example.COM", code,
+                null, null, true));
+        assertThat(verified.type()).isEqualTo("EMAIL");
+        assertThat(verified.value()).isEqualTo("person@example.com");
+        assertThat(verified.userNo()).isNull();
+        assertThat(accounts).isEmpty();
+        assertThat(credentials).isEmpty();
+        assertThat(store.peek(EmailOtpService.key("person@example.com"))).isEmpty();
+        verify(users, never()).insert(any(UsrAccount.class));
+        verify(identities, never()).insert(any(UsrIdentity.class));
+    }
+
+    @Test
+    void verifiedNewAccountIsCreatedOnlyAtEntryAndRequiresAgreement() {
+        var principal = new AuthService.VerifiedPrincipal("EMAIL", "new@example.com", null);
+        assertThatThrownBy(() -> auth.enterVerified(principal, false, "TW"))
+                .isInstanceOf(BizException.class);
+        assertThat(accounts).isEmpty();
+        var entered = auth.enterVerified(principal, true, "TW");
+        assertThat(entered.getUserNo()).isNotBlank();
+        assertThat(credentials).containsKey("EMAIL:new@example.com");
+    }
+
+    @Test
+    void verificationOfPasswordNeverUpgradesItsHash() {
+        var account = new UsrAccount();
+        account.setUserNo("U");
+        account.setStatus("ACTIVE");
+        accounts.put("U", account);
+        var login = new UsrIdentity();
+        login.setUserNo("U"); login.setIdentityType("EMAIL"); login.setIdentityValue("person@example.com");
+        credentials.put("EMAIL:person@example.com", login);
+        var password = new UsrIdentity();
+        password.setUserNo("U"); password.setIdentityType("PASSWORD"); password.setIdentityValue("old-hash");
+        credentials.put("PASSWORD:old-hash", password);
+        when(hasher.matches("secret", "old-hash")).thenReturn(true);
+        when(hasher.needsUpgrade("old-hash")).thenReturn(true);
+        var verified = auth.verify(new AuthService.LoginCommand("PASSWORD", "Person@Example.COM", "secret", null, null, true));
+        assertThat(verified.userNo()).isEqualTo("U");
+        verify(identities, never()).updateById(any(UsrIdentity.class));
+        verify(users, never()).insert(any(UsrAccount.class));
+    }
+
     private String send() {
         email.send("Person@Example.COM", null);
         return store.peek(EmailOtpService.key("person@example.com")).orElseThrow();

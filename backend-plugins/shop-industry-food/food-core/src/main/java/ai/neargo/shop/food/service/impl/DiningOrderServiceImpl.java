@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
@@ -87,6 +89,12 @@ import java.util.function.Supplier;
  * invented.
  */
 public class DiningOrderServiceImpl implements DiningOrderService {
+    private StoreOwnershipWritePort ownershipWrites;
+    // Embedded host capability only. Standalone preserves its own original transaction contract;
+    // its relink evidence stays incomplete when this capability is absent.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final CheckCartService carts;
     private final KitchenTaskService kitchen;
     private final OutboxPublisher publisher;
@@ -1050,6 +1058,7 @@ public class DiningOrderServiceImpl implements DiningOrderService {
             String buyer,
             String realm,
             Frozen frozen) {
+        if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", original.getEntityNo(), original.getStoreNo());
         var currentPolicy = lockStore(original.getEntityNo(), original.getStoreNo());
         if (original.getCheckNo() != null && checkGuard != null)
             checkGuard.assertMutable(

@@ -52,6 +52,12 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final StaffAuditLogger audit;
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {
+        this.ownership = ownership;
+    }
 
     /** 主体表：只为取市场（号码按市场校验）。setter 注入，手工构造本类的测试不必跟着改；缺省按大陆口径 */
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
@@ -194,6 +200,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         if (a == null) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
+        ownership.lockEntityAndCheck("MAIN", a.getEntityNo());
         a.setDisplayName(name);
         MchAccount toSave = a;
         DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(toSave));
@@ -213,6 +220,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Override
     @Transactional
     public StaffVO add(String merchantNo, String loginPhone, String displayName) {
+        ownership.lockEntityAndCheck("MAIN", merchantNo);
         /*
          * 按主体市场校验（商户App服务端能力清单 P0）。此前写死 \d{11}：台湾店主送 +886… 一律 10400，
          * 加不了员工。号码按端上送来的原样存（App 送 E.164）——员工登录按同一个号匹配，这里不改写格式。
@@ -260,6 +268,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Override
     @Transactional
     public StaffVO setStatus(String merchantNo, String mchAccountNo, boolean active) {
+        ownership.lockEntityAndCheck("MAIN", merchantNo);
         MchAccount a = require(merchantNo, mchAccountNo);
         /*
          * 老板不能被停用：停掉之后这个主体没有人能管，恢复要平台介入。
@@ -320,6 +329,7 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     @Transactional
     public StaffVO grantStore(String merchantNo, String mchAccountNo, String storeNo,
                               String role, boolean granted) {
+        ownership.lockAndCheck("MAIN", merchantNo, storeNo);
         MchAccount a = require(merchantNo, mchAccountNo);
         // 只能授权本主体的门店 —— 否则就是把别人的店交给自己的员工
         if (!storeNames(merchantNo).containsKey(storeNo)) {

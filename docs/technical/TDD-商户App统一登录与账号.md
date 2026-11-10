@@ -669,3 +669,31 @@ E4 的安全性：当前会话刚刚交出了「当前凭证验证码 + 新凭�
 - **问题**：台湾手机号在模拟号段里，收不到验证码；按本文 `smsUnavailablePrefixes`，App 选不了 `+886`，P05 对台湾等于不存在。
 - **选项与后果**：A 一期台湾隐藏 P05（`phoneChangeAvailable` / 区码过滤自然实现）—— 零额外工作；台湾账号无手机号，也就无法经 AC4 列出员工身份（与 D4 相关）；B 接入台湾短信通道 —— 与 D4 选项 B 同一件事；C 不验证新号直接绑 —— 任何人能把别人的手机号绑进自己账号、进而认领别人的员工身份，不可接受。
 - **建议**：A，随 D4 / B 的通道进展再开放。
+
+
+## 2026-11-10 B02 增量：统一身份发现、进入与切换
+
+档位沿本文 2；本批仅实现 AC1–AC8、AC23 及相同验证限制/白名单复用。账号中心、凭证变更、注销及 `usr_account_change_log` 不在本批。166 不部署、不访问。
+
+- 三个端点沿 §2 合同；旧 login/staff-login 保留，profile 保留 `subjectKind` 及所有既有构造，新增 `currentIdentity`。登录前只校验，OTP 消费但不创建账号/凭证/会话；密码验证不升级哈希。旧 login 的手机注册协议语义保持，NEW_OWNER 首次建号必须同意协议。
+- 新迁移 `V645__merchant_login_ticket.sql` 只创建 `usr_login_ticket`；H2 schema 同步。JDBC `LoginTicketServiceImpl` 签发时按过期索引机会式清理旧票据，通过独立事务与行锁读取、条件更新单次消费；10404 先提交身份列表收窄，再返回业务拒绝，票据不消费。数据结构为 §2 字段，加 `can_create_owner`、`origin_principal`、`origin_kind`，以保存签发时的建店能力和精确来源 typed 会话；随机32字节票据及来源token均仅存SHA-256。
+- `LoginIdentityService` 接口与 Identity/IdentityChoice 位于 shop-merchant；组合实现位于 shop-app/merchantbridge，沿现有应用层跨域组合位置，避免给 shop-merchant 新增 shop-core 依赖。票据服务使用 JDBC，不新增无调用方的实体/Mapper。员工仅沿已验证 PHONE 或邮箱账号已有 PHONE 找 login_phone，不新增 login_email，也不跨账号扩权。
+- SWITCH 通过具体 MERCHANT 池的 `getByHash(hash, principal)` 实时核查来源会话，DB路径锁定会话行并绕缓存；ticket进入独立事务，不加入外层旧RR快照；进入成功调用 `revokeByHash` 只撤来源。新账号、DB会话与票据消费同事务；回滚补偿清除新会话缓存。具体memory/redis/ehcache适配只在对应存储内从哈希定位会话，不把明文写进票据。RealmRoutingTokenStore 不猜池。
+- 配置 `shop.auth.login-ticket.ttl` 默认 `PT5M`；10474 `LOGIN_TICKET_INVALID` 及身份角色名新增中/英/阿三语。精确安全放行仅匿名POST发现/进入，mine仍认证；ACCOUNT登记三条及fresh账号检查，默认拒绝不变。
+
+| 验收范围 | 本批测试 | 验证状态 |
+|---|---|---|
+| AC1 / AC5 / 密码verify-only | `EmailOtpAuthTest#verificationConsumesOtpWithoutCreatingAccountOrSession`、`#verifiedNewAccountIsCreatedOnlyAtEntryAndRequiresAgreement`、`#verificationOfPasswordNeverUpgradesItsHash` | 已通过本地定向验证 |
+| AC1 / AC5 / AC7 / AC23 | `BizIdentityNativeMysqlTest#discoveryDoesNotCreateAccountOrSessionAndNewOwnerRequiresEnter` | 已通过本地定向验证 |
+| AC6 / AC8 | `BizIdentityNativeMysqlTest#disabledIdentityKeepsTicketAndNarrowsChoicesThenSwitchRevokesOnlyOrigin` | 已通过本地定向验证 |
+| AC7 并发/过期 | `BizIdentityNativeMysqlTest#concurrentTicketEntrySucceedsOnceAndExpiredTicketCannotEnter` | 已通过本地定向验证 |
+| AC4 已绑定手机/无绑定邮箱/协议 | `BizIdentityNativeMysqlTest#emailUsesOnlyItsAccountsVerifiedPhoneForStaffDiscovery` | 已通过本地定向验证 |
+| AC6 / AC8 来源已撤/不在票据内 | `BizIdentityNativeMysqlTest#switchTicketCannotOutliveItsSourceSessionOrChooseAnUnlistedStaff` | 已通过本地定向验证 |
+
+上述原生测试仅运行在显式loopback MySQL9夹具，实际凭证验证→票据→typed商户会话，不代表166真实会话验收。编译及相关回归由主任务统一运行，结果见下。
+
+新增验证：`BizIdentityNativeMysqlTest#switchSourceRevokedOutsideOldRepeatableReadSnapshotIsStillRejected` 钉住外层RR快照仍看到旧来源会话时进入必须拒绝；`HashedSwitchSessionTest` 钉住哈希来源/主体与显式池边界。均已通过本地定向验证。
+
+B02事务失败补充：DB来源会话撤销仍与票据/新会话同事务；Memory/Ehcache/Redis来源仅在afterCommit按精确hash/principal撤销，回滚仅补偿撤销新会话。新增 `BizIdentityNativeMysqlTest#cacheSourceSurvivesCommitFailureAndSameTicketRetriesWithoutKickingSibling`：受控提交失败后原票据未消费、源会话与sibling保留、新会话撤回；重试同票据成功仅撤源会话；该用例已通过原生MySQL9验证。
+
+本批最终后端证据：原生MySQL9 `BizIdentityNativeMysqlTest` 7项、`HashedSwitchSessionTest` 2项通过（`/tmp/ai-shop-unified-timezone-recheck.log`，UTC JVM与既有DB时区）；凭证`EmailOtpAuthTest`18、Web `BizAuthEmailLoginTest`3、三语`BackendI18nParityTest`6及精确权限`BizEndpointPermTest`12项已通过，未重复累计。实际HTTP首次在JVM UTC/DB其他时区返回10474，故票据签发改为DB `TIMESTAMPADD(SECOND,ttl,CURRENT_TIMESTAMP)`，与清理/读取/消费同一时钟，无DDL变化。

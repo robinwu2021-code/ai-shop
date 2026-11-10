@@ -40,6 +40,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private final StoreCategoryService categories;
     private final MchStoreMapper storeMapper;
     private final PayMerchantMirror payMirror;
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) {this.ownership=ownership;}
     private final MchStoreRoleMapper roleMapper;
     private final MchPaymentMapper paymentMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
@@ -101,6 +104,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     @Override
     @Transactional
     public StoreVO create(String merchantNo, CreateCommand cmd) {
+        ownership.lockEntityAndCheck("MAIN",merchantNo);
         String name = cmd.name();
         var actor = commerce.actor(null);
         if (name == null || name.isBlank()) {
@@ -350,6 +354,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     /** 越权保护：门店号对不上主体一律 404，**不要 403** —— 403 等于确认这个号存在。 */
     private MchStore require(String merchantNo, String storeNo) {
+        ownership.lockAndCheck("MAIN",merchantNo,storeNo);
         return stores(merchantNo).stream()
                 .filter(s -> s.getStoreNo().equals(storeNo))
                 .findFirst()

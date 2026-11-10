@@ -34,6 +34,14 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
 
     private static final String READONLY = "READONLY";
 
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnership(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownership) { this.ownership=ownership; }
+    private void lockOwnership(String entity,String store) {
+        if(store==null || store.isBlank()) ownership.lockEntityAndCheck("MAIN",entity);
+        else ownership.lockAndCheck("MAIN",entity,store);
+    }
+
     private final FulfillmentChannelMapper channelMapper;
     private final MchStoreMapper storeMapper;
     private final AdmissionPort admissionPort;
@@ -112,6 +120,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     @Override
     @Transactional
     public FulfillmentVO save(String merchantNo, String storeNo, List<ChannelCmd> channels) {
+        lockOwnership(merchantNo, storeNo);
         if (channels == null || channels.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -364,6 +373,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
         if (store == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        lockOwnership(store.getEntityNo(), storeNo);
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
             MchFulfillmentChannel row = rowsOf(storeNo).get(channel);
             if (row == null) {

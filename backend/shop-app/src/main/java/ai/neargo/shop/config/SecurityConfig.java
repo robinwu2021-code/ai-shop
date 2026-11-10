@@ -187,7 +187,8 @@ public class SecurityConfig {
                          * 要求先登录才能登录是个死循环。
                          */
                         .requestMatchers("/biz/auth/login", "/biz/auth/staff-login",
-                                "/biz/auth/otp/send", "/biz/auth/email-otp/send").permitAll()
+                                "/biz/auth/otp/send", "/biz/auth/email-otp/send",
+                                "/biz/auth/identities", "/biz/auth/identities/enter").permitAll()
                         // 异步与错误分派放行 —— 理由见 operatorChain 同一行的注释
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .anyRequest().authenticated())

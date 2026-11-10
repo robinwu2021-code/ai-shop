@@ -1718,7 +1718,7 @@ CREATE TABLE IF NOT EXISTS mch_store
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
     created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
@@ -19356,3 +19356,65 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+
+CREATE TABLE IF NOT EXISTS usr_login_ticket (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ ticket_hash CHAR(64) NOT NULL,
+ purpose VARCHAR(16) NOT NULL,
+ user_no VARCHAR(64) NULL,
+ verified_type VARCHAR(16) NOT NULL,
+ verified_value VARCHAR(191) NULL,
+ agreed TINYINT NOT NULL DEFAULT 0,
+ market_code VARCHAR(16) NULL,
+ origin_token_hash CHAR(64) NULL,
+ origin_principal VARCHAR(64) NULL,
+ origin_kind VARCHAR(8) NULL,
+ identity_nos VARCHAR(1024) NOT NULL,
+ can_create_owner TINYINT NOT NULL DEFAULT 0,
+ expires_at DATETIME NOT NULL,
+ consumed_at DATETIME NULL,
+ tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ version BIGINT NOT NULL DEFAULT 0,
+ deleted TINYINT NOT NULL DEFAULT 0,
+ UNIQUE KEY uk_login_ticket_hash(ticket_hash),
+ KEY idx_login_ticket_expires(expires_at)
+);
+
+-- V647 store entity claim
+ALTER TABLE mch_entity ADD COLUMN ownership_change_no VARCHAR(64) NULL;
+ALTER TABLE mch_store ADD COLUMN ownership_change_no VARCHAR(64) NULL;
+
+CREATE TABLE mch_store_entity_claim (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(64) NOT NULL DEFAULT 'MAIN',
+ claim_no VARCHAR(64) NOT NULL,
+ owner_user_no VARCHAR(64) NOT NULL,
+ request_no VARCHAR(64) NOT NULL,
+ request_hash CHAR(64) NOT NULL,
+ source_scope VARCHAR(128) NOT NULL,
+ source_entity_no VARCHAR(64) NOT NULL,
+ target_entity_no VARCHAR(64) NOT NULL,
+ store_no VARCHAR(64) NOT NULL,
+ store_ref VARCHAR(64) NOT NULL,
+ expected_store_version BIGINT NOT NULL,
+ expected_pay_revision BIGINT NOT NULL,
+ source_retire_planned TINYINT NOT NULL,
+ state VARCHAR(24) NOT NULL,
+ remote_ref VARCHAR(64) NULL,
+ revoked_staff INT NOT NULL DEFAULT 0,
+ placeholder_retired TINYINT NOT NULL DEFAULT 0,
+ result_json CLOB NULL,
+ last_error VARCHAR(64) NULL,
+ version BIGINT NOT NULL DEFAULT 0,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ active_store_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN state IN ('COMPLETED','ABORTED') THEN NULL ELSE store_no END),
+ active_source_no VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN state IN ('COMPLETED','ABORTED') THEN NULL ELSE source_entity_no END),
+ UNIQUE KEY uk_store_claim_no(tenant_no,claim_no),
+ UNIQUE KEY uk_store_claim_request(tenant_no,owner_user_no,request_no),
+ UNIQUE KEY uk_store_claim_active_store(tenant_no,active_store_no),
+ UNIQUE KEY uk_store_claim_active_source(tenant_no,active_source_no),
+ KEY idx_store_claim_recovery(state,updated_at)
+);

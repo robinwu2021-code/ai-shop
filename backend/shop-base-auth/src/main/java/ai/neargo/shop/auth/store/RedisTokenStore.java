@@ -82,6 +82,22 @@ public class RedisTokenStore implements TokenStore {
         return tokens.size();
     }
 
+    private Optional<String> tokenByHash(String hash, String principal) {
+        return java.util.Optional.ofNullable(redis.opsForSet().members(USER_INDEX_PREFIX + principal)).orElse(java.util.Set.of()).stream()
+                .filter(t -> ai.neargo.auth.store.TokenHash.of(t).equals(hash))
+                .filter(t -> get(t).filter(d -> principal.equals(d.user().userNo())).isPresent()).findFirst();
+    }
+
+    @Override
+    public Optional<SessionData> getByHash(String hash, String principal) {
+        return tokenByHash(hash, principal).flatMap(this::get);
+    }
+
+    @Override
+    public void revokeByHash(String hash, String principal) {
+        tokenByHash(hash, principal).ifPresent(this::revoke);
+    }
+
     @Override
     public void revoke(String token) {
         redis.delete(KEY_PREFIX + token);

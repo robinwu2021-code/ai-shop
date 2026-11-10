@@ -88,7 +88,7 @@ class ApiContractTest {
          * 只有真的从 B 端登录页点一次才会走到这条路径。
          */
         for (String path : new String[]{"/biz/auth/otp/send", "/biz/auth/email-otp/send",
-                "/biz/auth/login", "/biz/auth/staff-login"}) {
+                "/biz/auth/login", "/biz/auth/staff-login", "/biz/auth/identities", "/biz/auth/identities/enter"}) {
             mockMvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                             .post(path)
                             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)

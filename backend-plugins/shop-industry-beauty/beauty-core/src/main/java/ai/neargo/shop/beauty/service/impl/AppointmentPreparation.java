@@ -1,5 +1,7 @@
 package ai.neargo.shop.beauty.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.dto.AppointmentPreviewVO;
 import ai.neargo.shop.beauty.entity.BtyActionLog;
@@ -32,6 +34,12 @@ import org.springframework.dao.DuplicateKeyException;
 
 /** Commits stable requests before acceptance so unknown network responses can never generate replacement commands. */
 public final class AppointmentPreparation {
+    private StoreOwnershipWritePort ownershipWrites;
+    // Embedded host capability only. Standalone preserves its own original transaction contract;
+    // its relink evidence stays incomplete when this capability is absent.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final AppointmentPersistence db;
     private final AppointmentAccess access;
     private final ObjectProvider<CustomerIdentityPort> customers;
@@ -91,7 +99,7 @@ public final class AppointmentPreparation {
         p.setFrozenPlan(match.plan()); p.setPlanHash(ResourcePlanContract.hash(match.plan()));
         p.setSnapshot(db.json.writeValueAsString(match.snapshot()));
         p.setExpiresAt(AppointmentPersistence.now().plusMinutes(5));
-        db.tx(() -> { db.preparations.insert(p); return null; });
+        db.tx(() -> { if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", p.getEntityNo(), p.getStoreNo()); db.preparations.insert(p); return null; });
         return view(p);
     }
     public void customer(BtyAppointmentPreparation preview, String reference, String guestNo) {
@@ -180,6 +188,7 @@ public final class AppointmentPreparation {
                 || "CANCEL".equals(action) || "NO_SHOW".equals(action));
         try {
             return db.tx(() -> {
+                if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", preview.getEntityNo(), preview.getStoreNo());
                 if (target == null) {
                     db.preparations.selectOne(Wrappers.<BtyAppointmentPreparation>lambdaQuery()
                             .eq(BtyAppointmentPreparation::getTenantNo, "MAIN")
@@ -321,6 +330,7 @@ public final class AppointmentPreparation {
                         && outer.getAppointmentNo() == null && outer.getAppointmentOperationNo() == null
                         && fence.getActiveIntentNo() == null && current.getOperationNo() == null);
                 workOrders.verifyCreateLocked(match);
+                if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", preview.getEntityNo(), preview.getStoreNo());
                 db.preparations.insert(preview);
                 var op = prepareLocked(preview, root, "CREATE", payload.appointmentKey(),
                         payload.appointmentRequestHash(), null, "{\"receptionOperationNo\":\"" + number + "\"}",
@@ -390,6 +400,7 @@ public final class AppointmentPreparation {
         return createRoot(p, BizKey.next("BTA"));
     }
     private BtyAppointment createRoot(BtyAppointmentPreparation p, String number) {
+        if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", p.getEntityNo(), p.getStoreNo());
         var root = new BtyAppointment();
         root.setEntityNo(p.getEntityNo()); root.setStoreNo(p.getStoreNo());
         root.setAppointmentNo(number); root.setCustomerRef(p.getCustomerRef());

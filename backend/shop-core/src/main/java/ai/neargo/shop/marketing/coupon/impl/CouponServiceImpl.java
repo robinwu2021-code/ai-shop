@@ -1,5 +1,9 @@
 package ai.neargo.shop.marketing.coupon.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
@@ -28,6 +32,12 @@ import java.util.Map;
 
 @Service
 public class CouponServiceImpl implements CouponService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
     private CoreMarketingDocumentNumbers documentNumbers;
     @org.springframework.beans.factory.annotation.Autowired
     public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
@@ -102,6 +112,7 @@ public class CouponServiceImpl implements CouponService {
 
     private UserCouponVO grantToNumbered(String userNo, String couponNo) {
         MktCoupon coupon = template(couponNo);
+        if (coupon.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", coupon.getEntityNo());
         sourceFence.requireWritable(coupon.getTenantNo(), SourceSystem.MKT_LEGACY, coupon.getCouponNo(), false);
 
         long now = System.currentTimeMillis();
@@ -352,7 +363,8 @@ public class CouponServiceImpl implements CouponService {
         if (!isNew && c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        if (!isNew) sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
+        if (!isNew) if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
+        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         if (cmd.title() == null || cmd.title().isBlank()
                 || cmd.totalCount() == null || cmd.endAt() == null || cmd.startAt() == null
                 || cmd.endAt() <= cmd.startAt()) {
@@ -443,6 +455,7 @@ public class CouponServiceImpl implements CouponService {
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         /*
          * **不能改到低于已发放金额**：那等于人为造出一个「已经超支」的状态，
@@ -478,6 +491,7 @@ public class CouponServiceImpl implements CouponService {
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         /*
          * **只有 SINGLE_USER 能真发**。不是后端偷懒 —— 另外三种的收件人
@@ -615,6 +629,7 @@ public class CouponServiceImpl implements CouponService {
         if (c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
         if (MktCoupon.ENDED.equals(c.getStatus())) {
             // 已结束不可恢复：把它改回 ACTIVE 等于让一批过期券重新可领，

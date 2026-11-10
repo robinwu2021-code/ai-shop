@@ -427,6 +427,63 @@ public class AuthServiceImpl implements AuthService {
     private static final String ROLE_STAFF = "STAFF";
 
     @Override
+    public VerifiedPrincipal verify(LoginCommand cmd) {
+        if (GRANT_PASSWORD.equals(cmd.grantType())) {
+            var account = loginByPassword(cmd, false);
+            requireUsable(account);
+            boolean email = cmd.principal().contains("@");
+            return new VerifiedPrincipal(email ? IdentityType.EMAIL : IdentityType.PHONE,
+                    email ? ai.neargo.shop.user.service.EmailOtpService.normalize(cmd.principal()) : cmd.principal().trim(), account.getUserNo());
+        }
+        if (!GRANT_PHONE_OTP.equals(cmd.grantType()) && !GRANT_EMAIL_OTP.equals(cmd.grantType())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var credential = resolveCredentials(cmd).getFirst();
+        var identity = findIdentity(credential);
+        String userNo = identity == null ? null : identity.getUserNo();
+        if (userNo != null) requireUsable(accountOf(userNo));
+        return new VerifiedPrincipal(credential.type(), credential.value(), userNo);
+    }
+
+    @Override
+    @Transactional
+    public UsrAccount enterVerified(VerifiedPrincipal principal, Boolean agreed, String marketCode) {
+        return enterVerified(principal, new LoginCommand(
+                IdentityType.EMAIL.equals(principal.type()) ? GRANT_EMAIL_OTP : GRANT_PHONE_OTP,
+                principal.value(), null, null, null, agreed, marketCode), true);
+    }
+
+    private UsrAccount enterVerified(VerifiedPrincipal principal, LoginCommand command, boolean requireAgreement) {
+        if ("ACCOUNT".equals(principal.type())) {
+            var account = accountOf(principal.userNo());
+            requireUsable(account);
+            return account;
+        }
+        var credential = new Credential(principal.type(), principal.value(),
+                IdentityType.EMAIL.equals(principal.type()) ? "APP" : null);
+        var existing = findIdentity(credential);
+        if (principal.userNo() != null && (existing == null || !principal.userNo().equals(existing.getUserNo()))) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (existing == null && requireAgreement && !Boolean.TRUE.equals(command.agreed()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        var account = findOrCreate(List.of(credential), command);
+        requireUsable(account);
+        return account;
+    }
+
+    private UsrAccount accountOf(String userNo) {
+        var account = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        if (account == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return account;
+    }
+
+    private void requireUsable(UsrAccount account) {
+        if ("BANNED".equals(account.getStatus())) throw BizException.of(ErrorCode.RISK_BLOCKED);
+    }
+
+    @Override
     @Transactional
     public LoginResult login(LoginCommand cmd) {
         /*
@@ -434,10 +491,17 @@ public class AuthServiceImpl implements AuthService {
          * 找不到人就建户。密码走它的话，输错手机号会**当场给他开一个空账号**，
          * 而用户看到的是「登录成功，但我的店没了」。
          */
-        List<Credential> credentials = GRANT_PASSWORD.equals(cmd.grantType()) ? List.of() : resolveCredentials(cmd);
-        UsrAccount user = GRANT_PASSWORD.equals(cmd.grantType())
-                ? loginByPassword(cmd)
-                : findOrCreate(credentials, cmd);
+        List<Credential> credentials;
+        UsrAccount user;
+        if (GRANT_PHONE_OTP.equals(cmd.grantType()) || GRANT_EMAIL_OTP.equals(cmd.grantType())) {
+            var verified = verify(cmd);
+            credentials = List.of(new Credential(verified.type(), verified.value(),
+                    IdentityType.EMAIL.equals(verified.type()) ? "APP" : null));
+            user = enterVerified(verified, cmd, false);
+        } else {
+            credentials = GRANT_PASSWORD.equals(cmd.grantType()) ? List.of() : resolveCredentials(cmd);
+            user = GRANT_PASSWORD.equals(cmd.grantType()) ? loginByPassword(cmd) : findOrCreate(credentials, cmd);
+        }
 
         if ("BANNED".equals(user.getStatus())) {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
@@ -547,6 +611,10 @@ public class AuthServiceImpl implements AuthService {
      * 共用一个键的话，一次撞库会把真用户的发码额度也耗光。
      */
     private UsrAccount loginByPassword(LoginCommand cmd) {
+        return loginByPassword(cmd, true);
+    }
+
+    private UsrAccount loginByPassword(LoginCommand cmd, boolean updateHash) {
         String phone = cmd.principal() == null ? "" : cmd.principal().trim();
         String raw = cmd.credential() == null ? "" : cmd.credential();
         if (phone.isBlank() || raw.isBlank()) {
@@ -593,7 +661,7 @@ public class AuthServiceImpl implements AuthService {
          * 密码算法升级（如 bcrypt 轮数提高）时就地重写一次 —— 与运营端同一套做法。
          * 不做的话老用户的哈希永远停在旧强度上，而他们恰恰是存在最久的那批账号。
          */
-        if (pwd != null && passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
+        if (updateHash && pwd != null && passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
             pwd.setIdentityValue(passwordHasher.encode(raw));
             identityMapper.updateById(pwd);
         }

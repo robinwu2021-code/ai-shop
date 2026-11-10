@@ -511,6 +511,7 @@ class CommerceAccessSecurityFlowTest {
                                     SpuStdService.class,
                                     OpsService.class,
                                     ai.neargo.shop.user.service.AuthService.class,
+                                    LoginIdentityService.class,
                                     LoginAuditor.class,
                                     UserService.class,
                                     MerchantService.class,
@@ -541,6 +542,7 @@ class CommerceAccessSecurityFlowTest {
                     }
                     b.registerSingleton("accounts", f.mybatis.getMapper(MchAccountMapper.class));
                     b.registerSingleton("entityRows", f.mybatis.getMapper(MchEntityMapper.class));
+                    b.registerSingleton("qualificationRows", f.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper.class));
                     b.registerSingleton("roleRows", f.mybatis.getMapper(MchRoleMapper.class));
                     b.registerSingleton(
                             "storeRoleRows", f.mybatis.getMapper(MchStoreRoleMapper.class));
@@ -553,7 +555,7 @@ class CommerceAccessSecurityFlowTest {
                     b.registerSingleton("uow", new JdbcCommerceUnitOfWork(f.ds, f.manager));
                     b.registerSingleton("resolver", resolver);
                     b.registerSingleton("verifier", sessions);
-                    b.registerSingleton("tokenStore", f.store);
+                    b.registerSingleton("tokenStore", realServices.getOrDefault(TokenStore.class, f.store));
                     b.registerSingleton("qual", qualification);
                     b.registerSingleton("stores", f.mybatis.getMapper(MchStoreMapper.class));
                     b.registerSingleton("portalFilters", portalFilters());
@@ -570,10 +572,12 @@ class CommerceAccessSecurityFlowTest {
                 BizMemberController.class,
                 CommerceEndController.class,
                 BizEntityController.class,
+                ai.neargo.shop.merchantbridge.EntityReviewAssembler.class,
                 BizGoodsController.class,
                 FoundationPaymentAccess.class,
                 BizMerchantController.class,
                 ai.neargo.shop.portal.biz.BizAuthController.class,
+                ai.neargo.shop.portal.biz.BizIdentityController.class,
                 BizMessageController.class,
                 BizPickupController.class,
                 CommerceAccessErrors.class,

@@ -258,6 +258,25 @@ public class DbTokenStore implements TokenStore {
     }
 
     @Override
+    public Optional<SessionData> getByHash(String hash, String principal) {
+        return sessions.findByHashForUpdate(hash)
+                .filter(row -> row.isLive(LocalDateTime.now(clock)) && principal.equals(row.userNo()))
+                .flatMap(row -> {
+                    identityCache.evict(row.userNo());
+                    return identityOf(row.userNo(), row.subjectKind()).map(SessionData::of);
+                });
+    }
+
+    @Override
+    public void revokeByHash(String hash, String principal) {
+        sessions.findByHash(hash).filter(row -> principal.equals(row.userNo())).ifPresent(row -> {
+            sessions.revoke(hash, RevokeReason.LOGOUT, LocalDateTime.now(clock));
+            sessionCache.evict(hash);
+            audit(LoginEvent.LOGOUT, row.userNo(), null, true);
+        });
+    }
+
+    @Override
     public void revoke(String token) {
         if (token == null || !token.startsWith(profile.tokenPrefix())) {
             return;

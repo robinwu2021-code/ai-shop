@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.support;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
@@ -65,6 +67,12 @@ import java.util.function.Supplier;
  * these transactions.
  */
 public final class DiningChannelSourceStore {
+    private StoreOwnershipWritePort ownershipWrites;
+    // Embedded host capability only. Standalone preserves its own original transaction contract;
+    // its relink evidence stays incomplete when this capability is absent.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     public final ChannelOrderSourceMapper sources;
     final ChannelImportGuardMapper guards;
     final ChannelPartyMapper parties;
@@ -192,6 +200,7 @@ public final class DiningChannelSourceStore {
         try {
             atomic(
                     () -> {
+                        if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", key.entityNo(), key.storeNo());
                         if (guard(key, true) != null) return null;
                         var row = new FnbChannelImportGuard();
                         stamp(row, key.entityNo());
@@ -315,6 +324,7 @@ public final class DiningChannelSourceStore {
             return atomic(
                     () -> {
                         var key = facts.key();
+                        if (ownershipWrites != null) ownershipWrites.lockAndCheck("MAIN", key.entityNo(), key.storeNo());
                         activeGuard(key);
                         var prior = find(key, true);
                         if (prior != null) return prior;

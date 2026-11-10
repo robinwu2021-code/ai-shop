@@ -83,6 +83,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 市场主数据。**只用来校验 market 取值**，见 marketsOf 的注释 */
     private final ai.neargo.shop.spi.pay.MarketPort marketPort;
 
+    private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownershipWrites;
+
+    @Autowired
+    public void setOwnershipWrites(ai.neargo.shop.spi.user.StoreOwnershipWritePort ownershipWrites) {
+        this.ownershipWrites = ownershipWrites;
+    }
+
+    private void lockOwnership(String entityNo, String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) ownershipWrites.lockEntityAndCheck("MAIN", entityNo);
+        else ownershipWrites.lockAndCheck("MAIN", entityNo, storeNo);
+    }
+
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
     private final SpecTemplateMapper templateMapper;
@@ -942,6 +954,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO save(String merchantNo, SaveCommand cmd) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         if (cmd.title() == null || cmd.title().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -1352,6 +1365,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     private GoodsVO saveAsDraft(PrdGoods live, SaveCommand cmd) {
+        lockOwnership(live.getEntityNo(), live.getStoreNo());
         String payload = writeJson(cmd);
         PrdGoodsDraft row =
                 DataScopeContext.executeWithoutScope(
@@ -1393,6 +1407,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO publishDraft(String merchantNo, String goodsNo, Long confirmVersion) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods live = mine(merchantNo, goodsNo);
         PrdGoodsDraft draft =
                 DataScopeContext.executeWithoutScope(
@@ -1445,6 +1460,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO discardDraft(String merchantNo, String goodsNo) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         // mine() 先核归属 —— 草稿表只有 goods_no，不核的话拿别家的单号也删得掉
         PrdGoods live = mine(merchantNo, goodsNo);
         // 幂等：purge 对不存在的行是 0 行 no-op，重复点「放弃」不该报错
@@ -2532,6 +2548,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO toggle(String merchantNo, String goodsNo, boolean onSale) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
         // 未过审不能上架：上架是商家自己能按的按钮，能把 AUDITING 推到 C 端的话审核就形同虚设
         if (onSale && !APPROVED.equals(g.getAuditStatus())) {
@@ -2613,6 +2630,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         PrdGoods g = requireByNo(goodsNo);
+        lockOwnership(g.getEntityNo(), g.getStoreNo());
         /*
          * 强制下架 = 撤销过审（TDD D1）。不新增状态值：REJECTED 之后商家改商品
          * 重新提审走的是**既有**链路，B 端也已经会渲染「被驳回 + 原因」。
@@ -2643,6 +2661,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         PrdGoods g = requireByNo(goodsNo);
+        lockOwnership(g.getEntityNo(), g.getStoreNo());
         // 只有在售的才谈得上「压下架」。已经下架/被驳回的再压一次，
         // 唯一的效果是把上一条更重要的处置原因覆盖掉
         if (!Boolean.TRUE.equals(g.getOnSale()) || REJECTED.equals(g.getAuditStatus())) {
@@ -2670,6 +2689,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public void platformOfflineStore(String entityNo, String storeNo) {
+        lockOwnership(entityNo, storeNo);
         List<PrdGoods> all =
                 DataScopeContext.executeWithoutScope(
                         () ->
@@ -2710,6 +2730,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public void platformRestoreStore(String entityNo, String storeNo) {
+        lockOwnership(entityNo, storeNo);
         List<ai.neargo.shop.product.entity.PrdStoreGoods> suspended =
                 DataScopeContext.executeWithoutScope(
                         () ->
@@ -3263,6 +3284,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO saveStock(String merchantNo, String goodsNo, String skuNo, int stock) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
         if (stock < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -3329,6 +3351,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional
     public GoodsVO saveStoreStock(
             String merchantNo, String storeNo, String goodsNo, String skuNo, int stock) {
+        lockOwnership(merchantNo, storeNo);
         PrdGoods g = mine(merchantNo, goodsNo);
         if (stock < 0 || storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -3380,6 +3403,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO submitForAudit(String merchantNo, String goodsNo) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
         /*
          * 只有草稿会动。已在审 / 已过审 / 已驳回调它**什么都不做**，不报错 ——
@@ -3458,6 +3482,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional
     public GoodsVO savePresaleCutoff(
             String merchantNo, String goodsNo, Long cutoffAt, String arrivalDesc) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         PrdGoods g = mine(merchantNo, goodsNo);
         /*
          * **只有生鲜有截单**。别的品类改它是无声无息的一次写入 ——
@@ -3492,6 +3517,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             String skuNo,
             Long price,
             Long originPrice) {
+        lockOwnership(merchantNo, storeNo);
         PrdGoods g = mine(merchantNo, goodsNo);
         if (storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -3681,6 +3707,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        lockOwnership(g.getEntityNo(), g.getStoreNo());
         /*
          * ★ **只有待审的东西能被审**：商品行在审（AUDITING），或者有一份已提交的草稿。
          *
@@ -4067,6 +4094,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public List<String> setPayModes(String merchantNo, String goodsNo, List<String> payModes) {
+        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         if (payModes == null || payModes.stream().anyMatch(m -> !PayModes.isValid(m))) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -4107,6 +4135,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 让整个事务回滚，调用方拿到的是「请刷新重试」而不是一句假的成功。
      */
     private void updateGoods(PrdGoods g) {
+        lockOwnership(g.getEntityNo(), g.getStoreNo());
         Integer n = DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         if (n == null || n == 0) {
             throw BizException.of(ErrorCode.CONFLICT);

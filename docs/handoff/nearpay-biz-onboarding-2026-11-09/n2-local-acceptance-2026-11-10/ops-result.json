@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "claimNo": "CC00E33CAECDC049D6",
+  "state": "LINKED",
+  "payMerchantNo": "PM8610077340C34797",
+  "accountStatus": "UNVERIFIED",
+  "accountVerificationStatus": "PENDING",
+  "rejectedReceiptRecovered": true,
+  "successfulReceiptRecovered": true,
+  "privateProofVerified": true,
+  "accountVersionUnchanged": true,
+  "boundStores": 0
+}

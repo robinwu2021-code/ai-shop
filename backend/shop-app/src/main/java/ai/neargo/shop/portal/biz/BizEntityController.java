@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.merchant.dto.EntityStoresVO;
 import ai.neargo.shop.merchant.dto.EntityVO;
 import ai.neargo.shop.merchant.service.MerchantEntityService;
+import ai.neargo.shop.merchantbridge.EntityReviewAssembler;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +31,11 @@ import java.util.List;
 public class BizEntityController {
 
     private final MerchantEntityService entityService;
+    private final EntityReviewAssembler reviews;
 
-    public BizEntityController(MerchantEntityService entityService) {
+    public BizEntityController(MerchantEntityService entityService, EntityReviewAssembler reviews) {
         this.entityService = entityService;
+        this.reviews = reviews;
     }
 
     /**
@@ -56,7 +59,7 @@ public class BizEntityController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @GetMapping("/biz/entities")
     public List<EntityVO> myEntities() {
-        return entityService.myEntities(SecurityUtils.currentUserNo());
+        return reviews.enrich(SecurityUtils.currentUserNo(), entityService.myEntities(SecurityUtils.currentUserNo()));
     }
 
     /**
@@ -67,6 +70,7 @@ public class BizEntityController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @GetMapping("/biz/entity/{entityNo}")
     public EntityStoresVO detail(@PathVariable String entityNo) {
-        return entityService.detail(SecurityUtils.currentUserNo(), entityNo);
+        var detail = entityService.detail(SecurityUtils.currentUserNo(), entityNo);
+        return new EntityStoresVO(reviews.enrich(SecurityUtils.currentUserNo(), List.of(detail.entity())).getFirst(), detail.stores());
     }
 }

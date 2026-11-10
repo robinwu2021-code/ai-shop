@@ -21,6 +21,8 @@ import ai.neargo.shop.merchant.dto.PaymentApplymentVO;
 import ai.neargo.shop.merchant.dto.StoreVO;
 import ai.neargo.shop.merchant.dto.StoreProfileVO;
 import ai.neargo.shop.merchant.service.MerchantPaymentService;
+import ai.neargo.shop.merchant.service.LoginIdentityService;
+import org.springframework.context.i18n.LocaleContextHolder;
 import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.merchant.service.StoreAdminService;
 import ai.neargo.shop.merchant.service.StoreCategoryService;
@@ -92,6 +94,13 @@ public class BizMerchantController {
     private final ai.neargo.shop.merchant.service.DebtService debtService;
     /** 「N 人收藏本店」（§8.2 批 2）。现算，内部绕数据域 —— B 端会话是 SELF 维度，不绕会恒 0 */
     private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
+
+    private LoginIdentityService loginIdentities;
+
+    @Autowired
+    public void setLoginIdentities(LoginIdentityService identities) {
+        this.loginIdentities = identities;
+    }
 
     private final String defaultMarket;
     private final ObjectProvider<MarketPort> markets;
@@ -195,7 +204,7 @@ public class BizMerchantController {
         var staff = staffService.profileDetails(user);
         var apply = user.subjectKind() == SubjectKind.USR ? opsService.myApply(user.userNo()) : null;
         String phone = nz(personalPhone).isBlank() ? nz(staff.loginPhone()) : personalPhone;
-        return build(ctx, phone, nz(staff.displayName()), apply, loginAccountOf(user));
+        return build(ctx, phone, nz(staff.displayName()), apply, loginAccountOf(user), user.subjectKind().name(), loginIdentities.current(user, LocaleContextHolder.getLocale()), user.userNo());
     }
 
     /**
@@ -209,7 +218,7 @@ public class BizMerchantController {
     }
 
     private MerchantProfileVO build(BizContext ctx, String phone, String displayName, MerchantApplyVO apply,
-                                    String loginAccount) {
+                                    String loginAccount, String subjectKind, LoginIdentityService.Identity currentIdentity, String authenticatedUserNo) {
         MerchantAccountVO account = merchantService.account(ctx.merchantNo());
         boolean pendingAgreement = agreementPending(apply)
                 && java.util.Objects.equals(ctx.merchantNo(), apply.merchantNo());
@@ -231,7 +240,7 @@ public class BizMerchantController {
                     // 而他此刻还不知道自己会被分到哪条路径
                     null,
                     pendingAgreement,
-                    0, displayName, null, loginAccount);   // 还没进件，店都没有，谈不上收藏
+                    0, displayName, null, loginAccount, subjectKind, currentIdentity, authenticatedUserNo);   // 还没进件，店都没有，谈不上收藏
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
@@ -241,7 +250,7 @@ public class BizMerchantController {
                 merchantQueryPort.fundsModeOf(account.merchantNo()),
                 pendingAgreement,
                 storeFavoriteService.countByMerchant(account.merchantNo()), displayName, ctx.currentStoreNo(),
-                loginAccount);
+                loginAccount, subjectKind, currentIdentity, authenticatedUserNo);
     }
 
     /**
@@ -1187,7 +1196,44 @@ public class BizMerchantController {
                                      * 当前登录个人账号的已验证登录标识（TDD-注册地区与三步建店 AC12）：
                                      * 有手机号给手机号（与 phone 同格式），没有给归一化邮箱；员工会话或取不到为 null
                                      */
-                                    String account) {
+                                    String account,
+                                    /** 已认证会话类型，登录和冷启动一致；不是按手机号推测角色。 */
+                                    String subjectKind,
+                                    LoginIdentityService.Identity currentIdentity, String userNo) {
+
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount, String displayName,
+                                 String currentStoreNo, String account, String subjectKind,
+                                 LoginIdentityService.Identity currentIdentity) {
+            this(merchantNo,name,logo,status,subject,tier,phone,isPickupPoint,pickupNo,rejectReason,
+                    industry,description,fundsMode,agreementPending,favoriteCount,displayName,currentStoreNo,
+                    account,subjectKind,currentIdentity,null);
+        }
+
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount,
+                                 String displayName, String currentStoreNo, String account, String subjectKind) {
+            this(merchantNo, name, logo, status, subject, tier, phone, isPickupPoint, pickupNo, rejectReason,
+                    industry, description, fundsMode, agreementPending, favoriteCount, displayName, currentStoreNo,
+                    account, subjectKind, null);
+        }
+
+        public MerchantProfileVO(String merchantNo, String name, String logo, String status,
+                                 String subject, String tier, String phone,
+                                 boolean isPickupPoint, String pickupNo, String rejectReason,
+                                 String industry, String description, String fundsMode,
+                                 boolean agreementPending, int favoriteCount,
+                                 String displayName, String currentStoreNo, String account) {
+            this(merchantNo, name, logo, status, subject, tier, phone, isPickupPoint, pickupNo, rejectReason,
+                    industry, description, fundsMode, agreementPending, favoriteCount, displayName, currentStoreNo,
+                    account, null);
+        }
 
         /** 不带登录标识的旧构造 */
         public MerchantProfileVO(String merchantNo, String name, String logo, String status,

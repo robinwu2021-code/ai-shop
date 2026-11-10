@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.entitlement.port;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -48,6 +52,10 @@ import java.util.function.Supplier;
 @Component
 @ConditionalOnProperty(name = "shop.entitlement.external-certificate.enabled", havingValue = "true")
 public class ExternalCertificateConsumptionPortImpl implements ExternalCertificateConsumptionPort {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites = ownershipWrites; }
+
     private final ExternalCertificateUseMapper uses;
     private final AfterSaleMapper afterSales;
     private final AfterSaleItemMapper returnLines;
@@ -117,6 +125,7 @@ public class ExternalCertificateConsumptionPortImpl implements ExternalCertifica
         check(card != null && card.active() && scope.entityNo().equals(card.entityNo()));
         return atomic(
                 () -> {
+                    ownershipWrites.lockAndCheck(scope.tenantNo(), scope.entityNo(), scope.storeNo());
                     var source =
                             source(
                                     scope,

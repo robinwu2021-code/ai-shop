@@ -38,13 +38,13 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("POST", STORE + "slug"),
             // 本店开通收款：把收款商户挂到这家店
             HostRoute.of("POST", STORE + "payment"),
+            HostRoute.of("GET", STORE + "entity/relink-check"),
+            HostRoute.of("POST", STORE + "entity"),
             // 店员与角色（「我的 › 店员管理」）：权限码由控制器判，这里只放进门店上下文
             HostRoute.of("GET,POST", "/biz/staff(?:/logs|/[A-Za-z0-9_-]{1,64}/(?:status|store))?"),
             HostRoute.of("GET,POST", "/biz/(?:roles|role-perms)"),
             HostRoute.of("POST", "/biz/role/[A-Za-z0-9_.:-]{1,64}(?:/delete)?"),
-            // 管理空间（多门店授权）
-            HostRoute.of("GET", "/biz/management/context"),
-            HostRoute.of("GET,POST,DELETE", "/biz/management/spaces(?:/[A-Za-z0-9_-]{1,64}/(?:entities|recipients|resources|stores|grants(?:/[A-Za-z0-9_-]{1,64})?))?"),
+            // P1 管理空间/品牌/组织上下文按 actor + 目标资源授权，精确 ACCOUNT 路由见 CommerceRoutePolicy。
             // 证照、协议与收款渠道（标准开店：选了门店之后补证照）
             HostRoute.of("GET,POST", "/biz/qualifications(?:/recognize|/save)?"),
             HostRoute.of("POST", "/biz/merchant/agreement/accept"),

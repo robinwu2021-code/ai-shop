@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
@@ -105,6 +107,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class IndustryOrderServiceImpl implements IndustryOrderService {
+    private StoreOwnershipWritePort ownershipWrites;
+    @Autowired
+    public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) { this.ownershipWrites=ownershipWrites; }
+
     private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter stockOwners;
     @Autowired(required=false)
     public void stockOwnerRouter(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.stockOwners=router;}
@@ -664,6 +670,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
             return numbers.transaction(
                     Map.of(DocumentType.TRADE_ORDER, 1, DocumentType.TRADE_SUBORDER, 1),
                     () -> {
+                        ownershipWrites.lockAndCheck(command.identity().tenantNo(), command.identity().entityNo(), command.identity().storeNo());
                         var order = numbers.takeReserved(DocumentType.TRADE_ORDER);
                         var sub = numbers.takeReserved(DocumentType.TRADE_SUBORDER);
                         var identity = command.identity();

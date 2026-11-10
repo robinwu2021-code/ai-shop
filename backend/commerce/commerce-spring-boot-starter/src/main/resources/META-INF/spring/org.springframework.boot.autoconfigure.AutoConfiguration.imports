@@ -15,3 +15,5 @@ ai.neargo.commerce.starter.CommerceSourceManagementAutoConfiguration
 ai.neargo.commerce.starter.CommerceRecoveryAutoConfiguration
 
 ai.neargo.commerce.starter.CommerceOfflineAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceStoreRelinkAutoConfiguration

@@ -162,6 +162,9 @@ public interface OpsService {
     /** Pin the B-side applicant's selected store or eligible legacy shell in the write transaction. */
     String createMerchantApply(SubmitApplyCommand cmd, String selectedEntityNo);
 
+    record MerchantProfileSubmission(MerchantApplyVO application, boolean replayed, boolean revised) {}
+    MerchantProfileSubmission submitMerchantProfile(SubmitApplyCommand cmd, String selectedEntityNo);
+
     /**
      * <b>运营代商家提交入驻申请</b>（三期）。BD 在店里把执照拍下来、当场替老板填完。
      *
@@ -231,6 +234,9 @@ public interface OpsService {
      * @return 没申请过时为 null —— 「没申请过」是正常状态，不是异常
      */
     MerchantApplyVO myApply(String userNo);
+
+    /** Current owner and already-authorized entity set; newest application per entity. */
+    java.util.Map<String, MerchantApplyVO> latestAppliesOf(String userNo, List<String> entityNos);
 
     /**
      * @param communityNos 覆盖社区。申请时可空，<b>但审核通过时必须有</b>（ADR-009）——
