@@ -66,5 +66,14 @@
     "SKIP_TEST_GATE": "1",
     "reason": "Unchanged baseline full architecture failures recorded separately; repository escape hatch retains clean-HEAD test compilation and all other static push gates",
     "compileSkipped": false
+  },
+  "cleanHeadPushPreflight": {
+    "status": "PASS",
+    "sourceCommit": "a1ae4de0958ca594cf197b5fc8aa7022536a926e",
+    "staticGates": "PASS",
+    "testCompilation": "PASS",
+    "allFullTestsRun": false,
+    "frontEndNodeModulesPresent": false,
+    "frontEndDependencyChecksSkippedByRepositoryHook": true
   }
 }

@@ -4,8 +4,8 @@
   "stage": "/data0/app/foundation-release-b1ac436b",
   "artifacts": {
     "shop-app.jar": {
-      "sha256": "c2a07ec02437e22908a6b9fdb247daa572c51207e537d4660f3f7495479bca07",
-      "bytes": 123079354
+      "sha256": "f07e6fd64472ef8e8f7f2a4ae5f01ebd096787c2e050237db1ae9db254823f8d",
+      "bytes": 123081197
     },
     "pay-svc.jar": {
       "sha256": "cf62d086684ec869fddf82154473bb52ca6e4cf8c3b3c671b76d1906d9d0e60a",

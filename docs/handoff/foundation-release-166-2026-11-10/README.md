@@ -25,11 +25,14 @@
 
 最终[运行制品与健康核对](./runtime-verification.json)和[真实身份只读探测](./authenticated-smoke.json)通过：V648/V81/V82成功，原回执表已恢复、临时兼容表0张；API/PAY容器内JAR摘要与发布制品一致。经营主体目录、PAY创建上下文、成员目录可用；员工canCreate=false、未授权商户拒绝，测试会话已注销；未创建营业对象或执行付款。
 
-最终[运行制品与健康核对](./runtime-verification.json)和[真实身份只读探测](./authenticated-smoke.json)通过：V648/V81/V82成功，原回执表已恢复、临时兼容表0张；API/PAY容器内JAR摘要与发布制品一致。经营主体目录、PAY创建上下文、成员目录可用；员工canCreate=false、未授权商户拒绝，测试会话已注销；未创建营业对象或执行付款。
-
 
 提交前补齐经营主体Service接口/impl分包及新路由权限台账，宿主定向构建/测试通过后只重发API；PAY未因该结构调整重发。[架构边界记录](./architecture-boundary.json)明确保留原基线失败，不宣称全量架构测试全绿。迁移临时账号及两份演练库已[清理](./cleanup.json)，生产数据及原始备份保留。
 
 提交追踪见[两仓提交记录](./commits.json)。补充35条真实Handler/公开OpenAPI/外部Flutter消费者的交付登记，按既有分阶段机制说明本仓Vue不直接调用，未增加历史欠账；原有两条评价读取路由仅登记已有biz:review保护，不改业务代码，BizEndpointPermTest十二例通过。
 
 宿主最终按资源拆分建档/资料修订控制器，原进件控制器保留原合同；共享转发方法体逐字比对不变。转发、原凭据/字节/响应头、上传边界和权限测试通过，控制器内聚检查不再产生新欠账。该步骤仅结构调整并重发宿主，PAY制品保持不变。
+
+最终[运行制品与健康核对](./runtime-verification.json)和[真实身份只读探测](./authenticated-smoke.json)通过：V648/V81/V82成功，原回执表已恢复、临时兼容表0张；API/PAY容器内JAR摘要与发布制品一致。经营主体目录、PAY创建上下文、成员目录可用；员工canCreate=false、未授权商户拒绝，测试会话已注销；未创建营业对象或执行付款。
+
+
+最终宿主代码提交为`a1ae4de0958ca594cf197b5fc8aa7022536a926e`，独立PAY代码提交为`13c954a213b1df9ae2aea2b768c2bec33b50c487`；后续提交只维护发布记录。干净HEAD推送预检静态检查与test-compile通过；按仓库文档SKIP_TEST_GATE=1跳过存在未变基线失败的全量测试。独立发布目录无node_modules，仓库钩子按既有规则跳过对应前端依赖检查；本次不发前端包。

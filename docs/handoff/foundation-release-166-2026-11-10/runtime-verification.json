@@ -9,7 +9,7 @@
   "containers": {
     "ai-shop-api": {
       "id": "0aa0d8a4b994cbfc202d3c0fa080160880c34f1c60ce1c7b465940d8106d5c69",
-      "startedAt": "2026-11-10T13:06:48.792626614Z",
+      "startedAt": "2026-11-10T13:24:29.985686376Z",
       "running": true
     },
     "ai-shop-ops": {
@@ -29,7 +29,7 @@
     }
   },
   "runningJarSha256": {
-    "shop-app.jar": "c2a07ec02437e22908a6b9fdb247daa572c51207e537d4660f3f7495479bca07",
+    "shop-app.jar": "f07e6fd64472ef8e8f7f2a4ae5f01ebd096787c2e050237db1ae9db254823f8d",
     "pay-svc.jar": "cf62d086684ec869fddf82154473bb52ca6e4cf8c3b3c671b76d1906d9d0e60a"
   },
   "payConfigurationSha256": "cf5a320b97562733aec77a7fb576d830bff0b9acdb5d5cf1dd6e2ef44e84e0d7",
