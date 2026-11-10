@@ -22,3 +22,5 @@
 - Flutter全量 `--no-test-assets` 运行972通过、14跳过、204失败，多数涉及AssetManifest/图像资源，也有其他断言；没有完成逐条基线归因，不能将全量标绿。本轮相关24条单独通过。
 - commerce全量反应堆API/core110条通过后中止；没有完成全量persistence，相关15条已独立通过。后端本轮相关模块已test-compile，未运行所有业务测试。此前已知全局ArchitectureTest存量失败也未假称修复。
 - 商用启用仍需补真实收款/售价。二阶段已补异常款项退款、对账解除及运营代购代码；本页数字仅为初轮证据，不代表二阶段验证结果；见[二阶段记录](./phase2-refund-assisted.md)。
+
+Final phase-2: backend 80 passed, host incremental 16 passed, OPS 955 passed, Flutter 38 passed. See phase2-refund-assisted.md and release-166.json. Earlier phase-1 OPS failures above are historical.
