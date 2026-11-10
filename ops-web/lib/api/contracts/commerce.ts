@@ -1,4 +1,4 @@
-import type {CashRefundApi} from "@/lib/offline-cash-types";
+import type {CashRefundApi} from "./offline-cash";
 // 覆盖范围：套餐商城（commerce）—— 目录、商城订单、门店权益来源、线下银行转账核款。
 //
 // 端点与字段逐字对应 docs/api/commerce-mall-openapi.json（task8-v1，已冻结）。

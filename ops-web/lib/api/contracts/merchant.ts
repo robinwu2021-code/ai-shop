@@ -1,5 +1,5 @@
-import type {CashRefundApi} from "@/lib/offline-cash-types";
-import type { EntityPlanPurchaseApi } from "../../entity-plan-purchase-types";
+import type {CashRefundApi} from "./offline-cash";
+import type { EntityPlanPurchaseApi } from "./entity-plan-purchase";
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
 import type {

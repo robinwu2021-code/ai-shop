@@ -14645,6 +14645,9 @@ components:
     MallOfflineInstructionsView:
       type: "object"
       properties:
+        platformMerchantNo:
+          type: "string"
+          description: "Immutable receiver frozen with this order."
         orderNo:
           type: "string"
           description: "订单号"
@@ -14664,6 +14667,7 @@ components:
           "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
           description: "指引内容"
       required:
+        - "platformMerchantNo"
         - "orderNo"
         - "payable"
         - "paymentDueAt"
@@ -16103,6 +16107,430 @@ components:
         - "finishedAt"
       additionalProperties: false
       description: "PrintOperation and FrozenJson preserve canonical JSON/hash without inventing execution counts."
+    PlanMoney:
+      type: "object"
+      properties:
+        currency:
+          type: "string"
+        minor:
+          type: "number"
+      required:
+        - "currency"
+        - "minor"
+      additionalProperties: false
+      description: "Entity quota contracts, intentionally distinct from store mall entitlements."
+    EntityPlanOffer:
+      type: "object"
+      properties:
+        offerNo:
+          type: "string"
+        version:
+          type: "number"
+        planCode:
+          type: "string"
+        name:
+          type: "string"
+        days:
+          type: "number"
+        price:
+          "$ref": "#/components/schemas/PlanMoney"
+        storeQuota:
+          type: "number"
+        staffQuota:
+          type: "number"
+        crossStoreStats:
+          type: "boolean"
+        enabled:
+          type: "boolean"
+      required:
+        - "offerNo"
+        - "version"
+        - "planCode"
+        - "name"
+        - "days"
+        - "price"
+        - "storeQuota"
+        - "staffQuota"
+        - "crossStoreStats"
+        - "enabled"
+      additionalProperties: false
+    EntityPlanOfferEdit:
+      type: "object"
+      properties:
+        offerNo:
+          type: "string"
+        expectedVersion:
+          type: "number"
+        planCode:
+          type: "string"
+        name:
+          type: "string"
+        days:
+          type: "number"
+        price:
+          "$ref": "#/components/schemas/PlanMoney"
+        enabled:
+          type: "boolean"
+      required:
+        - "offerNo"
+        - "expectedVersion"
+        - "planCode"
+        - "name"
+        - "days"
+        - "price"
+        - "enabled"
+      additionalProperties: false
+    EntityPlanClaim:
+      type: "object"
+      properties:
+        claimNo:
+          type: "string"
+        amount:
+          "$ref": "#/components/schemas/PlanMoney"
+        paidAt:
+          type: "string"
+        bankReference:
+          type: "string"
+        evidenceKey:
+          type: "string"
+      required:
+        - "claimNo"
+        - "amount"
+        - "paidAt"
+        - "bankReference"
+        - "evidenceKey"
+      additionalProperties: false
+    EntityPlanConfirm:
+      type: "object"
+      additionalProperties: false
+      properties:
+        actionNo:
+          type: "string"
+        claimNo:
+          type:
+            - "string"
+            - "null"
+        reason:
+          type: "string"
+        amount:
+          "$ref": "#/components/schemas/PlanMoney"
+        paidAt:
+          type: "string"
+        bankReference:
+          type: "string"
+        evidenceKey:
+          type: "string"
+      required:
+        - "actionNo"
+        - "amount"
+        - "bankReference"
+        - "claimNo"
+        - "evidenceKey"
+        - "paidAt"
+        - "reason"
+    EntityPlanVoid:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+        reference:
+          type: "string"
+        evidenceKey:
+          type: "string"
+        reason:
+          type: "string"
+      required:
+        - "actionNo"
+        - "reference"
+        - "evidenceKey"
+        - "reason"
+      additionalProperties: false
+    EntityPlanAction:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+        status:
+          type: "string"
+        paymentNo:
+          type:
+            - "string"
+            - "null"
+        reason:
+          type: "string"
+      required:
+        - "actionNo"
+        - "status"
+        - "paymentNo"
+        - "reason"
+      additionalProperties: false
+    EntityPlanPurchase:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+        requestNo:
+          type: "string"
+        entityNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        offer:
+          "$ref": "#/components/schemas/EntityPlanOffer"
+        status:
+          type: "string"
+        purchaseSource:
+          type: "string"
+        dueAt:
+          type: "string"
+        instructions:
+          anyOf:
+            - type: "null"
+            - type: "object"
+              properties:
+                platformMerchantNo:
+                  type: "string"
+                instructions:
+                  "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
+              required:
+                - "platformMerchantNo"
+                - "instructions"
+              additionalProperties: false
+        claims:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              claimNo:
+                type: "string"
+              status:
+                type: "string"
+              declaration:
+                "$ref": "#/components/schemas/EntityPlanClaim"
+              reviewNote:
+                type:
+                  - "string"
+                  - "null"
+            required:
+              - "claimNo"
+              - "status"
+              - "declaration"
+              - "reviewNote"
+            additionalProperties: false
+        actions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/EntityPlanAction"
+      required:
+        - "orderNo"
+        - "requestNo"
+        - "entityNo"
+        - "storeNo"
+        - "offer"
+        - "status"
+        - "dueAt"
+        - "instructions"
+        - "claims"
+        - "actions"
+      additionalProperties: false
+    EntityAssistedRequest:
+      type: "object"
+      properties:
+        requestNo:
+          type: "string"
+        offerNo:
+          type: "string"
+        offerVersion:
+          type: "number"
+        storeNo:
+          type: "string"
+        ownerAccountNo:
+          type: "string"
+      required:
+        - "requestNo"
+        - "offerNo"
+        - "offerVersion"
+        - "storeNo"
+        - "ownerAccountNo"
+      additionalProperties: false
+    EntityAssistanceContext:
+      type: "object"
+      properties:
+        owners:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              accountNo:
+                type: "string"
+              displayName:
+                type: "string"
+              subjectKind:
+                type: "string"
+            required:
+              - "accountNo"
+              - "displayName"
+              - "subjectKind"
+            additionalProperties: false
+        stores:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              storeNo:
+                type: "string"
+              name:
+                type: "string"
+            required:
+              - "storeNo"
+              - "name"
+            additionalProperties: false
+      required:
+        - "owners"
+        - "stores"
+      additionalProperties: false
+    EntityPlanEvidenceTicket:
+      type: "object"
+      properties:
+        assetKey:
+          type: "string"
+      required:
+        - "assetKey"
+      additionalProperties: false
+    EntityPlanSignedRead:
+      type: "object"
+      properties:
+        url:
+          type: "string"
+      required:
+        - "url"
+      additionalProperties: false
+    CashMoney:
+      type: "object"
+      properties:
+        currency:
+          type: "string"
+        minor:
+          type:
+            - "string"
+            - "number"
+      required:
+        - "currency"
+        - "minor"
+      additionalProperties: false
+      description: "Trusted bank cash, independent of the sales quote."
+    CashReceipt:
+      type: "object"
+      properties:
+        paymentNo:
+          type: "string"
+        paymentAttemptNo:
+          type: "string"
+        platformMerchantNo:
+          type: "string"
+        amount:
+          "$ref": "#/components/schemas/CashMoney"
+        refundedMinor:
+          type:
+            - "string"
+            - "number"
+        pendingRefund:
+          type: "boolean"
+        exceptionCash:
+          type: "boolean"
+        closed:
+          type: "boolean"
+      required:
+        - "paymentNo"
+        - "paymentAttemptNo"
+        - "platformMerchantNo"
+        - "amount"
+        - "refundedMinor"
+        - "pendingRefund"
+        - "exceptionCash"
+        - "closed"
+      additionalProperties: false
+    CashRefundRequest:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+        paymentNo:
+          type: "string"
+        reason:
+          type: "string"
+      required:
+        - "refundNo"
+        - "paymentNo"
+        - "reason"
+      additionalProperties: false
+    CashPayout:
+      type: "object"
+      properties:
+        actionNo:
+          type: "string"
+        actualAmount:
+          "$ref": "#/components/schemas/CashMoney"
+        paidOutAt:
+          type: "string"
+        payeeReference:
+          type: "string"
+        bankReference:
+          type: "string"
+        evidenceKey:
+          type: "string"
+      required:
+        - "actionNo"
+        - "actualAmount"
+        - "paidOutAt"
+        - "payeeReference"
+        - "bankReference"
+        - "evidenceKey"
+      additionalProperties: false
+    CashRefund:
+      type: "object"
+      properties:
+        refundNo:
+          type: "string"
+        paymentNo:
+          type: "string"
+        amount:
+          "$ref": "#/components/schemas/CashMoney"
+        status:
+          type: "string"
+        reason:
+          type: "string"
+        rejection:
+          type:
+            - "string"
+            - "null"
+        actions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              actionNo:
+                type: "string"
+              status:
+                type: "string"
+              rejection:
+                type:
+                  - "string"
+                  - "null"
+            required:
+              - "actionNo"
+              - "status"
+              - "rejection"
+            additionalProperties: false
+      required:
+        - "refundNo"
+        - "paymentNo"
+        - "amount"
+        - "status"
+        - "reason"
+        - "rejection"
+        - "actions"
+      additionalProperties: false
 security:
   - bearerAuth: []
 paths:
@@ -16274,6 +16702,197 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{order}/cash-receipts":
+    get:
+      operationId: "mallCashReceipts"
+      summary: "mallCashReceipts"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/CashReceipt"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/biz-mall/offline/orders/{order}/cash-refunds":
+    get:
+      operationId: "mallCashRefunds"
+      summary: "mallCashRefunds"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "requestMallCashRefund"
+      summary: "requestMallCashRefund"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout":
+    post:
+      operationId: "payoutMallCashRefund"
+      summary: "payoutMallCashRefund"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refund"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover":
+    post:
+      operationId: "recoverMallCashRefund"
+      summary: "recoverMallCashRefund"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refund"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       requestBody:
         required: true
         content:
@@ -17716,10 +18335,47 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}":
+    get:
+      operationId: "offlineAction"
+      summary: "Read the durable original outcome without replaying the command. */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "actionNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/biz-mall/offline/orders/{orderNo}/confirmations":
     post:
       operationId: "confirmOfflinePayment"
-      summary: "核款：录入实际到账"
+      summary: "confirmOfflinePayment"
       tags:
         - "commerce"
       responses:
@@ -17775,6 +18431,44 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/MallOfflineActionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/orders/{orderNo}/recover":
+    post:
+      operationId: "recoverOfflineOrder"
+      summary: "Recover the original offline order workflow without replaying bank/release commands. */"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
                 required:
                   - "code"
                   - "msg"
@@ -26780,6 +27474,729 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{entity}/{order}/cash-receipts":
+    get:
+      operationId: "entityCashReceipts"
+      summary: "entityCashReceipts"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/CashReceipt"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "entity"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds":
+    get:
+      operationId: "entityCashRefunds"
+      summary: "entityCashRefunds"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "entity"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "requestEntityCashRefund"
+      summary: "requestEntityCashRefund"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "entity"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/payout":
+    post:
+      operationId: "payoutEntityCashRefund"
+      summary: "payoutEntityCashRefund"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "entity"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refund"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/recover":
+    post:
+      operationId: "recoverEntityCashRefund"
+      summary: "recoverEntityCashRefund"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/CashRefund"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "entity"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "order"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "refund"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/assistance-context":
+    get:
+      operationId: "entityPlanAssistanceContext"
+      summary: "entityPlanAssistanceContext"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityAssistanceContext"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant-plan-purchases/{e}/assisted":
+    post:
+      operationId: "assistedEntityPlanPurchase"
+      summary: "assistedEntityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanPurchase"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/offers":
+    get:
+      operationId: "entityPlanOffers"
+      summary: "entityPlanOffers"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/EntityPlanOffer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    put:
+      operationId: "saveEntityPlanOffer"
+      summary: "saveEntityPlanOffer"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanOffer"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}":
+    get:
+      operationId: "entityPlanPurchases"
+      summary: "entityPlanPurchases"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/EntityPlanPurchase"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant-plan-purchases/{e}/{o}":
+    get:
+      operationId: "entityPlanPurchase"
+      summary: "entityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanPurchase"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant-plan-purchases/{e}/{o}/confirm":
+    post:
+      operationId: "confirmEntityPlanPurchase"
+      summary: "confirmEntityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanAction"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/decline":
+    post:
+      operationId: "declineEntityPlanPurchase"
+      summary: "declineEntityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/recover":
+    post:
+      operationId: "recoverEntityPlanPurchase"
+      summary: "recoverEntityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanPurchase"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/cancel":
+    post:
+      operationId: "cancelEntityPlanPurchase"
+      summary: "cancelEntityPlanPurchase"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanPurchase"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/evidence":
+    post:
+      operationId: "reserveEntityPlanEvidence"
+      summary: "reserveEntityPlanEvidence"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanEvidenceTicket"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/evidence/content":
+    post:
+      operationId: "uploadEntityPlanEvidence"
+      summary: "uploadEntityPlanEvidence"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanEvidenceTicket"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant-plan-purchases/{e}/{o}/evidence/url":
+    get:
+      operationId: "entityPlanEvidenceUrl"
+      summary: "entityPlanEvidenceUrl"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/EntityPlanSignedRead"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "e"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "o"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/merchants/{merchantNo}/store-modes":
     get:
       operationId: "storeModes"
@@ -30301,6 +31718,77 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/order-payment-resolutions":
+    get:
+      operationId: "orderPaymentResolutions"
+      summary: "orderPaymentResolutions"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/order-payment-resolutions/{payNo}/{paymentNo}/refund":
+    post:
+      operationId: "refundOrderPaymentResolution"
+      summary: "refundOrderPaymentResolution"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "payNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "paymentNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       requestBody:
         required: true
         content:

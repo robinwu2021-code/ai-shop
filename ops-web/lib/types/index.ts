@@ -333,3 +333,11 @@ export interface OpsPromoActivity {
 export type { EarningContext, EarningRule, EarningRulePage, EarningChange, EarningCalculation, OrderEarningInspection, EarningCategory } from "../points-earning";
 
 export type { PrintTarget, PrintHealth, PrintFleetHealth, PrintIncident, PrintIncidentPage, PrintReconcileRequest, PrintOperation } from "../api/print-types";
+
+// DTOs for the offline purchase/refund APIs exported for OpenAPI schema generation.
+export type {
+  PlanMoney,EntityPlanOffer,EntityPlanOfferEdit,EntityPlanClaim,EntityPlanConfirm,
+  EntityPlanVoid,EntityPlanAction,EntityPlanPurchase,EntityAssistedRequest,
+  EntityAssistanceContext,EntityPlanEvidenceTicket,EntityPlanSignedRead,
+} from "../entity-plan-purchase-types";
+export type {CashMoney,CashReceipt,CashRefundRequest,CashPayout,CashRefund} from "../offline-cash-types";
