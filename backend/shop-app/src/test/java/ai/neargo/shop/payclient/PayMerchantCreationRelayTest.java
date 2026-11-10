@@ -2,7 +2,7 @@ package ai.neargo.shop.payclient;
 
 import static org.junit.jupiter.api.Assertions.*;
 import ai.neargo.shop.pay.client.BizOnboardingForwarder;
-import ai.neargo.shop.portal.biz.BizPayOnboardingController;
+import ai.neargo.shop.portal.biz.BizPayMerchantController;
 import com.sun.net.httpserver.HttpServer;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +17,7 @@ class PayMerchantCreationRelayTest {
         var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         server.createContext("/biz/pay/v2/merchant-creations",e->{header.set(e.getRequestHeaders().getFirst("Authorization"));input.set(e.getRequestBody().readAllBytes());byte[] body="{\"code\":0,\"data\":{\"merchantNo\":\"PM1\"}}".getBytes(StandardCharsets.UTF_8);e.getResponseHeaders().set("Content-Type","application/json");e.sendResponseHeaders(200,body.length);e.getResponseBody().write(body);e.close();});server.start();
         try {
-            var controller=new BizPayOnboardingController(new BizOnboardingForwarder(URI.create("http://127.0.0.1:"+server.getAddress().getPort())));
+            var controller=new BizPayMerchantController(new BizOnboardingForwarder(URI.create("http://127.0.0.1:"+server.getAddress().getPort())));
             var request=new MockHttpServletRequest("POST","/biz/pay/v2/merchant-creations");request.addHeader("Authorization","Bearer btk_fixture");request.setContentType("application/json");request.setContent(command);
             var result=controller.createMerchant(request);
             assertEquals(200,result.getStatusCode().value());assertEquals("Bearer btk_fixture",header.get());assertArrayEquals(command,input.get());assertTrue(new String(result.getBody(),StandardCharsets.UTF_8).contains("PM1"));

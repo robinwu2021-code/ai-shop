@@ -48,5 +48,23 @@
     "entries": 35,
     "existingBaselineChanged": false,
     "validatorTests": 6
+  },
+  "hostFinalResourceRelay": {
+    "build": "PASS",
+    "cases": [
+      "ai.neargo.commerce.starter.security.OperatingEntityCreationRouteTest",
+      "ai.neargo.shop.merchant.organization.OperatingEntityCreationMySqlTest",
+      "ai.neargo.shop.arch.BizEndpointPermTest",
+      "ai.neargo.shop.payclient.PayBizOnboardingHttpTest",
+      "ai.neargo.shop.payclient.PayMerchantCreationRelayTest",
+      "ai.neargo.shop.payclient.PayMerchantProfileRelayTest"
+    ],
+    "controllerCohesion": "PASS",
+    "review": "Shared relay method body byte-for-byte preserved; no evidenced P1/P2 found"
+  },
+  "pushCheckScope": {
+    "SKIP_TEST_GATE": "1",
+    "reason": "Unchanged baseline full architecture failures recorded separately; repository escape hatch retains clean-HEAD test compilation and all other static push gates",
+    "compileSkipped": false
   }
 }
