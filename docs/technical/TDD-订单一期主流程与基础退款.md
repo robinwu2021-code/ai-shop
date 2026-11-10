@@ -615,3 +615,16 @@ C/B `refundExecution` 与后端 `AfterSaleVO.RefundExecutionProgress` 同形；�
 - 运营 API 定向 **6/6** 通过、运营 TypeScript 检查通过；接口对账 **436 调用 / 428 已有 / 8 既有欠账**，无新增空接口。人工金融复核未发现需修复问题。
 - 运行测试复用已编译依赖，只在临时测试 classpath 排除既有 near-pay HTTP 夹具的普通 Configuration，不改原夹具；共享编译期间出现目标 class 短暂缺失后，仅为失败队列用例冻结 classpath 快照重跑。验证脚本空类路径曾误扩大临时复制范围，已修正并清理。
 - 未打开 `shop.refund.closure.enabled` 或迟到款自动退款开关，未改库存路由/数据；真实渠道、当前166部署及指定商家库存跨进程验收仍待执行，R02 登记继续保留库存后置余项。
+
+
+## R02 续批：确认收货事务边界（2026-11-10）
+
+档位0：沿现有消费者身份/完整claims读取与原收货Service，不变更HTTP、权限、DDL或开关。C06旧运行快照6条整单评价旅程在确认收货失败，定位为OrderServiceImpl外层事务内调用detail，其currentReadScope要求鉴权在事务外。
+
+修复将currentReadScope放到收货写入前，使用其中的真实buyer作为OrderActor；confirmCurrent仍由原收货Service事务锁定并原子完成包裹、订单和售后联动。外层协调入口去除多余事务，完成后按同一授权范围回读详情，不再在写事务内调用远程claims，不跳过鉴权或改成无归属详情。库存及退款开关保持不变。
+
+验证完成：13项、0跳过通过（`/tmp/ai-shop-r02-receipt.log`，退出0见`-run.log`）。新增`RetailReceiptAuthorizationTest`的`deniedCurrentBuyerCannotReachReceiptMutation`、`receiptUsesTheCanonicalAuthorizedBuyerBeforeAnyWrite`2项；此前`BizDashboardAndReviewFlowTest`失败的回复一次/跨主体拒绝/高分禁诉/低分一次申诉/支持裁决下架/驳回保留6条整单HTTP旅程全部通过。另有`M4FulfillmentFlowTest#confirmReceipt`及`M5AfterSaleFlowTest`的分账回退前置、整单退券、退货退款、不能超退4项，共5项兼容通过。没有新增并发、库存远程接入或无关全量回归。
+
+实现仅修改OrderServiceImpl的confirmReceipt协调入口，并新增上述2项测试；一次只读复核未发现新增问题。原收货Service的事务、锁、行业来源限制与售后联动均未修改。鉴权与真实buyer在事务前解析，响应详情沿同一readScope读取；响应读取失败仍以原收货状态查询恢复。
+
+验证边界：为保护共享工作区，限定编译已提交`13c494bb0`的OrderServiceImpl加本补丁，临时类置于既有隔离依赖快照前；没有编译或提交另一个会话的StoreOwnershipWritePort未提交片段。测试复用原test配置，不称MySQL9原生整单或当前全仓制品构建通过；本批无DDL，真实资金、166/库存和部署仍待各自验收。已验证的6条旧快照失败在本补丁覆盖下转为通过，C06评价批次当时失败记录保留为历史，不再当作当前未解问题。

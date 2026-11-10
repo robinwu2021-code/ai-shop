@@ -4119,10 +4119,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO confirmReceipt(String subOrderNo) {
-        receipts.confirmCurrent(subOrderNo, OrderActor.buyer(SecurityUtils.currentUserNo()));
-        return detail(subOrderNo, null);
+        var readScope = customerAccess.currentReadScope();
+        receipts.confirmCurrent(subOrderNo, OrderActor.buyer(readScope.userNo()));
+        return DataScopeContext.executeWithoutScope(
+                () -> detailOf(subOrderNo, readScope.userNo(), surfaceOf(null), readScope));
     }
 
     @Override

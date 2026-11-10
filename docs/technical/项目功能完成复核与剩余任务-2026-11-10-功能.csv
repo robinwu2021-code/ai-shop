@@ -9,7 +9,7 @@ RET-03,零售与共享,商品/SKU/分类规格/双版本发布,商品生命周�
 /Users/robin/work/ai/ai-shop-codex/docs/technical/开发计划-商品域规格与发布.md
 /Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java
 /Users/robin/work/ai/ai-shop-codex/docs/technical/进销存-UME部署记录-2026-11-10.md"
-RET-04,零售与共享,零售下单/订单查询/取消/备货/收货,一期现金下单/支付、备货发货、物流与收货、基础退款及C/B共享合同已有主链接线；B01–B07完成；需将预留、取消释放、付款分配/确认及履约出库纳入零售闭环,最新一期TDD记录真实C/B HTTP及本地原生库主流程/基础退款通过；本次未重复测试；旧222条仅历史基线,本次没有复验真实门店营业全链路,P1,复用一期主链，在指定商家经App→ai-shop→166验证预留、付款、取消/超时释放及履约扣库；按冻结owner/lifecycle执行，避免双扣,R02;C06;I04,"/Users/robin/work/ai/ai-shop-codex/backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java
+RET-04,零售与共享,零售下单/订单查询/取消/备货/收货,一期下单查询取消备货收货已有；R02续批将真实消费者鉴权与范围解析置于确认收货事务前，原收货Service事务保持包裹/订单/售后联动，完成后按同一范围回读；库存闭环仍后置,B01–B07历史证据保留；本批新增鉴权2项、此前失败整单评价旅程6项、收货退款兼容5项共13项0跳过通过；限定源码编译与一次只读复核通过；隔离依赖快照不等于当前整仓或原生MySQL9完整订单验收,本次没有复验真实门店营业全链路,P1,当前制品真实资金营业验收及指定商家166订单库存全链仍待验；预留/取消释放/履约出库/售后原owner恢复最后随I01/I04接入,R02;C06;I04,"/Users/robin/work/ai/ai-shop-codex/backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java
 /Users/robin/work/ai/ai-shop-codex/backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/MerchantOrderServiceImpl.java
 /Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-订单重构修复与三端接线.md
 /Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-订单一期主流程与基础退款.md
