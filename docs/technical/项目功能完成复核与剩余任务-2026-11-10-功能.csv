@@ -1,6 +1,6 @@
 复核ID,领域,功能,实现,验证,部署,优先级,剩余,剩余任务ID,证据
-RET-01,零售与共享,店主/员工登录及账号安全,现有OTP/邮箱/密码登录与会话已实现；统一身份票据、换绑与商户注销未实现,既有登录有历史验证；统一登录TDD明确§5未写测试，不能算完成,此前166只读确认DB会话；未新核查真实OTP或账号写入,P0,按已确认ADR-053/054补统一登录及账号变更/注销；供应商真实送达另验,C03,"/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java
-/Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-商户App统一登录与账号.md"
+RET-01,零售与共享,店主/员工登录及账号安全,OTP/邮箱/密码、统一身份发现进入切换及员工恢复已有本地实现；账号中心、手机邮箱凭证变更、注销及审计仍待补,旧§5未写测试不再覆盖后续B02；统一登录TDD末尾及身份/员工交接已有本地MySQL9/Dart/JVM专项记录，各自范围分列，不由本轮文档整理宣称新跑通过；真实成员/渠道/短信另验,此前166只读确认DB会话；未新核查真实OTP或账号写入,P0,C03补账号中心/凭证变更/注销与会话回收；C02继续真实成员渠道与目标部署，不重做已有身份票据和员工恢复,C03,"/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java
+/Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-商户App统一登录与账号.md;docs/technical/TDD-商户App统一登录与账号.md §2026-11-10 B02;../ai-shop-bapp/docs/implementation/统一身份登录对齐-2026-11-10.md;../ai-shop-bapp/docs/implementation/员工身份对齐-2026-11-10.md"
 RET-02,零售与共享,门店建档资料/坐标/履约配置,门店CRUD、范围、多边形与状态/方案字段补齐已实现；门店到仓库/库位映射及员工操作范围纳入零售库存联调,字段TDD记载原生与相关回归；不把已有基线失败说全绿,166已应用V643；字段每项及地图供应商本次未现场验证,P1,Flutter坐标/方案字段与台湾地图实测；补指定商家的门店到仓库/库位映射及数据范围，依联合清单L03验收,C05;R03;I04,"/Users/robin/work/ai/ai-shop-codex/backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/MerchantStoreServiceImpl.java
 /Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-商户App接口字段对齐.md
 /Users/robin/work/ai/ai-shop-codex/backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/route/InventoryConsoleRoute.java
@@ -36,7 +36,7 @@ RET-07,零售与共享,配送/自提/快递/核销,零售履约/承运商/核销
 RET-08,零售与共享,会员/标签/人群与定向触达,R04会员/券入口、滚动idleDays等已补；C06补触达正式数组续页、分来源权限/错误恢复、权威notOpened/phoneMasked与原批次人群条件,R04原验证分列；C06新增App12项、既有发券触达旅程2项及后端效果口径3项分组/增量通过，限定analyze通过；不累计重复轮,台湾触达/短信供应商未核查,P1,本地会员营销结果接线已补；真实触达/短信供应商、同意状态及资产原owner联验保留，不擅自开放台湾；库存仍最后,R04,"/Users/robin/work/ai/ai-shop-codex/backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/MemberSegmentServiceImpl.java
 /Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-会员标签与定向营销.md
 /Users/robin/work/ai/ai-shop-codex/docs/technical/商户App服务端能力清单-主系统明细.md"
-RET-09,零售与共享,营销活动/券/拼团集单/求团报价/评价,R01预算份数快照、R04券入口及C06既有营销子批保持；本批补评价正式scores/repliedAt/appealNo、可见列表及隐藏裁决历史分页、原号回查与会话内未决恢复，切店/失权隐藏页面及弹层,营销历史证据分列；本批评价App新增17项、既有入口流程1项与MySQL9原生5项分组/增量通过，限定analyze及7词条四语言对账通过；旧运行快照6条整单旅程在评价前收货授权失败，未算通过；不累计重复轮,本批V644未部署；正式环境迁移/发布准出归C01；台湾团购/资产开放及运营发布仍待确认,P1-契约/范围依赖,其余C06模块、真实图片/运营裁决、台湾团购开放、订单支付退款/资产及供应商、运营发布与迁移部署另验；评价并入RET-09组合组保留66组/25任务ID，不视为原子完成率；库存I01/I04仍最后,C06;R04;C01,"/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizActivityController.java
+RET-09,零售与共享,营销活动/券/拼团集单/求团报价/评价,R01预算份数快照、R04券入口及C06既有营销子批保持；正式评价字段/列表历史/原号恢复已补。App普通活动券、会员营销及团购报价f988960已提交，评价f4581fa已提交，切店/失权守卫保持,历史功能证据分列；本轮商品快照27项、营销50项及团购15项、12条不同入口旅程分组/增量通过，相关静态和一次范围复核通过；提交快照验证不再累计为新增功能数。旧收货6条失败已由a85eb3056修复，不再列当前阻塞,本批V644未部署；正式环境迁移/发布准出归C01；台湾团购/资产开放及运营发布仍待确认,P1-契约/范围依赖,本轮单店营销/团购等已实现App片段已提交；继续连锁活动券费用正式映射及已确认字段差异，真实图片裁决、团购地区、支付退款资产/供应商与发布另验；候选先定范围，库存I01/I04仍最后,C06;R04;C01,"/Users/robin/work/ai/ai-shop-codex/backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizActivityController.java
 /Users/robin/work/ai/ai-shop-codex/backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/CouponRedeemServiceImpl.java
 /Users/robin/work/ai/ai-shop-codex/docs/technical/待办-零售核心评审遗留.md
 /Users/robin/work/ai/ai-shop-codex/docs/technical/TDD-营销域-详细设计.md
