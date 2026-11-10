@@ -21,6 +21,9 @@ import ai.neargo.shop.beauty.dto.WorkOrderQueryReq;
 import ai.neargo.shop.beauty.dto.WorkOrderSummaryVO;
 import ai.neargo.shop.beauty.dto.WorkOrderTaskVO;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
+import ai.neargo.shop.beauty.dto.WorkOrderSettlementVO;
+import ai.neargo.shop.beauty.dto.WorkOrderSettlementPreviewVO;
+import ai.neargo.shop.beauty.spi.BeautySettlementInternalApi;
 import ai.neargo.shop.beauty.spi.BeautyTaskWorkflowInternalApi;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.security.InternalCall;
@@ -186,6 +189,24 @@ final class BeautyReceptionResponses {
                     same(target, value.submissionNo());
                 }
             }
+            case WorkOrderSettlementVO value -> {
+                same(BeautySettlementInternalApi.ENDPOINT, call.binding().endpoint());
+                same(BeautySettlementInternalApi.READ, call.binding().action());
+                settlement(target, value);
+            }
+            case WorkOrderSettlementPreviewVO value -> {
+                same(BeautySettlementInternalApi.ENDPOINT, call.binding().endpoint());
+                same(BeautySettlementInternalApi.PREVIEW, call.binding().action());
+                check(call.request() instanceof BeautySettlementInternalApi.PreviewReq);
+                var request = ((BeautySettlementInternalApi.PreviewReq) call.request()).preview();
+                settlement(target, value.settlement());
+                same(request.expectedFingerprint(), value.settlement().fingerprint());
+                same(request.currency(), value.currency());
+                same(request.method(), value.method());
+                check(value.walletMinor() == request.walletMinor()
+                        && value.externalMinor() == request.externalMinor()
+                        && !value.executable() && !value.blockingReasons().isEmpty());
+            }
             case WorkOrderBillVO value -> {
                 same(target, value.workOrderNo());
                 bill(value);
@@ -321,6 +342,24 @@ final class BeautyReceptionResponses {
             check(value.quote().operation() != null);
             same(value.checkoutOperationNo(), value.quote().operation().operationNo());
             check(value.quote().expiresAt() != null && value.quote().quoteRevision() > 0);
+        }
+    }
+
+    private static void settlement(String target, WorkOrderSettlementVO value) {
+        bill(value.bill());
+        same(target, value.bill().workOrderNo());
+        check(value.fingerprint() != null && value.fingerprint().matches("[a-f0-9]{64}")
+                && !value.canSettle() && value.methods().isEmpty() && !value.blockingReasons().isEmpty()
+                && value.sources().size() == value.bill().sources().size());
+        var originals = new HashSet<String>();
+        for (var source : value.sources()) {
+            check(!source.canCollect() && originals.add(source.checkoutOperationNo())
+                    && Set.of("MANUAL_DECLARED", "PREPAID", "REFUND_RECOLLECTION_CLOSED",
+                            "COLLECTION_CONSENT_REQUIRED", "INCOMPLETE", "UNSUPPORTED").contains(source.state()));
+            check(value.bill().sources().stream().anyMatch(original ->
+                    Objects.equals(original.checkoutOperationNo(), source.checkoutOperationNo())
+                            && Objects.equals(original.orderNo(), source.orderNo())
+                            && Objects.equals(original.sourceNo(), source.sourceNo())));
         }
     }
 

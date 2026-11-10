@@ -1,0 +1,260 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Service settlement read and diagnostic preview only",
+    "version": "2026-11-11"
+  },
+  "paths": {
+    "/biz/x/beauty/work-orders/{workOrderNo}/settlement": {
+      "get": {
+        "parameters": [
+          {
+            "name": "workOrderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "If supplied, must match the authorized current store."
+          }
+        ],
+        "x-source-controller": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderSettlementController.java",
+        "x-authorization": "Original WorkOrderBillService current merchant, reception identity, booking read/manage and order-view checks; no new financial permission is granted.",
+        "responses": {
+          "200": {
+            "description": "Host ApiResult envelope. code=0 carries the business payload; business rejections use existing code=10400/10403/10409 semantics rather than a new HTTP error mapping."
+          },
+          "401": {
+            "description": "Existing unauthenticated merchant boundary."
+          }
+        },
+        "operationId": "readWorkOrderSettlement",
+        "summary": "Read original service source settlement disposition",
+        "x-business-payload-schema": {
+          "$ref": "#/components/schemas/Settlement"
+        },
+        "x-business-errors": {
+          "10400": "Framework input failure or currency absent from original bill.",
+          "10403": "Current actor/store permission rejected.",
+          "10409": "Current owner snapshot differs from expectedFingerprint."
+        }
+      }
+    },
+    "/biz/x/beauty/work-orders/{workOrderNo}/settlement-previews": {
+      "post": {
+        "parameters": [
+          {
+            "name": "workOrderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "If supplied, must match the authorized current store."
+          }
+        ],
+        "x-source-controller": "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderSettlementController.java",
+        "x-authorization": "Original WorkOrderBillService current merchant, reception identity, booking read/manage and order-view checks; no new financial permission is granted.",
+        "responses": {
+          "200": {
+            "description": "Host ApiResult envelope. code=0 carries the business payload; business rejections use existing code=10400/10403/10409 semantics rather than a new HTTP error mapping."
+          },
+          "401": {
+            "description": "Existing unauthenticated merchant boundary."
+          }
+        },
+        "operationId": "previewWorkOrderSettlement",
+        "summary": "Diagnose a proposal against freshly reread original facts; collection remains closed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedFingerprint",
+                  "currency",
+                  "walletMinor",
+                  "externalMinor",
+                  "method"
+                ],
+                "properties": {
+                  "expectedFingerprint": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "walletMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 99999999999
+                  },
+                  "externalMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 99999999999
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "CASH",
+                      "EXTERNAL_POS",
+                      "SCAN"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-business-payload-schema": {
+          "$ref": "#/components/schemas/Preview"
+        },
+        "x-business-errors": {
+          "10400": "Framework input failure or currency absent from original bill.",
+          "10403": "Current actor/store permission rejected.",
+          "10409": "Current owner snapshot differs from expectedFingerprint."
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Settlement": {
+        "type": "object",
+        "required": [
+          "bill",
+          "fingerprint",
+          "sources",
+          "complete",
+          "canSettle",
+          "methods",
+          "blockingReasons"
+        ],
+        "properties": {
+          "bill": {
+            "type": "object",
+            "description": "Original WorkOrderBillVO, unchanged: source identities, independent currency buckets, manualDeclaredMinor distinct from nullable verified receivedMinor. No external receipt or deposit is added.",
+            "x-java-type": "ai.neargo.shop.beauty.dto.WorkOrderBillVO"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Bound current entity/store/actor namespace and stable source/binding/financial observations. Diagnostic reference only."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "checkoutOperationNo": {
+                  "type": "string"
+                },
+                "orderNo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceNo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "MANUAL_DECLARED",
+                    "PREPAID",
+                    "REFUND_RECOLLECTION_CLOSED",
+                    "COLLECTION_CONSENT_REQUIRED",
+                    "INCOMPLETE",
+                    "UNSUPPORTED"
+                  ]
+                },
+                "canCollect": {
+                  "const": false
+                },
+                "blockingReasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "complete": {
+            "type": "boolean",
+            "description": "Completeness of current observation only; not settlement eligibility."
+          },
+          "canSettle": {
+            "const": false
+          },
+          "methods": {
+            "type": "array",
+            "maxItems": 0
+          },
+          "blockingReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Preview": {
+        "type": "object",
+        "properties": {
+          "settlement": {
+            "$ref": "#/components/schemas/Settlement"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "walletMinor": {
+            "type": "integer"
+          },
+          "externalMinor": {
+            "type": "integer"
+          },
+          "method": {
+            "type": "string"
+          },
+          "executable": {
+            "const": false
+          },
+          "blockingReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Diagnostic proposal only; no persisted previewNo, payment instruction, debit or fund reservation."
+      }
+    }
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "task": "SVC-B05",
+  "phase": "B05.1/B05.2 formal observation and diagnostic preview",
+  "status": "phase_accepted_full_settlement_incomplete",
+  "overallTaskComplete": false,
+  "baseHead": "0c5d97a4ccb483ec43ae37693c6726e858c85487",
+  "supported": [
+    "Current authorized original WorkOrderBill read",
+    "Manual declaration versus verified receipt separation",
+    "Original source/currency disposition and stable scoped fingerprint",
+    "Fresh-owner diagnostic preview; executable=false",
+    "Embedded/local owner and standalone bound HUMAN typed HTTP"
+  ],
+  "remaining": [
+    "B05.3 full/combined settlement execution",
+    "Independent deposit allocation and original receipt exclusivity",
+    "Asset-backed split funding contracts and B07 authorization dependencies",
+    "App formal integration"
+  ],
+  "rulesPreserved": [
+    "Existing prepay-before-service admission",
+    "Manual full declaration must not be charged again",
+    "Refund gap does not authorize recollection",
+    "No postpay, arbitrary relatedBizNo deduction or duplicated financial ledger"
+  ],
+  "sourceFingerprints": {
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/WorkOrderSettlementPreviewVO.java": "31429af4d53f7c5827d9bf73d9471e3576533de83eb1e63be99ddbe9b38722af",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/WorkOrderSettlementVO.java": "0bc22aae20c1af0f3dae1fdd7e1da4038ab3e80b9a39c4b761d539130fcb2b20",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/PreviewWorkOrderSettlementReq.java": "1f4a407a8180edc9ea6eb2f524b28cabac077674d9a8185e4af81db03568d1f1",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/spi/BeautySettlementInternalApi.java": "6a95c95f2cbaec81ef7ae9d12ec30274e2b150c212598e80998043ab2753b331",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/WorkOrderSettlementService.java": "f0633d77498357ef5f40e861ecf8dc300191a12f4f2cba8ef0554b5445c8d6ba",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/WorkOrderSettlementWiringTest.java": "1b0b2a08896bf7b8b369591ebf4546f3775e0b87a20c33ac9b7a019949cf7784",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/WorkOrderSettlementServiceImplTest.java": "873380df562ce1dc9dff5b357008dcb1dcb95ff6ffb883246cdce562f4af18fc",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySettlementConfiguration.java": "31de224db09a05732aa4ab2a121bec6a0a186df4f18fc429f0fe24e189100b46",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderSettlementServiceImpl.java": "344e4e126eaa2d8876f8bb0accda7ee6c125ca23fc729661ab7eccc97afec53b",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/test/java/ai/neargo/shop/beauty/api/biz/WorkOrderSettlementIngressTest.java": "8f0172ab8eae3b129d40efb2f7902b102fdfa0a0beccba11b85b1fb2cc9c8649",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderSettlementController.java": "0527656f4bdc758baaa4ee5ec1055c6b8c0b098daa7c3ecf48601ca924390df0",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/scenario/WorkOrderSettlementInternalTest.java": "dbeac9d07718fcc3038a38483ca29e22e9fb592282861261aeae30108c0800fa",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalWorkOrderSettlementController.java": "44ce25236957c3389c50b04efd5a69a5ef9253a3abe63f13e433f15f620ae276",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/config/WorkOrderSettlementClientWiringTest.java": "ac5a9f9ee6d993f2948f0cd56cc00c32fb4b9957adb079a04b8e76002be52696",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/client/WorkOrderSettlementHttpTest.java": "f1297e52a8ca6f59e9adf8f2a8c70711f820296a8961b1d8fb313395254f5799",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautySettlementClientConfiguration.java": "17f1f1d2e100ada76b3ecf7a517e7ad85c7a2c7389258c34f854b9af9c6cff19",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteWorkOrderSettlementService.java": "ba5db8a5881935b19cf87af5fe6a82b7b478a7087bb63f65920aa3afa4fcea01",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyReceptionConfiguration.java": "b3d0e679cf19eeb8c8344e7737656284c09e288e92ed29d79a74dbc26ac4f363",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionResponses.java": "50d78d49ac9c42d538f6d724526f794906a61643cfa1cdf2715346b7012532cd",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports": "dd44c543a5bfd12334fca87e1f928d82c9e7b5c5f25468a8d967e24f25adfeb3",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/WorkOrderSettlementIT.java": "e6eb47bbf1596fc45175d011784f7cc8a1beee2324a0fae4896179f3f5ad95d8",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BillReadExecutionBoundaryFixture.java": "05cf3b7d8a53708e5bc9efa4a5a641e94e1c1637c26bc0123246fefc92bf2817",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/WorkOrderBillIT.java": "31a4b64f7e56a9269a093433ec0def0a27dd4d889b47cf80c28089e6608a4fce"
+  },
+  "receipts": [
+    {
+      "group": "core-bill-and-retail",
+      "log": "/private/tmp/svc-b05-validation.log",
+      "wholeCommandPassed": false,
+      "selectedPassingCases": [
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.trade.RetailPricingCompatibilityTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.scenario.RetailStandardBarcodeFlowTest"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.config.WorkOrderSettlementWiringTest"
+        },
+        {
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.service.impl.WorkOrderSettlementServiceImplTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImplTest"
+        }
+      ]
+    },
+    {
+      "group": "mysql-and-transport",
+      "log": "/private/tmp/svc-b05-native-and-http3.log",
+      "wholeCommandPassed": true,
+      "selectedPassingCases": [
+        {
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.scenario.WorkOrderBillIT"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.scenario.WorkOrderSettlementIT"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.api.biz.WorkOrderSettlementIngressTest"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.config.WorkOrderSettlementClientWiringTest"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.client.WorkOrderSettlementHttpTest"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.beauty.scenario.WorkOrderSettlementInternalTest"
+        }
+      ]
+    }
+  ],
+  "review": {
+    "independentReadOnly": true,
+    "criticalOrImportantFindings": 0,
+    "scope": "Original bill authorization, fact partitioning, stable fingerprint, diagnostic closure, bound token/realm/resource protocol, typed DTO response checks and enabled/standalone assembly"
+  },
+  "database": {
+    "version": "9.7.4",
+    "port": 13389,
+    "stopped": true,
+    "ownedDataDirectoryRemoved": true,
+    "normal3308ConfigurationAndPrivilegesUntouched": true
+  },
+  "migrationsModified": false,
+  "financialResourceStockEffectsAdded": false,
+  "appSourceModified": false,
+  "deployment": false,
+  "push": false,
+  "selectedTestsPassed": 35,
+  "failedRunsResolved": [
+    {
+      "log": "/private/tmp/svc-b05-validation.log",
+      "cause": "Native bill tests were selected without beauty.test.admin-url; no business assertion executed in those 14 cases."
+    },
+    {
+      "log": "/private/tmp/svc-b05-native-and-http.log",
+      "cause": "Legacy read fixture lacked four mandatory B03 start/execution ports."
+    },
+    {
+      "log": "/private/tmp/svc-b05-native-and-http2.log",
+      "cause": "Same legacy fixture also lacked the B03 ResourceQualificationPort; full mandatory port set audited and the read-only test fixture completed."
+    }
+  ],
+  "testFixtureRepair": "WorkOrderBillIT and WorkOrderSettlementIT use a scoped test-only configuration for five B03 mandatory ports. Any invocation fails, so read suites cannot gain fake execution success; production dependencies stay mandatory."
+}

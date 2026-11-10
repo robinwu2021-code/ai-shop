@@ -51,7 +51,8 @@ import java.time.Clock;
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBeautyEnabled
-@Import({BeautySourceConfiguration.class, BeautyWorkbenchConfiguration.class, TaskWorkflowConfiguration.class})
+@Import({BeautySourceConfiguration.class, BeautyWorkbenchConfiguration.class, TaskWorkflowConfiguration.class,
+        BeautySettlementConfiguration.class})
 public class BeautyReceptionConfiguration {
     @Bean
     SmartInitializingSingleton beautyTaskWorkflowOperationRouting(
