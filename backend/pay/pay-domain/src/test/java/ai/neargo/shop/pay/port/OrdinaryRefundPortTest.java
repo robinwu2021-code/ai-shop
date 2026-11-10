@@ -64,4 +64,21 @@ class OrdinaryRefundPortTest {
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(refunds);
     }
+    @Test
+    void unappliedPaymentReturnAllowsNoAfterSaleOnlyForExactFullOriginal() {
+        when(ledger.ordinaryPayment("O1-2")).thenReturn(original("U1", "SUCCESS"));
+        var request = new RefundRequest("PR1", "PAYRES:original", null, "P1", 100, "USD", "late payment");
+        var command = new OrdinaryRefundPort.Execution("O1", "U1", "O1-2", request);
+        when(refunds.request(request)).thenReturn(new RefundDispatchResult("PR1", "RF-P1",
+                RefundDispatchResult.DispatchStatus.ACCEPTED, null, true, null));
+        assertThat(port.request(command).outcome().status()).isEqualTo(RefundDispatchResult.DispatchStatus.ACCEPTED);
+        var partial = new RefundRequest("PR2", "PAYRES:original", null, "P1", 50, "USD", "late payment");
+        assertThatThrownBy(() -> port.request(new OrdinaryRefundPort.Execution("O1", "U1", "O1-2", partial)))
+                .isInstanceOf(IllegalArgumentException.class);
+        var ordinary = new RefundRequest("PR3", "AS1", null, "P1", 100, "USD", "return");
+        assertThatThrownBy(() -> port.request(new OrdinaryRefundPort.Execution("O1", "U1", "O1-2", ordinary)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(refunds, times(1)).request(any());
+    }
+
 }

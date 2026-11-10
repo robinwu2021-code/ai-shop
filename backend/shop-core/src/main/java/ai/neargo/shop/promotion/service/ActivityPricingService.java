@@ -69,6 +69,10 @@ public interface ActivityPricingService {
     /** 限时特价：这些商品此刻的活动价。只含命中的 */
     Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos);
 
+    /** Selected local price sources with the same ordinary-checkout trigger checks as the price engine. */
+    Map<String, CampaignPort.PriceOffer> flashOffers(String userNo, Collection<String> goodsNos,
+            Map<String, Long> competingPrices, boolean ordinary);
+
     /** 买赠：这些商品此刻的「买 N 送 M」。只含命中的 */
     Map<String, CampaignPort.GiftRule> giftRules(String userNo, Collection<String> goodsNos);
 
@@ -93,9 +97,11 @@ public interface ActivityPricingService {
      * 不进订单优惠额），取消订单时 {@link #release} 按行退。同一单同一活动重复调用不重复扣。
      *
      * @param qty 份数。份 = 单（「份数」的界面口径），调用方一单一个活动传 1
+     * @param amountMinor 冻结的实际让利，只占活动预算，不再进入订单抵扣金额
      * @return 扣中了没有（false = 超发）
      */
-    boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo, int qty);
+    boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo,
+            int qty, long amountMinor);
 
     /**
      * 下单之后扣限量。<b>带条件的 UPDATE</b>：

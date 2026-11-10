@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -33,16 +34,27 @@ public class BizReviewController {
     }
 
     /**
-     * 本店的评价。
-     *
-     * <p>按**主体**取而不是按门店：评价挂在商品与订单上，
-     * 而门店维度的评价归属还没有数据来源（{@code rvw_review} 上没有 store_no）。
-     * 按门店切会切出一堆空列表，那比不切更让人困惑。
+     * 本主体可见评价，按页读取。评价评分仍归原订单门店；本列表不代表单店评分。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")
     @GetMapping("/biz/review")
-    public List<ReviewVO> list() {
-        return reviewService.list(null, BizContext.requireMerchantNo());
+    public List<ReviewVO> list(@RequestParam(defaultValue = "1") int page,
+                               @RequestParam(defaultValue = "50") int size) {
+        return reviewService.list(null, BizContext.requireMerchantNo(),
+                ReviewService.FILTER_ALL, page, size);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")
+    @GetMapping("/biz/review/appeals")
+    public List<ReviewVO> appeals(@RequestParam(defaultValue = "1") int page,
+                                  @RequestParam(defaultValue = "50") int size) {
+        return reviewService.merchantAppeals(BizContext.requireMerchantNo(), page, size);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")
+    @GetMapping("/biz/review/{reviewNo}")
+    public ReviewVO detail(@PathVariable String reviewNo) {
+        return reviewService.merchantReview(BizContext.requireMerchantNo(), reviewNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.REVIEW + "')")

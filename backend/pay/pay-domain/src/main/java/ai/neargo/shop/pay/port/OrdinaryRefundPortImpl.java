@@ -38,7 +38,7 @@ public class OrdinaryRefundPortImpl implements OrdinaryRefundPort {
         var frozen = execution.refund();
         require(frozen.executionNo());
         require(frozen.afterSaleNo());
-        require(frozen.subOrderNo());
+        if (!frozen.paymentResolution()) require(frozen.subOrderNo());
         require(frozen.originPaymentNo());
         require(frozen.currency());
         var original = ledger.ordinaryPayment(execution.originOutTradeNo());
@@ -49,7 +49,8 @@ public class OrdinaryRefundPortImpl implements OrdinaryRefundPort {
                 || !"SUCCESS".equals(original.status())
                 || !Objects.equals(original.currency(), frozen.currency())
                 || original.amountMinor() == null || frozen.amountMinor() < 0
-                || frozen.amountMinor() > original.amountMinor()) {
+                || frozen.amountMinor() > original.amountMinor()
+                || frozen.paymentResolution() && frozen.amountMinor() != original.amountMinor()) {
             throw new IllegalArgumentException("PAY_REFUND_ORIGIN_CONFLICT");
         }
     }

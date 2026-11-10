@@ -91,12 +91,13 @@ public class BizMemberController {
                                       @RequestParam(required = false) Long lastOrderAfter,
                                       @RequestParam(required = false) Long spentMin,
                                       @RequestParam(required = false) Long spentMax,
+                                      @RequestParam(required = false) Integer idleDays,
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "20") long size) {
         return noScope(() -> {
             return memberService.list(BizContext.requireMerchantNo(),
                     new MemberQuery(storeNo, level, source, status, phone, split(tagNos),
-                            lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size));
+                            lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size, null, null, idleDays));
         });
     }
 

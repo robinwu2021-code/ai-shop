@@ -71,13 +71,14 @@ public final class FinanceVOs {
      * @param share              赔付出资比例。<b>恒为 null</b>：口径未定（M4），
      *                           {@code ord_after_sale} 上没有存它的列。
      *                           接口不假装它已经判过，运营端会显示「未判定」
-     * @param refundSplitPending 恒为 true —— 能出现在这个队列里就意味着待回退。
-     *                           下发它是因为运营端按这个字段判断要不要显示执行按钮
+     * @param refundSplitPending 真实待冲销标记；恢复后以原售后状态及 splitReversed 回读，不代表现金到账
      */
     public record RefundSplitBackVO(String afterSaleNo, String subOrderNo, String orderNo,
                                     String merchantNo, String merchantName, String buyerNickname,
                                     String type, String status, long refundMinor, String reason,
                                     List<String> images, String liability, String verdict,
-                                    Object share, boolean refundSplitPending, String createdAt) {
+                                    Object share, boolean refundSplitPending, String createdAt,
+                                    Boolean splitReversed,
+                                    ai.neargo.shop.spi.trade.RefundSplitBackPort.ExecutionProgress refundExecution) {
     }
 }

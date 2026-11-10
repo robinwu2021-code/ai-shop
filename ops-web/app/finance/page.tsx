@@ -120,7 +120,8 @@ function FinanceInner() {
 
   const execBack = useMutation({
     mutationFn: (asNo: string) => api.executeRefundSplitBack(asNo),
-    onSuccess: () => { invalidate(); notify.success(c.toastRefundBack); },
+    onSuccess: (result) => { invalidate(); notify.success(result.status === "REFUNDED"
+      ? c.toastRefundBack : c.toastRefundPending); },
   });
 
   const settleColumns: Column<Settlement>[] = [
@@ -204,6 +205,9 @@ function FinanceInner() {
           ? fill(c.shareText, { p: a.share.platform, m: a.share.merchant, k: a.share.pickup })
           : <span className="text-[var(--destructive)]">{c.shareUndecided}</span>,
     },
+    { header: c.refundExecutionState, cell: (a) => a.refundExecution
+      ? [a.refundExecution.status, a.refundExecution.phase, a.refundExecution.errorCode].filter(Boolean).join(" / ")
+      : "—", className: "whitespace-normal" },
     { header: c.colVerdict, cell: (a) => a.verdict ?? "—", className: "whitespace-normal", width: "20rem" },
     {
       header: c.colActions,
@@ -287,12 +291,6 @@ function FinanceInner() {
           </HelpNote>
           <DataTable
             columns={backColumns}
-            /*
-             * `?? []` 而不是直接传：这条端点后端还没有（refund-split-backs 整域未开工，
-             * 见 ops-endpoint-exists 的 UNBUILT_DOMAINS），真接口下拿到的是 404 的错误响应，
-             * 直接传给表格就是 `rows.filter is not a function` —— **整页崩**，
-             * 而它本该只是这一个 tab 显示空态。
-             */
             rows={backs.data ?? []} loading={backs.isLoading}
             error={backs.error} onRetry={() => backs.refetch()}
             rowKey={(a) => a.afterSaleNo}

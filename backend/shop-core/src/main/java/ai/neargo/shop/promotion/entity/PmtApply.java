@@ -41,6 +41,8 @@ public class PmtApply extends BaseEntity {
     private String redeemMode;
     private String operatorNo;
     private Long amountMinor;
+    /** Budget occupied by a frozen item benefit. Null historical rows use amountMinor on release. */
+    private Long budgetMinor;
     private String funder;
     private Long appliedAt;
     /** 订单取消/退款时置。<b>线下核销不可撤销</b>，那一行恒为空 */

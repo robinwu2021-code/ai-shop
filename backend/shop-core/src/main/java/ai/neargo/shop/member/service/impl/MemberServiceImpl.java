@@ -463,6 +463,9 @@ public class MemberServiceImpl implements MemberService {
      * 「南门店的沉睡老客」问的是他在南门店的往来，不是他在整个主体的往来。
      */
     private LambdaQueryWrapper<MbrMember> baseQuery(String entityNo, MemberQuery q) {
+        boolean storeScoped = q.storeNo() != null && !q.storeNo().isBlank();
+        Long idleBefore = q.idleDays() == null ? null : System.currentTimeMillis()
+                - java.util.concurrent.TimeUnit.DAYS.toMillis(q.idleDays());
         LambdaQueryWrapper<MbrMember> w = Wrappers.<MbrMember>lambdaQuery()
                 .eq(MbrMember::getEntityNo, entityNo)
                 .eq(q.status() != null, MbrMember::getStatus, q.status())
@@ -470,6 +473,7 @@ public class MemberServiceImpl implements MemberService {
                 .eq(q.level() != null && (q.storeNo() == null || q.storeNo().isBlank()),
                         MbrMember::getLevel, q.level())
                 .eq(q.source() != null, MbrMember::getSource, q.source())
+                .le(idleBefore != null && !storeScoped, MbrMember::getLastOrderAt, idleBefore)
                 .le(q.lastOrderBefore() != null, MbrMember::getLastOrderAt, q.lastOrderBefore())
                 .ge(q.lastOrderAfter() != null, MbrMember::getLastOrderAt, q.lastOrderAfter())
                 .ge(q.spentMin() != null, MbrMember::getTotalSpentMinor, q.spentMin())
@@ -528,6 +532,7 @@ public class MemberServiceImpl implements MemberService {
                     .eq(MbrMemberStore::getEntityNo, entityNo)
                     .eq(MbrMemberStore::getStoreNo, q.storeNo())
                     .eq(q.level() != null, MbrMemberStore::getLevel, q.level())
+                    .le(idleBefore != null, MbrMemberStore::getLastOrderAt, idleBefore)
                     .le(q.lastOrderBefore() != null, MbrMemberStore::getLastOrderAt, q.lastOrderBefore())
                     .ge(q.lastOrderAfter() != null, MbrMemberStore::getLastOrderAt, q.lastOrderAfter()));
             List<String> nos = storeRows.stream().map(MbrMemberStore::getMemberNo).toList();

@@ -209,7 +209,21 @@ export interface PayOpsKeyVersionRow {
 export type PayOpsRequestLogQ = { entry?: string; appNo?: string; sourceService?: string; traceId?: string; outcome?: string;
   fromMs?: number; toMs?: number; page?: number; size?: number };
 
+export interface OrderPaymentResolutionRow {
+  payNo: string;
+  paymentNo: string;
+  reason: string;
+  status: string;
+  amountMinor: number;
+  currency: string;
+  refundNo: string | null;
+  refundErrorCode: string | null;
+  canRefund: boolean;
+}
+
 export interface PayOpsApi {
+  orderPaymentResolutions(status?: string): Promise<OrderPaymentResolutionRow[]>;
+  refundOrderPaymentResolution(payNo: string, paymentNo: string): Promise<OrderPaymentResolutionRow>;
   payOpsOrders(q?: PayOpsOrderQ): Promise<PayOpsOrderRow[]>;
   payOpsOrder(payOrderNo: string): Promise<PayOpsOrderDetail>;
   payOpsRefunds(q?: { status?: string; limit?: number }): Promise<PayOpsRefundRow[]>;

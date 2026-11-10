@@ -305,13 +305,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 宁可「特价不生效」也不能「按错的价卖」：前者商家会来问，后者没人会发现。
          */
         Map<String, Integer> counts = skuCounts(goodsNos);
-        Map<String, Long> flash =
+        Map<String, CampaignPort.PriceOffer> flash =
                 new HashMap<>(
                         party != null
-                                ? Map.<String, Long>of()
+                                ? Map.<String, CampaignPort.PriceOffer>of()
                                 : buyerNo == null
-                                        ? campaignPort.flashPrices(goodsNos)
-                                        : campaignPort.flashPricesFor(buyerNo, goodsNos));
+                                        ? campaignPort.flashOffers(goodsNos)
+                                        : campaignPort.flashOffersFor(buyerNo, goodsNos));
         flash.keySet().removeIf(no -> counts.getOrDefault(no, 1) > 1);
 
         /*
@@ -350,18 +350,22 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                 continue;
             }
             int available = nz(sku.getStock()) - nz(sku.getLockedStock());
+            long basePrice = storePrice.getOrDefault(sku.getSkuNo(), sku.getPrice() == null ? 0L : sku.getPrice());
+            CampaignPort.PriceOffer offer = flash.get(sku.getGoodsNo());
+            boolean discounted = offer != null && offer.priceMinor() < basePrice;
+            long price = discounted ? offer.priceMinor() : basePrice;
             result.put(sku.getSkuNo(), new SkuSnapshot(
                     sku.getSkuNo(), sku.getGoodsNo(), sku.getEntityNo(),
                     g.getTitle(), g.getCover(), sku.getSpec(), g.getType(), g.getCategoryNo(),
-                    flash.getOrDefault(sku.getGoodsNo(),
-                            storePrice.getOrDefault(sku.getSkuNo(),
-                                    sku.getPrice() == null ? 0L : sku.getPrice())),
+                    price,
                     Math.max(available, 0),
                     Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus())
                             && !offHere.contains(sku.getGoodsNo()),
                     readList(g.getFulfillments()),
                     g.getGroupPriceMinor(), g.getGroupMinCount(),
-                    g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram(), g.getStoreNo()));
+                    g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram(), g.getStoreNo(),
+                    discounted ? offer.activityNo() : null,
+                    discounted && offer.activityNo() != null ? basePrice - price : 0));
         }
         return result;
     }

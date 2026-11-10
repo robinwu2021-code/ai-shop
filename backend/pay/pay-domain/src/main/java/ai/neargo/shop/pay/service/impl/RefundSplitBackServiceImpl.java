@@ -33,7 +33,7 @@ public class RefundSplitBackServiceImpl implements RefundSplitBackService {
 
     @Override
     public RefundSplitBackVO execute(String afterSaleNo, String operatorNo) {
-        RefundSplitBackPort.PendingBack target = backPort.pendingSplitBacks().stream()
+        backPort.pendingSplitBacks().stream()
                 .filter(c -> c.afterSaleNo().equals(afterSaleNo))
                 .findFirst()
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
@@ -45,20 +45,9 @@ public class RefundSplitBackServiceImpl implements RefundSplitBackService {
          */
         backPort.resumeRefund(afterSaleNo, operatorNo);
 
-        // 回读一次而不是就地改 VO：状态要以链路真正落到的为准，不是以「应该是」为准
-        return backPort.pendingSplitBacks().stream()
-                .filter(c -> c.afterSaleNo().equals(afterSaleNo))
-                .findFirst()
-                .map(RefundSplitBackServiceImpl::toVO)
-                .orElseGet(() -> done(target));
-    }
-
-    /** 退款走完之后它就不在待办里了 —— 这才是正常结局。 */
-    private static RefundSplitBackVO done(RefundSplitBackPort.PendingBack c) {
-        return new RefundSplitBackVO(c.afterSaleNo(), c.subOrderNo(), c.orderNo(),
-                c.merchantNo(), c.merchantName(), c.buyerNickname(), c.type(), "REFUNDED",
-                c.refundMinor(), c.reason(), c.images(), c.liability(), c.verdict(),
-                null, false, WithdrawServiceImpl.iso(c.createdAt()));
+        var current = backPort.find(afterSaleNo);
+        if (current == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return toVO(current);
     }
 
     private static RefundSplitBackVO toVO(RefundSplitBackPort.PendingBack c) {
@@ -67,6 +56,7 @@ public class RefundSplitBackServiceImpl implements RefundSplitBackService {
                 c.refundMinor(), c.reason(), c.images(), c.liability(), c.verdict(),
                 // share 恒为 null：赔付出资比例口径未定（M4），ord_after_sale 上没有这一列。
                 // 接口不假装它已经判过 —— 运营端会显示红字「未判定」
-                null, true, WithdrawServiceImpl.iso(c.createdAt()));
+                null, "REFUNDING".equals(c.status()) && !Boolean.TRUE.equals(c.splitReversed()), WithdrawServiceImpl.iso(c.createdAt()),
+                c.splitReversed(), c.refundExecution());
     }
 }

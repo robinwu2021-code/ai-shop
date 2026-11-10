@@ -195,31 +195,15 @@ public class CampaignPortRouter implements CampaignPort {
         if (uses == null || uses.isEmpty()) {
             return;
         }
-        List<String> flashGoods = uses.stream().filter(u -> !u.gift()).map(ItemBenefitUse::goodsNo).distinct().toList();
-        List<String> giftGoods = uses.stream().filter(ItemBenefitUse::gift).map(ItemBenefitUse::goodsNo).distinct().toList();
-        Map<String, Long> legacyPrice = legacy.flashPrices(flashGoods);
-        Map<String, Long> promoPrice = promo.flashPrices(userNo, flashGoods);
-        Map<String, String> flashActs = promo.flashActivityOf(userNo, flashGoods);
-        Map<String, GiftRule> legacyGift = legacy.giftRules(giftGoods);
-        Map<String, GiftRule> promoGift = promo.giftRules(userNo, giftGoods);
-        Map<String, String> giftActs = promo.giftActivityOf(userNo, giftGoods);
-        java.util.TreeMap<String, String> merchantOf = new java.util.TreeMap<>();
-        for (ItemBenefitUse u : uses) {
-            String act;
-            if (u.gift()) {
-                GiftRule old = legacyGift.get(u.goodsNo());
-                GiftRule mine = promoGift.get(u.goodsNo());
-                act = mine != null && (old == null || mine.giftM() > old.giftM()) ? giftActs.get(u.goodsNo()) : null;
-            } else {
-                Long old = legacyPrice.get(u.goodsNo());
-                Long mine = promoPrice.get(u.goodsNo());
-                act = mine != null && (old == null || mine <= old) ? flashActs.get(u.goodsNo()) : null;
-            }
-            if (act != null) {
-                merchantOf.putIfAbsent(act, u.merchantNo());
-            }
+        java.util.TreeMap<String, ItemBenefitUse> byActivity = new java.util.TreeMap<>();
+        for (ItemBenefitUse use : uses) {
+            if (use.activityNo() == null) continue;
+            byActivity.merge(use.activityNo(), use, (first, next) -> new ItemBenefitUse(
+                    first.goodsNo(), first.merchantNo(), first.gift(), first.activityNo(),
+                    Math.addExact(first.amountMinor(), next.amountMinor())));
         }
-        merchantOf.forEach((act, merchant) -> promo.commitItemUsage(userNo, orderNo, act, merchant, 1));
+        byActivity.forEach((act, use) -> promo.commitItemUsage(
+                userNo, orderNo, act, use.merchantNo(), 1, use.amountMinor()));
     }
 
     @Override
@@ -229,15 +213,35 @@ public class CampaignPortRouter implements CampaignPort {
 
     @Override
     public Map<String, Long> flashPrices(Collection<String> goodsNos) {
-        Map<String, Long> out = new HashMap<>(legacy.flashPrices(goodsNos));
-        promo.flashPrices(SecurityUtils.currentUserNoOrNull(), goodsNos)
-                .forEach((k, v) -> out.merge(k, v, Math::min));
+        Map<String, Long> out = new HashMap<>();
+        flashOffers(goodsNos).forEach((goods, offer) -> out.put(goods, offer.priceMinor()));
         return out;
     }
 
     @Override
     public Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
-        return promo.ordinaryFlashPrices(buyerNo, goodsNos, legacy.flashPrices(goodsNos));
+        Map<String, Long> out = new HashMap<>();
+        flashOffersFor(buyerNo, goodsNos).forEach((goods, offer) -> out.put(goods, offer.priceMinor()));
+        return out;
+    }
+
+    @Override
+    public Map<String, PriceOffer> flashOffers(Collection<String> goodsNos) {
+        return priceOffers(SecurityUtils.currentUserNoOrNull(), goodsNos, false);
+    }
+
+    @Override
+    public Map<String, PriceOffer> flashOffersFor(String buyerNo, Collection<String> goodsNos) {
+        return priceOffers(buyerNo, goodsNos, true);
+    }
+
+    private Map<String, PriceOffer> priceOffers(String buyerNo, Collection<String> goodsNos, boolean ordinary) {
+        Map<String, Long> old = legacy.flashPrices(goodsNos);
+        Map<String, PriceOffer> out = new HashMap<>();
+        old.forEach((goods, price) -> out.put(goods, new PriceOffer(null, price)));
+        promo.flashOffers(buyerNo, goodsNos, old, ordinary).forEach((goods, offer) ->
+                out.merge(goods, offer, (first, next) -> next.priceMinor() <= first.priceMinor() ? next : first));
+        return out;
     }
 
     @Override

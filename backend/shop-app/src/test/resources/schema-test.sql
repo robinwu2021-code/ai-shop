@@ -604,6 +604,9 @@ CREATE TABLE IF NOT EXISTS ord_item
     sale_quantity DECIMAL(20,6) NULL,
     quantity_unit VARCHAR(32) NULL,
     source_component_ref VARCHAR(64) NULL,
+    activity_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    activity_benefit_type VARCHAR(16) NULL,
+    activity_benefit_minor BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -3821,6 +3824,7 @@ CREATE TABLE IF NOT EXISTS pmt_apply
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    budget_minor BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_apply_no UNIQUE (apply_no)
 );
@@ -5136,6 +5140,8 @@ CREATE TABLE IF NOT EXISTS ord_payment_resolution
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    origin_out_trade_no VARCHAR(64) NULL,
+    refund_error_code VARCHAR(128) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_payment_resolution UNIQUE (pay_no, payment_no)
 );

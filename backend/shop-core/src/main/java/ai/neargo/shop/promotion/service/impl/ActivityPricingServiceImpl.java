@@ -22,11 +22,13 @@ import java.time.LocalTime;
 import ai.neargo.shop.promotion.entity.PmtActivityAudience;
 import ai.neargo.shop.promotion.entity.PmtActivityGoods;
 import ai.neargo.shop.promotion.entity.PmtApply;
+import ai.neargo.shop.promotion.entity.PmtCoupon;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityAudienceMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
+import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
@@ -36,6 +38,7 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -636,6 +639,11 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         for (var r : rows.stream().sorted(java.util.Comparator.comparing(PmtApply::getPromoNo)
                 .thenComparing(r -> r.getStoreNo() == null ? "" : r.getStoreNo())).toList()) {
             if (unifiedOrders != null && unifiedOrders.release(r)) continue;
+            // Item commits take activity -> application locks; cancellation uses the same order.
+            PmtActivity itemActivity = r.getBudgetMinor() == null ? null
+                    : DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                            Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, r.getPromoNo())
+                                    .last("FOR UPDATE")));
             /*
              * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次；
              * 并且**先删、删中了才退** —— 两次关单并发撞在一起时，只有删中那一行的那次退量，
@@ -646,8 +654,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (claimed != 1 || PmtApply.QUOTA_OVERRUN.equals(r.getRedeemMode())) {
                 continue;
             }
-            long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
-            PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+            long amount = r.getBudgetMinor() == null ? nz(r.getAmountMinor()) : r.getBudgetMinor();
+            PmtActivity a = itemActivity != null ? itemActivity
+                    : DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
                     Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, r.getPromoNo())
                             .last("limit 1")));
             if (a != null && a.isPlatform()) {
@@ -969,6 +978,16 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     }
 
     @Override
+    public Map<String, CampaignPort.PriceOffer> flashOffers(String userNo, Collection<String> goodsNos,
+            Map<String, Long> competingPrices, boolean ordinary) {
+        Map<String, CampaignPort.PriceOffer> out = new HashMap<>();
+        flashWinners(userNo, goodsNos, competingPrices, ordinary).forEach((goodsNo, activity) ->
+                out.put(goodsNo, new CampaignPort.PriceOffer(
+                        activity.getActivityNo(), nz(activity.getBenefitAmountMinor()))));
+        return out;
+    }
+
+    @Override
     public Map<String, Long> ordinaryFlashPrices(
             String userNo, Collection<String> goodsNos, Map<String, Long> competingPrices) {
         if (goodsNos == null || goodsNos.isEmpty()) return Map.of();
@@ -1045,7 +1064,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     public Map<String, CampaignPort.GiftRule> giftRules(String userNo, Collection<String> goodsNos) {
         Map<String, CampaignPort.GiftRule> out = new HashMap<>();
         giftWinners(userNo, goodsNos).forEach((goodsNo, a) ->
-                out.put(goodsNo, new CampaignPort.GiftRule(nz(a.getTriggerQty()), nz(a.getBenefitQty()))));
+                out.put(goodsNo, new CampaignPort.GiftRule(
+                        nz(a.getTriggerQty()), nz(a.getBenefitQty()), a.getActivityNo())));
         return out;
     }
 
@@ -1088,47 +1108,65 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     @Transactional
-    public boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo, int qty) {
+    public boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo,
+            int qty, long amountMinor) {
         if (orderNo == null || activityNo == null || qty <= 0) {
             return true;
         }
-        // 同一单同一活动只扣一次：下单链路重试、补偿重放都不能把份数多扣一遍
-        Long done = DataScopeContext.executeWithoutScope(() -> applyMapper.selectCount(Wrappers.<PmtApply>lambdaQuery()
-                .eq(PmtApply::getOrderNo, orderNo)
-                .eq(PmtApply::getPromoType, PmtApply.ACTIVITY)
-                .eq(PmtApply::getPromoNo, activityNo)));
-        if (done != null && done > 0) {
-            return true;
-        }
+        PmtActivity activity = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, activityNo)
+                        .eq(PmtActivity::getEntityNo, merchantNo).last("FOR UPDATE")));
+        if (activity == null) throw BizException.of(ErrorCode.NOT_FOUND);
         CampaignPort.AppliedActivity it = new CampaignPort.AppliedActivity(activityNo, merchantNo, 0L, qty);
+        PmtApply receipt = applyRow(userNo, orderNo, it, 0L, PmtCoupon.BY_MERCHANT, PmtCoupon.REDEEM_ORDER, 0L);
+        receipt.setApplyNo(ActivityCommandDeduplicator.hash(
+                "ITEM_BENEFIT|" + activity.getTenantNo() + "|" + orderNo + "|" + activityNo));
+        try {
+            DataScopeContext.executeWithoutScope(() -> applyMapper.insert(receipt));
+        } catch (DuplicateKeyException replay) {
+            // Insert first uses the existing unique apply_no key, avoiding empty-receipt gap locks under RR.
+            PmtApply original = DataScopeContext.executeWithoutScope(() ->
+                    applyMapper.itemReceipt(activity.getTenantNo(), receipt.getApplyNo()));
+            return !PmtApply.QUOTA_OVERRUN.equals(original.getRedeemMode());
+        }
         int affected = DataScopeContext.executeWithoutScope(() ->
                 activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
                         .eq(PmtActivity::getActivityNo, activityNo)
                         .in(PmtActivity::getBenefitType, PmtActivity.BENEFIT_PRICE, PmtActivity.BENEFIT_GIFT)
                         .and(w -> w.isNull(PmtActivity::getQuota)
                                 .or().apply("quota_used + {0} <= quota", qty))
-                        .setSql("quota_used = quota_used + " + qty)));
+                        .and(w -> w.isNull(PmtActivity::getBudgetMinor)
+                                .or().le(PmtActivity::getBudgetMinor, 0)
+                                .or().apply("budget_used_minor + {0} <= budget_minor", amountMinor))
+                        .setSql("quota_used = quota_used + " + qty)
+                        .setSql("budget_used_minor = budget_used_minor + " + amountMinor)));
         if (affected == 0) {
-            // 与 commit 同一口径：不翻脸、记一行超发的账（金额 0：优惠在价里）
-            log.warn("[活动] 特价/买赠限量已满仍命中：活动 {} 订单 {} 多发 {} 份", activityNo, orderNo, qty);
-            insertApply(userNo, orderNo, it, 0L, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT,
-                    PmtApply.QUOTA_OVERRUN);
+            log.warn("[活动] 特价/买赠限量或预算已满：活动 {} 订单 {} 份数 {}", activityNo, orderNo, qty);
+            receipt.setRedeemMode(PmtApply.QUOTA_OVERRUN);
+            DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(receipt));
             return false;
         }
         // 一份一行：release 按行退，一行退一份（与 commit 那边「一单一份」同一口径）
         for (int i = 0; i < qty; i++) {
-            insertApply(userNo, orderNo, it, 0L, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT);
+            long budget = amountMinor / qty + (i < amountMinor % qty ? 1 : 0);
+            if (i == 0) {
+                receipt.setBudgetMinor(budget);
+                DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(receipt));
+            } else {
+                insertApply(userNo, orderNo, it, 0L, PmtCoupon.BY_MERCHANT, PmtCoupon.REDEEM_ORDER, budget);
+            }
         }
-        PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
-                Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, activityNo).last("limit 1")));
-        if (a != null && a.getQuota() != null && nz(a.getQuotaUsed()) >= a.getQuota()) {
+        activity.setQuotaUsed(Math.addExact(nz(activity.getQuotaUsed()), qty));
+        activity.setBudgetUsedMinor(Math.addExact(nz(activity.getBudgetUsedMinor()), amountMinor));
+        String endedReason = !activity.hasQuotaLeft() ? PmtActivity.ENDED_QUOTA
+                : !activity.hasBudgetLeft() ? PmtActivity.ENDED_BUDGET : null;
+        if (endedReason != null) {
             DataScopeContext.executeWithoutScope(() ->
                     activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
                             .eq(PmtActivity::getActivityNo, activityNo)
                             .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
                             .set(PmtActivity::getStatus, PmtActivity.ENDED)
-                            .set(PmtActivity::getEndedReason, PmtActivity.ENDED_QUOTA)));
-            log.info("[活动] {} 到量自动结束", activityNo);
+                            .set(PmtActivity::getEndedReason, endedReason)));
         }
         return true;
     }
@@ -1272,6 +1310,17 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
                              String redeemMode) {
+        insertApply(userNo, orderNo, it, amount, funder, redeemMode, null);
+    }
+
+    private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode, Long budgetMinor) {
+        PmtApply row = applyRow(userNo, orderNo, it, amount, funder, redeemMode, budgetMinor);
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));
+    }
+
+    private PmtApply applyRow(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode, Long budgetMinor) {
         PmtApply row = new PmtApply();
         row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
         row.setPromoType(PmtApply.ACTIVITY);
@@ -1281,9 +1330,10 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         row.setOrderNo(orderNo);
         row.setRedeemMode(redeemMode);
         row.setAmountMinor(amount);
+        row.setBudgetMinor(budgetMinor);
         row.setFunder(funder);
         row.setAppliedAt(System.currentTimeMillis());
-        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));
+        return row;
     }
 
     /**

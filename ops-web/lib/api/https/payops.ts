@@ -6,6 +6,9 @@ import type { PayOpsApi } from "../contracts/payops";
 const enc = encodeURIComponent;
 
 export const payOpsHttp: PayOpsApi = {
+  orderPaymentResolutions: (status) => client.get("/ops/order-payment-resolutions", { status }),
+  refundOrderPaymentResolution: (payNo, paymentNo) =>
+    client.post(`/ops/order-payment-resolutions/${enc(payNo)}/${enc(paymentNo)}/refund`),
   payOpsOrders: (q) => client.get("/ops/payments/orders", q),
   payOpsOrder: (no) => client.get(`/ops/payments/orders/${enc(no)}`),
   payOpsRefunds: (q) => client.get("/ops/payments/refunds", q),

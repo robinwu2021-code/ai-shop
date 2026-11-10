@@ -11,6 +11,7 @@ import lombok.Setter;
 @TableName("ord_payment_resolution")
 public class OrdPaymentResolution extends BaseEntity {
     public static final String MANUAL_REQUIRED = "MANUAL_REQUIRED";
+    public static final String REFUNDING = "REFUNDING";
     public static final String RESOLVED = "RESOLVED";
     public static final String LATE_PAYMENT = "LATE_PAYMENT";
     public static final String RECEIPT_MISMATCH = "RECEIPT_MISMATCH";
@@ -28,4 +29,6 @@ public class OrdPaymentResolution extends BaseEntity {
     private String reason;
     private String status;
     private String refundNo;
+    private String originOutTradeNo;
+    private String refundErrorCode;
 }

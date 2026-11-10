@@ -161,10 +161,21 @@ public interface SettlePort {
     default boolean reconcilePlatformPayment(String paymentNoOrOutTradeNo) { return false; }
 
     record PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
-                          String tradeNo, long amountMinor, String currency, String status, String documentNo) {
-        public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel, String tradeNo, long amountMinor, String currency, String status) { this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, null); }
-        public PaymentReceipt withDocumentNo(String documentNo) { return new PaymentReceipt(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, documentNo); }
- }
+                          String tradeNo, long amountMinor, String currency, String status,
+                          String documentNo, String outTradeNo) {
+        public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
+                              String tradeNo, long amountMinor, String currency, String status) {
+            this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, null, null);
+        }
+        public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
+                              String tradeNo, long amountMinor, String currency, String status, String documentNo) {
+            this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, documentNo, null);
+        }
+        public PaymentReceipt withDocumentNo(String documentNo) {
+            return new PaymentReceipt(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor,
+                    currency, status, documentNo, outTradeNo);
+        }
+    }
 
 
     /**

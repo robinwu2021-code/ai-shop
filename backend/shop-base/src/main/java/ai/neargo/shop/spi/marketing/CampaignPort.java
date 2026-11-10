@@ -145,6 +145,23 @@ public interface CampaignPort {
         throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
     }
 
+    /** Price and its budget owner travel together so order accounting never reselects a live activity. */
+    default Map<String, PriceOffer> flashOffers(Collection<String> goodsNos) {
+        Map<String, PriceOffer> out = new java.util.HashMap<>();
+        flashPrices(goodsNos).forEach((goods, price) -> out.put(goods, new PriceOffer(null, price)));
+        return out;
+    }
+
+    /** Explicit-buyer counterpart of {@link #flashOffers}; legacy prices have no new-model budget owner. */
+    default Map<String, PriceOffer> flashOffersFor(String buyerNo, Collection<String> goodsNos) {
+        Map<String, PriceOffer> out = new java.util.HashMap<>();
+        flashPricesFor(buyerNo, goodsNos).forEach((goods, price) -> out.put(goods, new PriceOffer(null, price)));
+        return out;
+    }
+
+    /** A null activityNo denotes a legacy price with no new-model budget owner. */
+    record PriceOffer(String activityNo, long priceMinor) {}
+
     /** Expose explicit buyer gifts so ordinary checkout can reject unsupported benefits without dropping them. */
     default Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
         throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
@@ -320,7 +337,12 @@ public interface CampaignPort {
      * （与端上 `shared/utils/promotion.ts` 同一口径，两边必须一致，
      * 否则页面显示送 2 件而实际发 1 件）。
      */
-    record GiftRule(int buyN, int giftM) {
+    record GiftRule(int buyN, int giftM, String activityNo) {
+
+        /** Legacy campaigns have no new-model quota or budget. */
+        public GiftRule(int buyN, int giftM) {
+            this(buyN, giftM, null);
+        }
 
         public int giftQty(int bought) {
             if (buyN <= 0 || giftM <= 0 || bought < buyN) {
@@ -388,8 +410,7 @@ public interface CampaignPort {
      * 下单成功后回执<b>限时特价与买赠</b>用掉的份数（与订单同事务，放在 {@link #commit} 旁边）。
      *
      * <p>这两种的优惠不在 {@code Discount} 里 —— 特价改的是商品价（{@link #flashPrices}）、赠品是加行（{@link #giftRules}）——
-     * 所以 {@link #commit} 从来扣不到它们的限量：「限量 100 份」等于不限。按货号回执，由营销侧按下单那一刻
-     * 胜出的活动去扣（与价、赠品出自同一次挑选），一单一个活动扣一份。
+     * 所以独立回执冻结的活动及实际让利，不再按货号查询当前胜出者。一单一个活动扣一份，实际让利求和。
      *
      * <p>老实现为空：{@code mkt_campaign} 没有限量这个概念。
      */
@@ -400,8 +421,10 @@ public interface CampaignPort {
      * 这一单里一件享受了特价或买赠的货。
      *
      * @param gift false = 按限时特价成交；true = 触发了买赠（送出了赠品）
+     * @param activityNo 算价时已选定的新模型活动；为空时不占新模型预算
+     * @param amountMinor 实际整行让利，已反映在成交价中，不作为第二笔订单抵扣
      */
-    record ItemBenefitUse(String goodsNo, String merchantNo, boolean gift) {
+    record ItemBenefitUse(String goodsNo, String merchantNo, boolean gift, String activityNo, long amountMinor) {
     }
 
     /**

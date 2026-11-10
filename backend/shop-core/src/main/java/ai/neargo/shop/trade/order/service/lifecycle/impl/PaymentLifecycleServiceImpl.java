@@ -81,7 +81,7 @@ public class PaymentLifecycleServiceImpl implements PaymentLifecycleService {
         }
         return actual == null || actual.amountMinor() == null ? null : new SettlePort.PaymentReceipt(
                 actual.paymentNo(), actual.orderNo(), actual.userNo(), actual.payChannel(), actual.tradeNo(),
-                actual.amountMinor(), actual.currency(), actual.status(), actual.documentNo());
+                actual.amountMinor(), actual.currency(), actual.status(), actual.documentNo(), actual.outTradeNo());
     }
 
     @Override

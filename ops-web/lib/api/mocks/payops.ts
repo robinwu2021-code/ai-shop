@@ -89,6 +89,9 @@ function exc(id: number) {
 }
 
 export const payOpsMock: PayOpsApi = {
+  orderPaymentResolutions: () => wait([]),
+  refundOrderPaymentResolution: (payNo, paymentNo) =>
+    notFound("订单支付异常", "Order payment exception", `${payNo}/${paymentNo}`),
   payOpsOrders: (q) => wait(orders.filter((o) => (!q?.status || o.status === q.status)
     && (!q?.payOrderNo || o.payOrderNo === q.payOrderNo) && (!q?.outOrderNo || o.outOrderNo === q.outOrderNo))),
   payOpsOrder: (no) => {

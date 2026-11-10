@@ -52,16 +52,16 @@ class ActivityItemQuotaCommitTest {
                 .activityNo();
         assertThat(pricing.flashActivityOf("U-IQ", List.of(goods))).containsEntry(goods, act);
 
-        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-1-" + seq, act, e, 1)).isTrue();
-        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-1-" + seq, act, e, 1)).as("同一单重放").isTrue();
+        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-1-" + seq, act, e, 1, 0)).isTrue();
+        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-1-" + seq, act, e, 1, 0)).as("同一单重放").isTrue();
         assertThat(quotaUsed(act)).as("重复回执不重复扣").isEqualTo(1);
 
-        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-2-" + seq, act, e, 1)).isTrue();
+        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-2-" + seq, act, e, 1, 0)).isTrue();
         assertThat(quotaUsed(act)).isEqualTo(2);
         assertThat(pricing.flashPrices("U-IQ", List.of(goods)))
                 .as("★ 限量用完了还在按特价卖").doesNotContainKey(goods);
 
-        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-3-" + seq, act, e, 1)).as("抢不到最后一份").isFalse();
+        assertThat(pricing.commitItemUsage("U-IQ", "O-IQ-3-" + seq, act, e, 1, 0)).as("抢不到最后一份").isFalse();
         assertThat(quotaUsed(act)).as("不超扣").isEqualTo(2);
         assertThat(jdbc.queryForObject("select redeem_mode from pmt_apply where order_no=? and promo_no=?",
                 String.class, "O-IQ-3-" + seq, act)).isEqualTo("QUOTA_OVERRUN");
@@ -87,8 +87,8 @@ class ActivityItemQuotaCommitTest {
                 .activityNo();
 
         campaignPort.commitItemBenefits("U-IQ", "O-IQP-" + seq, List.of(
-                new CampaignPort.ItemBenefitUse(flashGoods, e, false),
-                new CampaignPort.ItemBenefitUse(giftGoods, e, true)));
+                new CampaignPort.ItemBenefitUse(flashGoods, e, false, flash, 100L),
+                new CampaignPort.ItemBenefitUse(giftGoods, e, true, gift, 990L)));
 
         assertThat(quotaUsed(flash)).as("★ 特价的限量从没被扣过").isEqualTo(1);
         assertThat(quotaUsed(gift)).as("★ 买赠的限量从没被扣过").isEqualTo(1);

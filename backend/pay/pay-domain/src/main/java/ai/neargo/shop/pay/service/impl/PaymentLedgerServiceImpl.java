@@ -741,7 +741,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private SettlePort.PaymentReceipt receipt(StlPayment p) {
         return p == null ? null : new SettlePort.PaymentReceipt(p.getPaymentNo(), p.getOrderNo(),
                 p.getUserNo(), p.getPayChannel(), p.getTradeNo(), nz(p.getAmountMinor()),
-                p.getCurrency(), p.getStatus()).withDocumentNo(documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo()));
+                p.getCurrency(), p.getStatus(), documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo()),
+                p.getOutTradeNo());
     }
 
     private StlPayment lockPayment(String outTradeNo) {

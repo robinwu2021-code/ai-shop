@@ -206,8 +206,10 @@ const zh = {
   filterStatusAll: "全部状态",
   emptySettle: "没有符合条件的结算单。结算单按商家 × 周期生成，本周期还没有成交就是空的。",
   emptySplit: "还没有分账明细。它按子订单生成，一个订单一条。",
+  refundExecutionState: "退款执行 / 冲销状态",
+  toastRefundPending: "原退款仍待确认，请核对原执行与真实冲销结果；已打款资金追回另行处理。",
   refundBackNotice:
-    "这里的每一条都来自售后裁决（P-6.1）打的待回退标记 —— 队列由售后单派生，不另建实体：另建就有两份真相，且一定会不同步。执行后标记清除，队列自然消掉。",
+    "此处显示待处理的原退款。商家已打款或冲销未确认时，先人工核对原执行和真实冲销结果；重试沿用原退款，不代表到账。追回另行处理，不自动抵扣后续结算。",
   emptyRefundBack: "没有待回退的分账。售后裁决完成后，需要回退的单会自动出现在这里。",
 
   frNotice:
@@ -735,8 +737,10 @@ const en: typeof zh = {
   filterStatusAll: "All statuses",
   emptySettle: "No settlements match these filters. Settlements are generated per merchant × period, so an untraded period is empty.",
   emptySplit: "No split details yet. They are generated per sub-order, one row each.",
+  refundExecutionState: "Refund execution / reversal",
+  toastRefundPending: "The original refund still needs verification. Check its execution and reversal; recovery of paid funds is handled separately.",
   refundBackNotice:
-    "Every row here comes from a reversal flag set by an after-sales decision (P-6.1) — the queue is derived from after-sales tickets rather than stored separately: a separate store would mean two sources of truth, guaranteed to drift. Executing clears the flag and the row disappears.",
+    "Review original refunds and actual reversal results here. Retrying keeps the same refund and does not prove cash arrival. Recovery of funds already paid to merchants is handled separately, with no automatic offset against later settlements.",
   emptyRefundBack: "No splits awaiting reversal. Rows appear automatically once an after-sales decision requires one.",
 
   frNotice:

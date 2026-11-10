@@ -51,15 +51,12 @@ public class SpuStdServiceImpl implements SpuStdService {
                 .eq(PrdSpuStd::getStatus, PrdSpuStd.ACTIVE)
                 .eq(notBlank(categoryNo), PrdSpuStd::getCategoryNo, categoryNo);
         if (notBlank(keyword)) {
-            /*
-             * 标题与别名一起搜：商家嘴里的「洋芋」「马铃薯」与标准品标题「土豆」
-             * 对不上，而对不上的结果不是报错，是他以为标准库里没有 ——
-             * 然后自建一个，跨店可比在这一次就丢了。keywords 那一列就是为这个存在的。
-             */
-            w.and(q -> q.like(PrdSpuStd::getTitle, keyword)
-                    .or().like(PrdSpuStd::getKeywords, keyword));
+            String query = keyword.trim();
+            // Scanning uses the same catalog endpoint; barcode matches exactly, names/aliases remain fuzzy.
+            w.and(q -> q.like(PrdSpuStd::getTitle, query)
+                    .or().like(PrdSpuStd::getKeywords, query)
+                    .or().eq(PrdSpuStd::getBarcode, query));
         }
-        // 被引用得多的排前面：那是「别的店都在用这一条」，对搜的人是有效信号
         w.orderByDesc(PrdSpuStd::getRefCount).orderByAsc(PrdSpuStd::getId).last("limit " + size);
         return toVOs(query(w));
     }

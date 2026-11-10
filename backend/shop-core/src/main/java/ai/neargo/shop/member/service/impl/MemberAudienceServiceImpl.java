@@ -87,7 +87,7 @@ public class MemberAudienceServiceImpl implements MemberAudienceService {
         return new MemberQuery(scopeStoreNo, q.level(), q.source(), q.status(), null,
                 q.tagNos() == null ? List.of() : q.tagNos(),
                 q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0,
-                q.reachTaskNo(), q.reachOutcome());
+                q.reachTaskNo(), q.reachOutcome(), q.idleDays());
     }
 
     @Override

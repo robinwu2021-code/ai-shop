@@ -59,6 +59,13 @@ public class OrdItem extends BaseEntity {
     /** 赠品行：价格为 0、不参与计价。认不出来的话，按行退款会把赠品也退钱。 */
     private Boolean isGift;
 
+    /** Selected new-model activity, retained independently of later rule edits. */
+    private String activityNo;
+    /** PRICE for paid-line price reductions; GIFT for actual zero-priced gift lines. */
+    private String activityBenefitType;
+    /** Actual benefit of this entire line; already reflected in price/amount, never deducted twice. */
+    private Long activityBenefitMinor;
+
 
     /**
      * 本行称重差价（分）：正 = 补款，负 = 退款；未称重时为 0。

@@ -1007,13 +1007,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * **各行分别算** —— 合并算会让「买 2 件 A 规格 + 2 件 B 规格」凑出一份赠品，
      * 而商家的「买 2 送 1」说的是同一规格。
      */
-    private Map<String, Integer> giftQtyOf(Split split) {
+    private record GiftSelection(Map<String, Integer> quantities, Map<String, String> activityOfSku) {}
+
+    private GiftSelection giftQtyOf(Split split) {
         return giftQtyOf(split, null);
     }
 
-    private Map<String, Integer> giftQtyOf(Split split, String buyerNo) {
+    private GiftSelection giftQtyOf(Split split, String buyerNo) {
         if (split.items.isEmpty()) {
-            return new HashMap<>();
+            return new GiftSelection(new HashMap<>(), Map.of());
         }
         var goods = split.items.stream().map(i -> i.snapshot.goodsNo()).distinct().toList();
         Map<String, CampaignPort.GiftRule> rules =
@@ -1021,6 +1023,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         ? campaignPort.giftRules(goods)
                         : campaignPort.giftRulesFor(buyerNo, goods);
         Map<String, Integer> out = new HashMap<>();
+        Map<String, String> activityOfSku = new HashMap<>();
         for (Line line : split.items) {
             CampaignPort.GiftRule rule = rules.get(line.snapshot.goodsNo());
             if (rule == null) {
@@ -1029,9 +1032,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             int n = rule.giftQty(line.qty);
             if (n > 0) {
                 out.merge(line.snapshot.skuNo(), n, Integer::sum);
+                if (rule.activityNo() != null) activityOfSku.put(line.skuNo(), rule.activityNo());
             }
         }
-        return out;
+        return new GiftSelection(out, activityOfSku);
     }
 
     /**
@@ -1686,6 +1690,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             boolean pointsStaged,
             Map<String, String> pickups,
             Map<String, Integer> gifts,
+            Map<String, String> giftActivities,
             Discounts discounts,
             CheckoutEconomicSnapshot economic,
             List<PromotionOption> counterPromotions) {}
@@ -1811,8 +1816,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 为了一件免费的赠品把一笔真实成交挡掉，代价与收益完全不成比例。
          * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
          */
-        Map<String, Integer> gifts = counter ? Map.of()
+        GiftSelection selectedGifts = counter ? new GiftSelection(Map.of(), Map.of())
                 : scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
+        Map<String, Integer> gifts = selectedGifts.quantities();
         var counterCandidates = counter && scope.counterPolicy() != CounterPolicy.FROZEN_M2A_ZERO
                 ? counterDiscounts(scope.party(), merchantAmounts(cmd, split, storeOfMerchant), cmd.activityChoices())
                 : null;
@@ -1899,6 +1905,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 pointsStaged,
                 pickupByMerchant,
                 gifts,
+                selectedGifts.activityOfSku(),
                 discounts,
                 economic,
                 List.copyOf(counterPromotions));
@@ -2644,6 +2651,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 // 二级类目快照：积分按类目发放时读它，不现查商品（商品可以改类目）
                 item.setCategoryNo(line.snapshot.categoryNo());
                 item.setSupplyStoreNo(line.snapshot.storeNo());
+                if (line.snapshot.priceActivityNo() != null) {
+                    item.setActivityNo(line.snapshot.priceActivityNo());
+                    item.setActivityBenefitType("PRICE");
+                    item.setActivityBenefitMinor(Math.multiplyExact(line.snapshot.priceDiscountMinor(), line.qty));
+                }
                 itemMapper.insert(item);
                 if (expected != null) {
                     checkoutGuard.recordLine(
@@ -2695,6 +2707,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                     gift.setCategoryNo(line.snapshot.categoryNo());
                     gift.setSupplyStoreNo(line.snapshot.storeNo());
                     gift.setIsGift(true);
+                    String giftActivity = pricing.giftActivities().get(line.skuNo());
+                    if (giftActivity != null) {
+                        gift.setActivityNo(giftActivity);
+                        gift.setActivityBenefitType("GIFT");
+                        gift.setActivityBenefitMinor(Math.multiplyExact(line.snapshot.price(), giftQty));
+                    }
                     itemMapper.insert(gift);
                 }
             }
@@ -2737,10 +2755,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             // 特价 / 买赠的份数同理在这里扣：每个真的胜出了的活动一单扣一份（见 CampaignPort#commitItemBenefits）
             campaignPort.commitItemBenefits(userNo, orderNo, Stream.concat(
                     split.items.stream().map(l -> new CampaignPort.ItemBenefitUse(
-                            l.snapshot.goodsNo(), l.snapshot.merchantNo(), false)),
+                            l.snapshot.goodsNo(), l.snapshot.merchantNo(), false, l.snapshot.priceActivityNo(),
+                            Math.multiplyExact(l.snapshot.priceDiscountMinor(), l.qty))),
                     split.items.stream().filter(l -> gifts.getOrDefault(l.snapshot.skuNo(), 0) > 0)
                             .map(l -> new CampaignPort.ItemBenefitUse(
-                                    l.snapshot.goodsNo(), l.snapshot.merchantNo(), true)))
+                                    l.snapshot.goodsNo(), l.snapshot.merchantNo(), true,
+                                    pricing.giftActivities().get(l.skuNo()),
+                                    Math.multiplyExact(l.snapshot.price(), gifts.get(l.skuNo())))))
                     .toList());
 
         }

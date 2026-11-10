@@ -340,10 +340,10 @@ export const financeMock: FinanceApi = {
     const a = db.afterSales.find((x) => x.afterSaleNo === asNo);
     if (!a) notFound("售后单", "After-sales case", asNo);
     if (!a.refundSplitPending) fail("该售后单没有待回退的分账", "This case has no split waiting to be reversed");
-    if (!a.share) fail("该售后单尚未判定赔付比例，无法按比例回退", "Liability shares have not been decided, so the reversal cannot be apportioned");
-    // 回退完成 → 清标记。不清的话队列永远消不掉，运营会反复执行同一单
-    a.refundSplitPending = false;
-    a.status = "REFUNDED";
+    // A manual retry cannot prove reversal or cash arrival, even in the operator preview.
+    a.status = "REFUNDING";
+    a.refundExecution = { executionNo: a.refundExecution?.executionNo ?? `RF-${asNo}`,
+      status: "UNKNOWN", phase: "REVERSAL", errorCode: "REVERSE_UNCONFIRMED", resourceStatus: "PENDING" };
     return wait(a, 400);
   },
 
