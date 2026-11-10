@@ -173,5 +173,13 @@
       "cause": "Same legacy fixture also lacked the B03 ResourceQualificationPort; full mandatory port set audited and the read-only test fixture completed."
     }
   ],
-  "testFixtureRepair": "WorkOrderBillIT and WorkOrderSettlementIT use a scoped test-only configuration for five B03 mandatory ports. Any invocation fails, so read suites cannot gain fake execution success; production dependencies stay mandatory."
+  "testFixtureRepair": "WorkOrderBillIT and WorkOrderSettlementIT use a scoped test-only configuration for five B03 mandatory ports. Any invocation fails, so read suites cannot gain fake execution success; production dependencies stay mandatory.",
+  "integration": {
+    "codeCommit": "f8750b3f310bae5ae070fc34e363f002d2455d37",
+    "targetBranch": "codex/food-next01",
+    "fastForwarded": true,
+    "protectedDirtyFilesByteIdentical": 187,
+    "push": false,
+    "deployment": false
+  }
 }
