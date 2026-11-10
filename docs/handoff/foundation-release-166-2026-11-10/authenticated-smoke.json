@@ -1,0 +1,114 @@
+{
+  "status": "PASS",
+  "readOnlyBusinessVerification": true,
+  "notificationSent": false,
+  "businessObjectsCreated": false,
+  "events": [
+    {
+      "case": "real configured password discovers identities",
+      "method": "POST",
+      "path": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "controlled owner enters",
+      "method": "POST",
+      "path": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner account-owned entity context",
+      "method": "GET",
+      "path": "/biz/app/operating-entities/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner entity list on V648",
+      "method": "GET",
+      "path": "/biz/app/operating-entities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner legal subject directory",
+      "method": "GET",
+      "path": "/biz/app/legal-subjects",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "PAY merchant creation context via host",
+      "method": "GET",
+      "path": "/biz/pay/v2/merchant-creations/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "typed PAY member directory",
+      "method": "GET",
+      "path": "/biz/pay/v2/memberships",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "profile entry rejects unowned PAY merchant",
+      "method": "GET",
+      "path": "/biz/pay/v2/merchant-profile-revisions",
+      "http": 403,
+      "code": 10403
+    },
+    {
+      "case": "refresh credential ticket for employee entry",
+      "method": "POST",
+      "path": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "controlled staff enters",
+      "method": "POST",
+      "path": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff merchant creation context remains non-owner",
+      "method": "GET",
+      "path": "/biz/pay/v2/merchant-creations/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "real configured password discovers identities",
+      "method": "POST",
+      "path": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "real configured password discovers identities",
+      "method": "POST",
+      "path": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "logout only smoke session",
+      "method": "POST",
+      "path": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "logout only smoke session",
+      "method": "POST",
+      "path": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    }
+  ],
+  "ownerAndStaffVerified": true
+}

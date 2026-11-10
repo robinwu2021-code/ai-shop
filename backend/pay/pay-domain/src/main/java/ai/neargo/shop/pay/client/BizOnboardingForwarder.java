@@ -107,6 +107,10 @@ public final class BizOnboardingForwarder {
     if (method.equals("GET")
         && Set.of(base + "/memberships", base + "/capability-progress", base + "/onboardings")
             .contains(p)) return true;
+    if (method.equals("POST") && p.equals(base + "/merchant-profile-revisions")) return true;
+    if (method.equals("GET") && (p.equals(base + "/merchant-profile-revisions") || p.matches(base + "/merchant-profile-revisions/by-request/[A-Za-z0-9_-]{1,64}"))) return true;
+    if (method.equals("POST") && p.equals(base + "/merchant-creations")) return true;
+    if (method.equals("GET") && (p.equals(base + "/merchant-creations/context") || p.matches(base + "/merchant-creations/by-request/[A-Za-z0-9_-]{1,64}"))) return true;
     if (method.equals("POST") && p.equals(base + "/onboardings")) return true;
     String root = java.util.regex.Pattern.quote(base) + "/onboardings/[A-Za-z0-9_-]{1,64}";
     if (method.equals("GET"))

@@ -1,0 +1,806 @@
+{
+  "format": "Exact Java record declarations at deployed commits, not an exhaustive generated schema",
+  "records": [
+    {
+      "group": "identity",
+      "name": "Identity",
+      "declaration": "record Identity(String identityNo, String type, String merchantNo, String merchantName, int entityCount, String role, List<String> roleCodes, int storeCount)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/LoginIdentityService.java",
+      "line": 9
+    },
+    {
+      "group": "identity",
+      "name": "IdentityChoice",
+      "declaration": "record IdentityChoice(String ticket, long expiresInSeconds, List<Identity> identities, boolean canCreateOwner, String currentIdentityNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/LoginIdentityService.java",
+      "line": 20
+    },
+    {
+      "group": "platform",
+      "name": "PlatformProfile",
+      "declaration": "record PlatformProfile( @NotBlank @Pattern(regexp=\"COMPANY|SOLE|PERSONAL\") String subject, @NotBlank @Size(max=128) String name, @Size(max=8) String taxNo, @NotBlank @Size(max=64) String owner, @NotBlank @Pattern(regexp=\"\\\\+[1-9]\\\\d{6,14}\") String ownerPhone, @NotBlank @Size(max=32) String industry, @Size(max=64) String industryNote)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantOnboardingController.java",
+      "line": 32
+    },
+    {
+      "group": "platform",
+      "name": "License",
+      "declaration": "record License(@NotBlank @Pattern(regexp=\"COMPANY_REGISTRATION|BUSINESS_REGISTRATION\") String type, @NotBlank @Pattern(regexp=\"[A-Za-z0-9_-]+/_ENTITY/qual/[A-Za-z0-9_/-]+\\\\.[A-Za-z0-9]+\") String assetKey)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantOnboardingController.java",
+      "line": 45
+    },
+    {
+      "group": "platform",
+      "name": "Submit",
+      "declaration": "record Submit(@Size(max=64) String entityNo, @Size(max=64) String storeNo, @NotNull @Valid PlatformProfile profile, @NotNull @Size(max=1) List<@NotNull @Valid License> licenses, @NotNull @AssertTrue Boolean agreed, @Null Object settleAccount, @Size(max=0) List<Object> channels)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantOnboardingController.java",
+      "line": 47
+    },
+    {
+      "group": "platform",
+      "name": "Submission",
+      "declaration": "record Submission(String entityNo, String applyNo, String applyStatus, long agreedAt, boolean replayed, boolean revised, String nextStep)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantOnboardingController.java",
+      "line": 57
+    },
+    {
+      "group": "management",
+      "name": "Actor",
+      "declaration": "record Actor(String tenantNo,String actorKey)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 10
+    },
+    {
+      "group": "management",
+      "name": "GrantCommand",
+      "declaration": "record GrantCommand(String actorNo,String resourceType,String resourceNo,String permissionCode, Instant validFrom,Instant validTo,Boolean delegatable,Long expectedRevision,Boolean reactivate)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 13
+    },
+    {
+      "group": "management",
+      "name": "BrandCreate",
+      "declaration": "record BrandCreate(String managementNo,String name,String logo,String status)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 17
+    },
+    {
+      "group": "management",
+      "name": "BrandEdit",
+      "declaration": "record BrandEdit(String name,String logo,long expectedRevision)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 18
+    },
+    {
+      "group": "management",
+      "name": "StatusChange",
+      "declaration": "record StatusChange(String targetStatus,String reason,long expectedRevision)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 19
+    },
+    {
+      "group": "management",
+      "name": "ChangeCheck",
+      "declaration": "record ChangeCheck(String managementNo,String toBrandNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 20
+    },
+    {
+      "group": "management",
+      "name": "ChangeSubmit",
+      "declaration": "record ChangeSubmit(String managementNo,String toBrandNo,String checkToken,long expectedStoreRevision, long expectedScopeRevision,Long expectedFromBrandRevision,Long expectedToBrandRevision,String reason)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 21
+    },
+    {
+      "group": "management",
+      "name": "ChangeDecision",
+      "declaration": "record ChangeDecision(String decision,long expectedRevision,String reason)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 23
+    },
+    {
+      "group": "management",
+      "name": "SpaceCreate",
+      "declaration": "record SpaceCreate(String name,String sourceAccountNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 24
+    },
+    {
+      "group": "management",
+      "name": "Page",
+      "declaration": "record Page(List<Map<String,Object>> items,String nextCursor)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/ManagementModels.java",
+      "line": 25
+    },
+    {
+      "group": "storeClaim",
+      "name": "Command",
+      "declaration": "record Command(String requestNo,String targetEntityNo,long expectedStoreVersion)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/StoreEntityClaimService.java",
+      "line": 7
+    },
+    {
+      "group": "storeClaim",
+      "name": "View",
+      "declaration": "record View(String claimNo,String requestNo,String state,String storeNo,String previousEntityNo, String entityNo,List<EntityStoresVO> stores,int revokedStaff,boolean placeholderRetired,String lastError)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/StoreEntityClaimService.java",
+      "line": 8
+    },
+    {
+      "group": "channelClaim",
+      "name": "Identity",
+      "declaration": "record Identity(String tenantNo,String subjectType,String subjectRef,String merchantNo)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 34
+    },
+    {
+      "group": "channelClaim",
+      "name": "Create",
+      "declaration": "record Create(@NotNull @Pattern(regexp=\"[A-Za-z0-9_-]{1,64}\") String requestNo, @NotNull @Pattern(regexp=\"[A-Z][A-Z0-9_]{0,31}\") String payChannel, @NotBlank @Size(max=64) String channelMerchantId,@Size(max=64) String subMerchantId,String credential)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 35
+    },
+    {
+      "group": "channelClaim",
+      "name": "Command",
+      "declaration": "record Command(@NotNull @Pattern(regexp=\"[A-Za-z0-9_-]{1,64}\") String requestNo,@NotNull @Min(0) Long expectedVersion)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 41
+    },
+    {
+      "group": "channelClaim",
+      "name": "Resolve",
+      "declaration": "record Resolve(@NotNull @Pattern(regexp=\"[A-Za-z0-9_-]{1,64}\") String requestNo,@NotNull @Min(0) Long expectedVersion, @NotNull @Pattern(regexp=\"LINKED|REJECTED\") String result,String payMerchantNo,@Min(0) Long expectedAccountVersion, @NotBlank @Size(max=255) String reason)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 42
+    },
+    {
+      "group": "channelClaim",
+      "name": "View",
+      "declaration": "record View(String claimNo,String requestNo,String merchantNo,String payChannel,String channelMerchantMasked, String state,long version,List<ChannelAccountClaimFiles.FileView> files,String reason,String payMerchantNo, String accountVerificationStatus,String accountStatus,String channelMerchantId,String subMerchantId)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 45
+    },
+    {
+      "group": "channelClaim",
+      "name": "BizView",
+      "declaration": "record BizView(String claimNo,String requestNo,String merchantNo,String payChannel,String channelMerchantMasked, String state,long version,List<ChannelAccountClaimFiles.FileView> files,String reason,String payMerchantNo, String accountVerificationStatus,String accountStatus)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 51
+    },
+    {
+      "group": "channelClaim",
+      "name": "Failure",
+      "declaration": "record Failure(int code,String reasonCode,String message)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 54
+    },
+    {
+      "group": "channelClaim",
+      "name": "CommandReceipt",
+      "declaration": "record CommandReceipt(String requestNo,String outcome,View result,Failure failure)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 55
+    },
+    {
+      "group": "channelClaim",
+      "name": "BizCommandReceipt",
+      "declaration": "record BizCommandReceipt(String requestNo,String outcome,BizView result,Failure failure)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/merchant/account/ChannelAccountClaimService.java",
+      "line": 58
+    },
+    {
+      "group": "draft",
+      "name": "Input",
+      "declaration": "record Input(String requestNo,Long expectedVersion,Long expectedDraftVersion,Map<String,String> fields)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsOnboardingDraftController.java",
+      "line": 26
+    },
+    {
+      "group": "draft",
+      "name": "SupplementInput",
+      "declaration": "record SupplementInput(String requestNo,Long expectedVersion,Long expectedDraftVersion,java.util.List<String> fields,String reason)",
+      "commit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+      "repository": "near-pay",
+      "source": "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/ops/v2/OpsOnboardingDraftController.java",
+      "line": 46
+    },
+    {
+      "group": "sourceApply",
+      "name": "Form",
+      "declaration": "record Form(String legalName, String registrationNo, String representativeName, String contactPhone, String registeredAddress)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/PayServiceApplyRequests.java",
+      "line": 26
+    },
+    {
+      "group": "账号身份",
+      "name": "OtpReq",
+      "declaration": "record OtpReq(String phone)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 129
+    },
+    {
+      "group": "账号身份",
+      "name": "EmailOtpReq",
+      "declaration": "record EmailOtpReq(@NotBlank @Email @Size(max = 191) String email, @Size(max = 16) String locale)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 147
+    },
+    {
+      "group": "账号身份",
+      "name": "PasswordReq",
+      "declaration": "record PasswordReq(String password)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 171
+    },
+    {
+      "group": "账号身份",
+      "name": "HasPasswordResp",
+      "declaration": "record HasPasswordResp(boolean hasPassword)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 175
+    },
+    {
+      "group": "账号身份",
+      "name": "StaffLoginReq",
+      "declaration": "record StaffLoginReq(String phone, String code)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 218
+    },
+    {
+      "group": "账号身份",
+      "name": "LoginReq",
+      "declaration": "record LoginReq(String grantType, String principal, String credential, Boolean agreed, String marketCode)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 236
+    },
+    {
+      "group": "账号身份",
+      "name": "MerchantLoginResp",
+      "declaration": "record MerchantLoginResp(String token, BizMerchantController.MerchantProfileVO merchant)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAuthController.java",
+      "line": 241
+    },
+    {
+      "group": "账号身份",
+      "name": "VerifyReq",
+      "declaration": "record VerifyReq(@NotBlank @Pattern(regexp=\"PHONE_OTP|EMAIL_OTP|PASSWORD\") String grantType, @NotBlank @Size(max=191) String principal, @NotBlank @Size(max=1024) String credential, Boolean agreed, @Size(max=16) String marketCode)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java",
+      "line": 27
+    },
+    {
+      "group": "账号身份",
+      "name": "EnterReq",
+      "declaration": "record EnterReq(@NotBlank @Size(max=128) String ticket, @NotBlank @Size(max=80) String identityNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizIdentityController.java",
+      "line": 31
+    },
+    {
+      "group": "经营基础",
+      "name": "StoreSetupSubIndustry",
+      "declaration": "record StoreSetupSubIndustry(String subIndustryCode, String displayName, String businessTypeCode, String businessTypeDisplayName, long catalogVersion)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizFoundationController.java",
+      "line": 47
+    },
+    {
+      "group": "经营基础",
+      "name": "StoreSetupIndustry",
+      "declaration": "record StoreSetupIndustry(String industryCode, String displayName, List<StoreSetupSubIndustry> subIndustries)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizFoundationController.java",
+      "line": 50
+    },
+    {
+      "group": "经营基础",
+      "name": "StoreSetupMarket",
+      "declaration": "record StoreSetupMarket(String market, String displayName, String currency, int currencyScale, String timeZone, List<StoreSetupIndustry> industries, String mapProvider, String mapJsKey, String mapJsSecurity)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizFoundationController.java",
+      "line": 60
+    },
+    {
+      "group": "经营基础",
+      "name": "StoreSetup",
+      "declaration": "record StoreSetup(List<StoreSetupMarket> markets, String otherBusinessTypeCode)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizFoundationController.java",
+      "line": 68
+    },
+    {
+      "group": "经营基础",
+      "name": "Enter",
+      "declaration": "record Enter(String endCode, String clientId)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/CommerceEndController.java",
+      "line": 26
+    },
+    {
+      "group": "主体与门店",
+      "name": "DisplayNameReq",
+      "declaration": "record DisplayNameReq(String displayName)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 176
+    },
+    {
+      "group": "主体与门店",
+      "name": "Target",
+      "declaration": "record Target(String entityNo, String storeNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 374
+    },
+    {
+      "group": "主体与门店",
+      "name": "QuickStartReq",
+      "declaration": "record QuickStartReq(String storeName, String address, String businessTypeCode, String market, String industryCode, String subIndustryCode, String industryText, String subIndustryText, String addressDetail, Integer latE6, Integer lngE6, String coordSys)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 387
+    },
+    {
+      "group": "主体与门店",
+      "name": "AuthCodeInfoVO",
+      "declaration": "record AuthCodeInfoVO(String code, String name, String requiredQualification, String qualType, List<String> categoryNames)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 626
+    },
+    {
+      "group": "主体与门店",
+      "name": "MyQualificationsVO",
+      "declaration": "record MyQualificationsVO(List<ai.neargo.shop.merchant.service.MerchantGovernService.QualificationVO> items, List<String> grantedCodes, List<AuthCodeInfoVO> catalog)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 653
+    },
+    {
+      "group": "主体与门店",
+      "name": "SaveQualReq",
+      "declaration": "record SaveQualReq(String qualNo, String qualType, String qualName, String qualNumber, String imageUrl, Long expireAt, String entityNo, String storeNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 659
+    },
+    {
+      "group": "主体与门店",
+      "name": "ScopePreviewReq",
+      "declaration": "record ScopePreviewReq(java.util.List<AreaItem> areas)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 730
+    },
+    {
+      "group": "主体与门店",
+      "name": "AreaItem",
+      "declaration": "record AreaItem(String level, String refCode, String mode, String geometry)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 736
+    },
+    {
+      "group": "主体与门店",
+      "name": "ScopePreviewVO",
+      "declaration": "record ScopePreviewVO(int currentCommunities, int currentBuyers, int nextCommunities, int nextBuyers)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 746
+    },
+    {
+      "group": "主体与门店",
+      "name": "AnnouncementReq",
+      "declaration": "record AnnouncementReq(String announcement, Long announcementUntil, java.util.List<String> alsoStoreNos)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 778
+    },
+    {
+      "group": "主体与门店",
+      "name": "RecentReq",
+      "declaration": "record RecentReq(String text)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 783
+    },
+    {
+      "group": "主体与门店",
+      "name": "DebtVO",
+      "declaration": "record DebtVO(long balanceMinor, List<ai.neargo.shop.merchant.service.DebtService.TxnVO> txns)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 832
+    },
+    {
+      "group": "主体与门店",
+      "name": "PaymentReq",
+      "declaration": "record PaymentReq(String payChannel, String settleAccountType, String settleAccount, List<String> licenses, String contactName, String contactPhone, String storeNo, String entityNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 897
+    },
+    {
+      "group": "主体与门店",
+      "name": "StoreCreateReq",
+      "declaration": "record StoreCreateReq(String name, String address, List<String> categoryNos, String entityNo, String businessTypeCode, String operationNo, String storeNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1048
+    },
+    {
+      "group": "主体与门店",
+      "name": "StoreCategoriesReq",
+      "declaration": "record StoreCategoriesReq(List<StoreCategoryItemReq> items)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1052
+    },
+    {
+      "group": "主体与门店",
+      "name": "StoreCategoryItemReq",
+      "declaration": "record StoreCategoryItemReq(String categoryNo, String displayName, Integer sort)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1055
+    },
+    {
+      "group": "主体与门店",
+      "name": "SlugReq",
+      "declaration": "record SlugReq(String slug)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1059
+    },
+    {
+      "group": "主体与门店",
+      "name": "StatusReq",
+      "declaration": "record StatusReq(Boolean active)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1062
+    },
+    {
+      "group": "主体与门店",
+      "name": "StorePaymentReq",
+      "declaration": "record StorePaymentReq(String payMerchantNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1065
+    },
+    {
+      "group": "主体与门店",
+      "name": "StoreReq",
+      "declaration": "record StoreReq(String announcement, Long announcementUntil, String openHours, String address, String addressDetail, List<String> featured, String serviceScope, List<String> serviceCommunityNos, String serviceCityCode, String fulfillmentReach, List<MerchantStoreService.AreaCommand> serviceAreas, Integer latE6, Integer lngE6, String bannerUrl)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1070
+    },
+    {
+      "group": "主体与门店",
+      "name": "ApplyReq",
+      "declaration": "record ApplyReq(String name, String subject, String contactName, String contactPhone, String category, String desc, String serviceScope, List<String> communityNos, List<String> licenses, Boolean asPickupPoint, /** 行业。**决定可选的主体类型** —— 线上业态不能选小微 */ String industry, /** * 结构化资质（V79）。与上面的 {@code licenses}（纯图片 URL）并存： * 只有这一份带类型/证号/有效期，**审核通过时才转得进 * {@code mch_qualification}** —— 而上架的两个闸门读的就是那张表。 * 可空：存量端上还在只传 licenses。 */ List<OpsService.QualificationItem> qualificationItems, String entityNo, String storeNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1136
+    },
+    {
+      "group": "主体与门店",
+      "name": "MerchantProfileVO",
+      "declaration": "record MerchantProfileVO(String merchantNo, String name, String logo, String status, String subject, String tier, String phone, boolean isPickupPoint, String pickupNo, String rejectReason, String industry, String description, String fundsMode, /** * <b>《商家服务协议》还没人勾</b>（三期）。 * * <p>只在<b>代填的单子</b>上为真：运营代商家进件时不能替他勾协议， * 那张单落库时 {@code agreed_at} 是空的。 * * <p><b>为什么不是「agreed_at 为空就为真」</b>：存量单子这一列 * 同样全是空的（协议勾选此前从没落过库，{@code agreed} 传到 * {@code LoginCommand} 就断了）。那样判的话， * 全体存量商家明天一早都会看到一条「你还没同意协议」—— * 而他们当初确实勾过，只是没人记下来。 * * <p>当前<b>只提示不拦截</b>（三期决策②）：今天没有提现可挂， * 而拦上架或拦收款会打断一家已经审核通过的店的生意 —— * 协议没勾是平台流程造成的（运营代填），代价不该由商户承担。 */ boolean agreementPending, /** * 多少人收藏了这家店（§8.2 批 2）。 * * <p><b>商家看不到这个数就不会去经营收藏者</b> —— 收藏功能上线 * 至今线上 0 行，入口在、接口通，没人点是因为收藏了什么都不发生， * 而商家这边连「有多少人收藏了我」都不知道。 * * <p>现算（`countByMerchant` 内部绕数据域）：没有哪张表在维护这个数。 * 还没进件的那一支恒 0 —— 那时店都还没有。 */ int favoriteCount, /** 当前登录账号的显示名（用户名，§账号管理）。空=没设过，端上显示「未设置」 */ String displayName, String currentStoreNo, /** * 当前登录个人账号的已验证登录标识（TDD-注册地区与三步建店 AC12）： * 有手机号给手机号（与 phone 同格式），没有给归一化邮箱；员工会话或取不到为 null */ String account, /** 已认证会话类型，登录和冷启动一致；不是按手机号推测角色。 */ String subjectKind, LoginIdentityService.Identity currentIdentity, String userNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizMerchantController.java",
+      "line": 1161
+    },
+    {
+      "group": "员工与角色",
+      "name": "StatusReq",
+      "declaration": "record StatusReq(Boolean active)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStaffController.java",
+      "line": 61
+    },
+    {
+      "group": "员工与角色",
+      "name": "PermOption",
+      "declaration": "record PermOption(String code, String label)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStaffController.java",
+      "line": 154
+    },
+    {
+      "group": "员工与角色",
+      "name": "RoleReq",
+      "declaration": "record RoleReq(String name, List<String> perms)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStaffController.java",
+      "line": 187
+    },
+    {
+      "group": "员工与角色",
+      "name": "StaffReq",
+      "declaration": "record StaffReq(String loginPhone, String displayName)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStaffController.java",
+      "line": 191
+    },
+    {
+      "group": "员工与角色",
+      "name": "GrantReq",
+      "declaration": "record GrantReq(String storeNo, String role, Boolean granted)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStaffController.java",
+      "line": 194
+    },
+    {
+      "group": "平台进件",
+      "name": "CertVO",
+      "declaration": "record CertVO(boolean recognized, String docType, String side, String name, String code, String legalForm, String person, String address, String issuedAt, String validTo, double confidence)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizCertController.java",
+      "line": 142
+    },
+    {
+      "group": "门店履约与选址",
+      "name": "FulfillmentReq",
+      "declaration": "record FulfillmentReq(List<StoreFulfillmentService.ChannelCmd> channels)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreFulfillmentController.java",
+      "line": 99
+    },
+    {
+      "group": "门店履约与选址",
+      "name": "SlotReq",
+      "declaration": "record SlotReq(long startAt, long endAt, int capacity)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreFulfillmentController.java",
+      "line": 139
+    },
+    {
+      "group": "门店履约与选址",
+      "name": "GeocodeReq",
+      "declaration": "record GeocodeReq(String address, String city)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizGeoController.java",
+      "line": 143
+    },
+    {
+      "group": "门店履约与选址",
+      "name": "GeocodeVO",
+      "declaration": "record GeocodeVO(boolean available, boolean ok, String level, String formatted, Integer latE6, Integer lngE6, String adcode)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizGeoController.java",
+      "line": 147
+    },
+    {
+      "group": "支付来源",
+      "name": "SessionVO",
+      "declaration": "record SessionVO( String realm, String subjectType, String subjectRef, String tenantNo, String status)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPaySessionController.java",
+      "line": 18
+    },
+    {
+      "group": "N1认领",
+      "name": "ClaimRequest",
+      "declaration": "record ClaimRequest(@NotBlank @Pattern(regexp=\"[A-Za-z0-9_-]{1,64}\") String requestNo, @NotBlank @Pattern(regexp=\"[A-Za-z0-9_-]{1,64}\") String entityNo, @NotNull @Min(0) Long expectedStoreVersion)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoreEntityController.java",
+      "line": 38
+    },
+    {
+      "group": "平台附件",
+      "name": "ReceiptUploader",
+      "declaration": "record ReceiptUploader(String entityNo, String storeNo, String accountNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-channel/src/main/java/ai/neargo/shop/channel/media/api/BizUploadController.java",
+      "line": 232
+    },
+    {
+      "group": "门店收款设置",
+      "name": "PaySettingReq",
+      "declaration": "record PaySettingReq(Boolean offlinePayEnabled, Boolean codEnabled)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/api/biz/BizStorePayController.java",
+      "line": 44
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "AdjustReq",
+      "declaration": "record AdjustReq(String itemId, int countedQty, String reasonCode)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockController.java",
+      "line": 223
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "RemoteAdjust",
+      "declaration": "record RemoteAdjust(String itemId, int countedQty, String reasonCode, String storeRef)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockController.java",
+      "line": 227
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "SafetyStockReq",
+      "declaration": "record SafetyStockReq(String itemId, String locationId, Integer qty)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockController.java",
+      "line": 264
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "LineReq",
+      "declaration": "record LineReq( String itemId, int qty, String uom, Long unitCostMinor, String batchNo, LocalDate expireAt)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockDocController.java",
+      "line": 260
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "ShipReq",
+      "declaration": "record ShipReq(String carrierNo, String carrierName, String trackingNo)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockDocController.java",
+      "line": 275
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "InboundReq",
+      "declaration": "record InboundReq( String sourceType, String supplierNo, String supplierName, LocalDateTime occurredAt, String remark, List<LineReq> lines)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockDocController.java",
+      "line": 277
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "OutboundReq",
+      "declaration": "record OutboundReq( String purpose, String reasonCode, LocalDateTime occurredAt, String remark, String targetType, String targetNo, List<LineReq> lines)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockDocController.java",
+      "line": 289
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "CountOpenReq",
+      "declaration": "record CountOpenReq(List<String> itemIds)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockDocController.java",
+      "line": 298
+    },
+    {
+      "group": "库存（既有宿主）",
+      "name": "TransferReq",
+      "declaration": "record TransferReq(String fromLocationId, String toLocationId, List<LineReq> lines)",
+      "commit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+      "repository": "ai-shop",
+      "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/biz/BizStockDocController.java",
+      "line": 300
+    }
+  ]
+}

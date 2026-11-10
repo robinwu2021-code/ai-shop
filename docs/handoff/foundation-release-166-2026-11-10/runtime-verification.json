@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "checks": {
+    "apiHealth": 200,
+    "opsHealth": 200,
+    "inventoryHealth": 200,
+    "payAuth": 401
+  },
+  "containers": {
+    "ai-shop-api": {
+      "id": "0aa0d8a4b994cbfc202d3c0fa080160880c34f1c60ce1c7b465940d8106d5c69",
+      "startedAt": "2026-11-10T13:06:48.792626614Z",
+      "running": true
+    },
+    "ai-shop-ops": {
+      "id": "f8910d092b1a6eeda972f03284eb13bf6035a4d1214d75bae404264c38e67906",
+      "startedAt": "2026-11-09T14:18:15.891397245Z",
+      "running": true
+    },
+    "nearpay-prod": {
+      "id": "cbffe9076ee34a9216d51ca3d6d299aa343a7cb9d4d78324ae0ab4fd15d13cf8",
+      "startedAt": "2026-11-10T12:56:46.258080922Z",
+      "running": true
+    },
+    "inventory-test": {
+      "id": "39a53a0a9c011ae622e5554cf01e266e4a0c7cbeab1d9fd552d5f93158c2dbb2",
+      "startedAt": "2026-11-10T03:04:33.484112114Z",
+      "running": true
+    }
+  },
+  "runningJarSha256": {
+    "shop-app.jar": "c2a07ec02437e22908a6b9fdb247daa572c51207e537d4660f3f7495479bca07",
+    "pay-svc.jar": "cf62d086684ec869fddf82154473bb52ca6e4cf8c3b3c671b76d1906d9d0e60a"
+  },
+  "payConfigurationSha256": "cf5a320b97562733aec77a7fb576d830bff0b9acdb5d5cf1dd6e2ef44e84e0d7",
+  "opsRestarted": false,
+  "inventoryReplaced": false,
+  "n1CreationOpened": false,
+  "inventoryWriterSwitched": false,
+  "schemaCheck": {
+    "hostVersion": 648,
+    "payVersion": 82,
+    "pay81Present": true,
+    "creationTableRestored": true,
+    "temporaryCompatibilityTables": 0
+  }
+}

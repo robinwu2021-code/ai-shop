@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-10",
+  "hostDeployedCommit": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+  "payDeployedCommit": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+  "environment": "166 via controlled loopback SSH",
+  "newProfileEntryDeployed": false,
+  "realSmsOrEmailDeliveryVerified": false,
+  "realNewRegistrationVerified": false,
+  "formalHttpsAppOrDeviceVerified": false,
+  "newStoreCreationVerified": false,
+  "tests": [
+    {
+      "name": "PAY domain + controller",
+      "passed": 13,
+      "evidenceLog": "/tmp/merchant-profile-pay-tests.log"
+    },
+    {
+      "name": "host exact route relay",
+      "passed": 2,
+      "evidenceLog": "/tmp/merchant-profile-host-relay-test.log"
+    },
+    {
+      "name": "App current profile suite",
+      "passed": 15,
+      "evidenceLog": "/tmp/foundation-app-current-compile-tests.log",
+      "note": "15 profile cases passed; same batch initially failed to compile the new independent live test. Its import/logout compile errors were corrected, and live test subsequently passed against166."
+    },
+    {
+      "name": "PAY private log omission",
+      "passed": 1,
+      "evidenceLog": "/tmp/merchant-profile-private-log-test.log"
+    },
+    {
+      "name": "App actual transport to166",
+      "passed": 1,
+      "evidenceLog": "/tmp/foundation-166-app-live.log"
+    }
+  ],
+  "sourceSha256": {
+    "host:forwarder": "ee9d8123f12588edde5423eb9a071bcc625e2137bda196ecdea9f322c928e194",
+    "host:controller": "987c8b1baa0775be86e2c9a13c00feffba5a77f266eeca56b79580aa271af645",
+    "pay:service": "928115f109b6c015405dbc7132b7a54b9abbe2e485f8c40df304044796c32a7d",
+    "pay:store": "ed3edd86cec577441fdab45eabefdfbc136b0a4fa5f6ad4744a36766d9fd0a64",
+    "pay:controller": "12d85f52d0502fc5e79f858bd5af301e13827612df29ec444706f1d617a67574",
+    "pay:migration": "134ecac72c0f1091e691ce5ba38300da08cf70d3f2b7f1b6796bd69d8660bab7",
+    "pay:logs": "ea94909e99561ec5d4b7a597672658d434e6c38a0ab6919a3c17ed513ec56f58",
+    "pay:log-test": "2658e7a27a2f432bb95f9b55ba04d4b991786817cf067e28fbde79ad0f80b6fe",
+    "app:profile": "9a57c82efb2cd05cb34f7ee8bc17c7a817382ad2fb86fcd98a31e05c0e6ae03c",
+    "app:live-test": "02ad21520182591705babbb5991c08213a10eac8d05cc9d02d5657d17f5708d0",
+    "app:workspace": "a4687b9984be6e9b0f32f3fcf00d2a11b2e926935ea13a847486d9ede0fa1673"
+  },
+  "review": "Fresh read-only review found no evidenced P1/P2 blocker in scoped profile feature; excludes unrelated shared changes",
+  "secretsArchived": false
+}

@@ -1,0 +1,8 @@
+{
+  "profiles": [
+    "ops",
+    "api"
+  ],
+  "opsRetained": true,
+  "apiEnabled": true
+}

@@ -66,6 +66,18 @@ class BizEndpointPermTest {
                     // near-pay BIZ: fresh host account authentication; all payment membership,
                     // action and store scope decisions belong to near-pay, never local biz:*.
                     "/biz/auth/session",
+                    // Account-owned resources verify the real actor and ownership in the domain.
+                    "/biz/app/legal-subjects",
+                    "/biz/app/operating-entities",
+                    "/biz/app/operating-entities/context",
+                    "/biz/app/operating-entities/{id}",
+                    "/biz/app/operating-entities/create-results/{key}",
+                    // Relay authenticates the account; PAY retains typed member and action checks.
+                    "/biz/pay/v2/merchant-creations",
+                    "/biz/pay/v2/merchant-creations/context",
+                    "/biz/pay/v2/merchant-creations/by-request/{requestNo}",
+                    "/biz/pay/v2/merchant-profile-revisions",
+                    "/biz/pay/v2/merchant-profile-revisions/by-request/{requestNo}",
                     "/biz/pay/v2/memberships",
                     "/biz/pay/v2/capability-progress",
                     "/biz/pay/v2/onboardings",

@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "rehearsalSchemasDropped": 2,
+  "migrationUserRemoved": true,
+  "originalDatabaseBackupsRetained": true,
+  "productionSchemasRetained": true
+}

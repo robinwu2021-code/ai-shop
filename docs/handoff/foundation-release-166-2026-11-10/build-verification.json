@@ -1,0 +1,40 @@
+{
+  "host": {
+    "build": "PASS",
+    "cases": [
+      "ai.neargo.commerce.starter.security.OperatingEntityCreationRouteTest",
+      "ai.neargo.shop.merchant.organization.OperatingEntityCreationMySqlTest",
+      "ai.neargo.shop.payclient.PayMerchantCreationRelayTest",
+      "ai.neargo.shop.payclient.PayMerchantProfileRelayTest"
+    ]
+  },
+  "pay": {
+    "build": "PASS",
+    "cases": [
+      "ai.neargo.shop.pay.platmch.creation.MerchantCreationMySqlTest",
+      "ai.neargo.shop.pay.platmch.profile.ProfileDisplayNameTest",
+      "ai.neargo.shop.pay.platmch.profile.MerchantProfileSubmissionMySqlTest",
+      "ai.neargo.shop.pay.api.guard.core.MerchantProfileRequestLogTest",
+      "ai.neargo.shop.pay.api.guard.biz.BizSessionAuthenticatorTest",
+      "ai.neargo.shop.pay.api.biz.v2.BizMerchantProfileControllerTest",
+      "ai.neargo.shop.pay.svc.identity.OperatingEntityAuthorityHttpTest"
+    ]
+  },
+  "payEnvironmentFix": {
+    "build": "PASS",
+    "cases": [
+      "ai.neargo.shop.pay.platmch.creation.MerchantCreationMySqlTest",
+      "ai.neargo.shop.pay.environment.EnvironmentDataSourceTest",
+      "ai.neargo.shop.pay.environment.EnvironmentTablePolicyTest"
+    ]
+  },
+  "hostInterfaceAlignment": {
+    "build": "PASS",
+    "cases": [
+      "ai.neargo.commerce.starter.security.OperatingEntityCreationRouteTest",
+      "ai.neargo.shop.merchant.organization.OperatingEntityCreationMySqlTest",
+      "ai.neargo.shop.payclient.PayMerchantCreationRelayTest",
+      "ai.neargo.shop.payclient.PayMerchantProfileRelayTest"
+    ]
+  }
+}

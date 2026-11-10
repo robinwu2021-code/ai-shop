@@ -33,6 +33,26 @@ public class BizPayOnboardingController {
     this.forwarder = forwarder;
   }
 
+  @GetMapping({"/merchant-profile-revisions", "/merchant-profile-revisions/by-request/{requestNo}"})
+  public ResponseEntity<byte[]> merchantProfiles(HttpServletRequest request) throws IOException {
+    return relay(request);
+  }
+
+  @PostMapping("/merchant-profile-revisions")
+  public ResponseEntity<byte[]> submitMerchantProfile(HttpServletRequest request) throws IOException {
+    return relay(request);
+  }
+
+  @PostMapping("/merchant-creations")
+  public ResponseEntity<byte[]> createMerchant(HttpServletRequest request) throws IOException {
+    return relay(request);
+  }
+
+  @GetMapping({"/merchant-creations/context", "/merchant-creations/by-request/{requestNo}"})
+  public ResponseEntity<byte[]> merchantCreation(HttpServletRequest request) throws IOException {
+    return relay(request);
+  }
+
   @GetMapping("/memberships")
   public ResponseEntity<byte[]> memberships(HttpServletRequest request) throws IOException {
     return relay(request);

@@ -1,0 +1,129 @@
+{
+  "status": "PASS",
+  "environment": "166-via-loopback-SSH",
+  "notificationSent": false,
+  "events": [
+    {
+      "case": "ACTOR_1 verify",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_1 enter STAFF",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "account store directory",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_3 verify",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_3 enter OWNER",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "account store directory",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner reads controlled employee baseline",
+      "method": "GET",
+      "pathTemplate": "/biz/staff",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff allowed before deactivation",
+      "method": "GET",
+      "pathTemplate": "/biz/store/{storeNo}/categories",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner temporarily deactivates controlled whitelist employee",
+      "method": "POST",
+      "pathTemplate": "/biz/staff/{mchAccountNo}/status",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "old employee session denied on next request",
+      "method": "GET",
+      "pathTemplate": "/biz/store/{storeNo}/categories",
+      "http": 401,
+      "code": 10402
+    },
+    {
+      "case": "owner restores original employee active status",
+      "method": "POST",
+      "pathTemplate": "/biz/staff/{mchAccountNo}/status",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_1 verify",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_1 enter STAFF",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "restored employee fresh login has original store access",
+      "method": "GET",
+      "pathTemplate": "/biz/store/{storeNo}/categories",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "logout only journey session",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 401,
+      "code": 10402
+    },
+    {
+      "case": "logout only journey session",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "logout only journey session",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    }
+  ],
+  "nextRequestDeniedAfterDisable": true,
+  "originalStatusAndRolesRestored": true,
+  "freshLoginAfterRestorePassed": true
+}

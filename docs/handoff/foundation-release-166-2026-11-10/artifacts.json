@@ -1,0 +1,37 @@
+{
+  "target": "166",
+  "branch": "codex/foundation-profile-166-20261110",
+  "stage": "/data0/app/foundation-release-b1ac436b",
+  "artifacts": {
+    "shop-app.jar": {
+      "sha256": "c2a07ec02437e22908a6b9fdb247daa572c51207e537d4660f3f7495479bca07",
+      "bytes": 123079354
+    },
+    "pay-svc.jar": {
+      "sha256": "cf62d086684ec869fddf82154473bb52ca6e4cf8c3b3c671b76d1906d9d0e60a",
+      "bytes": 73274314
+    }
+  },
+  "migrations": {
+    "host": "648",
+    "pay": "82"
+  },
+  "excluded": [
+    "service changes",
+    "NewebPay runtime V78/V80",
+    "inventory writer cutover",
+    "OPS restart"
+  ],
+  "backupDirectory": "/data0/app/foundation-backups/b1ac436b",
+  "databaseBackupDirectory": "/data0/backups/foundation-b1ac436b",
+  "inventoryWriterSwitched": false,
+  "n1CreationOpened": false,
+  "knownRollbackConstraint": "Original PAY lacks pay_merchant_creation shared-table classification. Before restarting that old artifact, temporarily rename the receipt table to the recorded non-pay_ compatibility name; preserve all rows and restore name before the new artifact.",
+  "payProfiles": [
+    "ops",
+    "api"
+  ],
+  "controlledBizEnvironmentBindingsAdded": 4,
+  "controlledExecutionEnvironment": "PRODUCTION",
+  "typedMembershipGrantsChanged": false
+}

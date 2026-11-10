@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-10",
+  "routeCount": 164,
+  "postmanRequestCount": 26,
+  "integrationCases": 12,
+  "byGroup": {
+    "N1认领": 5,
+    "N2渠道认领": 9,
+    "主体与门店": 31,
+    "员工与角色": 10,
+    "平台资料": 1,
+    "平台进件": 2,
+    "平台附件": 1,
+    "库存（既有宿主）": 31,
+    "支付来源": 3,
+    "独立PAY进件15路由": 15,
+    "经营基础": 12,
+    "账号身份": 11,
+    "连锁管理": 21,
+    "门店履约与选址": 10,
+    "门店收款设置": 2
+  },
+  "references": {
+    "host": "5c08fc760b4aba05c15aad4b6a709b99229ce015",
+    "pay": "5c588723da4593bd80d77b5fe1af24fbd97e102c",
+    "app": "de57567effcb2872328d349d6177483cb4b1715a"
+  },
+  "notAutomaticallyExecuted": true
+}

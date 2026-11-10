@@ -1,0 +1,247 @@
+{
+  "status": "PASS",
+  "environment": "166-via-loopback-SSH",
+  "realConfiguredTestIdentities": true,
+  "notificationSent": false,
+  "businessObjectsCreated": false,
+  "events": [
+    {
+      "case": "ACTOR_1 verify",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_1 enter OWNER",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "account store directory",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner select/reselect store",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner scoped context",
+      "method": "GET",
+      "pathTemplate": "/biz/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner scoped context",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/{storeNo}/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner scoped context",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/{storeNo}/features",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner select/reselect store",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner scoped context",
+      "method": "GET",
+      "pathTemplate": "/biz/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner scoped context",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/{storeNo}/context",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner scoped context",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/{storeNo}/features",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner return original store",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "mismatched entity rejected on protected member route",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/pay-channel",
+      "http": 403,
+      "code": 70006
+    },
+    {
+      "case": "ACTOR_1 verify",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_1 enter OWNER",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "switch ticket from original owner",
+      "method": "GET",
+      "pathTemplate": "/biz/auth/identities/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "owner to staff switch",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "source session revoked by identity switch",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 401,
+      "code": 10402
+    },
+    {
+      "case": "independent sibling retained",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff cold session read",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "account store directory",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff allowed store profile",
+      "method": "GET",
+      "pathTemplate": "/biz/merchant/profile",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff forbidden owner store",
+      "method": "GET",
+      "pathTemplate": "/biz/store/{storeNo}/categories",
+      "http": 403,
+      "code": 70006
+    },
+    {
+      "case": "ACTOR_3 verify",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "ACTOR_3 enter OWNER",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "account store directory",
+      "method": "GET",
+      "pathTemplate": "/biz/stores/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff identity mine",
+      "method": "GET",
+      "pathTemplate": "/biz/auth/identities/mine",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "staff to owner switch",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/identities/enter",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "revoke only session created by this journey",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 401,
+      "code": 10402
+    },
+    {
+      "case": "revoke only session created by this journey",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "revoke only session created by this journey",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 401,
+      "code": 10402
+    },
+    {
+      "case": "revoke only session created by this journey",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    },
+    {
+      "case": "revoke only session created by this journey",
+      "method": "POST",
+      "pathTemplate": "/biz/auth/logout",
+      "http": 200,
+      "code": 0
+    }
+  ],
+  "storeQuotaBlocker": 70020,
+  "ownerStoreCount": 2,
+  "staffStoreCount": 1,
+  "twoStoreSwitchVerified": true,
+  "sourceRevokedSiblingRetained": true,
+  "typedOwnerStaffSwitchVerified": true,
+  "staffColdSessionVerified": true
+}

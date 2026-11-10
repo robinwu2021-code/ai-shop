@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
  * 真撞了也有唯一索引兜底（业务键在库里一律建 UNIQUE）。
  */
 public final class BizKey {
+    public static final String OPERATING_ENTITY = "OE";
     public static final String MANAGEMENT_SPACE = "MGS";
     public static final String MANAGEMENT_GRANT = "MGG";
     public static final String BRAND = "BR";

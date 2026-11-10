@@ -1,0 +1,16 @@
+{
+  "status": "BASELINE_FAILURES_REMAIN",
+  "newOperatingEntityNamingViolationRemoved": true,
+  "newRouteDecisionOmissionsRemoved": true,
+  "unchangedBaselineServiceFiles": [
+    "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/FoodStockProjectionQueryService.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/NativeChannelAfterSaleService.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/stock/FoodProductionStockService.java"
+  ],
+  "unchangedBaselineUndecidedRoutes": [
+    "/biz/review/appeals",
+    "/biz/review/{reviewNo}"
+  ],
+  "fullArchitectureSuiteGreen": false,
+  "baselineCommit": "a01b155fc"
+}
