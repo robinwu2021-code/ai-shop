@@ -1,5 +1,8 @@
 package ai.neargo.shop.beauty.scenario;
 
+import ai.neargo.shop.beauty.config.BeautyMigrationDataSource;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -85,7 +88,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                30,
+                31,
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -128,8 +131,31 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
                 new ServiceExecutionSchemaVerifier(source).installation());
-        assertEquals(29, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+        assertEquals(30, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
                 + " AND table_name LIKE 'bty_%' AND table_name<>'bty_flyway_history'"));
+    }
+
+    @Test
+    void installedV10AllowsPendingV11WithoutMigratingOnValidation() throws Exception {
+        Flyway.configure().dataSource(new BeautyMigrationDataSource(source))
+                .locations("classpath:db/industry/beauty").table("bty_flyway_history").target("10")
+                .placeholderReplacement(false).load().migrate();
+        initialize("validate");
+        assertEquals(0, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='11'"));
+        assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
+                new ServiceExecutionSchemaVerifier(source).installation());
+    }
+
+    @Test
+    void v11InheritedTextCollationCannotDriftWhileBaseRemainsReadable() throws Exception {
+        initialize("migrate");
+        var verifier = new ServiceExecutionStockIntentSchemaVerifier(source);
+        assertEquals(ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED, verifier.installation());
+        execute("ALTER TABLE bty_service_execution_stock_intent MODIFY reference_json LONGTEXT"
+                + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL");
+        initialize("validate");
+        assertEquals(ServiceExecutionStockIntentSchemaVerifier.Installation.CORRUPT, verifier.installation());
+        assertThrows(RuntimeException.class, () -> initialize("migrate"));
     }
 
     @Test
@@ -400,8 +426,8 @@ class BeautySchemaMigrationIT {
         assertEquals(
                 history,
                 jdbc.queryForList(
-                        "SELECT version,checksum FROM bty_flyway_history WHERE version NOT IN"
-                            + " ('7','8') ORDER BY installed_rank"));
+                        "SELECT version,checksum FROM bty_flyway_history WHERE version IN"
+                            + " ('1','2','3','4','5','6') ORDER BY installed_rank"));
         assertEquals(
                 1,
                 count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='7' AND success=1"));

@@ -53,3 +53,23 @@
 ## 四、共通约定
 
 与餐饮对照表相同：金额 `{currency, minor}`；枚举用大写机器码；写操作带 `Idempotency-Key` 和版本号；路径里的 `storeNo` 必须等于 `X-Store-No`。App 改完后从 `pendingContracts` 删除 `^/biz/beauty/` 与 `^/biz/appointment-slots/`。
+
+
+## 2026-11-10 App继续实现的兼容增量（未部署）
+
+- GET工单详情的workOrder/task增加nullable `revision`，真实值为各自实体version，独立于scopeRevision/bindingRevision；旧构造及历史回执不伪造version。
+- 本域未冻结OPEN/IN_SERVICE且无活动收费提交时给SUBMIT_SERVICES，逐任务符合首次绑定规则时给SUBMIT_SOURCE。权限仍由原ServiceSubmissionAccess决定，canStart保持false。
+- App从traces读取实际收费submission；根工单submissionNo是OPEN接待草稿。MANUAL_PREPARE前验证顾客selector；原号恢复端点为`/service-submissions/{no}/recovery-requests`。
+- 宿主GET `/biz/service-orders/counter-quotes/{operationNo}/state`返回原confirmation、result和canAccept，避免退出后重建接受授权或原订单；PLACING只读恢复。
+- 未接受过期报价由所有者在原锁转REQUOTE_REQUIRED，美业恢复见明确终态才结束本地提交；未知开单不能因超时释放。
+
+代码/测试与原生V10迁移阻塞详见[TDD App续接](./TDD-美业系统-后端开发计划.md#app服务提交合同补齐2026-11-10)。当前仅本机补丁，须两仓同步集成部署后联验。
+
+
+## V10解除阻塞后的服务准备（2026-11-10，未部署）
+
+- V10精确DDL执行适配保留冻结SQL/checksum，V11识别与独立物理检查补齐；所选本机原生数据库场景71项通过。
+- 工单task新增nullable `preparationOperationNo`，对应已有START提交原号，只回读安全引用，不返回保存的人员凭证。
+- 人工来源已观察就绪、单个COUNT待做任务可给PREPARE_TASK；真实SELF/任职/指派仍由准备服务验证。App不把订单/预约管理权限当作技师权限。
+- POST `/work-orders/{no}/tasks/{taskNo}/preparations`仍是数量和耗材准备；原操作回读/恢复沿既有operations/{no}及其recoveries，无新真实开工/完成入口。canStart=false。
+- 未知响应、空操作号或错误任务回执保留原幂等键，确认有效原号后才改用服务端原操作恢复；旧operations恢复合同不被强制当准备合同。

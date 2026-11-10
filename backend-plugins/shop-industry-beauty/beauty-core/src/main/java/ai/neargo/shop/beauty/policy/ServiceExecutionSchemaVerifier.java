@@ -228,6 +228,16 @@ public final class ServiceExecutionSchemaVerifier {
         require(keys.equals(expected) && unique.equals(expectedUnique));
     }
 
+    /** Render only the frozen boolean-valued COALESCE forms with an explicit MySQL result type. */
+    public static String mysqlCheck(String clause) {
+        if (clause.startsWith("COALESCE(")) return "(" + clause + ")=1";
+        String prefix = "JSON_VALID(binding_json) AND ";
+        if (clause.startsWith(prefix + "COALESCE(")) {
+            return prefix + "(" + clause.substring(prefix.length()) + ")=1";
+        }
+        return clause;
+    }
+
     private static void checkConstraints(Connection connection, String schema, JsonNode table) throws SQLException {
         Map<String, String> actual = new TreeMap<>();
         for (var row : query(connection,
@@ -239,8 +249,12 @@ public final class ServiceExecutionSchemaVerifier {
             require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
-        table.path("checks").properties().forEach(entry ->
-                expected.put(entry.getKey(), expression(entry.getValue().asString())));
+        boolean mysql = "MySQL".equals(connection.getMetaData().getDatabaseProductName());
+        table.path("checks").properties().forEach(entry -> {
+            String clause = entry.getValue().asString();
+            // MySQL requires an explicit boolean comparison for the frozen top-level COALESCE.
+            expected.put(entry.getKey(), expression(mysql ? mysqlCheck(clause) : clause));
+        });
         require(actual.equals(expected));
         var enforcementColumn = query(connection,
                 "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='information_schema'"
@@ -334,8 +348,10 @@ public final class ServiceExecutionSchemaVerifier {
     }
 
     // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
-    private static List<String> tokens(String sql) {
-        Pattern token = Pattern.compile("\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
+    static List<String> tokens(String sql) {
+        String metadataLiteral = "_(?:utf8mb4|utf8|ascii|latin1|binary)"
+                + "(?:" + Pattern.quote("\\") + "){1,2}'[^'\\\\]*(?:" + Pattern.quote("\\") + "){1,2}'";
+        Pattern token = Pattern.compile(metadataLiteral + "|" +"\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
                 + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
         Matcher matcher = token.matcher(sql);
         List<String> result = new ArrayList<>();
@@ -348,6 +364,11 @@ public final class ServiceExecutionSchemaVerifier {
             if (value.isBlank() || value.matches("_(utf8mb4|utf8|ascii|latin1|binary)")) {
                 continue;
             }
+            if (value.startsWith("_") && value.indexOf('\'') >= 0) {
+                int first = value.indexOf('\''), end = value.length() - 1;
+                while (end > first && value.charAt(end - 1) == '\\') end--;
+                value = "'" + value.substring(first + 1, end) + "'";
+            }
             if (value.startsWith("`")) {
                 value = value.substring(1, value.length() - 1);
             }
@@ -356,7 +377,7 @@ public final class ServiceExecutionSchemaVerifier {
         return result;
     }
 
-    private static String expression(String sql) {
+    static String expression(String sql) {
         Expression parser = new Expression(tokens(sql));
         String value = parser.or();
         require(parser.at == parser.input.size());
@@ -415,7 +436,7 @@ public final class ServiceExecutionSchemaVerifier {
             if (at < input.size() && Set.of("=", "<>", "!=", "<", ">", "<=", ">=", "regexp")
                     .contains(input.get(at))) {
                 String operation = input.get(at++);
-                return ("!=".equals(operation) ? "<>" : operation) + "(" + left + "," + atom() + ")";
+                return ("!=".equals(operation) ? "<>" : "regexp".equals(operation) ? "regexp_like" : operation) + "(" + left + "," + atom() + ")";
             }
             return left;
         }

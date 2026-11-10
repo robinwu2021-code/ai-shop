@@ -23,6 +23,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Objects;
 
 /** Reads authorized stored facts; templates never become execution facts during projection. */
@@ -67,6 +69,14 @@ public final class WorkOrderQuery {
         var currentBindings =
                 bindings.selectCurrentForWorkOrder(
                         root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo());
+        boolean canSubmit = !legacy && !root.getScopeFrozen()
+                && List.of("OPEN", "IN_SERVICE").contains(root.getStatus())
+                && submissions.selectActiveForWorkOrder(root.getEntityNo(), root.getStoreNo(),
+                        root.getWorkOrderNo()).isEmpty();
+        Map<String, String> preparationNumbers = legacy ? Map.of() : submissions
+                .selectTaskPreparationRefs(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo()).stream()
+                .collect(Collectors.toMap(BeautyMappers.TaskPreparationRef::taskNo,
+                        BeautyMappers.TaskPreparationRef::operationNo));
         var projected =
                 rows.stream()
                         .map(
@@ -114,6 +124,14 @@ public final class WorkOrderQuery {
                                                                             utc(p.getStartedAt()),
                                                                             utc(p.getEndedAt())))
                                                     .toList();
+                                    String source = legacy ? "UNKNOWN" : sourceState(root, task, currentBindings);
+                                    String prepared = preparationNumbers.get(task.getTaskNo());
+                                    boolean preparable = canSubmit && prepared == null
+                                            && "BOUND_OBSERVED".equals(source) && "PENDING".equals(task.getStatus())
+                                            && "COUNT".equals(task.getUom()) && task.getQty().compareTo(BigDecimal.ONE) == 0
+                                            && task.getDoneQty().signum() == 0 && task.getVoidedQty().signum() == 0
+                                            && task.getStartedAt() == null && currentBindings.stream().anyMatch(b ->
+                                                task.getTaskNo().equals(b.getTaskNo()) && "MANUAL_OFFLINE".equals(b.getAdmissionKind()));
                                     return new WorkOrderTaskVO(
                                             task.getTaskNo(),
                                             task.getAppointmentItemNo(),
@@ -129,9 +147,7 @@ public final class WorkOrderQuery {
                                             execution == null
                                                     ? "UNKNOWN"
                                                     : execution.assignmentState(),
-                                            legacy
-                                                    ? "UNKNOWN"
-                                                    : sourceState(root, task, currentBindings),
+                                            source,
                                             false,
                                             execution == null ? null : execution.plannedStartAt(),
                                             execution == null ? null : execution.plannedEndAt(),
@@ -140,7 +156,10 @@ public final class WorkOrderQuery {
                                             execution == null ? null : execution.taskSnapshot(),
                                             taskSteps,
                                             people,
-                                            legacy ? List.of() : List.of("READ"));
+                                            legacy ? List.of() : canSubmit && ServiceSubmissionQuery.canFirstBind(task)
+                                                    ? List.of("READ", "SUBMIT_SOURCE")
+                                                    : preparable ? List.of("READ", "PREPARE_TASK") : List.of("READ"),
+                                            task.getVersion(), prepared);
                                 })
                         .toList();
         var submission = submissions.selectOpenForWorkOrder(root.getEntityNo(), root.getStoreNo(),
@@ -181,7 +200,7 @@ public final class WorkOrderQuery {
                         legacy ? null : operation.getOperationNo(),
                         legacy ? "UNKNOWN" : operation.getPhase(),
                         projected.stream().map(WorkOrderTaskVO::taskNo).toList(),
-                        projected.isEmpty() ? null : projected.getFirst().plannedStartAt());
+                        projected.isEmpty() ? null : projected.getFirst().plannedStartAt(), root.getVersion());
         return new WorkOrderDetailVO(
                 vo,
                 new CustomerIdentityVO(
@@ -189,7 +208,7 @@ public final class WorkOrderQuery {
                         legacy ? null : context.getIdentityRef()),
                 original,
                 projected,
-                legacy ? List.of() : List.of("READ"));
+                legacy ? List.of() : canSubmit ? List.of("READ", "SUBMIT_SERVICES") : List.of("READ"));
     }
 
     private String sourceState(

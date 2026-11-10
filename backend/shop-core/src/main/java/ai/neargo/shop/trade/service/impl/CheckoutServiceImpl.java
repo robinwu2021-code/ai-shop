@@ -334,11 +334,58 @@ public class CheckoutServiceImpl implements CheckoutService {
         manualPolicy.requireCounterReader(scope, operation);
         return unscoped(
                 () -> {
-                    var op = requireOperation(operation);
-                    requireScope(op, scope);
-                    requireCounter(op);
+                    var op = currentCounter(scope, operation);
                     return counterView(op, requireQuote(op));
                 });
+    }
+
+    @Override
+    public CounterState readCounterState(CheckoutScope scope, OperationRef operation) {
+        var actor = manualPolicy.requireCounterReader(scope, operation);
+        return unscoped(() -> {
+            var op = currentCounter(scope, operation);
+            var confirmation = op.getConfirmationNo() == null ? null : confirmations.selectOne(
+                    Wrappers.<OrdCheckoutConfirmation>lambdaQuery()
+                            .eq(OrdCheckoutConfirmation::getTenantNo, scope.tenantNo())
+                            .eq(OrdCheckoutConfirmation::getConfirmationNo, op.getConfirmationNo()));
+            if (op.getConfirmationNo() != null && (confirmation == null
+                    || !op.getCaller().equals(confirmation.getCaller())
+                    || !op.getOperationNo().equals(confirmation.getOperationNo()))) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            var observed = result(op);
+            if ("CONFIRMED".equals(op.getPhase()) && op.getPlaceKeyHash() != null) {
+                observed = new CheckoutResult(operation, "PLACING", op.getVersion(), null, null,
+                        op.getSourceObservationHash(), op.getLastErrorCode(), clock.now());
+            }
+            boolean canAccept = "QUOTED".equals(op.getPhase()) && confirmation == null
+                    && Objects.equals(actor.actorNo(), op.getActorNo())
+                    && Objects.equals(actor.realm(), op.getActorRealm())
+                    && Objects.equals(actor.subjectKind(), op.getActorKind())
+                    && Objects.equals(actor.accountNo(), op.getAccountNo());
+            return new CounterState(confirmation == null ? null : counterConfirmation(confirmation), observed, canAccept);
+        });
+    }
+
+    /** Expiry may close only an unaccepted quote under the same lock as acceptance. */
+    private OrdCheckoutOperation currentCounter(CheckoutScope scope, OperationRef operation) {
+        return writes.execute(status -> {
+            var op = operations.lock(operation.caller(), operation.operationNo());
+            requireScope(op, scope);
+            requireCounter(op);
+            if ("QUOTED".equals(op.getPhase()) && op.getConfirmationNo() == null) {
+                var quote = quotes.lock(op.getCurrentQuoteNo());
+                if (quote == null || !op.getCaller().equals(quote.getCaller())
+                        || !op.getOperationNo().equals(quote.getOperationNo())) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                if (!clock.now().isBefore(quote.getExpiresAt().toInstant(ZoneOffset.UTC))) {
+                    quote.setStatus("EXPIRED"); op.setPhase("REQUOTE_REQUIRED");
+                    changed(quotes.updateById(quote)); changed(operations.updateById(op));
+                }
+            }
+            return op;
+        });
     }
 
     @Override
