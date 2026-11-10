@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.policy;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.sql.NativeCheckMetadata;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -100,8 +101,7 @@ public final class ResourceOccupationSchemaVerifier {
                 }
             }
             List<Map<String, Object>> markers = tableExists(connection, schema, historyTable)
-                    ? query(connection, "SELECT version, script, type, checksum, success FROM "
-                            + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "621")
+                    ? history(connection, schema, historyTable, "621")
                     : List.of();
             JsonNode contract = descriptor();
             int altered = 0;
@@ -291,7 +291,7 @@ public final class ResourceOccupationSchemaVerifier {
                         + " AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME"
                         + " WHERE t.TABLE_SCHEMA=? AND t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
                 schema, table.path("name").asString())) {
-            require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
+            require(actual.put(text(row, "constraint_name"), expression(NativeCheckMetadata.decode(text(row, "check_clause")))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
         table.path("checks").properties().forEach(entry ->
@@ -318,9 +318,24 @@ public final class ResourceOccupationSchemaVerifier {
                 schema, table);
     }
 
+    private static List<Map<String, Object>> history(Connection connection, String schema,
+            String table, String version) throws SQLException {
+        String columns = historyQuote(connection, "version") + "," + historyQuote(connection, "script")
+                + "," + historyQuote(connection, "type") + "," + historyQuote(connection, "checksum")
+                + "," + historyQuote(connection, "success");
+        return query(connection, "SELECT " + columns + " FROM " + historyQuote(connection, schema)
+                + "." + historyQuote(connection, table) + " WHERE " + historyQuote(connection, "version") + "=?", version);
+    }
+
+    private static String historyQuote(Connection connection, String value) throws SQLException {
+        String quote = connection.getMetaData().getIdentifierQuoteString().strip();
+        require(Set.of("`", "\"").contains(quote));
+        return quote + identifier(value).replace(quote, quote + quote) + quote;
+    }
+
     private static boolean tableExists(Connection connection, String schema, String name) throws SQLException {
         return !query(connection,
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND LOWER(TABLE_NAME)=LOWER(?)",
                 schema, name).isEmpty();
     }
 
@@ -391,7 +406,7 @@ public final class ResourceOccupationSchemaVerifier {
     // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
     private static List<String> tokens(String sql) {
         Pattern token = Pattern.compile("\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
-                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
+                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.%\\-]");
         Matcher matcher = token.matcher(sql);
         List<String> result = new ArrayList<>();
         int offset = 0;
@@ -433,7 +448,7 @@ public final class ResourceOccupationSchemaVerifier {
             while (take("or")) {
                 values.add(and());
             }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
+            return NativeCheckMetadata.combine("or", values);
         }
 
         private String and() {
@@ -442,7 +457,7 @@ public final class ResourceOccupationSchemaVerifier {
             while (take("and")) {
                 values.add(comparison());
             }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
+            return NativeCheckMetadata.combine("and", values);
         }
 
         private String comparison() {
@@ -476,11 +491,17 @@ public final class ResourceOccupationSchemaVerifier {
         }
 
         private String sum() {
-            String value = atom();
+            String value = product();
             while (at < input.size() && List.of("+", "-").contains(input.get(at))) {
                 String op = input.get(at++);
-                value = op + "(" + value + "," + atom() + ")";
+                value = op + "(" + value + "," + product() + ")";
             }
+            return value;
+        }
+
+        private String product() {
+            String value = atom();
+            while (take("%")) value = "%(" + value + "," + atom() + ")";
             return value;
         }
 
@@ -493,6 +514,12 @@ public final class ResourceOccupationSchemaVerifier {
             require(at < input.size());
             String value = input.get(at++);
             require(!List.of(")", ",", "and", "or").contains(value));
+            if ("interval".equals(value)) {
+                require(at + 1 < input.size() && input.get(at).matches("[0-9]+"));
+                String amount = input.get(at++);
+                require("minute".equals(input.get(at++)));
+                return "interval(" + amount + ",minute)";
+            }
             if (take("(")) {
                 if ("cast".equals(value)) {
                     String input = or();
@@ -502,7 +529,12 @@ public final class ResourceOccupationSchemaVerifier {
                     return "cast(" + input + "," + type + ")";
                 }
                 var args = arguments();
+                if ("mod".equals(value) && args.size() == 2) return "%(" + String.join(",", args) + ")";
+                if ("timestampadd".equals(value) && args.size() == 3 && "minute".equals(args.getFirst())) {
+                    return "+(" + args.get(2) + ",interval(" + args.get(1) + ",minute))";
+                }
                 // Only the no-flags two-argument native spelling is equivalent to the REGEXP operator.
+                if ("octet_length".equals(value)) value = "length";
                 String function = "regexp_like".equals(value) && args.size() == 2 ? "regexp" : value;
                 return function + "(" + String.join(",", args) + ")";
             }

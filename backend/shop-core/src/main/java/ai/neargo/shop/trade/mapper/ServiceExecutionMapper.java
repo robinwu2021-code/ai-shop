@@ -1,4 +1,5 @@
 package ai.neargo.shop.trade.mapper;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.ActualOriginal;
 
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionBinding;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionScope;
@@ -27,7 +28,7 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
     @Select("""
             SELECT * FROM ord_checkout_line
             WHERE tenant_no='MAIN' AND caller='BEAUTY' AND source_line_no=#{binding.sourceLineNo}
-              AND operation_no=#{binding.sourceOperationNo} AND order_no=#{binding.orderNo}
+              AND operation_no=#{binding.sourceOperationNo}
               AND sub_order_no=#{binding.subOrderNo} AND deleted=0
               AND EXISTS (SELECT 1 FROM ord_checkout_operation o
                   WHERE o.tenant_no='MAIN' AND o.caller='BEAUTY' AND o.operation_no=#{binding.sourceOperationNo}
@@ -249,7 +250,32 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
                 """)
         QuantityFacts quantity(@Param("scope") ExecutionScope scope, @Param("sourceLineNo") String sourceLineNo);
 
-        // M4 finishRelease and M6 markPerformed/voidUnserved are staged with their real proof owners.
+        /** Terminal COUNT movement is coupled to the exact pending completion action in the same owner TX. */
+        @Update("""
+                UPDATE ord_service_execution_unit u SET state='PERFORMED', current_execution_no=NULL,
+                  updated_at=CURRENT_TIMESTAMP(3), version=version+1
+                WHERE u.tenant_no='MAIN' AND u.entity_no=#{binding.scope.entityNo}
+                  AND u.store_no=#{binding.scope.storeNo} AND u.unit_no=#{unitNo} AND u.deleted=0
+                  AND u.version=#{expectedVersion} AND u.state='RESERVED'
+                  AND u.current_execution_no=#{binding.executionNo} AND u.attempt_no=#{binding.attemptNo}
+                  AND u.task_no=#{binding.taskNo} AND u.work_order_no=#{binding.workOrderNo}
+                  AND u.binding_no=#{binding.bindingNo} AND u.binding_revision=#{binding.bindingRevision}
+                  AND u.source_operation_no=#{binding.sourceOperationNo} AND u.order_no=#{binding.orderNo}
+                  AND u.sub_order_no=#{binding.subOrderNo} AND u.source_line_no=#{binding.sourceLineNo}
+                  AND u.unit_ordinal=#{binding.unitOrdinal} AND u.quantity=1 AND u.uom='COUNT'
+                  AND EXISTS (SELECT 1 FROM ord_service_execution e
+                    JOIN ord_service_execution_action a ON a.tenant_no=e.tenant_no AND a.entity_no=e.entity_no
+                      AND a.store_no=e.store_no AND a.execution_no=e.execution_no
+                    WHERE e.tenant_no=u.tenant_no AND e.entity_no=u.entity_no AND e.store_no=u.store_no
+                      AND e.execution_no=#{binding.executionNo} AND e.unit_no=u.unit_no AND e.state='FULFILLED'
+                      AND e.deleted=0 AND a.kind='FULFILL' AND a.action_no=#{actionNo}
+                      AND a.action_hash=#{actionHash} AND a.deleted=0 AND a.result_revision IS NULL)
+                """)
+        int markPerformed(@Param("binding") ExecutionBinding binding, @Param("unitNo") String unitNo,
+                @Param("expectedVersion") long expectedVersion, @Param("actionNo") String actionNo,
+                @Param("actionHash") String actionHash);
+
+        // Unstarted release and unserved voiding remain separate proof-owner work.
     }
 
     /** Action association is append-only; only its still-empty result tuple may be finalized once. */
@@ -309,5 +335,78 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
                 @Param("actionNo") String actionNo, @Param("actionHash") String actionHash,
                 @Param("expectedVersion") long expectedVersion, @Param("expectedEpoch") long expectedEpoch,
                 @Param("state") String state, @Param("resultRevision") long resultRevision);
+
+
+        /** Full history is retained; duplicate ACKs are corruption rather than a last-row-wins result. */
+        @Select("""
+                SELECT * FROM ord_service_execution_action WHERE tenant_no='MAIN'
+                  AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND execution_no=#{executionNo} AND kind='START_ACK' ORDER BY id
+                """)
+        List<OrdServiceExecutionAction> findStartAck(@Param("scope") ExecutionScope scope,
+                @Param("executionNo") String executionNo);
+
+        /** Historical originals include deleted conflicts instead of silently minting another completion. */
+        @Select("""
+                SELECT * FROM ord_service_execution_action WHERE tenant_no='MAIN'
+                  AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND execution_no=#{executionNo} AND kind='FULFILL' ORDER BY id
+                """)
+        List<OrdServiceExecutionAction> findCompletion(@Param("scope") ExecutionScope scope,
+                @Param("executionNo") String executionNo);
     }
+
+    /** Bind one actual Native original, retaining the same COUNT reservation and planned BTRC. */
+    @Update("""
+            UPDATE ord_service_execution e SET state=#{state},
+              actual_resource_owner_no=#{actual.ownerNo}, actual_resource_command_no=#{actual.commandNo},
+              actual_resource_payload_schema=#{actual.payloadSchema}, actual_resource_payload_hash=#{actual.payloadHash},
+              resource_outcome_no=#{outcomeNo}, resource_outcome_hash=#{outcomeHash},
+              reason_code=#{reason}, next_retry_at=#{retryAt}, updated_at=CURRENT_TIMESTAMP(3), version=version+1
+            WHERE e.tenant_no='MAIN' AND e.entity_no=#{binding.scope.entityNo} AND e.store_no=#{binding.scope.storeNo}
+              AND e.execution_no=#{binding.executionNo} AND e.binding_hash=#{bindingHash}
+              AND e.version=#{expectedVersion} AND e.observation_epoch=#{expectedEpoch}
+              AND e.attempt_no=#{binding.attemptNo} AND e.state IN ('PREPARED','SUSPEND_REQUESTED')
+              AND e.actual_resource_command_no IS NULL AND e.resource_outcome_no IS NULL
+              AND #{state} IN ('STARTED','STARTED_SUSPENDED')
+              AND (e.state<>'SUSPEND_REQUESTED' OR #{state}='STARTED_SUSPENDED')
+              AND EXISTS (SELECT 1 FROM ord_service_execution_unit u
+                WHERE u.tenant_no=e.tenant_no AND u.entity_no=e.entity_no AND u.store_no=e.store_no
+                  AND u.unit_no=e.unit_no AND u.state='RESERVED' AND u.current_execution_no=e.execution_no
+                  AND u.attempt_no=e.attempt_no)
+              AND EXISTS (SELECT 1 FROM ord_service_execution_action a
+                WHERE a.tenant_no=e.tenant_no AND a.entity_no=e.entity_no AND a.store_no=e.store_no
+                  AND a.execution_no=e.execution_no AND a.kind='START_ACK' AND a.action_no=#{actionNo}
+                  AND a.expected_revision=e.version AND a.observation_epoch=e.observation_epoch
+                  AND a.result_revision IS NULL)
+            """)
+    int markResourceStarted(@Param("binding") ExecutionBinding binding, @Param("bindingHash") String bindingHash,
+            @Param("expectedVersion") long expectedVersion, @Param("expectedEpoch") long expectedEpoch,
+            @Param("actual") ActualOriginal actual,
+            @Param("outcomeNo") String outcomeNo, @Param("outcomeHash") String outcomeHash,
+            @Param("actionNo") String actionNo, @Param("state") String state, @Param("reason") String reason,
+            @Param("retryAt") LocalDateTime retryAt);
+
+    /** A completed service is a fact even after source suspension; the original reason remains in its proof. */
+    @Update("""
+            UPDATE ord_service_execution e SET state='FULFILLED', reason_code=#{reason}, next_retry_at=NULL,
+              updated_at=CURRENT_TIMESTAMP(3), version=version+1
+            WHERE e.tenant_no='MAIN' AND e.entity_no=#{binding.scope.entityNo}
+              AND e.store_no=#{binding.scope.storeNo} AND e.execution_no=#{binding.executionNo} AND e.deleted=0
+              AND e.binding_hash=#{bindingHash} AND e.version=#{expectedVersion}
+              AND e.observation_epoch=#{expectedEpoch} AND e.attempt_no=#{binding.attemptNo}
+              AND e.state IN ('STARTED','STARTED_SUSPENDED') AND e.actual_resource_command_no IS NOT NULL
+              AND e.resource_outcome_no IS NOT NULL AND e.resource_outcome_hash IS NOT NULL
+              AND EXISTS (SELECT 1 FROM ord_service_execution_unit u WHERE u.tenant_no=e.tenant_no
+                AND u.entity_no=e.entity_no AND u.store_no=e.store_no AND u.unit_no=e.unit_no AND u.deleted=0
+                AND u.state='RESERVED' AND u.current_execution_no=e.execution_no AND u.attempt_no=e.attempt_no)
+              AND EXISTS (SELECT 1 FROM ord_service_execution_action a WHERE a.tenant_no=e.tenant_no
+                AND a.entity_no=e.entity_no AND a.store_no=e.store_no AND a.execution_no=e.execution_no
+                AND a.action_no=#{actionNo} AND a.action_hash=#{actionHash} AND a.kind='FULFILL' AND a.deleted=0
+                AND a.expected_revision=e.version AND a.observation_epoch=e.observation_epoch
+                AND a.result_revision IS NULL)
+            """)
+    int markFulfilled(@Param("binding") ExecutionBinding binding, @Param("bindingHash") String bindingHash,
+            @Param("expectedVersion") long expectedVersion, @Param("expectedEpoch") long expectedEpoch,
+            @Param("actionNo") String actionNo, @Param("actionHash") String actionHash, @Param("reason") String reason);
 }

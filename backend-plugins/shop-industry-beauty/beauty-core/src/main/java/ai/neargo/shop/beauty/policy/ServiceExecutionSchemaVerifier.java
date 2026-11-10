@@ -2,10 +2,13 @@ package ai.neargo.shop.beauty.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.datasource.DataSourceUtils;
+
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.sql.Connection;
@@ -26,19 +29,27 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.sql.DataSource;
 
-/** Per-use physical owner inspection keeps optional execution damage from becoming an unfenced legacy write. */
+/**
+ * Per-use physical owner inspection keeps optional execution damage from becoming an unfenced
+ * legacy write.
+ */
 public final class ServiceExecutionSchemaVerifier {
-    private static final String DESCRIPTOR = "META-INF/shop/beauty-service-execution-fence-schema.json";
-    private static final String MIGRATION = "db/industry/beauty/V10__beauty_service_execution_fence.sql";
-    private static final Set<String> TABLES = Set.of(
-            "bty_service_execution_fence");
+    private static final String DESCRIPTOR =
+            "META-INF/shop/beauty-service-execution-fence-schema.json";
+    private static final String MIGRATION =
+            "db/industry/beauty/V10__beauty_service_execution_fence.sql";
+    private static final Set<String> TABLES = Set.of("bty_service_execution_fence");
     private final DataSource source;
     private final String historyTable;
     private final String historySchema;
 
-    /** Only existing primary datasource and Flyway owner settings are captured; construction performs no IO. */
+    /**
+     * Only existing primary datasource and Flyway owner settings are captured; construction
+     * performs no IO.
+     */
     public ServiceExecutionSchemaVerifier(@Qualifier("dataSource") DataSource source) {
         this.source = Objects.requireNonNull(source, "source");
         this.historyTable = "bty_flyway_history";
@@ -47,10 +58,15 @@ public final class ServiceExecutionSchemaVerifier {
 
     /** ABSENT is legal only when neither a V10 marker nor any new owner table exists. */
     public enum Installation {
-        ABSENT, INSTALLED, CORRUPT
+        ABSENT,
+        INSTALLED,
+        CORRUPT
     }
 
-    /** Reinspect on every affected use; a previously valid installation never masks later physical drift. */
+    /**
+     * Reinspect on every affected use; a previously valid installation never masks later physical
+     * drift.
+     */
     public Installation installation() {
         Connection connection = null;
         try {
@@ -60,8 +76,10 @@ public final class ServiceExecutionSchemaVerifier {
             }
             connection = DataSourceUtils.getConnection(source);
             String product = connection.getMetaData().getDatabaseProductName();
-            String schema = "MySQL".equals(product) || "MariaDB".equals(product)
-                    ? connection.getCatalog() : connection.getSchema();
+            String schema =
+                    "MySQL".equals(product) || "MariaDB".equals(product)
+                            ? connection.getCatalog()
+                            : connection.getSchema();
             if (schema == null || schema.isBlank()) {
                 schema = connection.getSchema();
             }
@@ -73,20 +91,29 @@ public final class ServiceExecutionSchemaVerifier {
                     present++;
                 }
             }
-            List<Map<String, Object>> markers = tableExists(connection, schema, historyTable)
-                    ? query(connection, "SELECT version, script, type, checksum, success FROM "
-                            + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "10")
-                    : List.of();
+            List<Map<String, Object>> markers =
+                    tableExists(connection, schema, historyTable)
+                            ? query(
+                                    connection,
+                                    "SELECT version, script, type, checksum, success FROM "
+                                            + quoted(schema)
+                                            + "."
+                                            + quoted(historyTable)
+                                            + " WHERE version=?",
+                                    "10")
+                            : List.of();
             if (present == 0 && markers.isEmpty()) {
                 return Installation.ABSENT;
             }
             require(present == 1 && markers.size() == 1);
             JsonNode contract = descriptor();
             Map<String, Object> marker = markers.getFirst();
-            require("V10__beauty_service_execution_fence.sql".equals(text(marker, "script"))
-                    && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
-                    && marker.get("checksum") instanceof Number checksum
-                    && checksum.intValue() == contract.path("flywayChecksum").asInt());
+            require(
+                    "V10__beauty_service_execution_fence.sql".equals(text(marker, "script"))
+                            && "SQL".equals(text(marker, "type"))
+                            && success(marker.get("success"))
+                            && marker.get("checksum") instanceof Number checksum
+                            && checksum.intValue() == contract.path("flywayChecksum").asInt());
             inspect(connection, schema, contract);
             return Installation.INSTALLED;
         } catch (Exception failure) {
@@ -98,10 +125,14 @@ public final class ServiceExecutionSchemaVerifier {
         }
     }
 
-    /** New execution cannot start using absent or damaged authority, regardless of provider feature flags. */
+    /**
+     * New execution cannot start using absent or damaged authority, regardless of provider feature
+     * flags.
+     */
     public void requireAvailable() {
         if (installation() != Installation.INSTALLED) {
-            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
+            throw BizException.of(
+                    ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "EXECUTION_SCHEMA_UNAVAILABLE");
         }
     }
 
@@ -114,25 +145,43 @@ public final class ServiceExecutionSchemaVerifier {
         try (InputStream stream = descriptors.getFirst().openStream()) {
             contract = JsonMapper.builder().build().readTree(stream);
         }
-        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 10
-                && "beauty-core/primary".equals(contract.path("owner").asString())
-                && contract.path("tables").size() == 1 && contract.path("triggers").size() == 2);
+        require(
+                contract.path("schemaVersion").asInt() == 1
+                        && contract.path("platformVersion").asInt() == 10
+                        && "beauty-core/primary".equals(contract.path("owner").asString())
+                        && contract.path("tables").size() == 1
+                        && contract.path("triggers").size() == 2);
         try (InputStream stream = migrations.getFirst().openStream()) {
-            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(stream.readAllBytes()));
+            String hash =
+                    HexFormat.of()
+                            .formatHex(
+                                    MessageDigest.getInstance("SHA-256")
+                                            .digest(stream.readAllBytes()));
             require(hash.equals(contract.path("migrationSha256").asString()));
         }
         return contract;
     }
 
-    private void inspect(Connection connection, String schema, JsonNode contract) throws SQLException {
+    private void inspect(Connection connection, String schema, JsonNode contract)
+            throws SQLException {
         String tenantCollation = null;
         for (JsonNode identity : contract.path("ownerIdentity")) {
-            List<Map<String, Object>> rows = columns(connection, schema, identity.path("table").asString());
-            Map<String, Object> column = rows.stream()
-                    .filter(row -> identity.path("column").asString().equals(text(row, "column_name")))
-                    .findFirst().orElseThrow();
-            require("utf8mb4".equals(text(column, "character_set_name"))
-                    && identity.path("type").asString().equals(text(column, "column_type")));
+            List<Map<String, Object>> rows =
+                    columns(connection, schema, identity.path("table").asString());
+            Map<String, Object> column =
+                    rows.stream()
+                            .filter(
+                                    row ->
+                                            identity.path("column")
+                                                    .asString()
+                                                    .equals(text(row, "column_name")))
+                            .findFirst()
+                            .orElseThrow();
+            require(
+                    "utf8mb4".equals(text(column, "character_set_name"))
+                            && identity.path("type")
+                                    .asString()
+                                    .equals(text(column, "column_type")));
             String collation = text(column, "collation_name");
             if ("TENANT".equals(identity.path("role").asString())) {
                 require(!collation.isBlank());
@@ -150,12 +199,18 @@ public final class ServiceExecutionSchemaVerifier {
         for (JsonNode table : contract.path("tables")) {
             String name = table.path("name").asString();
             require(TABLES.contains(name) && seen.add(name));
-            var physical = query(connection,
-                    "SELECT ENGINE, TABLE_COLLATION FROM information_schema.TABLES"
-                            + " WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
-                    schema, name);
-            require(physical.size() == 1 && "InnoDB".equals(text(physical.getFirst(), "engine"))
-                    && tenantCollation.equals(text(physical.getFirst(), "table_collation")));
+            var physical =
+                    query(
+                            connection,
+                            "SELECT ENGINE, TABLE_COLLATION FROM information_schema.TABLES"
+                                    + " WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
+                            schema,
+                            name);
+            require(
+                    physical.size() == 1
+                            && "InnoDB".equals(text(physical.getFirst(), "engine"))
+                            && tenantCollation.equals(
+                                    text(physical.getFirst(), "table_collation")));
             List<Map<String, Object>> actual = columns(connection, schema, name);
             require(actual.size() == table.path("columns").size());
             for (int i = 0; i < actual.size(); i++) {
@@ -166,50 +221,72 @@ public final class ServiceExecutionSchemaVerifier {
         }
         require(seen.equals(TABLES));
         Map<String, Map<String, Object>> triggers = new HashMap<>();
-        for (var trigger : query(connection,
-                "SELECT TRIGGER_NAME,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_TIMING,ACTION_STATEMENT"
-                        + " FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?"
-                        + " AND EVENT_OBJECT_TABLE IN (?)", schema,
-                "bty_service_execution_fence")) {
+        for (var trigger :
+                query(
+                        connection,
+                        "SELECT"
+                            + " TRIGGER_NAME,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_TIMING,ACTION_STATEMENT"
+                            + " FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=? AND"
+                            + " EVENT_OBJECT_TABLE IN (?)",
+                        schema,
+                        "bty_service_execution_fence")) {
             require(triggers.put(text(trigger, "trigger_name"), trigger) == null);
         }
         require(triggers.size() == contract.path("triggers").size());
         for (JsonNode expected : contract.path("triggers")) {
             var trigger = triggers.get(expected.path("name").asString());
-            require(trigger != null
-                    && text(trigger, "event_manipulation").equals(expected.path("event").asString())
-                    && text(trigger, "event_object_table").equals(expected.path("table").asString())
-                    && text(trigger, "action_timing").equals(expected.path("timing").asString())
-                    && tokens(text(trigger, "action_statement")).equals(tokens(expected.path("body").asString())));
+            require(
+                    trigger != null
+                            && text(trigger, "event_manipulation")
+                                    .equals(expected.path("event").asString())
+                            && text(trigger, "event_object_table")
+                                    .equals(expected.path("table").asString())
+                            && text(trigger, "action_timing")
+                                    .equals(expected.path("timing").asString())
+                            && tokens(text(trigger, "action_statement"))
+                                    .equals(tokens(expected.path("body").asString())));
         }
     }
 
-    private static void checkColumn(Map<String, Object> actual, JsonNode expected, String tenantCollation) {
+    private static void checkColumn(
+            Map<String, Object> actual, JsonNode expected, String tenantCollation) {
         String name = expected.path("name").asString();
-        String type = text(actual, "column_type").toLowerCase(Locale.ROOT)
-                .replaceAll("\\b(bigint|int)\\([0-9]+\\)", "$1");
+        String type =
+                text(actual, "column_type")
+                        .toLowerCase(Locale.ROOT)
+                        .replaceAll("\\b(bigint|int)\\([0-9]+\\)", "$1");
         String expectedCollation = nullable(expected.get("collation"));
         String expectedCharset = nullable(expected.get("charset"));
         if ("OWNER_TENANT".equals(expectedCollation)) {
             expectedCollation = tenantCollation;
             expectedCharset = "utf8mb4";
         }
-        require(name.equals(text(actual, "column_name")) && type.equals(expected.path("type").asString())
-                && (expected.path("nullable").asBoolean() ? "YES" : "NO").equals(text(actual, "is_nullable"))
-                && Objects.equals(expectedCharset, actual.get("character_set_name"))
-                && Objects.equals(expectedCollation, actual.get("collation_name"))
-                && Objects.equals(defaultValue(nullable(expected.get("default"))),
-                        defaultValue(actual.get("column_default")))
-                && ("id".equals(name) ? "auto_increment" : "").equals(text(actual, "extra")));
+        require(
+                name.equals(text(actual, "column_name"))
+                        && type.equals(expected.path("type").asString())
+                        && (expected.path("nullable").asBoolean() ? "YES" : "NO")
+                                .equals(text(actual, "is_nullable"))
+                        && Objects.equals(expectedCharset, actual.get("character_set_name"))
+                        && Objects.equals(expectedCollation, actual.get("collation_name"))
+                        && Objects.equals(
+                                defaultValue(nullable(expected.get("default"))),
+                                defaultValue(actual.get("column_default")))
+                        && ("id".equals(name) ? "auto_increment" : "")
+                                .equals(text(actual, "extra")));
     }
 
-    private static void checkKeys(Connection connection, String schema, JsonNode table) throws SQLException {
+    private static void checkKeys(Connection connection, String schema, JsonNode table)
+            throws SQLException {
         Map<String, List<String>> keys = new TreeMap<>();
         Map<String, Boolean> unique = new HashMap<>();
-        for (var row : query(connection,
-                "SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME, SUB_PART, INDEX_TYPE FROM information_schema.STATISTICS"
-                        + " WHERE TABLE_SCHEMA=? AND TABLE_NAME=? ORDER BY INDEX_NAME,SEQ_IN_INDEX",
-                schema, table.path("name").asString())) {
+        for (var row :
+                query(
+                        connection,
+                        "SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME, SUB_PART, INDEX_TYPE FROM"
+                            + " information_schema.STATISTICS WHERE TABLE_SCHEMA=? AND TABLE_NAME=?"
+                            + " ORDER BY INDEX_NAME,SEQ_IN_INDEX",
+                        schema,
+                        table.path("name").asString())) {
             String name = text(row, "index_name");
             require(row.get("sub_part") == null && "BTREE".equals(text(row, "index_type")));
             keys.computeIfAbsent(name, ignored -> new ArrayList<>()).add(text(row, "column_name"));
@@ -220,10 +297,13 @@ public final class ServiceExecutionSchemaVerifier {
         expected.put("PRIMARY", strings(table.path("primaryKey")));
         expectedUnique.put("PRIMARY", true);
         for (String kind : List.of("unique", "indexes")) {
-            table.path(kind).properties().forEach(entry -> {
-                expected.put(entry.getKey(), strings(entry.getValue()));
-                expectedUnique.put(entry.getKey(), "unique".equals(kind));
-            });
+            table.path(kind)
+                    .properties()
+                    .forEach(
+                            entry -> {
+                                expected.put(entry.getKey(), strings(entry.getValue()));
+                                expectedUnique.put(entry.getKey(), "unique".equals(kind));
+                            });
         }
         require(keys.equals(expected) && unique.equals(expectedUnique));
     }
@@ -238,53 +318,84 @@ public final class ServiceExecutionSchemaVerifier {
         return clause;
     }
 
-    private static void checkConstraints(Connection connection, String schema, JsonNode table) throws SQLException {
+    private static void checkConstraints(Connection connection, String schema, JsonNode table)
+            throws SQLException {
         Map<String, String> actual = new TreeMap<>();
-        for (var row : query(connection,
-                "SELECT t.CONSTRAINT_NAME,c.CHECK_CLAUSE FROM information_schema.TABLE_CONSTRAINTS t"
-                        + " JOIN information_schema.CHECK_CONSTRAINTS c ON c.CONSTRAINT_SCHEMA=t.CONSTRAINT_SCHEMA"
-                        + " AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME"
-                        + " WHERE t.TABLE_SCHEMA=? AND t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
-                schema, table.path("name").asString())) {
-            require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
+        for (var row :
+                query(
+                        connection,
+                        "SELECT t.CONSTRAINT_NAME,c.CHECK_CLAUSE FROM"
+                            + " information_schema.TABLE_CONSTRAINTS t JOIN"
+                            + " information_schema.CHECK_CONSTRAINTS c ON"
+                            + " c.CONSTRAINT_SCHEMA=t.CONSTRAINT_SCHEMA AND"
+                            + " c.CONSTRAINT_NAME=t.CONSTRAINT_NAME WHERE t.TABLE_SCHEMA=? AND"
+                            + " t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
+                        schema,
+                        table.path("name").asString())) {
+            require(
+                    actual.put(text(row, "constraint_name"), expression(text(row, "check_clause")))
+                            == null);
         }
         Map<String, String> expected = new TreeMap<>();
         boolean mysql = "MySQL".equals(connection.getMetaData().getDatabaseProductName());
-        table.path("checks").properties().forEach(entry -> {
-            String clause = entry.getValue().asString();
-            // MySQL requires an explicit boolean comparison for the frozen top-level COALESCE.
-            expected.put(entry.getKey(), expression(mysql ? mysqlCheck(clause) : clause));
-        });
+        table.path("checks")
+                .properties()
+                .forEach(
+                        entry -> {
+                            String clause = entry.getValue().asString();
+                            // MySQL requires an explicit boolean comparison for the frozen
+                            // top-level COALESCE.
+                            expected.put(
+                                    entry.getKey(),
+                                    expression(mysql ? mysqlCheck(clause) : clause));
+                        });
         require(actual.equals(expected));
-        var enforcementColumn = query(connection,
-                "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='information_schema'"
-                        + " AND TABLE_NAME='TABLE_CONSTRAINTS' AND COLUMN_NAME='ENFORCED'");
+        var enforcementColumn =
+                query(
+                        connection,
+                        "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE"
+                            + " TABLE_SCHEMA='information_schema' AND"
+                            + " TABLE_NAME='TABLE_CONSTRAINTS' AND COLUMN_NAME='ENFORCED'");
         if (!enforcementColumn.isEmpty()) {
-            var enforced = query(connection,
-                    "SELECT ENFORCED FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA=?"
-                            + " AND TABLE_NAME=? AND CONSTRAINT_TYPE='CHECK'", schema, table.path("name").asString());
-            require(enforced.size() == expected.size()
-                    && enforced.stream().allMatch(row -> "YES".equals(text(row, "enforced"))));
+            var enforced =
+                    query(
+                            connection,
+                            "SELECT ENFORCED FROM information_schema.TABLE_CONSTRAINTS WHERE"
+                                + " TABLE_SCHEMA=? AND TABLE_NAME=? AND CONSTRAINT_TYPE='CHECK'",
+                            schema,
+                            table.path("name").asString());
+            require(
+                    enforced.size() == expected.size()
+                            && enforced.stream()
+                                    .allMatch(row -> "YES".equals(text(row, "enforced"))));
         }
     }
 
-    private static List<Map<String, Object>> columns(Connection connection, String schema, String table)
-            throws SQLException {
-        return query(connection,
-                "SELECT COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_DEFAULT,EXTRA"
-                        + " FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=?"
-                        + " ORDER BY ORDINAL_POSITION",
-                schema, table);
+    private static List<Map<String, Object>> columns(
+            Connection connection, String schema, String table) throws SQLException {
+        return query(
+                connection,
+                "SELECT"
+                    + " COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_DEFAULT,EXTRA"
+                    + " FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=? ORDER"
+                    + " BY ORDINAL_POSITION",
+                schema,
+                table);
     }
 
-    private static boolean tableExists(Connection connection, String schema, String name) throws SQLException {
-        return !query(connection,
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
-                schema, name).isEmpty();
+    private static boolean tableExists(Connection connection, String schema, String name)
+            throws SQLException {
+        return !query(
+                        connection,
+                        "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND"
+                            + " TABLE_NAME=?",
+                        schema,
+                        name)
+                .isEmpty();
     }
 
-    private static List<Map<String, Object>> query(Connection connection, String sql, Object... values)
-            throws SQLException {
+    private static List<Map<String, Object>> query(
+            Connection connection, String sql, Object... values) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             for (int i = 0; i < values.length; i++) {
                 statement.setObject(i + 1, values[i]);
@@ -295,7 +406,9 @@ public final class ServiceExecutionSchemaVerifier {
                 while (results.next()) {
                     Map<String, Object> row = new LinkedHashMap<>();
                     for (int i = 1; i <= metadata.getColumnCount(); i++) {
-                        row.put(metadata.getColumnLabel(i).toLowerCase(Locale.ROOT), results.getObject(i));
+                        row.put(
+                                metadata.getColumnLabel(i).toLowerCase(Locale.ROOT),
+                                results.getObject(i));
                     }
                     rows.add(row);
                 }
@@ -317,11 +430,14 @@ public final class ServiceExecutionSchemaVerifier {
             return null;
         }
         String text = value.toString();
-        return text.startsWith("'") && text.endsWith("'") ? text.substring(1, text.length() - 1) : text;
+        return text.startsWith("'") && text.endsWith("'")
+                ? text.substring(1, text.length() - 1)
+                : text;
     }
 
     private static boolean success(Object value) {
-        return Boolean.TRUE.equals(value) || value instanceof Number number && number.intValue() == 1;
+        return Boolean.TRUE.equals(value)
+                || value instanceof Number number && number.intValue() == 1;
     }
 
     private static List<String> strings(JsonNode array) {
@@ -347,12 +463,22 @@ public final class ServiceExecutionSchemaVerifier {
         }
     }
 
-    // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers normalize.
+    // Preserve literal bytes and boolean grouping. Only quoting, whitespace and charset introducers
+    // normalize.
     static List<String> tokens(String sql) {
-        String metadataLiteral = "_(?:utf8mb4|utf8|ascii|latin1|binary)"
-                + "(?:" + Pattern.quote("\\") + "){1,2}'[^'\\\\]*(?:" + Pattern.quote("\\") + "){1,2}'";
-        Pattern token = Pattern.compile(metadataLiteral + "|" +"\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
-                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
+        String metadataLiteral =
+                "_(?:utf8mb4|utf8|ascii|latin1|binary)"
+                        + "(?:"
+                        + Pattern.quote("\\")
+                        + "){1,2}'[^'\\\\]*(?:"
+                        + Pattern.quote("\\")
+                        + "){1,2}'";
+        Pattern token =
+                Pattern.compile(
+                        metadataLiteral
+                                + "|"
+                                + "\\s+|'(?:''|\\\\.|[^'\\\\])*'|`[^`]+`|<=>|<>|!=|<=|>=|"
+                                + "[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+|[(),=<>;+.-]");
         Matcher matcher = token.matcher(sql);
         List<String> result = new ArrayList<>();
         int offset = 0;
@@ -384,7 +510,10 @@ public final class ServiceExecutionSchemaVerifier {
         return value;
     }
 
-    /** Finite expression grammar retains AND/OR/BETWEEN precedence while accepting server-added parentheses. */
+    /**
+     * Finite expression grammar retains AND/OR/BETWEEN precedence while accepting server-added
+     * parentheses.
+     */
     private static final class Expression {
         private final List<String> input;
         private int at;
@@ -399,7 +528,7 @@ public final class ServiceExecutionSchemaVerifier {
             while (take("or")) {
                 values.add(and());
             }
-            return values.size() == 1 ? values.getFirst() : "or(" + String.join(",", values) + ")";
+            return values.size() == 1 ? values.getFirst() : associative("or", values);
         }
 
         private String and() {
@@ -408,14 +537,14 @@ public final class ServiceExecutionSchemaVerifier {
             while (take("and")) {
                 values.add(comparison());
             }
-            return values.size() == 1 ? values.getFirst() : "and(" + String.join(",", values) + ")";
+            return values.size() == 1 ? values.getFirst() : associative("and", values);
         }
 
         private String comparison() {
             if (take("not")) {
                 return "not(" + comparison() + ")";
             }
-            String left = atom();
+            String left = arithmetic();
             if (take("is")) {
                 boolean negated = take("not");
                 expect("null");
@@ -433,12 +562,57 @@ public final class ServiceExecutionSchemaVerifier {
                 return (not ? "notin(" : "in(") + left + "," + String.join(",", args) + ")";
             }
             require(!not);
-            if (at < input.size() && Set.of("=", "<>", "!=", "<", ">", "<=", ">=", "regexp")
-                    .contains(input.get(at))) {
+            if (at < input.size()
+                    && Set.of("=", "<=>", "<>", "!=", "<", ">", "<=", ">=", "regexp")
+                            .contains(input.get(at))) {
                 String operation = input.get(at++);
-                return ("!=".equals(operation) ? "<>" : "regexp".equals(operation) ? "regexp_like" : operation) + "(" + left + "," + atom() + ")";
+                String right = arithmetic();
+                if (("<>".equals(operation) || "!=".equals(operation))
+                        && ("0".equals(left) && right.startsWith("coalesce(")
+                                || "0".equals(right) && left.startsWith("coalesce("))) {
+                    return booleanTerm("0".equals(left) ? right : left);
+                }
+                return ("!=".equals(operation)
+                                ? "<>"
+                                : "regexp".equals(operation) ? "regexp_like" : operation)
+                        + "("
+                        + left
+                        + ","
+                        + right
+                        + ")";
             }
             return left;
+        }
+
+        private String arithmetic() {
+            String value = atom();
+            while (at < input.size() && ("+".equals(input.get(at)) || "-".equals(input.get(at)))) {
+                String operation = input.get(at++);
+                value = operation + "(" + value + "," + atom() + ")";
+            }
+            return value;
+        }
+
+        private static String booleanTerm(String value) {
+            return value.startsWith("coalesce(") ? "nonzero(" + value + ")" : value;
+        }
+
+        private static String associative(String operator, List<String> values) {
+            String prefix = operator + "(";
+            return prefix
+                    + String.join(
+                            ",",
+                            values.stream()
+                                    .map(Expression::booleanTerm)
+                                    .map(
+                                            value ->
+                                                    value.startsWith(prefix) && value.endsWith(")")
+                                                            ? value.substring(
+                                                                    prefix.length(),
+                                                                    value.length() - 1)
+                                                            : value)
+                                    .toList())
+                    + ")";
         }
 
         private String atom() {
@@ -451,6 +625,15 @@ public final class ServiceExecutionSchemaVerifier {
             String value = input.get(at++);
             require(!List.of(")", ",", "and", "or").contains(value));
             if (take("(")) {
+                if ("cast".equals(value)) {
+                    // V15 uses the MySQL CAST(... AS JSON) grammar, not comma-separated function
+                    // arguments.
+                    String argument = or();
+                    expect("as");
+                    expect("json");
+                    expect(")");
+                    return "cast-json(" + argument + ")";
+                }
                 return value + "(" + String.join(",", arguments()) + ")";
             }
             return value;

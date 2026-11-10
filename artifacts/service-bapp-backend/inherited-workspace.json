@@ -1,0 +1,171 @@
+{
+  "source": "/Users/robin/work/ai/ai-shop-codex",
+  "head": "a01b155fc",
+  "rule": "Inherited pre-existing changes: preserve, do not claim or commit as this task implementation.",
+  "files": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/WorkOrderTaskVO.java",
+      "sha256": "4ca6929c61ff08c249c6ebe6cb8f358ca49af25bf93b69d0f7735aebcb05d0d2"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/WorkOrderVO.java",
+      "sha256": "aed994830c55ff871989a89ce4dbe919e2fe74dd9eee5d66b0915cb70e935ad1"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java",
+      "sha256": "0037678b3cbb45d12fa3afbb4366b7905ba4fbe35d6f7365b9b273e69f575a9e"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java",
+      "sha256": "bda41b6becd0191188b8fa98e05e25bcc326edce95f115514e8619a7d894b3f3"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceExecutionSchemaVerifier.java",
+      "sha256": "497afdd7043ed8fa36e6cdbe9f6cb9cb09332ecffb27d2a41ccfd8ae02eba878"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceExecutionStockIntentSchemaVerifier.java",
+      "sha256": "f3cdd374231a94096ad4f70fa4644f9ea2d5eb550f59512a4e22aadd34bd413a"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceSubmissionAccess.java",
+      "sha256": "79be6a0703d2a80ba5a641554951119c190b562e842ed8374cec48977b3b2512"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionQuery.java",
+      "sha256": "f3a76eed2f35cd2d5f5f5ac8ece47a3b39f8ac624f2b27d27de7538595e71c8b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java",
+      "sha256": "ce9d63ebfd278b18a5a3558b832efb46b4736f91acac8753c8c6a46232ab1243"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderQuery.java",
+      "sha256": "2bf4853584b117b3c1e361d6b4f5dfea4aece4be4019142534c934e881baa90e"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java",
+      "sha256": "f030a020d1ac852bfcbad3f6fc664ae90dbcb41e6cdaed6f0f0a2878f9a7494b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/ServiceSubmissionIT.java",
+      "sha256": "970724da623b7671b81eb7a6ab93a7b3383d541cf09e3cb9f37cf50ca77c55d6"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/WorkOrderScopeIT.java",
+      "sha256": "90222d05ca8beb31303442c9c0891ac0eabe9973cff18dd781207612634d0ce5"
+    },
+    {
+      "path": "backend/commerce/commerce-spring-boot-starter/src/main/java/ai/neargo/commerce/starter/security/CommerceRoutePolicy.java",
+      "sha256": "41572dad2a0dcbd71b366f0377e0fad89e08a4c0081b521ddf821d0f0c288a6a"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/BizOnboardingForwarder.java",
+      "sha256": "0fd5f1b7e060e6c74c619092fd550b29c1572c50da0347f3ff131c619d59b708"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java",
+      "sha256": "b75da085adfb7b0f55733464849b8886508fc708aaf2a3f950886381bc14ffc6"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java",
+      "sha256": "9d4ccd2d1214ce892e6b0d0c9395688c4938557afc43d1e0801ec52fba01da79"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PayBizOnboardingHttpTest.java",
+      "sha256": "9d77ed763875126110ed543fda3e98dee45be3ddb53e010a3e4e1198d861445e"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/StoreCodeRedeemTest.java",
+      "sha256": "5991d5e9d69b620c6e8cd02f899044b0c3bbc51287dc81b37f2b06bcb7c3e735"
+    },
+    {
+      "path": "backend/shop-app/src/test/resources/schema-test.sql",
+      "sha256": "e60caf14f6ae6707b536bcb111a0fdaa269e023543e7a78bd5aa8bac42f3cf8f"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/common/BizKey.java",
+      "sha256": "072c2e5adb58bf95d5d3660da54e7d9f809ff0301fc2a7a517b2b8f6dae5ed82"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/CouponRedeemService.java",
+      "sha256": "a3518b1a6070a718059a542f1cd26f04cef153154f4f2dffee170ddc9ac2d76c"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/CouponRedeemServiceImpl.java",
+      "sha256": "e9bd7e08c6c7d594dbcf0c994301b3f4b1433e1a33ba14b372f265125c7ac5f1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizManualServiceAdmissionController.java",
+      "sha256": "3cdfa2187c5d2af347aa5f68a564a8425ad2f6e4752d956d0c24e1241d4446f0"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ManualServicePurchasePolicy.java",
+      "sha256": "7259667b18d3c6e5339046f5b2157cd9f8ac260a4492427e3b3480158a2d2b9c"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutService.java",
+      "sha256": "739f299b4a97c8c0ecfbaeac626e8db42455ad3a1387cecd26f3192eed0b6541"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "sha256": "f040e4243119559835367f34daef6691cdd9dc40185d7902d1cb53c934ebb331"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyMigrationDataSource.java",
+      "sha256": "d69d7e07a422a9e9e26998d11af7e726c89943c1eaef78e0e3105c7732feea70"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautyMigrationDataSourceTest.java",
+      "sha256": "15ee1ca394bd203fb16e4183316c220f0c2945c0da68f809d89d984b3a9e7fb7"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/policy/ServiceExecutionSchemaExpressionTest.java",
+      "sha256": "3cbf3468139d394c176ae6e2ddc65fa2721a0a9fe6866d99ff14eac3b0a96405"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/policy/ServiceSubmissionAccessTest.java",
+      "sha256": "315676e67f1db6caf0a8a481dc5b54b183021e2d78023af56f8a92740f8600ff"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/WorkOrderQueryTest.java",
+      "sha256": "0ba45785ef6e97f1839d1162f70c7a23904b7159440c38a17a110691fe69292d"
+    },
+    {
+      "path": "backend/commerce/commerce-spring-boot-starter/src/test/java/ai/neargo/commerce/starter/security/OperatingEntityCreationRouteTest.java",
+      "sha256": "66fcad17bab7196c3aa863c181def68b7568ea3741354536d3cf71c3f6ee7c9c"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/service/impl/RefundSplitBackTruthTest.java",
+      "sha256": "6e3d89286c82a28f550d07071689113738a312edc9c9ad2d999c8d58e9e128c6"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizAppOperatingEntityController.java",
+      "sha256": "980bc54d4bcaf4956232fa8c6591f6c9bc07a980ad83ba0c912dbaca53fdbc72"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V648__operating_entity_create.sql",
+      "sha256": "033f989584a12b704d29c263ea355ca847eeb286087639c4b8a64af74d080504"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/payclient/PayMerchantCreationRelayTest.java",
+      "sha256": "79dec1f6948f4c31b495023663de31b0d4e4e52d84900877b8c9e0bd5ea9d101"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/trade/service/impl/CounterStateTest.java",
+      "sha256": "ad34a440efc36936600981b3527b68b396041bd29dc841728b97bb60832c972a"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/organization/OperatingEntityModels.java",
+      "sha256": "aa5cde308f9dffecb1916bd12826e269171a14252f276bbcc082737d43d68400"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/organization/OperatingEntityService.java",
+      "sha256": "e514a1bcd4666a1968f0d1f3939f5942e5e4072dbb943a58eb11a84056055149"
+    },
+    {
+      "path": "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/organization/OperatingEntityCreationMySqlTest.java",
+      "sha256": "67c75efc2c24afd6baae2eaf88d2638b8aee3967ccdb275ebcbfe564abd3a14a"
+    }
+  ]
+}

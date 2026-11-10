@@ -1,0 +1,644 @@
+{
+  "task": "SVC-B03",
+  "status": "accepted_for_frozen_supported_contract",
+  "branch": "codex/service-bapp-backend",
+  "baseHead": "a01b155fc513e6919d2c4c7e5071f4500390ac61",
+  "scope": [
+    "MANUAL_OFFLINE + STORE_ORDER + COUNT=1 + one live binding",
+    "appointment CONFIRMED complete groups and direct arrangement",
+    "current HUMAN qualification and final SELF, actual SERVICE step and participation",
+    "pause/resume/handover/end/manual cleaning release",
+    "Core permanent COUNT performed proof and immutable original lookup",
+    "embedded/standalone cold assembly and real typed HTTP"
+  ],
+  "closed": [
+    "initial START no-effect grant/retention release and new attempt/rearrangement",
+    "terminal material stock consumption: retained is not issued",
+    "unsupported financing/asset/deposit/partial-refund/commission policies",
+    "automatic cleaning release, arbitrary stages, physical group split/merge, expired authorization windows"
+  ],
+  "receipts": [
+    {
+      "group": "core-contract-and-service",
+      "log": "/private/tmp/svc-b03-focused3.log",
+      "wholeCommandPassed": false,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.spi.trade.ExecutionCompletionContractTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.trade.ServiceExecutionCompletionPersistenceTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.trade.service.impl.ServiceExecutionLifecycleIntegrationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.trade.policy.ServiceExecutionForwardSchemaTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "group": "core-mysql",
+      "log": "/private/tmp/svc-b03-native2.log",
+      "wholeCommandPassed": false,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.scenario.ServiceExecutionForwardNativeIT",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "group": "combined",
+      "log": "/private/tmp/svc-b03-combined1.log",
+      "wholeCommandPassed": true,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.trade.RetailPricingCompatibilityTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.merchant.service.StaffDisableKicksSessionTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.merchant.port.ResourceBookingExecutionEvidencePortImplTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.merchant.policy.ResourceOccupationGuardTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.BizRetailOrderDetailFlowTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.CartStockGuardFlowTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.NativeResourceWorkflowIT",
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.RetailStandardBarcodeFlowTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.config.WorkOrderWorkbenchWiringTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchSqlTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchNativeMysqlTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowServiceNativeIT",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskStartWiringTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowPersistenceIT",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.DirectTaskPlanTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.TaskWorkflowObservationTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.TaskStartOriginalReaderTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.TaskStartCoordinatorBoundaryTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.BookingTaskExecutionPlanTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.WorkOrderWorkbenchTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.ServiceTaskStartAuthorityPortImplTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.TaskAcceptanceSchemaVerifierTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.TaskActionSchemaVerifierTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.TaskActionPolicyTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.TaskStartSchemaVerifierTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBm04IngressTest",
+          "tests": 51,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.api.biz.TaskWorkflowIngressTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.api.biz.WorkOrderWorkbenchIngressTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.ExecutionRuntimeHttpTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.WorkOrderWorkbenchHttpTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.WorkOrderWorkbenchResponsesTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.TaskWorkflowResponsesTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.TaskWorkflowHttpTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.WorkOrderWorkbenchInternalTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowInternalTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "group": "final-incremental",
+      "log": "/private/tmp/svc-b03-final-incremental.log",
+      "wholeCommandPassed": true,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.scenario.NativeResourceWorkflowIT",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowServiceNativeIT",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.TaskWorkflowObservationTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.api.biz.TaskWorkflowIngressTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.TaskWorkflowHttpTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowAssemblyTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.TaskWorkflowInternalTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "group": "owner-boundary",
+      "log": "/private/tmp/svc-b03-owner-boundary-final.log",
+      "wholeCommandPassed": true,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.TaskWorkflowObservationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "group": "cancel-race",
+      "log": "/private/tmp/svc-b03-cancel-race-final.log",
+      "wholeCommandPassed": true,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.TaskWorkflowObservationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "group": "architecture-infra",
+      "log": "/private/tmp/svc-b03-architecture-incremental.log",
+      "wholeCommandPassed": true,
+      "selectedPassingEvidence": [
+        {
+          "class": "ai.neargo.shop.arch.ArchitectureTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  ],
+  "generators": {
+    "log": "/private/tmp/svc-b03-generators.log",
+    "tests": 4,
+    "passed": 4,
+    "checks": [
+      "Core START V649",
+      "Core completion V651",
+      "Beauty START V15",
+      "Beauty workflow V16"
+    ]
+  },
+  "architecture": {
+    "broaderLog": "/private/tmp/svc-b03-architecture.log",
+    "initialFailureGroups": 6,
+    "ownSqlInfraFixedAndTargetedPass": true,
+    "inheritedGroupsRemaining": [
+      "merchantbridge impl package naming",
+      "fully qualified references in inherited food/pay/report/inventory code",
+      "inherited scheduled methods without locks",
+      "inherited concrete Service classes including OperatingEntity WIP",
+      "InternalMaterialCatalogController JsonMapper dependency false-positive"
+    ],
+    "backendI18nTestsPassed": 6,
+    "notClaimedAsPristineBaselineExecution": true
+  },
+  "database": {
+    "regular": "127.0.0.1:3308 MySQL9.7.4: WorkOrderWorkbenchNativeMysqlTest",
+    "temporary": {
+      "version": "9.7.4",
+      "port": 13389,
+      "ownedPid": 78765,
+      "stopped": true,
+      "dataDirectoryRemoved": true,
+      "normalPort3308Untouched": true
+    },
+    "frozenHistoricalMigrationsModified": false,
+    "platformAdded": [
+      "V649__service_execution_start_ack.sql",
+      "V651__service_execution_completion.sql"
+    ],
+    "beautyAdded": [
+      "V12__beauty_direct_task_plan.sql",
+      "V13__beauty_task_action.sql",
+      "V14__beauty_task_acceptance.sql",
+      "V15__beauty_task_start.sql",
+      "V16__beauty_task_workflow.sql"
+    ]
+  },
+  "deployment": false,
+  "appSourceModified": false,
+  "commitOrPushPerformed": false,
+  "review": "b03-review.md",
+  "fileManifest": "b03-files.json",
+  "sourceFingerprints": {
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/AcceptTaskReq.java": "5d51dfcac97dc6e0c294e81dbe3b3c9f71eebf2f1132b49c81d3fe7331b2b858",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/AcceptedTaskSlotVO.java": "e86463846cc669d44bf085124b68637fa6f97a7a27ba2e92eaf46d39f5c65701",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/AssignServiceTaskReq.java": "3df7687a1b8cdd7f95a8667362c909eae81b7a12be17c015f472c5df35b0e162",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/HandoverTaskReq.java": "59f793ba0f7980d8911f975c277dcaef87aac3bde20c7fcc10446180f0020373",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ServiceTaskAssignmentVO.java": "c3e99d2a4def0addf5e45a7f6235af55924a53aae65a1d411cbfcdf9010cddad",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/StartServiceTaskReq.java": "fa53ac450841c7d3ee1bcc75930f101b7b00f31a36e759c58a91d19981a014f2",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/TaskActionResultVO.java": "4e4e80d51eede64437ee0c391e14bdc2272cb3a53454ba42b953d8c7d4aed2ca",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/TaskWorkflowReq.java": "c45d1b58de344756b7618990d3d20c85400b3235d5cc3dc54be687a9469af57f",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/TaskWorkflowVO.java": "c029f503b3f7c6ac72027e7a3962bd1ba49716676afcb4dc0bce4bef608beb4f",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceTaskAssignmentService.java": "de5860bfc609749835541f93910e8cd45ce63dd3fae49decb1fe528a254498f6",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/service/ServiceTaskWorkflowService.java": "d21ca10e197f7b277f77fb20e3d6ea7a88724544294a70036681b85239a0d5dc",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/spi/BeautyTaskWorkflowInternalApi.java": "211ae6816d6602e4b68481702af81e312f155ac99233c1ba332513689fa73a3d",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/RemoteServiceTaskWorkflowService.java": "3201933c2192235ac678f07d6f26cac8123ffd5d81446e554151e33d3047e25d",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteExecutionRuntimePort.java": "7c244057fc9e26f5b9d32f6c752e8cb49852d1931b5c487da61383f8a5571d64",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/client/TaskWorkflowHttpTest.java": "23158c8bd42edc31e03fc8b1294cbd34e50f332d98b7befdac43114b47975588",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/client/TaskWorkflowResponsesTest.java": "9663ac3c3dc6489f651eabc8cbe4dc453c92c9f7a8d4cd20dce0f2d4d98b22d3",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/ExecutionRuntimeHttpTest.java": "72630421e72c1d2c30d76febec0437d542ace391c9014709d14908bd6867c565",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/TaskWorkflowConfiguration.java": "a974420cbb3da7ba4f4a19b0720acbefb8e4c932af3f144f427589f438e9bce4",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyTaskAssignmentSlot.java": "f77911645688be0a69d77909da2d6b9c88eede8795b147454a60b4b014c4ba22",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/TaskWorkflowMapper.java": "bae503422105d4aebccac905c931d95d6b698d965bc267e827614d0cae596878",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/DirectTaskPlanSchemaVerifier.java": "35a5809557a6cdd21e1e9d8cef2f1f2475db62fcd2eef1e6126709f24cee83ea",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskAcceptanceSchemaVerifier.java": "d23689d81e81035ea1c4918260b2f169ad9aea9b1625b4e89a7de57a3fba6b90",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskActionPolicy.java": "ecb1b52cecc806b8f7b01eddaf73fb4401ebfa9befc0044f4f7a65801ec03832",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskActionSchemaVerifier.java": "8d7541b9f7df7abcb470b0c1db6cd422760b7706e3f17f0be213cca13b035447",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskStartSchemaExtension.java": "4ea3ba93e3d23df112bacb1742ede66cddf625176177b6e26bf25b6284c7066c",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskStartSchemaVerifier.java": "cd9427cc6026c13813bdef17938cb2ae98925c7a6771aabdb91302a00286895d",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/TaskWorkflowSchemaVerifier.java": "43ecf604f06ed7e770c543b8092b64b6418a861c0ce779df0bfae5ac5d812440",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/port/ServiceTaskStartAuthorityPortImpl.java": "7c77870c4cde9d99a8b7dc9f9135256bda04cc1017949cef2f8d06398b47f2e0",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/ServiceTaskActionService.java": "e06500f8d160521a21f63a1f026c07f9e434b3fe7a1f222798b7c5b0b57f7248",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/BookingTaskExecutionPlan.java": "07c2103ed8ef85693a090b23bc83f411101446c1ee1e015dd3711bfba8d32ac9",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/DirectTaskPlan.java": "594f91bace7c98bfd99a33f1a9ae853aadce96f6054b54143d76a9cbbeead85a",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/FrozenTaskRolePlan.java": "3d492c577a1c9c3c4a9bb4f6e82de91b275158d78c4e4608049256f7935ffa35",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceTaskActionServiceImpl.java": "2b4746b70a986bea514d706eb6d87d57433db1087c2e3ba2518fd6e43e3c9ff9",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceTaskAssignmentServiceImpl.java": "76be259666620a3e3532fd993756915c6a2b035319d7c85694de1af7c6a1c40d",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceTaskWorkflowServiceImpl.java": "e89d0dc6925e9de7d76514c6b1d2cc76c763a0297cdbb2723a7e9d328dc797b1",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskAcceptanceCoordinator.java": "071f4cb4aadaeb7070e278806c5908ebca18cf4757c9b8f2a4a8c010bc18ff4e",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskAcceptanceOriginal.java": "589eaa636862fb16416e4e752048d08c17617142bcae2fa67e45800647e15f8e",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskActionV2Original.java": "3a38f914bb274c1e9e537cd19bf81ee4f9a5bdabd0945daf63b31950b3808022",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskStartCoordinator.java": "d15f091225787f9f37b952eddb50a0ec8fbde3ebde1af194cd6ca8ec4e1bb953",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskStartJournal.java": "fcaae14a6a4c6419442fb488e984b3540ecc7bb23da6a02d9efde3be20aa6a1f",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskStartOperationQuery.java": "ad85650de14de62027d9da5653ebcceb433fbe9cc195060f3b2f465cdc6e01d9",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskStartOriginalReader.java": "e859d0f78f738985e671ce7a9e4dbe7f8147a735d139ff7277d3c07e8efd88d6",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/TaskWorkflowJournal.java": "dd74450312bb1d8221ff5b7f0f6b5d8f642dbbf94e02d6a6901a50d116321430",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-direct-task-plan-schema.json": "2bb2e6188ee8fc6eae9608846f5a008a14522dfffb07d479c9eab01fa3c2a53d",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-task-acceptance-schema.json": "a1717469f949ca87ab2849a81ffcf45028ae3fcd7c700d04f5c5d7baec90f875",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-task-action-schema.json": "094e35ef234fd718507d5fefd330e6ca227a4bf6e938d1cd65049533e5491e8d",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-task-start-schema.json": "100428a2cc567cb321be10d1ec70fc05836a3b84d466ac0f1e562655152f45e3",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-task-workflow-schema.json": "c5a122639a35243d6dc5df3b314433da84fb2c94bb10d7c3b0ce0882108af110",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V12__beauty_direct_task_plan.sql": "ca2afe6ee031f9e8c6ce2fa8fbc108ffc2127740abc60427211a709117a9ccfc",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V13__beauty_task_action.sql": "9c3b2de4716df6ad4bbe457ef64da9b1ca14f07c13b3ac7648436987733a141b",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V14__beauty_task_acceptance.sql": "226755fc35e7a49b93d8da975bda89f94a88416151e8375b8e9d6c44cac34c6c",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V15__beauty_task_start.sql": "726aa64eab468b7f50861cf57628d18a9a1d416b4d0f258c04969379e0e92d42",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V16__beauty_task_workflow.sql": "827fd28c1f7ec82b88e888f7622e25967f6be972e582e91b19f63c82352a1e0c",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/schema/beauty-task-start-schema.json": "bd9c8495f1fbc501eb4aab15b3859378c4231e96df09615445b002346c331d24",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/policy/TaskAcceptanceSchemaVerifierTest.java": "9db06613687be14eeeb14fbe942b69d338ae065562cc0b1a5f6016348bd77d30",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/policy/TaskActionPolicyTest.java": "84f00d3319d03666d1f4bae35c87a9c55839cc35a6fc3ff8754f98bbdffa10ba",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/policy/TaskActionSchemaVerifierTest.java": "9a79b09ac085df4d11778a331672e1c3ce9ab5e8bd7e35cbe4a8ae10a07bb800",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/policy/TaskStartSchemaVerifierTest.java": "dac1fa6465073829ffc28027d431301f5550f87bbcf2cf10aab6a74f9eff9c48",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/port/ServiceTaskStartAuthorityPortImplTest.java": "46bfd11fe2fa80a9c3d7a6dd9554c1c27c9184017a46824b49f02dcbf25e2a46",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/DirectTaskPlanSchemaIT.java": "3b8a25ab0474f721337107ca09a451bfb4cf0f58a8d5b40d5b0a2f6a5a7eb29c",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskAcceptanceSchemaIT.java": "9261d8cfb1062a22633498cd49b17c5d012a5181abc45c098be73f788a072f3b",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskActionSchemaIT.java": "b2210698861630d9fa6c958fc8ea6199835c86d1514d7c0114f7986c74f01173",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskStartPersistenceIT.java": "ab6bae124ac6e68299484a25986cbebe1f74fa74452fe795f646dc883db5b384",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskStartSchemaIT.java": "09be0da081cd2461a802c9fcb7302e23303f8953f2a783071f6389db29a13a3e",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskStartSchemaRows.java": "677d2266661eef092c327075c83b763a2ed3897d5735b089a8a26dc9e4a235f3",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskStartWiringTest.java": "543d130ce67dc02db24b87cf3aacf956c0612eb505c870ecbe2209a1572b8b18",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskWorkflowPersistenceIT.java": "fbdc3c2e15deea7423380efc01f90a1f2c061422ae0f52ab604ad016059ff395",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/TaskWorkflowServiceNativeIT.java": "634ceaa955876fac3584c4f121529b3f83b5f85be3a137e475372fd6f6794ec9",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/BookingTaskExecutionPlanTest.java": "d6ed971c26e9dcf1690b44ac4a1450fd7bb8b5e7aa16bf40e39654516f85a600",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/DirectTaskPlanTest.java": "1b71f76b1a7ec69eb9dd33717497bef3a4c100bf4211a158f0be9fecd712f97c",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/TaskStartCoordinatorBoundaryTest.java": "1a536cc8e019ca6ec29ca21933a0c1e640470a4a0cb0555859b8491baa306834",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/TaskStartOriginalReaderTest.java": "b327cc3a7838777e1560cd42585bdb6198c6e7d6a72b16c5382236c9f408f0ee",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/TaskWorkflowObservationTest.java": "6296a29b2e810bf1a3f60766235144e7917299ad5007cbd755d8e27a441f1ef7",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalTaskRuntimeAuthorityController.java": "291bbbe5e15604229fea7ce3adbd150ea1a63c3803be056bc18b49d7a15c5ea3",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/main/java/ai/neargo/shop/beauty/server/api/InternalTaskWorkflowController.java": "0dc7538b6cab513b7ce57eb10701e57e0f1d883c679f7ce092451cd0c8abfc23",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/scenario/TaskWorkflowAssemblyTest.java": "0385538d7f49d9e2368366bfd83b05b774954175aac9bf038d24168a8e22b44e",
+    "backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/scenario/TaskWorkflowInternalTest.java": "0ea334738c4d83c730b590e685ce4402dc7708a0f37cb5bdefdc4c4d63f39ebd",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizTaskWorkflowController.java": "7d1e72402f20b237149d9dc76fa96fc4b5f498f32d5d5450d97aea0ae47ae453",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/test/java/ai/neargo/shop/beauty/api/biz/TaskWorkflowIngressTest.java": "4055e26c803aae77bfe4783d35a5287f1841dcf9f30cdc3ce294f79e0c96ae16",
+    "backend/shop-app/src/main/java/ai/neargo/shop/portal/config/TaskRuntimeAuthorityConfiguration.java": "6cc26023de414ab3627c7d095edc623371f777944fc5fbd47b7a23748157a8e0",
+    "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalExecutionRuntimeController.java": "08f0df0effb7740baaae2e46fe9db4c31ba3235955d24e802e211357f9951227",
+    "backend/shop-app/src/main/resources/db/migration/V649__service_execution_start_ack.sql": "211e932156ec3f53c994fd6a775edfc2406258d2e0a11ff86934a6bf7b3b51e0",
+    "backend/shop-app/src/main/resources/db/migration/V651__service_execution_completion.sql": "cac52242fc1417370b8a70c41c42de86562b391f77e32a12eb78a5f100c51813",
+    "backend/shop-app/src/test/java/ai/neargo/shop/infra/NativeResourceProofFixture.java": "e36b295a163f5f495c78b001a0d344730aae698a26f9f261164b5fd62c9ced10",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/NativeResourceWorkflowIT.java": "f87c54ec1d5b4df4bebb81b79c6de9702376d527d6b079a710fc64e8485ad82e",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ServiceExecutionForwardNativeIT.java": "235db3d6e92fb67ae42d6187aaf399448053d7a877049a2970e9906ddcdff396",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceBookingExecutionEvidencePort.java": "617929f917eb94b167e092260352d5a424c5952a4f1c2fc231638ac503bb3b9e",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceExecutionEvidencePort.java": "67c2fe600c98e60105f78683c8341557b54b1eb37f4f056a73fadcea61e95902",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceOccupationContract.java": "e15260c9bd05898c0471e03d04041b2c87e912782f747bf1933b1191c80c1a95",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceOccupationLifecycleContract.java": "37109ee0ddf760298f5aed22f8ebdbf0920ae5cb75cb0ac45a42053fa105feb1",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceOccupationLifecyclePort.java": "5335d48b8fc93d6dfee9cc3c2f9f882e698345d3d62769ddba9647c7bba409b5",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceOccupationPort.java": "5e33813520b6b6e03b72fe87b0b42268d2c6410d66729fee36d9ebf1df197dd5",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceQualificationPort.java": "e9f1338aecf981577f429463db77b6b39ea1569fad6004983af13e4a00f3192d",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ServiceTaskStartAuthorityPort.java": "4ac4f589d57f62ec6088287fe5a9c031b032f06a6b7e93d599c88de3c5ac3ff7",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ServiceTaskWorkflowAuthorityPort.java": "f221f78d0e95ebd8c255b6e169f37585949e0e0aa748b8ece9b370e1ca3d715d",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionCompletionContract.java": "0cd5271bec587abc9ed34bf1dfdac450bca2f1e81bb29d59c3198d7e82700cd7",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionRuntimeInternalApi.java": "026e3f9c9f5d972f98f82b7b717e22a2f570fbd74d828fd08ddc3316e7fe7277",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionRuntimeProtocol.java": "237c312d4937e9c3cfa43ed819636a23af93c86143935910a797ced0eb0aaf1b",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionStartContract.java": "0f0f8f6313f205d5d1cf0b070b81691397fb43e17e773d4308fead48a6b8519a",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionCompletionPort.java": "c3176caf8ee0f1e5b9818b3708ad8f86bfc641cc763ec8bc166b75da9e45eb0b",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionStartPort.java": "f60bf747209fab94964e2e3dc55ed70d6267157daef532b3ef9f02a072fc90a7",
+    "backend/shop-base/src/main/java/ai/neargo/shop/sql/NativeCheckMetadata.java": "55bfd09e8463c5dd67ba8077c8f2f88794ddfac49da2ea17b212a9105df787a2",
+    "backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionRuntimeBindings.java": "01fa3a518c97516b8275e1aa55b01b5f29cf475d8ed99d0c4e19f02325c3a7e7",
+    "backend/shop-base/src/test/java/ai/neargo/shop/spi/trade/ExecutionCompletionContractTest.java": "8cfb5676f9242cf626d7e0a2c9219b986abb82ef2c36f9347cbc9599a09ea631",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/ServiceExecutionCompletionPortImpl.java": "6ed8f6bd53e5c3a3e0c373873763dd7386979d8aae40fe1c8141a05d67bf3c4f",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/ServiceExecutionStartPortImpl.java": "4bf177bd32642a2b59a7f57f88b908b9c2bd71e4b383b74b08fce7c45ca4c781",
+    "backend/shop-core/src/main/resources/META-INF/shop/service-execution-completion-schema.json": "09c754b7c1ebcb3f277fe2fc321e323e1a3c40ade3e3b5734e0494206058b473",
+    "backend/shop-core/src/main/resources/META-INF/shop/service-execution-start-schema.json": "084da3f83e452d7cb9b69e9848bdbbd4b32461de460220947b9aec7060398151",
+    "backend/shop-core/src/main/schema/service-execution-completion-schema.json": "a66dad29bf8f6d695b6d228dd64028f17f33b6fbf1dbeb170d4e5ebdef443b4f",
+    "backend/shop-core/src/main/schema/service-execution-start-schema.json": "744c4c417513adabaca17af8c416dc95d83f59b0277b8f4a29f186bbde768680",
+    "backend/shop-core/src/test/java/ai/neargo/shop/trade/ServiceExecutionCompletionPersistenceTest.java": "c45eb631d9895e055880712fcecc321552cdf2688330ef6f2dc47417e6b4614e",
+    "backend/shop-core/src/test/java/ai/neargo/shop/trade/policy/ServiceExecutionForwardSchemaTest.java": "dcd460451e50824e2a7772f4e51fdd5e4b0ef885c0de1aaf055aa0c752792271",
+    "backend/shop-core/src/test/java/ai/neargo/shop/trade/service/impl/CoreResourceProofFixture.java": "840cd143199c5e9a103e93b48d146aac2d4fd31412f2708377b232e74545855d",
+    "backend/shop-core/src/test/java/ai/neargo/shop/trade/service/impl/ServiceExecutionLifecycleIntegrationTest.java": "242a210a5cedf577cd9c9ab09304eae894fd0220bc4b3ebd56d2dea2e661cc54",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/config/ResourceOccupationConfiguration.java": "17c67c4d770500e305d0d124ca02c57ff50ff1d9f40252316b12f360a03fac3b",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/ResourceOccupationLifecycleMapper.java": "2689a8bf3e83ae6d4cfeec5e5c30f772cec537fd49a254f80889ba39f3bf335d",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceStartAccess.java": "6576392d2c54a0648551b24d10e4befa39a9b4fb95174cd97a75592c2396d8aa",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceWorkflowSegment.java": "8775ab183cb27b44af870c158e4b1b985aa9c6f688e19bc0f675640656cf714e",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceBookingExecutionEvidencePortImpl.java": "20cab4777812a0c7e8bc4a73a3d89efb743889da8c45396b16a164656060093e",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceOccupationLifecyclePortImpl.java": "2e377115aab1152b434bf3a465bf79d93f026887a96206ebbabb4859dac07ef8",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/ResourceQualificationPortImpl.java": "f6a4448b73db5b3c3e6ff203a03636f8e615825ca045b96ac5e44284160a264a",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/ResourceOccupationLifecycleService.java": "658911d7075cf42b9166fd690c881688347c2d6d5718884c726fd3caa429b1e6",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceOccupationLifecycleServiceImpl.java": "a0a26a7c1457401f7da752a65e821bdf81639b361721aacc35b6b3ff1e7e834c",
+    "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/policy/ResourceSchemaExpressionTest.java": "5c73bc80501f397c0b807a448cbf3b67ecbb08be8c485804099c34f12d2f6d76",
+    "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/port/ResourceBookingExecutionEvidencePortImplTest.java": "aaf57dcb4c0d04be9b9c04ceb33528c97a94554f2e9e3e51ca7e325eca302ead",
+    "scripts/gen-service-execution-completion-schema.mjs": "5649db5a95a61da6fdadedecdc3a09b0a5d9c94b3e5ff2ecea4e524ca05c71f8",
+    "scripts/gen-service-execution-start-schema.mjs": "c0669e322d78b32663d8944f4e807ce8765350010328fa5c36dcccddc7a02849",
+    "scripts/tests/service-execution-start-schema.test.mjs": "92b8c65c84f2331698401442e0140b54f02a2673fbf2b6c8a5c030c2f7b2f8ae",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/client/BeautyReceptionResponses.java": "88be8c32a556ec3148da65b9fa0ad4777e05c5b81e9b605c0a1a091bffb82e16",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyChannelAutoConfiguration.java": "fd221a253535e1ec87e41437be60ec85f736e55f094803d5557e33e06413c964",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckoutClientConfiguration.java": "a1c05a919cf0aaf05cd1b2a8da1444ab64f54cfa3c0b5cdbb792d6e34e63909c",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyReceptionConfiguration.java": "4332e9d540e7a2528ead07f7b33485cc4ab39d179367342194bf9694bc14d5fa",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java": "c3249b8d3bfc7fde609bace48be98549a622f901929de5b52f713145babfe06d",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySourceConfiguration.java": "64fe33c92a2d158bb5ec04f6dfd4d15f4adf65f78bc614f6898230622faf9239",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyServiceSubmission.java": "7f1eddadf69de5e457d7c774887a53640ed3a6195deddf65a97f7cb3d0bff923",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyServiceTask.java": "5b6d20ae81860915d72ff8ac1fd89fe8b6e2114e2ad26bdbaad09a3b685ac380",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/job/ServiceExecutionRecoveryJob.java": "330d722db2d207e470f121b9be28f506745dabfa4c6eca1ab0bae82a47bba237",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java": "e428dbea14554ce1359241ffc71e5f213abc85f3405f85cb0f0f7d400d9fa286",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceExecutionAccess.java": "38ff5195c550ca683bfd57da5d9122f0e95b3c819ad81ea4afaaeaf8d97e74ef",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceExecutionSchemaVerifier.java": "a97b4530fcb8d8dc3c34da842adfe357c30ac0fa9f0a40e4859247fa881b649e",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceExecutionFenceCoordinator.java": "476bfdb09f401937a16b59d45089088e3e5a3d5712725fdbb9c64cdeaa95acfe",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceOperationQueryServiceImpl.java": "875e951098d0df5ee2edfa038230f699b492111403abce320787ed1f499e0786",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceOperationRecoveryServiceImpl.java": "4d4787d22775ba202cd826d7612f1f43f68bc31b2d5c669a6c2662d71b8fed7e",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceTaskExecutionServiceImpl.java": "f180301e699cdebae09f54c6db2863e28f308642c06205eb87e32b031aaea451",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceTaskStockPreparationCoordinator.java": "beac2329d952684d72efbc4759a5c146826183c9feeb6b2ea1670b5e0f1b604e",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/ManualExecutionSourceIT.java": "9d217777ea7afdcbad8ac92b6e0428e731e5337992313a5e35aca10997b9f651",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/ServiceTaskStockPreparationCoordinatorTest.java": "3391cbf66d99e385205d870903f1d42a3bf239bcc661315b15c17c6a9202f5d9",
+    "backend-plugins/shop-industry-beauty/beauty-web/src/main/java/ai/neargo/shop/beauty/api/biz/BizWorkOrderController.java": "4b3c9f1accb2ce592aeae057d178b3992618f6c8ff1ab6bd61955a5353fbdd2e",
+    "backend/shop-app/src/test/java/ai/neargo/shop/arch/ArchitectureTest.java": "b2019cd399ea880e3398b75ef8574ad2f55bf8f6119cecf39f52acb3781d5e17",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ActualResourceExecutionIT.java": "51cb9734b2b1f4884c234bcb4f948210ef0a096436dd7bc87dcc0a00e0f94c6c",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ResourceBookingExecutionIT.java": "55c68d9ef06f90974803a5f82f0e34ac6b8cdffd1fc2f35211c04ea08a8f2310",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java": "add4a641c418661b2824e4440c35b3d2e60ccd9271b1b520280a5501c27eaf61",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ManualAdmissionMapper.java": "48b184b4b49a9074ec823994a1a45b55aa91c3fd73ec57c525c8bb0fd638a854",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java": "1c59689608bf46c7c30058e991fc46df83d004765e300668fb96fb2fc5b703a2",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java": "0259e069edc9b9001fa2033b8baeaa2d8f8ffbe71117200a2b183264147e8122",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/ServiceExecutionService.java": "8d30eec96fe36ba24aba0759bcb718a02aade71dd427b18c20563340f483f40b",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ServiceExecutionServiceImpl.java": "d27e618b4b9d5a511aa2f1b30d891d33b7432d00b7e64e5a9b5d0877ac2f499d",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java": "dae4ff50506bed2581e51193f1c6e8fa19f644ed153916ee294900f6bc27e878",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/policy/ResourceOccupationGuard.java": "7a398f6642885486ee2b225b2a559189557ef8658dea9fbf90033d56a2cd2c6e",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/ResourceAdmissionService.java": "d27570c794b3ea9d527cf0fe1983bf60aef24edccae7664aa2aa0fb190ba982e",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/MerchantRoleServiceImpl.java": "27e1c32d4c34a2fc391d88212f81687d0db8142a8fb0b37c0d3018766b044a11",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/MerchantStaffServiceImpl.java": "815d99c5b4f8295193b68df6a7a217d4f08b1ca62d463edc98375b591575a97d",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceAdmissionServiceImpl.java": "2848702eceabcd479902f2d64b1ae5d8594331944e9f80d9c83937062724fad0",
+    "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceCommandServiceImpl.java": "f0054f03fabfbe453dae21faa886911eb5beb47d0454ec242389dec8fc62e9d5",
+    "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/policy/ResourceOccupationGuardTest.java": "2fe0447f4f22b7c8ff218c1bbe6ad144d8370a0792e02434012037e84ab137f5",
+    "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/service/StaffDisableKicksSessionTest.java": "4cb44c64ec8e35ddde826cbf638f2b95bfa5a8a10fec5a5c0edf5e7a6879d7a2"
+  },
+  "ownedPaths": 177,
+  "preservedSnapshotPaths": 69
+}

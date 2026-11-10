@@ -1,5 +1,10 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationSegmentMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationUnitMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceBucketMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationBucketMapper;
+
 import java.util.LinkedHashMap;
 
 import java.util.Map;
@@ -59,7 +64,7 @@ class ActualResourceExecutionIT {
     @Test void genuineAbsentRejectsBeforeAnyMapperUsingNewCommonColumns() {
         assertThat(verifier().installation()).isEqualTo(ResourceOccupationSchemaVerifier.Installation.ABSENT);
         var rows = mock(ResourceOccupationMapper.class);
-        var guard = new ResourceOccupationGuard(verifier(), rows);
+        var guard = new ResourceOccupationGuard(verifier(), rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class));
         assertThatThrownBy(() -> guard.requireCommon(new ResourceCommandScopeRow("MAIN", "E", "S")))
                 .isInstanceOf(BizException.class);
         verifyNoInteractions(rows);

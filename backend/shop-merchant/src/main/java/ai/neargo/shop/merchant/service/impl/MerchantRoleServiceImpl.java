@@ -11,6 +11,7 @@ import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.service.MerchantRoleService;
+import ai.neargo.shop.merchant.policy.ResourceStartAccess;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,12 +28,14 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     private final MchRoleMapper roleMapper;
     private final MchStoreRoleMapper grantMapper;
     private final StaffAuditLogger audit;
+    private final ResourceStartAccess resourceStartAccess;
 
     public MerchantRoleServiceImpl(MchRoleMapper roleMapper, MchStoreRoleMapper grantMapper,
-                                   StaffAuditLogger audit) {
+                                   StaffAuditLogger audit, ResourceStartAccess resourceStartAccess) {
         this.roleMapper = roleMapper;
         this.grantMapper = grantMapper;
         this.audit = audit;
+        this.resourceStartAccess=resourceStartAccess;
     }
 
     @Override
@@ -65,6 +68,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     @Override
     @Transactional
     public RoleVO update(String merchantNo, String roleCode, String name, List<String> perms) {
+        boolean nativeInstalled=DataScopeContext.executeWithoutScope(() -> resourceStartAccess.beginSecurityMutation(merchantNo));
         MchRole r = requireCustom(merchantNo, roleCode);
         String clean = requireName(name);
         Set<String> codes = requirePerms(perms);
@@ -75,9 +79,12 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
          * 答案就在这一行里。
          */
         String before = labels(parse(r.getPerms()));
+        var prior=parse(r.getPerms());
         r.setName(clean);
         r.setPerms(toJson(codes));
         DataScopeContext.executeWithoutScope(() -> roleMapper.updateById(r));
+        if((prior.contains("biz:service:task:self")||prior.contains("*"))&&!codes.contains("biz:service:task:self"))
+            DataScopeContext.executeWithoutScope(() -> resourceStartAccess.stopRole(merchantNo,r.getRoleCode(),nativeInstalled));
 
         audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_UPDATE, roleCode,
                 "角色「" + clean + "」权限：" + before + " → " + labels(codes));
@@ -87,8 +94,9 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
     @Override
     @Transactional
     public void delete(String merchantNo, String roleCode) {
+        boolean nativeInstalled=DataScopeContext.executeWithoutScope(() -> resourceStartAccess.beginSecurityMutation(merchantNo));
         MchRole r = requireCustom(merchantNo, roleCode);
-        long inUse = usageOf(merchantNo).getOrDefault(roleCode, 0L);
+        long inUse = usageOf(merchantNo).getOrDefault(r.getRoleCode(), 0L);
         if (inUse > 0) {
             /*
              * 还有人持有 —— 删掉的后果是那些人的权限凭空消失，
@@ -98,6 +106,7 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         DataScopeContext.executeWithoutScope(() -> roleMapper.deleteById(r.getId()));
+        DataScopeContext.executeWithoutScope(() -> resourceStartAccess.stopRole(merchantNo,r.getRoleCode(),nativeInstalled));
         audit.role(merchantNo, ai.neargo.shop.merchant.entity.MchStaffLog.ROLE_DELETE, roleCode,
                 "删除角色「" + r.getName() + "」");
     }

@@ -1,14 +1,17 @@
 package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.beauty.dto.OperationVO;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.ServiceSubmissionAccess;
 import ai.neargo.shop.beauty.service.ServiceOperationQueryService;
+import ai.neargo.shop.beauty.service.ServiceTaskActionService;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +19,22 @@ import java.util.Objects;
 /** Pure original-number progress read. GET never creates or executes a new command. */
 public final class ServiceOperationQueryServiceImpl implements ServiceOperationQueryService {
     private final AppointmentPersistence db;
+    private ServiceTaskAssignmentServiceImpl taskAssignments;
+    private ServiceTaskActionService taskActions;
+    private TaskStartOperationQuery taskStarts;
+    private ObjectProvider<TaskAcceptanceCoordinator> taskAcceptances;
+
+    public void setTaskWorkflow(
+            ServiceTaskAssignmentServiceImpl assignments,
+            ServiceTaskActionService actions,
+            TaskStartOperationQuery starts,
+            ObjectProvider<TaskAcceptanceCoordinator> acceptances) {
+        this.taskAssignments = assignments;
+        this.taskActions = actions;
+        this.taskStarts = starts;
+        this.taskAcceptances = acceptances;
+    }
+
     private ServiceTaskStockPreparationCoordinator taskPreparation;
     private final AppointmentAccess access;
     private final BeautyMappers.ReceptionOperationMapper receptions;
@@ -46,6 +65,34 @@ public final class ServiceOperationQueryServiceImpl implements ServiceOperationQ
     @Override
     public OperationVO getOperation(String entity, String store, String actor, String number) {
         var source = db.read(() -> submissions.selectSubmission(entity, store, number));
+        if (source != null && "TASK_START".equals(source.getAction())) {
+            return taskStarts.project(entity, store, actor, number);
+        }
+        if (source != null && "TASK_ACCEPT".equals(source.getAction())) {
+            var acceptance = taskAcceptances.getIfAvailable();
+            if (acceptance == null) {
+                throw BizException.of(
+                        ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE,
+                        "TASK_ACCEPTANCE_MODULE_UNAVAILABLE");
+            }
+            return acceptance.projectOperation(entity, store, actor, number);
+        }
+        if (source != null && "TASK_ACTION".equals(source.getAction())) {
+            var action = taskActions.projectOperation(entity, store, actor, number);
+            return new OperationVO(
+                    number,
+                    null,
+                    "PENDING",
+                    "TASK_ACTION",
+                    null,
+                    action.workOrderNo(),
+                    action.pendingReason());
+        }
+        if (source != null && "DIRECT_PLAN".equals(source.getAction())) {
+            var plan = taskAssignments.projectOperation(entity, store, actor, number);
+            return new OperationVO(
+                    number, null, "SUCCEEDED", "DIRECT_PLAN", null, plan.workOrderNo(), null);
+        }
         if (source != null && "START".equals(source.getAction())) {
             if (taskPreparation == null)
                 throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
@@ -69,11 +116,19 @@ public final class ServiceOperationQueryServiceImpl implements ServiceOperationQ
             return sourceView(source);
         }
         var reception = db.read(() -> receptions.selectScoped(entity, store, number));
-        if (reception != null) { return receptionView(reception); }
+        if (reception != null) {
+            return receptionView(reception);
+        }
         var op = db.operation(number);
-        AppointmentPersistence.require(entity.equals(op.getEntityNo()) && store.equals(op.getStoreNo()));
-        return new OperationVO(number, op.getAppointmentNo(), op.getState(), op.getAction(),
-                "PENDING".equals(op.getState()) ? "AUTHENTICATED_SAME_KEY_REPLAY"
+        AppointmentPersistence.require(
+                entity.equals(op.getEntityNo()) && store.equals(op.getStoreNo()));
+        return new OperationVO(
+                number,
+                op.getAppointmentNo(),
+                op.getState(),
+                op.getAction(),
+                "PENDING".equals(op.getState())
+                        ? "AUTHENTICATED_SAME_KEY_REPLAY"
                         : "RELEASE_REQUIRED".equals(op.getState()) ? "AUTHENTICATED_CANCEL" : null);
     }
 
@@ -107,15 +162,31 @@ public final class ServiceOperationQueryServiceImpl implements ServiceOperationQ
                     default -> false;
                 };
         AppointmentPersistence.require(endpoint);
-        String state = "SUCCEEDED".equals(op.getPhase()) || "REJECTED".equals(op.getPhase())
-                ? op.getPhase() : "PENDING";
-        String recovery = !"PENDING".equals(state) ? null
-                : "RESOURCE_RELEASE_REQUIRED".equals(op.getFailureCode()) ? "AUTHENTICATED_CANCEL"
-                : "ARRIVAL_REQUIRES_RESCHEDULE".equals(op.getFailureCode()) ? "REQUEST_RESCHEDULE"
-                : "CLAIM_GUEST".equals(op.getAction()) ? "AUTHENTICATED_CLAIM_RECOVERY"
-                : "CHECK_IN".equals(op.getAction()) || "RECEPTION_EXCEPTION".equals(op.getAction())
-                        ? "REQUIRES_FRESH_IDENTITY_PROOF" : "AUTHENTICATED_OPERATION_RECOVERY";
-        return new OperationVO(op.getOperationNo(), op.getAppointmentNo(), state, op.getAction(), recovery,
-                op.getWorkOrderNo(), op.getFailureCode());
+        String state =
+                "SUCCEEDED".equals(op.getPhase()) || "REJECTED".equals(op.getPhase())
+                        ? op.getPhase()
+                        : "PENDING";
+        String recovery =
+                !"PENDING".equals(state)
+                        ? null
+                        : "RESOURCE_RELEASE_REQUIRED".equals(op.getFailureCode())
+                                ? "AUTHENTICATED_CANCEL"
+                                : "ARRIVAL_REQUIRES_RESCHEDULE".equals(op.getFailureCode())
+                                        ? "REQUEST_RESCHEDULE"
+                                        : "CLAIM_GUEST".equals(op.getAction())
+                                                ? "AUTHENTICATED_CLAIM_RECOVERY"
+                                                : "CHECK_IN".equals(op.getAction())
+                                                                || "RECEPTION_EXCEPTION"
+                                                                        .equals(op.getAction())
+                                                        ? "REQUIRES_FRESH_IDENTITY_PROOF"
+                                                        : "AUTHENTICATED_OPERATION_RECOVERY";
+        return new OperationVO(
+                op.getOperationNo(),
+                op.getAppointmentNo(),
+                state,
+                op.getAction(),
+                recovery,
+                op.getWorkOrderNo(),
+                op.getFailureCode());
     }
 }
