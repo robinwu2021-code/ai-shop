@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "platformVersion": 13,
+  "owner": "beauty-core/primary",
+  "table": "bty_service_submission",
+  "checkName": "ck_bty_task_action",
+  "check": "action<>'TASK_ACTION' OR COALESCE((JSON_TYPE(frozen_command)='OBJECT' AND\n    status='TASK_INTENDED' AND\n    next_retry_at IS NULL AND\n    failure_code IS NULL AND\n    version=0 AND\n    deleted=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.schema'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='TASK_ACTION_V1' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.purpose'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.purpose'))='START_TASK' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.actionNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.actionNo'))=submission_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))=tenant_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))=entity_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))=store_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))=work_order_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))=request_key_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.intentHash'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.intentHash'))=payload_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.requirementNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.requirementNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.roleCode'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.roleCode'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.sourceLineRef'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.sourceLineRef'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.personnelNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.personnelNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.resourceNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.resourceNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.namespaceHash'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.namespaceHash'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.targetHash'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.targetHash'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.scopeRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.scopeRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.taskVersion'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.taskVersion')>=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.bindingRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.bindingRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.bindingVersion'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.bindingVersion')>=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.sourceFenceRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.sourceFenceRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.ordinal'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.slot.ordinal')>=0),0)",
+  "triggers": [
+    {
+      "name": "trg_bty_task_action_immutable",
+      "table": "bty_service_submission",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.action='TASK_ACTION' OR NEW.action='TASK_ACTION' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task action original is immutable';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_bty_task_action_no_delete",
+      "table": "bty_service_submission",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.action='TASK_ACTION' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task action original is permanent';\n    END IF;\nEND"
+    }
+  ],
+  "migrationScript": "V13__beauty_task_action.sql",
+  "migrationSha256": "9c3b2de4716df6ad4bbe457ef64da9b1ca14f07c13b3ac7648436987733a141b",
+  "flywayChecksum": 1440832623
+}

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "platformVersion": 649,
+  "owner": "shop-core/primary",
+  "baseMigrationSha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",
+  "changes": [
+    {
+      "name": "ord_service_execution",
+      "addedColumns": [
+        {
+          "name": "actual_resource_owner_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "actual_resource_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "actual_resource_payload_schema",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "actual_resource_payload_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        }
+      ],
+      "addedUnique": {
+        "uk_sex_actual_command": [
+          "tenant_no",
+          "entity_no",
+          "actual_resource_command_no"
+        ]
+      },
+      "addedChecks": {
+        "ck_sex_actual_tuple": "(actual_resource_owner_no IS NULL AND actual_resource_command_no IS NULL AND actual_resource_payload_schema IS NULL AND actual_resource_payload_hash IS NULL) OR (actual_resource_owner_no IS NOT NULL AND actual_resource_command_no IS NOT NULL AND actual_resource_payload_schema IS NOT NULL AND actual_resource_payload_hash IS NOT NULL)",
+        "ck_sex_actual_result": "actual_resource_command_no IS NULL OR (resource_outcome_no IS NOT NULL AND resource_outcome_hash IS NOT NULL AND actual_resource_payload_schema='RESOURCE_OCCUPATION_START_V1' AND actual_resource_payload_hash REGEXP '^[0-9a-f]{64}$' AND state IN ('STARTED','STARTED_SUSPENDED','RELEASING','RELEASED','FULFILLED'))",
+        "ck_sex_actual_started": "state NOT IN ('STARTED','STARTED_SUSPENDED') OR actual_resource_command_no IS NOT NULL",
+        "ck_sex_actual_references": "(actual_resource_owner_no IS NULL OR (CHAR_LENGTH(TRIM(actual_resource_owner_no))>0 AND CHAR_LENGTH(actual_resource_owner_no)=CHAR_LENGTH(TRIM(actual_resource_owner_no)))) AND (actual_resource_command_no IS NULL OR (CHAR_LENGTH(TRIM(actual_resource_command_no))>0 AND CHAR_LENGTH(actual_resource_command_no)=CHAR_LENGTH(TRIM(actual_resource_command_no)))) AND (actual_resource_payload_schema IS NULL OR (CHAR_LENGTH(TRIM(actual_resource_payload_schema))>0 AND CHAR_LENGTH(actual_resource_payload_schema)=CHAR_LENGTH(TRIM(actual_resource_payload_schema))))"
+      },
+      "replacedChecks": {}
+    },
+    {
+      "name": "ord_service_execution_action",
+      "addedColumns": [],
+      "addedUnique": {},
+      "addedChecks": {},
+      "replacedChecks": {
+        "ck_sea_kind": "kind IN ('PREPARE','SOURCE_SUSPEND','OBSERVE','START_ACK')",
+        "ck_sea_actor": "(kind<>'PREPARE' OR actor_namespace_hash IS NOT NULL) AND (kind NOT IN ('OBSERVE','START_ACK') OR actor_namespace_hash IS NULL)",
+        "ck_sea_proof": "(kind IN ('PREPARE','OBSERVE') AND proof_json IS NULL AND proof_hash IS NULL) OR (kind='SOURCE_SUSPEND' AND proof_json IS NOT NULL AND proof_hash IS NOT NULL AND JSON_VALID(proof_json) AND JSON_TYPE(proof_json)='OBJECT' AND OCTET_LENGTH(proof_json)<=262144 AND JSON_CONTAINS_PATH(proof_json,'all','$.schema','$.binding','$.suspension')=1 AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.schema'))='BEAUTY_EXECUTION_SUSPEND_V1' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.binding'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.suspension'))='OBJECT') OR (kind='START_ACK' AND proof_json IS NOT NULL AND proof_hash IS NOT NULL AND JSON_VALID(proof_json) AND JSON_TYPE(proof_json)='OBJECT' AND OCTET_LENGTH(proof_json)<=1048576 AND JSON_CONTAINS_PATH(proof_json,'all','$.request','$.request.reference','$.prepareResult','$.resource','$.resource.applied','$.resource.applied.actual','$.resource.applied.initialEffects','$.retention','$.retention.receipt','$.schema','$.originalBindingJson','$.proofHash','$.request.ackActionNo','$.request.keyHash','$.request.reference.executionNo','$.prepareResult.actionNo','$.prepareResult.actionHash','$.prepareResult.keyHash','$.prepareResult.resultState','$.resource.outcome','$.resource.applied.actual.ownerNo','$.resource.applied.actual.commandNo','$.resource.applied.actual.payloadSchema','$.resource.applied.actual.payloadHash','$.resource.applied.resultNo','$.resource.applied.resultHash','$.retention.receipt.schema','$.retention.receipt.outcome','$.retention.receipt.receiptHash','$.resultState','$.expectedVersion','$.observationEpoch','$.prepareResult.resultRevision','$.resultRevision','$.retention.roster')=1 AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.request'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.request.reference'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.prepareResult'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.actual'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.initialEffects'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.retention'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.retention.receipt'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.schema'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.originalBindingJson'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.proofHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.request.ackActionNo'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.request.keyHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.request.reference.executionNo'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.prepareResult.actionNo'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.prepareResult.actionHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.prepareResult.keyHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.prepareResult.resultState'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.outcome'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.ownerNo'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.commandNo'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.payloadSchema'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.payloadHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.resultNo'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resource.applied.resultHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.retention.receipt.schema'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.retention.receipt.outcome'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.retention.receipt.receiptHash'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resultState'))='STRING' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.expectedVersion'))='INTEGER' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.observationEpoch'))='INTEGER' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.prepareResult.resultRevision'))='INTEGER' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.resultRevision'))='INTEGER' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.retention.roster'))='ARRAY' AND JSON_LENGTH(JSON_EXTRACT(proof_json,'$.retention.roster'))>0 AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.originalBindingJson')))) BETWEEN 1 AND 262144 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.originalBindingJson')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.originalBindingJson')))) AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.ackActionNo')))) BETWEEN 1 AND 32 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.ackActionNo')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.ackActionNo')))) AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.reference.executionNo')))) BETWEEN 1 AND 32 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.reference.executionNo')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.reference.executionNo')))) AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.prepareResult.actionNo')))) BETWEEN 1 AND 32 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.prepareResult.actionNo')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.prepareResult.actionNo')))) AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.ownerNo')))) BETWEEN 1 AND 32 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.ownerNo')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.ownerNo')))) AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.commandNo')))) BETWEEN 1 AND 32 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.commandNo')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.commandNo')))) AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.resultNo')))) BETWEEN 1 AND 32 AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.resultNo')))=CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.resultNo')))) AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.proofHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.keyHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.prepareResult.actionHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.prepareResult.keyHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.payloadHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.resultHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.retention.receipt.receiptHash')) REGEXP '^[0-9a-f]{64}$' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.schema'))='SERVICE_EXECUTION_START_ACK_PROOF_V1' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.prepareResult.resultState'))='PREPARED' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.outcome'))='APPLIED' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resource.applied.actual.payloadSchema'))='RESOURCE_OCCUPATION_START_V1' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.retention.receipt.schema'))='EXECUTION_STOCK_AGGREGATE_RECEIPT_V2' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.retention.receipt.outcome'))='RETAINED' AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.proofHash'))=proof_hash AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.ackActionNo'))=action_no AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.keyHash'))=request_key_hash AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.request.reference.executionNo'))=execution_no AND JSON_EXTRACT(proof_json,'$.expectedVersion')=expected_revision AND JSON_EXTRACT(proof_json,'$.observationEpoch')=observation_epoch AND JSON_EXTRACT(proof_json,'$.prepareResult.resultRevision')>0 AND JSON_EXTRACT(proof_json,'$.resultRevision')=expected_revision+2 AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resultState')) IN ('STARTED','STARTED_SUSPENDED') AND ((result_state IS NULL AND result_revision IS NULL) OR (result_state IS NOT NULL AND result_revision IS NOT NULL AND result_state=JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.resultState')) AND result_revision=JSON_EXTRACT(proof_json,'$.resultRevision'))))"
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "name": "trg_sex_actual_immutable",
+      "table": "ord_service_execution",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.actual_resource_command_no IS NOT NULL AND (NOT (BINARY NEW.actual_resource_owner_no <=> BINARY OLD.actual_resource_owner_no) OR\n        NOT (BINARY NEW.actual_resource_command_no <=> BINARY OLD.actual_resource_command_no) OR\n        NOT (BINARY NEW.actual_resource_payload_schema <=> BINARY OLD.actual_resource_payload_schema) OR\n        NOT (BINARY NEW.actual_resource_payload_hash <=> BINARY OLD.actual_resource_payload_hash) OR\n        NOT (BINARY NEW.resource_outcome_no <=> BINARY OLD.resource_outcome_no) OR\n        NOT (BINARY NEW.resource_outcome_hash <=> BINARY OLD.resource_outcome_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution actual resource original is immutable';\n    END IF;\n    IF OLD.actual_resource_command_no IS NULL AND (OLD.resource_outcome_no IS NOT NULL OR OLD.resource_outcome_hash IS NOT NULL) AND (NOT (BINARY NEW.actual_resource_owner_no <=> BINARY OLD.actual_resource_owner_no) OR\n        NOT (BINARY NEW.actual_resource_command_no <=> BINARY OLD.actual_resource_command_no) OR\n        NOT (BINARY NEW.actual_resource_payload_schema <=> BINARY OLD.actual_resource_payload_schema) OR\n        NOT (BINARY NEW.actual_resource_payload_hash <=> BINARY OLD.actual_resource_payload_hash) OR\n        NOT (BINARY NEW.resource_outcome_no <=> BINARY OLD.resource_outcome_no) OR\n        NOT (BINARY NEW.resource_outcome_hash <=> BINARY OLD.resource_outcome_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution initial result already exists';\n    END IF;\nEND"
+    }
+  ]
+}

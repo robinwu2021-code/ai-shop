@@ -1,17 +1,19 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.port.RemoteCheckoutPort;
-import ai.neargo.shop.beauty.port.RemoteServiceExecutionPreparationPort;
-import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
-import ai.neargo.shop.spi.trade.ServiceExecutionPreparationInternalApi;
-import ai.neargo.shop.beauty.port.RemoteServiceExecutionPort;
-import ai.neargo.shop.spi.trade.ServiceExecutionPort;
-import ai.neargo.shop.spi.trade.ServiceExecutionInternalApi;
+import ai.neargo.shop.beauty.port.RemoteExecutionRuntimePort;
 import ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPort;
+import ai.neargo.shop.beauty.port.RemoteServiceExecutionPort;
+import ai.neargo.shop.beauty.port.RemoteServiceExecutionPreparationPort;
 import ai.neargo.shop.spi.trade.CheckoutInternalApi;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ExecutionRuntimeInternalApi;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionInternalApi;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionInternalApi;
+import ai.neargo.shop.spi.trade.ServiceExecutionPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPreparationInternalApi;
+import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
 import ai.neargo.shop.svc.InternalBindings;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
@@ -29,6 +31,17 @@ import java.time.Duration;
  */
 @Configuration(proxyBeanMethods = false)
 public class BeautyCheckoutClientConfiguration {
+    @Bean
+    RemoteExecutionRuntimePort beautyRemoteExecutionRuntimePort(
+            InternalHttp http, @Value("${shop.services.internal-token:}") String token) {
+        return new RemoteExecutionRuntimePort(
+                http.client(
+                        ServiceName.PLATFORM,
+                        ExecutionRuntimeInternalApi.class,
+                        Duration.ofSeconds(5)),
+                token);
+    }
+
     /** Missing service targets fail on use; an empty owner is never installed. */
     @Bean
     @ConditionalOnMissingBean(CheckoutPort.class)
@@ -52,13 +65,20 @@ public class BeautyCheckoutClientConfiguration {
                 new InternalBindings(token));
     }
 
-    /** Standalone beauty consumes the same real Core quantity owner, without local grant persistence. */
+    /**
+     * Standalone beauty consumes the same real Core quantity owner, without local grant
+     * persistence.
+     */
     @Bean
     @ConditionalOnMissingBean(ServiceExecutionPort.class)
-    ServiceExecutionPort beautyRemoteServiceExecutionPort(InternalHttp http,
-            @Value("${shop.services.internal-token:}") String token) {
-        return new RemoteServiceExecutionPort(http.client(ServiceName.PLATFORM,
-                ServiceExecutionInternalApi.class, Duration.ofSeconds(5)), new InternalBindings(token));
+    ServiceExecutionPort beautyRemoteServiceExecutionPort(
+            InternalHttp http, @Value("${shop.services.internal-token:}") String token) {
+        return new RemoteServiceExecutionPort(
+                http.client(
+                        ServiceName.PLATFORM,
+                        ServiceExecutionInternalApi.class,
+                        Duration.ofSeconds(5)),
+                new InternalBindings(token));
     }
 
     /** Only standalone SERVER installs the finite real preparation bridge. */

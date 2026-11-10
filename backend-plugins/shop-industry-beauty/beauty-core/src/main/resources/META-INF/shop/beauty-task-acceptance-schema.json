@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "platformVersion": 14,
+  "owner": "beauty-core/primary",
+  "table": "bty_service_submission",
+  "checkName": "ck_bty_task_accept",
+  "check": "action<>'TASK_ACCEPT' OR COALESCE((JSON_TYPE(frozen_command)='OBJECT' AND\n    status='TASK_ACCEPTED' AND\n    next_retry_at IS NULL AND\n    failure_code IS NULL AND\n    version=0 AND\n    deleted=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.schema'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='TASK_ACCEPT_V1' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.purpose'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.purpose'))='ACCEPT_TASK' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.actionNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.actionNo'))=submission_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))=tenant_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))=entity_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))=store_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))=work_order_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))=request_key_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestHash'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.requestHash'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.recordHash'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.recordHash'))=payload_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.actorNamespace'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.actorNamespace'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requiredRosterHash'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.requiredRosterHash'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.qualification.schema'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.qualification.schema'))='RESOURCE_QUALIFICATION_OBSERVATION_V1' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.qualification.outcome'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.qualification.outcome'))='PROVEN' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestVersions.scopeRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.requestVersions.scopeRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestVersions.taskVersion'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.requestVersions.taskVersion')>=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestVersions.bindingRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.requestVersions.bindingRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestVersions.bindingVersion'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.requestVersions.bindingVersion')>=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestVersions.sourceFenceRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.requestVersions.sourceFenceRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.publishedTaskRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.publishedTaskRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.selected'))='ARRAY' AND\n    JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.selected')) BETWEEN 1 AND 100 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.result'))='ARRAY' AND\n    JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.result')) BETWEEN 1 AND 100 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.qualification.groups'))='ARRAY' AND\n    JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.qualification.groups')) BETWEEN 1 AND 100 AND\n    JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.selected'))=JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.result')) AND\n    JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.selected'))=JSON_LENGTH(JSON_EXTRACT(frozen_command,'$.qualification.groups')) AND\n    JSON_EXTRACT(frozen_command,'$.publishedTaskRevision')=JSON_EXTRACT(frozen_command,'$.requestVersions.taskVersion')+1 AND\n    JSON_SCHEMA_VALID('{\"type\":\"array\",\"minItems\":1,\"maxItems\":100,\"items\":{\"type\":\"object\",\"required\":[\"slot\",\"expectedAssignmentRevision\"],\"additionalProperties\":false,\"properties\":{\"slot\":{\"type\":\"object\",\"required\":[\"requirementNo\",\"roleCode\",\"sourceLineRef\",\"personnelNo\",\"resourceNo\",\"startAt\",\"endAt\",\"ordinal\"],\"additionalProperties\":false,\"properties\":{\"requirementNo\":{\"type\":\"string\",\"minLength\":1},\"roleCode\":{\"type\":\"string\",\"minLength\":1},\"sourceLineRef\":{\"type\":\"string\",\"minLength\":1},\"personnelNo\":{\"type\":\"string\",\"minLength\":1},\"resourceNo\":{\"type\":\"string\",\"minLength\":1},\"startAt\":{\"type\":\"string\",\"minLength\":1},\"endAt\":{\"type\":\"string\",\"minLength\":1},\"ordinal\":{\"type\":\"integer\",\"minimum\":0}}},\"expectedAssignmentRevision\":{\"type\":\"integer\",\"minimum\":0}}}}',JSON_EXTRACT(frozen_command,'$.selected')) AND\n    JSON_SCHEMA_VALID('{\"type\":\"array\",\"minItems\":1,\"maxItems\":100,\"items\":{\"type\":\"object\",\"required\":[\"assignmentNo\",\"requirementNo\",\"roleCode\",\"validUntil\",\"currentState\",\"ordinal\",\"assignmentRevision\"],\"additionalProperties\":false,\"properties\":{\"assignmentNo\":{\"type\":\"string\",\"minLength\":1},\"requirementNo\":{\"type\":\"string\",\"minLength\":1},\"roleCode\":{\"type\":\"string\",\"minLength\":1},\"validUntil\":{\"type\":\"string\",\"minLength\":1},\"currentState\":{\"type\":\"string\",\"minLength\":1},\"ordinal\":{\"type\":\"integer\",\"minimum\":0},\"assignmentRevision\":{\"type\":\"integer\",\"minimum\":1}}}}',JSON_EXTRACT(frozen_command,'$.result'))),0)",
+  "triggers": [
+    {
+      "name": "trg_bty_task_accept_immutable",
+      "table": "bty_service_submission",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.action='TASK_ACCEPT' OR NEW.action='TASK_ACCEPT' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task acceptance original is immutable';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_bty_task_accept_no_delete",
+      "table": "bty_service_submission",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.action='TASK_ACCEPT' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task acceptance original is permanent';\n    END IF;\nEND"
+    }
+  ],
+  "slotTable": {
+    "name": "bty_task_assignment_slot",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "BIGINT NOT NULL AUTO_INCREMENT"
+      },
+      {
+        "name": "tenant_no",
+        "definition": "VARCHAR(32) NOT NULL DEFAULT 'MAIN'"
+      },
+      {
+        "name": "created_at",
+        "definition": "DATETIME(3) NOT NULL"
+      },
+      {
+        "name": "created_by",
+        "definition": "VARCHAR(64) NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "DATETIME(3) NOT NULL"
+      },
+      {
+        "name": "updated_by",
+        "definition": "VARCHAR(64) NULL"
+      },
+      {
+        "name": "version",
+        "definition": "BIGINT NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "deleted",
+        "definition": "INT NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "entity_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "store_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "work_order_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "task_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "assignment_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "requirement_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "role_code",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "personnel_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "resource_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "plan_kind",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "plan_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "accept_action_no",
+        "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+      },
+      {
+        "name": "role_ordinal",
+        "definition": "INT NOT NULL"
+      },
+      {
+        "name": "plan_revision",
+        "definition": "BIGINT NOT NULL"
+      },
+      {
+        "name": "assignment_revision",
+        "definition": "BIGINT NOT NULL"
+      },
+      {
+        "name": "plan_hash",
+        "definition": "CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL"
+      },
+      {
+        "name": "reference_hash",
+        "definition": "CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL"
+      },
+      {
+        "name": "accept_record_hash",
+        "definition": "CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL"
+      },
+      {
+        "name": "qualification_hash",
+        "definition": "CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL"
+      },
+      {
+        "name": "accepted_at",
+        "definition": "DATETIME(3) NOT NULL"
+      },
+      {
+        "name": "valid_until",
+        "definition": "DATETIME(3) NOT NULL"
+      }
+    ],
+    "indexes": {
+      "PRIMARY": [
+        "id"
+      ],
+      "uk_bty_assignment_no": [
+        "tenant_no",
+        "entity_no",
+        "assignment_no"
+      ],
+      "uk_bty_assignment_slot": [
+        "tenant_no",
+        "entity_no",
+        "task_no",
+        "requirement_no",
+        "role_ordinal"
+      ]
+    },
+    "checks": {
+      "ck_bty_assignment_state": "deleted=0 AND version>=0 AND role_ordinal>=0 AND plan_revision>0 AND assignment_revision>0 AND valid_until>accepted_at AND plan_kind IN ('BOOKING','DIRECT')",
+      "ck_bty_assignment_plan_hash": "plan_hash REGEXP '^[a-f0-9]{64}$'",
+      "ck_bty_assignment_reference_hash": "reference_hash REGEXP '^[a-f0-9]{64}$'",
+      "ck_bty_assignment_accept_record_hash": "accept_record_hash REGEXP '^[a-f0-9]{64}$'",
+      "ck_bty_assignment_qualification_hash": "qualification_hash REGEXP '^[a-f0-9]{64}$'"
+    }
+  },
+  "historyScripts": [
+    "V1__beauty_p1_tables.sql",
+    "V2__beauty_appointment_resource_fence.sql",
+    "V3__beauty_appointment_business.sql",
+    "V4__beauty_appointment_resource_decision.sql",
+    "V5__beauty_reception_work_order.sql",
+    "V6__beauty_reception_identity_guard.sql",
+    "V7__beauty_appointment_assignment_units.sql",
+    "V8__beauty_source_observation.sql",
+    "V9__beauty_manual_source_observation.sql",
+    "V10__beauty_service_execution_fence.sql",
+    "V11__beauty_service_execution_stock_intent.sql",
+    "V12__beauty_direct_task_plan.sql",
+    "V13__beauty_task_action.sql"
+  ],
+  "migrationScript": "V14__beauty_task_acceptance.sql",
+  "migrationSha256": "226755fc35e7a49b93d8da975bda89f94a88416151e8375b8e9d6c44cac34c6c",
+  "flywayChecksum": -1707073465,
+  "history": [
+    {
+      "script": "V1__beauty_p1_tables.sql",
+      "checksum": -2139921768
+    },
+    {
+      "script": "V2__beauty_appointment_resource_fence.sql",
+      "checksum": 89233043
+    },
+    {
+      "script": "V3__beauty_appointment_business.sql",
+      "checksum": 1761810780
+    },
+    {
+      "script": "V4__beauty_appointment_resource_decision.sql",
+      "checksum": -333919983
+    },
+    {
+      "script": "V5__beauty_reception_work_order.sql",
+      "checksum": -1247647173
+    },
+    {
+      "script": "V6__beauty_reception_identity_guard.sql",
+      "checksum": -996646010
+    },
+    {
+      "script": "V7__beauty_appointment_assignment_units.sql",
+      "checksum": -1208882332
+    },
+    {
+      "script": "V8__beauty_source_observation.sql",
+      "checksum": -507325468
+    },
+    {
+      "script": "V9__beauty_manual_source_observation.sql",
+      "checksum": 1352387920
+    },
+    {
+      "script": "V10__beauty_service_execution_fence.sql",
+      "checksum": 1472641557
+    },
+    {
+      "script": "V11__beauty_service_execution_stock_intent.sql",
+      "checksum": -2039014345
+    },
+    {
+      "script": "V12__beauty_direct_task_plan.sql",
+      "checksum": 758856179
+    },
+    {
+      "script": "V13__beauty_task_action.sql",
+      "checksum": 1440832623
+    },
+    {
+      "script": "V14__beauty_task_acceptance.sql",
+      "checksum": -1707073465
+    }
+  ]
+}

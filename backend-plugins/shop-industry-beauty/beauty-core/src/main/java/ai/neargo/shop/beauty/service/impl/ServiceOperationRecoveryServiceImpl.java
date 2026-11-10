@@ -1,23 +1,45 @@
 package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.beauty.dto.OperationVO;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.ReceptionAccess;
 import ai.neargo.shop.beauty.service.ServiceOperationRecoveryService;
 import ai.neargo.shop.beauty.service.ServiceSubmissionService;
+import ai.neargo.shop.beauty.service.ServiceTaskActionService;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 import java.util.Objects;
 
-/** Continues only the durable original operation; no source key, actor namespace or prepared bytes are replaced. */
+/**
+ * Continues only the durable original operation; no source key, actor namespace or prepared bytes
+ * are replaced.
+ */
 public final class ServiceOperationRecoveryServiceImpl implements ServiceOperationRecoveryService {
     private final AppointmentPersistence db;
+    private ServiceTaskAssignmentServiceImpl taskAssignments;
+    private ServiceTaskActionService taskActions;
+    private TaskStartOperationQuery taskStarts;
+    private ObjectProvider<TaskAcceptanceCoordinator> taskAcceptances;
+
+    public void setTaskWorkflow(
+            ServiceTaskAssignmentServiceImpl assignments,
+            ServiceTaskActionService actions,
+            TaskStartOperationQuery starts,
+            ObjectProvider<TaskAcceptanceCoordinator> acceptances) {
+        this.taskAssignments = assignments;
+        this.taskActions = actions;
+        this.taskStarts = starts;
+        this.taskAcceptances = acceptances;
+    }
+
     private ServiceTaskStockPreparationCoordinator taskPreparation;
     private final AppointmentAccess access;
     private final AppointmentCoordinator coordinator;
@@ -40,8 +62,14 @@ public final class ServiceOperationRecoveryServiceImpl implements ServiceOperati
             GuestRegistrationServiceImpl guests,
             BeautyMappers.ServiceSubmissionMapper submissions,
             ServiceSubmissionService sources) {
-        this.db = db; this.access = access; this.coordinator = coordinator; this.receptions = receptions;
-        this.receptionAccess = receptionAccess; this.reception = reception; this.orders = orders; this.guests = guests;
+        this.db = db;
+        this.access = access;
+        this.coordinator = coordinator;
+        this.receptions = receptions;
+        this.receptionAccess = receptionAccess;
+        this.reception = reception;
+        this.orders = orders;
+        this.guests = guests;
         this.submissions = submissions;
         this.sources = sources;
     }
@@ -52,8 +80,37 @@ public final class ServiceOperationRecoveryServiceImpl implements ServiceOperati
     }
 
     @Override
-    public OperationVO recoverOperation(String entity, String store, String actor, String operationNo) {
+    public OperationVO recoverOperation(
+            String entity, String store, String actor, String operationNo) {
         var source = db.read(() -> submissions.selectSubmission(entity, store, operationNo));
+        if (source != null && "TASK_START".equals(source.getAction())) {
+            return taskStarts.project(entity, store, actor, operationNo);
+        }
+        if (source != null && "TASK_ACCEPT".equals(source.getAction())) {
+            var acceptance = taskAcceptances.getIfAvailable();
+            if (acceptance == null) {
+                throw BizException.of(
+                        ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE,
+                        "TASK_ACCEPTANCE_MODULE_UNAVAILABLE");
+            }
+            return acceptance.projectOperation(entity, store, actor, operationNo);
+        }
+        if (source != null && "TASK_ACTION".equals(source.getAction())) {
+            var action = taskActions.projectOperation(entity, store, actor, operationNo);
+            return new OperationVO(
+                    operationNo,
+                    null,
+                    "PENDING",
+                    "TASK_ACTION",
+                    null,
+                    action.workOrderNo(),
+                    action.pendingReason());
+        }
+        if (source != null && "DIRECT_PLAN".equals(source.getAction())) {
+            var plan = taskAssignments.projectOperation(entity, store, actor, operationNo);
+            return new OperationVO(
+                    operationNo, null, "SUCCEEDED", "DIRECT_PLAN", null, plan.workOrderNo(), null);
+        }
         if (source != null && "START".equals(source.getAction())) {
             if (taskPreparation == null)
                 throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
@@ -79,19 +136,29 @@ public final class ServiceOperationRecoveryServiceImpl implements ServiceOperati
         if (outer != null) {
             receptionAccess.customer(entity, store, actor);
             var current = ServiceOperationQueryServiceImpl.receptionView(outer);
-            if (!"PENDING".equals(current.state())) { return current; }
+            if (!"PENDING".equals(current.state())) {
+                return current;
+            }
             switch (outer.getAction()) {
                 case "RECEIVE_WALK_IN" ->
                         reception.recoverWalkIn(entity, store, actor, operationNo);
                 case "OPEN_WORK_ORDER" -> orders.recover(entity, store, actor, operationNo);
                 case "CLAIM_GUEST" -> {
                     var result = guests.recoverClaim(entity, store, actor, operationNo);
-                    var persisted = db.read(() -> receptions.selectScoped(entity, store, operationNo));
-                    return new OperationVO(operationNo, persisted.getAppointmentNo(), result.operationState(),
-                            persisted.getAction(), result.recoveryAction(), persisted.getWorkOrderNo(),
+                    var persisted =
+                            db.read(() -> receptions.selectScoped(entity, store, operationNo));
+                    return new OperationVO(
+                            operationNo,
+                            persisted.getAppointmentNo(),
+                            result.operationState(),
+                            persisted.getAction(),
+                            result.recoveryAction(),
+                            persisted.getWorkOrderNo(),
                             persisted.getFailureCode());
                 }
-                default -> { return current; }
+                default -> {
+                    return current;
+                }
             }
             return ServiceOperationQueryServiceImpl.receptionView(
                     db.read(() -> receptions.selectScoped(entity, store, operationNo)));
@@ -118,7 +185,8 @@ public final class ServiceOperationRecoveryServiceImpl implements ServiceOperati
             return recoverOperation(entity, store, actor, linkedOuter.getOperationNo());
         }
         var operation = db.operation(operationNo);
-        AppointmentPersistence.require(entity.equals(operation.getEntityNo()) && store.equals(operation.getStoreNo()));
+        AppointmentPersistence.require(
+                entity.equals(operation.getEntityNo()) && store.equals(operation.getStoreNo()));
         var result = coordinator.advance(operationNo);
         return new OperationVO(
                 result.getOperationNo(),

@@ -1,10 +1,11 @@
 package ai.neargo.shop.merchant.service.impl;
 
-import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
-
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
 import ai.neargo.shop.merchant.entity.MchBookingHold;
@@ -13,12 +14,27 @@ import ai.neargo.shop.merchant.entity.MchResourceCommand;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.BookingHoldMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.BookingOwnerMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceCommandMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationMapper;
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.AcceptedStart;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.ActualOriginal;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.AppliedStart;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.NoEffectSeal;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.OriginalLookup;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.SealState;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.StartRequest;
+import ai.neargo.shop.spi.trade.ExecutionEvidenceContract;
+import ai.neargo.shop.spi.trade.ExecutionReference;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -44,17 +60,19 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
     private final BookingOwnerMapper owners;
     private final ResourceCommandMapper commands;
     private final BookingHoldMapper holds;
+    private final ResourceOccupationMapper occupationRows;
     private final DataSource dataSource;
     private final TransactionTemplate transactions;
 
     public ResourceCommandServiceImpl(ResourceOccupationGuard occupations, BookingOwnerMapper owners, ResourceCommandMapper commands,
-            BookingHoldMapper holds,
+            BookingHoldMapper holds, ResourceOccupationMapper occupationRows,
             @Qualifier("dataSource") DataSource dataSource,
             @Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
         this.occupations = occupations;
         this.owners = owners;
         this.commands = commands;
         this.holds = holds;
+        this.occupationRows = occupationRows;
         this.dataSource = dataSource;
         transactions = new TransactionTemplate(transactionManager);
         transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -297,6 +315,301 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
         return owner;
     }
 
+
+    @Override
+    public OccupationReceipt acceptOccupation(AcceptedStart accepted) {
+        accepted.validate();
+        var request = accepted.request();
+        try {
+            return owned(() -> {
+                var scope = occupationScope(request.reference().scope().tenantNo(), request.reference().scope().entityNo(),
+                        request.reference().scope().storeNo(), true);
+                var owner = owners.selectBySource(scope, "SERVICE_EXECUTION", request.reference().executionNo());
+                if (owner == null) {
+                    owner = new MchBookingOwner();
+                    owner.setTenantNo(scope.tenantNo()); owner.setEntityNo(scope.entityNo()); owner.setStoreNo(scope.storeNo());
+                    owner.setOwnerNo(BizKey.next("RBO")); owner.setSourceType("SERVICE_EXECUTION");
+                    owner.setSourceNo(request.reference().executionNo()); owner.setOwnerVersion(0L);
+                    owner.setOccupationAssociationState("UNBOUND");
+                    audit(owner, accepted.source().actor().actorNo()); owners.insert(owner);
+                }
+                owner = owners.lockOwner(scope, owner.getOwnerNo());
+                if (!"UNBOUND".equals(owner.getOccupationAssociationState())) return replayOccupation(scope, owner, request);
+                var command = occupationCommand(scope, owner, "START", JSON.writeValueAsString(accepted),
+                        request.requestHash(), accepted.source().actor().subjectKind(), accepted.source().actor().actorNo(),
+                        ExecutionEvidenceContract.hash("RESOURCE_OCCUPATION_ACTOR_V1", List.of(accepted.source().actor(),
+                                accepted.source().canonicalAccountNo(), accepted.source().currentPersonnel())), null);
+                commands.insert(command);
+                one(owners.bindOccupation(scope, owner.getOwnerNo(), owner.getOwnerVersion(), "ACCEPTED",
+                        request.reference().plannedResourceCommandNo(), request.reference().plannedResourceCommandHash(),
+                        JSON.writeValueAsString(request.reference()), request.reference().referenceHash(), request.reference().planHash(),
+                        command.getCommandNo(), null, command.getInitiatedBy(), utcNow()));
+                return occupationReceipt(command);
+            });
+        } catch (DuplicateKeyException duplicate) {
+            // Complete rollback precedes the exact winner read, including a racing never-accepted seal.
+            return owned(() -> {
+                var ref = request.reference();
+                var scope = occupationScope(ref.scope().tenantNo(), ref.scope().entityNo(), ref.scope().storeNo(), true);
+                var owner = owners.selectBySource(scope, "SERVICE_EXECUTION", ref.executionNo());
+                if (owner == null) throw duplicate;
+                return replayOccupation(scope, owner, request);
+            });
+        }
+    }
+
+    private OccupationReceipt replayOccupation(ResourceCommandScopeRow scope, MchBookingOwner owner, StartRequest request) {
+        requireAssociation(owner, request.reference());
+        if (!"ACCEPTED".equals(owner.getOccupationAssociationState())) throw new IllegalStateException("resource original permanently sealed");
+        var command = commands.selectCommand(scope, owner.getInitialStartCommandNo());
+        var original = JSON.readValue(command.getFrozenPayload(), AcceptedStart.class);
+        original.validate();
+        if (!request.equals(original.request())) throw new IllegalStateException("resource START request conflicts with original");
+        return occupationReceipt(command);
+    }
+
+    @Override
+    public Optional<OccupationReceipt> findOccupation(OriginalLookup original) {
+        original.validate();
+        return owned(() -> {
+            var ref = original.reference();
+            var scope = new ResourceCommandScopeRow(ref.scope().tenantNo(), ref.scope().entityNo(), ref.scope().storeNo());
+            var owner = owners.selectBySource(scope, "SERVICE_EXECUTION", ref.executionNo());
+            if (owner == null) return Optional.empty();
+            requireAssociation(owner, ref);
+            if (owner.getInitialStartCommandNo() == null) return Optional.empty();
+            var command = commands.selectCommand(scope, owner.getInitialStartCommandNo());
+            var receipt = occupationReceipt(command);
+            var accepted = JSON.readValue(receipt.frozenPayload(), AcceptedStart.class);
+            if (!accepted.request().lookup().equals(new OriginalLookup(original.reference(), original.source(), original.requestKey(),
+                    original.requestHash(), null)) || original.actual() != null && !original.actual().equals(receipt.actual())) {
+                throw new IllegalStateException("resource original lookup conflict");
+            }
+            return Optional.of(receipt);
+        });
+    }
+
+    @Override
+    public OccupationExecution lockOccupationForExecution(Scope trusted, String commandNo, long version) {
+        return joined(() -> {
+            var scope = occupationScope(trusted.tenantNo(), trusted.entityNo(), trusted.storeNo(), true);
+            var discovered = commands.selectCommand(scope, commandNo);
+            if (discovered == null || !"OCCUPATION_V1".equals(discovered.getCommandKind()) || !"START".equals(discovered.getAction()))
+                throw new IllegalStateException("actual START original unavailable");
+            var original = JSON.readValue(discovered.getFrozenPayload(), AcceptedStart.class);
+            original.validate();
+            if (!original.source().actor().equals(currentIdentity()))
+                throw new IllegalStateException("current START identity changed");
+            var roots = new TreeMap<String, MchBookingOwner>();
+            var owner = owners.selectOwner(scope, discovered.getOwnerNo());
+            roots.put(owner.getOwnerNo(), owner);
+            if (original.source().booking() != null) {
+                var booking = owners.selectOwner(scope, original.source().booking().bookingOwnerNo());
+                if (booking == null) throw new IllegalStateException("booking owner unavailable");
+                roots.put(booking.getOwnerNo(), booking);
+            }
+            for (var no : roots.keySet()) roots.put(no, owners.lockOwner(scope, no));
+            owner = roots.get(owner.getOwnerNo());
+            requireAssociation(owner, original.request().reference());
+            if (!"ACCEPTED".equals(owner.getOccupationAssociationState()) || !commandNo.equals(owner.getInitialStartCommandNo()))
+                throw new IllegalStateException("resource START association changed");
+            var command = commands.lockCommand(scope, owner.getOwnerNo(), commandNo);
+            if (!"ACCEPTED".equals(command.getStatus()) || command.getVersion() != version
+                    || owner.getOwnerVersion() != Math.addExact(command.getExpectedOwnerVersion(), 1L)
+                    || owner.getCurrentHoldNo() != null
+                    || !commands.selectOccupationSeals(scope, owner.getOwnerNo()).isEmpty())
+                throw new IllegalStateException("actual START terminal or sealed");
+            var handle = new OccupationHandle(this, transaction(), Thread.currentThread(), scope, occupationReceipt(command),
+                    new OwnerHead(owner.getOwnerNo(), owner.getCurrentHoldNo(), owner.getOwnerVersion(), owner.getSourceRevision()));
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void savepointRollback(Object savepoint) { handle.consumed = true; }
+            });
+            return handle;
+        });
+    }
+
+    @Override
+    public Scope requireOccupationExecution(OccupationExecution execution) {
+        return joined(() -> {
+            var handle = occupationHandle(execution);
+            return new Scope(handle.scope.tenantNo(), handle.scope.entityNo(), handle.scope.storeNo());
+        });
+    }
+
+    @Override
+    public void completeOccupation(OccupationExecution execution, AppliedStart result) {
+        joined(() -> {
+            var handle = occupationHandle(execution); result.validate();
+            if (!handle.command.actual().equals(result.actual())) throw new IllegalStateException("actual result journal conflict");
+            one(commands.finishOccupation(handle.scope, result.actual().commandNo(), handle.command.version(), "SUCCEEDED",
+                    JSON.writeValueAsString(result), null, result.resultNo(), result.resultRevision(), result.resultHash(),
+                    "APPLIED", null, null, null, result.accepted().source().actor().actorNo(), utcNow()));
+            handle.consumed = true;
+            return true;
+        });
+    }
+
+    @Override
+    public void sealBeforeEffect(ValidatedCancellation validated) {
+        var cancellation = validated.cancellation();
+        cancellation.original().validate();
+        try { owned(() -> { sealLocked(validated); return true; }); }
+        catch (DuplicateKeyException duplicate) {
+            // A complete losing transaction is gone before serializing again on the established original.
+            owned(() -> { sealLocked(validated); return true; });
+        }
+    }
+
+    private void sealLocked(ValidatedCancellation validated) {
+        var cancellation = validated.cancellation();
+        var ref = cancellation.original().reference();
+        var scope = occupationScope(ref.scope().tenantNo(), ref.scope().entityNo(), ref.scope().storeNo(), false);
+        occupations.inspectNativeEvidence(scope);
+        var owner = owners.selectBySource(scope, "SERVICE_EXECUTION", ref.executionNo());
+        if (owner == null) {
+            owner = new MchBookingOwner(); owner.setTenantNo(scope.tenantNo()); owner.setEntityNo(scope.entityNo());
+            owner.setStoreNo(scope.storeNo()); owner.setOwnerNo(BizKey.next("RBO")); owner.setSourceType("SERVICE_EXECUTION");
+            owner.setSourceNo(ref.executionNo()); owner.setOwnerVersion(0L); owner.setOccupationAssociationState("UNBOUND");
+            audit(owner, "RESOURCE_CANCEL_MACHINE"); owners.insert(owner);
+        }
+        owner = owners.lockOwner(scope, owner.getOwnerNo());
+        if (!"UNBOUND".equals(owner.getOccupationAssociationState())) requireAssociation(owner, ref);
+        MchResourceCommand start = owner.getInitialStartCommandNo() == null ? null
+                : commands.lockCommand(scope, owner.getOwnerNo(), owner.getInitialStartCommandNo());
+        if (start != null) {
+            var accepted = JSON.readValue(start.getFrozenPayload(), AcceptedStart.class);
+            if (cancellation.original().actual() != null && !cancellation.original().actual().equals(occupationReceipt(start).actual()))
+                throw new IllegalStateException("cancellation actual journal mismatch");
+            if (validated.nativeRejection() != null && (!validated.nativeRejection().actual().equals(occupationReceipt(start).actual())
+                    || !validated.nativeRejection().acceptedHash().equals(accepted.acceptedHash())))
+                throw new IllegalStateException("Native rejection original mismatch");
+            if (!accepted.request().lookup().equals(new OriginalLookup(ref, cancellation.original().source(),
+                    cancellation.original().requestKey(), cancellation.original().requestHash(), null)))
+                throw new IllegalStateException("cancellation original mismatch");
+            if ("APPLIED".equals(start.getOccupationOutcome())) {
+                occupationRows.markStop(scope, owner.getOwnerNo(), "RESOURCE_CANCEL_MACHINE", utcNow());
+                return;
+            }
+        }
+        if (start == null && (validated.nativeRejection() != null || cancellation.original().actual() != null))
+            throw new IllegalStateException("Native rejection cannot invent an unaccepted original");
+        var seals = commands.selectOccupationSeals(scope, owner.getOwnerNo());
+        if (!seals.isEmpty()) {
+            if (seals.size() != 1 || !JSON.readValue(seals.getFirst().getFrozenPayload(), ValidatedCancellation.class).cancellation().equals(cancellation))
+                throw new IllegalStateException("cancellation action conflicts with permanent seal");
+            return;
+        }
+        if (!occupationRows.selectByOwner(scope, owner.getOwnerNo()).isEmpty()
+                || occupationRows.countOwnerArtifacts(scope, owner.getOwnerNo()) != 0)
+            throw new IllegalStateException("partial resource effects cannot be sealed");
+        if (start != null && !"ACCEPTED".equals(start.getStatus()))
+            throw new IllegalStateException("unsealed terminal START cannot prove zero effect");
+        String frozen = JSON.writeValueAsString(validated);
+        var seal = occupationCommand(scope, owner, "SEAL_START", frozen, cancellation.cancellationActionHash(),
+                "MACHINE", "RESOURCE_CANCEL_MACHINE", ExecutionEvidenceContract.hash("RESOURCE_CANCEL_PROVENANCE_V1", cancellation),
+                start == null ? null : start.getCommandNo());
+        commands.insert(seal);
+        if ("UNBOUND".equals(owner.getOccupationAssociationState())) {
+            one(owners.bindOccupation(scope, owner.getOwnerNo(), owner.getOwnerVersion(), "SEALED_BEFORE_ACCEPT",
+                    ref.plannedResourceCommandNo(), ref.plannedResourceCommandHash(), JSON.writeValueAsString(ref),
+                    ref.referenceHash(), ref.planHash(), null, seal.getCommandNo(), "RESOURCE_CANCEL_MACHINE", utcNow()));
+        }
+        String sealNo = BizKey.next("RSL"), resultNo = BizKey.next("RRR");
+        var actual = start == null ? null : occupationReceipt(start).actual();
+        var journal = occupationReceipt(seal).actual();
+        String sealHash = ExecutionEvidenceContract.hash("RESOURCE_NO_EFFECT_SEAL_V1", List.of(validated, journal, sealNo));
+        String resultHash = ExecutionEvidenceContract.hash("RESOURCE_SEAL_RESULT_V1", List.of(sealHash, resultNo));
+        var proof = new NoEffectSeal(start == null ? SealState.NEVER_ACCEPTED_SEALED : SealState.CANCELLED_BEFORE_EFFECT,
+                actual, journal, sealNo, 1L, sealHash, 0, resultNo, 1L, resultHash);
+        if (start != null) {
+            String rejectedNo = BizKey.next("RRR");
+            var rejection = Map.of("schema", "RESOURCE_OCCUPATION_REJECTED_V1", "cause", cancellation.cause(),
+                    "sealCommandNo", seal.getCommandNo(), "resultNo", rejectedNo);
+            one(commands.finishOccupation(scope, start.getCommandNo(), start.getVersion(), "REJECTED",
+                    JSON.writeValueAsString(rejection), cancellation.cause(), rejectedNo, 1L,
+                    ExecutionEvidenceContract.hash("RESOURCE_OCCUPATION_REJECTED_V1", rejection), "REJECTED", null,
+                    null, null, "RESOURCE_CANCEL_MACHINE", utcNow()));
+        }
+        one(commands.finishOccupation(scope, seal.getCommandNo(), seal.getVersion(), "SUCCEEDED", JSON.writeValueAsString(proof),
+                null, resultNo, 1L, resultHash, proof.state().name(), sealNo, 1L, sealHash, "RESOURCE_CANCEL_MACHINE", utcNow()));
+    }
+
+    private MchResourceCommand occupationCommand(ResourceCommandScopeRow scope, MchBookingOwner owner, String action,
+            String frozen, String keyHash, String namespace, String initiatedBy, String provenance, String start) {
+        ExecutionReference ref = "START".equals(action)
+                ? JSON.readValue(frozen, AcceptedStart.class).request().reference()
+                : JSON.readValue(frozen, ValidatedCancellation.class).cancellation().original().reference();
+        var row = new MchResourceCommand(); row.setTenantNo(scope.tenantNo()); row.setEntityNo(scope.entityNo());
+        row.setStoreNo(scope.storeNo()); row.setOwnerNo(owner.getOwnerNo()); row.setCommandNo(BizKey.next("RBC"));
+        row.setAction(action); row.setCommandKind("OCCUPATION_V1"); row.setPayloadSchema("RESOURCE_OCCUPATION_" + action + "_V1");
+        row.setRequestKeyHash(keyHash); row.setPayloadHash(ExecutionEvidenceContract.hash(row.getPayloadSchema(), frozen));
+        row.setFrozenPayload(frozen); row.setExpectedOwnerVersion(owner.getOwnerVersion()); row.setSourceRevision(ref.sourceFenceRevision());
+        row.setStatus("ACCEPTED"); row.setInitiatedBy(initiatedBy); row.setExecutionReferenceJson(JSON.writeValueAsString(ref));
+        row.setExecutionReferenceHash(ref.referenceHash()); row.setPlannedResourceCommandNo(ref.plannedResourceCommandNo());
+        row.setPlannedResourceCommandHash(ref.plannedResourceCommandHash()); row.setExecutionPlanHash(ref.planHash());
+        row.setOriginalStartCommandNo(start); row.setActorNamespace(namespace); row.setActorProvenanceHash(provenance);
+        row.setMachinePurpose("MACHINE".equals(namespace) ? "RESOURCE_CANCEL_BEFORE_EFFECT_V1" : null);
+        row.setObservationEpoch(0L); audit(row, initiatedBy); return row;
+    }
+
+    private OccupationHandle occupationHandle(OccupationExecution execution) {
+        if (!(execution instanceof OccupationHandle handle) || handle.service != this || handle.connection != transaction()
+                || handle.thread != Thread.currentThread() || handle.consumed)
+            throw new IllegalStateException("invalid actual occupation transaction credential");
+        var accepted = JSON.readValue(handle.command.frozenPayload(), AcceptedStart.class);
+        if (!accepted.source().actor().equals(currentIdentity()))
+            throw new IllegalStateException("actual occupation identity changed");
+        return handle;
+    }
+
+    private OccupationReceipt occupationReceipt(MchResourceCommand command) {
+        if (command == null || !"OCCUPATION_V1".equals(command.getCommandKind()))
+            throw new IllegalStateException("actual occupation command unavailable");
+        var ref = "START".equals(command.getAction()) ? JSON.readValue(command.getFrozenPayload(), AcceptedStart.class).request().reference()
+                : JSON.readValue(command.getFrozenPayload(), ValidatedCancellation.class).cancellation().original().reference();
+        if (!command.getPayloadSchema().equals("RESOURCE_OCCUPATION_" + command.getAction() + "_V1")
+                || !command.getPayloadHash().equals(ExecutionEvidenceContract.hash(command.getPayloadSchema(), command.getFrozenPayload()))
+                || !ref.equals(JSON.readValue(command.getExecutionReferenceJson(), ExecutionReference.class))
+                || !ref.referenceHash().equals(command.getExecutionReferenceHash())
+                || !ref.planHash().equals(command.getExecutionPlanHash())
+                || !ref.plannedResourceCommandNo().equals(command.getPlannedResourceCommandNo())
+                || !ref.plannedResourceCommandHash().equals(command.getPlannedResourceCommandHash()))
+            throw new IllegalStateException("actual resource command original conflict");
+        return new OccupationReceipt(new Scope(command.getTenantNo(), command.getEntityNo(), command.getStoreNo()),
+                new ActualOriginal(command.getOwnerNo(), command.getCommandNo(), command.getPayloadSchema(), command.getPayloadHash()),
+                command.getStatus(), command.getVersion(), command.getFrozenPayload(), command.getResultPayload());
+    }
+
+    private ResourceCommandScopeRow occupationScope(String tenant, String entity, String store, boolean current) {
+        var row = current ? owners.lockScope(tenant, entity, store) : owners.lockOriginalScope(tenant, entity, store);
+        if (row == null) throw new IllegalStateException("actual resource parent scope unavailable");
+        return row;
+    }
+
+    private static void requireAssociation(MchBookingOwner owner, ExecutionReference ref) {
+        if (!ref.executionNo().equals(owner.getSourceNo()) || !ref.referenceHash().equals(owner.getExecutionReferenceHash())
+                || !ref.planHash().equals(owner.getExecutionPlanHash())
+                || !ref.plannedResourceCommandNo().equals(owner.getPlannedResourceCommandNo())
+                || !ref.plannedResourceCommandHash().equals(owner.getPlannedResourceCommandHash()))
+            throw new IllegalStateException("permanent planned-resource association conflict");
+    }
+    private static void one(int changed) { requireOne(changed); }
+    private static LocalDateTime utcNow() { return LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS); }
+    private static void audit(BaseEntity row, String actor) {
+        row.setCreatedAt(utcNow()); row.setUpdatedAt(utcNow()); row.setCreatedBy(actor); row.setUpdatedBy(actor);
+        row.setVersion(0L); row.setDeleted(0);
+    }
+    private static final class OccupationHandle implements OccupationExecution {
+        final ResourceCommandServiceImpl service; final ConnectionHolder connection; final Thread thread;
+        final ResourceCommandScopeRow scope; final OccupationReceipt command; final OwnerHead owner; boolean consumed;
+        OccupationHandle(ResourceCommandServiceImpl service, ConnectionHolder connection, Thread thread,
+                ResourceCommandScopeRow scope, OccupationReceipt command, OwnerHead owner) {
+            this.service=service; this.connection=connection; this.thread=thread; this.scope=scope; this.command=command; this.owner=owner;
+        }
+        @Override public OccupationReceipt command() { return command; }
+        @Override public OwnerHead owner() { return owner; }
+    }
+
     private ResourceCommandScopeRow canonical(Scope scope) {
         if (scope == null) {
             throw new IllegalArgumentException("explicit resource command scope required");
@@ -525,5 +838,9 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
         public OwnerHead owner() {
             return owner;
         }
+    }
+    private static DelegatedIdentity currentIdentity() {
+        var user=SecurityUtils.requireUser();
+        return new DelegatedIdentity(user.tenantNo(),user.realm().name(),user.subjectKind().name(),user.userNo());
     }
 }

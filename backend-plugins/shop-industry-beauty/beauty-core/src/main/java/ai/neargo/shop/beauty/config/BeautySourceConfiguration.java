@@ -1,39 +1,61 @@
 package ai.neargo.shop.beauty.config;
 
-import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
-import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
-import ai.neargo.shop.beauty.service.impl.ServiceTaskStockPreparationCoordinator;
-import ai.neargo.shop.beauty.service.impl.ServiceTaskPreparationServiceImpl;
-import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
-import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
-import ai.neargo.shop.beauty.job.ServiceExecutionRecoveryJob;
 import ai.neargo.job.api.JobDeclaration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
-import ai.neargo.shop.beauty.port.ServiceExecutionSourcePortImpl;
-import ai.neargo.shop.beauty.service.impl.ServiceExecutionFenceCoordinator;
-import ai.neargo.shop.beauty.service.impl.ServiceTaskExecutionServiceImpl;
-import ai.neargo.shop.beauty.service.ServiceTaskExecutionService;
-import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
-import ai.neargo.shop.spi.trade.ServiceExecutionPort;
-import javax.sql.DataSource;
+import ai.neargo.shop.beauty.job.ServiceExecutionRecoveryJob;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
+import ai.neargo.shop.beauty.policy.DirectTaskPlanSchemaVerifier;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
+import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
+import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
 import ai.neargo.shop.beauty.policy.ServiceSubmissionAccess;
+import ai.neargo.shop.beauty.policy.TaskAcceptanceSchemaVerifier;
+import ai.neargo.shop.beauty.policy.TaskActionSchemaVerifier;
+import ai.neargo.shop.beauty.policy.TaskStartSchemaVerifier;
+import ai.neargo.shop.beauty.port.ServiceExecutionSourcePortImpl;
+import ai.neargo.shop.beauty.port.ServiceTaskStartAuthorityPortImpl;
+import ai.neargo.shop.beauty.service.ServiceTaskActionService;
+import ai.neargo.shop.beauty.service.ServiceTaskExecutionService;
+import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
 import ai.neargo.shop.beauty.service.impl.AppointmentPersistence;
+import ai.neargo.shop.beauty.service.impl.ServiceExecutionFenceCoordinator;
 import ai.neargo.shop.beauty.service.impl.ServiceSourceBinding;
 import ai.neargo.shop.beauty.service.impl.ServiceSourceObservation;
 import ai.neargo.shop.beauty.service.impl.ServiceSubmissionQuery;
 import ai.neargo.shop.beauty.service.impl.ServiceSubmissionServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskActionServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskAssignmentServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskExecutionServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskPreparationServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskStockPreparationCoordinator;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskWorkflowServiceImpl;
+import ai.neargo.shop.beauty.service.impl.TaskAcceptanceCoordinator;
+import ai.neargo.shop.beauty.service.impl.TaskStartCoordinator;
+import ai.neargo.shop.beauty.service.impl.TaskStartOperationQuery;
+import ai.neargo.shop.beauty.service.impl.TaskStartOriginalReader;
 import ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImpl;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
+import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
+import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
+import ai.neargo.shop.spi.resource.ResourceBookingExecutionEvidencePort;
+import ai.neargo.shop.spi.resource.ResourceCandidatesPort;
+import ai.neargo.shop.spi.resource.ResourceExecutionEvidencePort;
+import ai.neargo.shop.spi.resource.ResourceFactsPort;
+import ai.neargo.shop.spi.resource.ResourceOccupationPort;
+import ai.neargo.shop.spi.resource.ResourceQualificationPort;
+import ai.neargo.shop.spi.schedule.ScheduleWindowsPort;
 import ai.neargo.shop.spi.trade.CheckoutPort;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionEvidencePort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionStartPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -43,6 +65,8 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 
+import javax.sql.DataSource;
+
 /**
  * Local source orchestration keeps shared checkout ownership and current consumer authority
  * separate.
@@ -51,26 +75,245 @@ import java.time.Clock;
 @ConditionalOnBeautyEnabled
 public class BeautySourceConfiguration {
     @Bean
+    TaskStartSchemaVerifier beautyTaskStartSchemaVerifier(
+            @Qualifier("dataSource") DataSource source) {
+        return new TaskStartSchemaVerifier(source);
+    }
+
+    @Bean
+    TaskStartOriginalReader beautyTaskStartOriginalReader(
+            AppointmentPersistence db,
+            ServiceExecutionSchemaVerifier schema,
+            DirectTaskPlanSchemaVerifier direct,
+            ServiceExecutionStockIntentSchemaVerifier stock,
+            BeautyMappers.SourceObservationMapper observations,
+            BeautyMappers.SourceAllocationGuardMapper guards,
+            BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.ServiceExecutionStockIntentMapper stockRows,
+            BeautyMappers.TradeBindingMapper bindings,
+            BeautyMappers.TaskAssignmentSlotMapper slots,
+            TaskStartSchemaVerifier start) {
+        return new TaskStartOriginalReader(
+                db,
+                schema,
+                direct,
+                stock,
+                observations,
+                guards,
+                orders,
+                tasks,
+                fences,
+                submissions,
+                stockRows,
+                bindings,
+                slots,
+                start);
+    }
+
+    @Bean
+    TaskStartOperationQuery beautyTaskStartOperationQuery(
+            AppointmentPersistence db,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            TaskStartOriginalReader reader,
+            ServiceExecutionAccess access,
+            TaskStartSchemaVerifier schema) {
+        return new TaskStartOperationQuery(db, submissions, reader, access, schema);
+    }
+
+    @Bean
+    ServiceTaskStartAuthorityPortImpl beautyTaskStartAuthority(
+            TaskStartOriginalReader reader,
+            ServiceExecutionAccess access,
+            MerchantOperatorAccessPort operators,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new ServiceTaskStartAuthorityPortImpl(reader, access, operators, clock);
+    }
+
+    @Bean
+    TaskStartCoordinator beautyTaskStartCoordinator(
+            AppointmentPersistence db,
+            TaskStartOriginalReader reader,
+            ServiceTaskActionService actions,
+            ServiceExecutionAccess access,
+            TaskStartSchemaVerifier schema,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            ResourceOccupationPort nativeOwner,
+            ResourceExecutionEvidencePort nativeEvidence,
+            ServiceExecutionStartPort core,
+            ServiceExecutionEvidencePort coreEvidence,
+            @Qualifier("beautyReceptionClock") Clock clock,
+            ObjectProvider<ResourceBookingExecutionEvidencePort> bookingEvidence) {
+        var coordinator =
+                new TaskStartCoordinator(
+                        db,
+                        reader,
+                        actions,
+                        access,
+                        schema,
+                        submissions,
+                        nativeOwner,
+                        nativeEvidence,
+                        core,
+                        coreEvidence,
+                        clock);
+        coordinator.setBookingEvidence(bookingEvidence);
+        return coordinator;
+    }
+
+    @Bean
+    TaskAcceptanceSchemaVerifier beautyTaskAcceptanceSchemaVerifier(
+            @Qualifier("dataSource") DataSource source) {
+        return new TaskAcceptanceSchemaVerifier(source);
+    }
+
+    @Bean
+    TaskAcceptanceCoordinator beautyTaskAcceptanceCoordinator(
+            AppointmentPersistence db,
+            ServiceExecutionAccess access,
+            TaskAcceptanceSchemaVerifier schema,
+            ServiceTaskExecutionServiceImpl execution,
+            ServiceTaskActionServiceImpl actions,
+            ServiceTaskStockPreparationCoordinator stock,
+            BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.TaskAssignmentSlotMapper slots,
+            ResourceQualificationPort qualification,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new TaskAcceptanceCoordinator(
+                db,
+                access,
+                schema,
+                execution,
+                actions,
+                stock,
+                fences,
+                submissions,
+                tasks,
+                slots,
+                qualification,
+                clock);
+    }
+
+    @Bean
+    TaskActionSchemaVerifier beautyTaskActionSchemaVerifier(
+            @Qualifier("dataSource") DataSource source) {
+        return new TaskActionSchemaVerifier(source);
+    }
+
+    @Bean
+    ServiceTaskActionServiceImpl beautyTaskActionService(
+            AppointmentPersistence db,
+            ServiceExecutionAccess access,
+            TaskActionSchemaVerifier schema,
+            ServiceTaskExecutionServiceImpl execution,
+            ServiceTaskStockPreparationCoordinator stock,
+            BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.TradeBindingMapper bindings,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            @Qualifier("beautyReceptionClock") Clock clock,
+            TaskStartOriginalReader reader,
+            MerchantOperatorAccessPort operators,
+            TaskStartSchemaVerifier startSchema) {
+        return new ServiceTaskActionServiceImpl(
+                db,
+                access,
+                schema,
+                execution,
+                stock,
+                fences,
+                bindings,
+                submissions,
+                clock,
+                reader,
+                operators,
+                startSchema);
+    }
+
+    @Bean
+    DirectTaskPlanSchemaVerifier beautyDirectTaskPlanSchemaVerifier(
+            @Qualifier("dataSource") DataSource source) {
+        return new DirectTaskPlanSchemaVerifier(source);
+    }
+
+    @Bean
+    ServiceTaskAssignmentServiceImpl beautyTaskAssignmentService(
+            AppointmentPersistence db,
+            ServiceSubmissionQuery query,
+            BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.TradeBindingMapper bindings,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.SourceObservationMapper observations,
+            BeautyMappers.SourceAllocationGuardMapper guards,
+            ObjectProvider<MerchantOperatorAccessPort> operators,
+            ObjectProvider<ResourceFactsPort> resources,
+            ObjectProvider<PersonnelFactsPort> people,
+            ObjectProvider<ScheduleWindowsPort> schedules,
+            ObjectProvider<ResourceCandidatesPort> capacities,
+            @Qualifier("beautyReceptionClock") Clock clock,
+            DirectTaskPlanSchemaVerifier schema,
+            ServiceExecutionSchemaVerifier executionSchema) {
+        return new ServiceTaskAssignmentServiceImpl(
+                db,
+                query,
+                orders,
+                tasks,
+                bindings,
+                submissions,
+                fences,
+                observations,
+                guards,
+                operators,
+                resources,
+                people,
+                schedules,
+                capacities,
+                clock,
+                schema,
+                executionSchema);
+    }
+
+    @Bean
     ServiceExecutionSchemaVerifier beautyServiceExecutionSchemaVerifier(
             @Qualifier("dataSource") DataSource source) {
         return new ServiceExecutionSchemaVerifier(source);
     }
 
     @Bean
-    ServiceExecutionAccess serviceExecutionAccess(ObjectProvider<PersonnelOperatorFactsPort> personnel,
+    ServiceExecutionAccess serviceExecutionAccess(
+            ObjectProvider<PersonnelOperatorFactsPort> personnel,
             @Qualifier("beautyReceptionClock") Clock clock) {
         return new ServiceExecutionAccess(personnel, clock);
     }
 
     @Bean
-    ServiceExecutionFenceCoordinator serviceExecutionFenceCoordinator(ServiceExecutionSchemaVerifier schema,
-            BeautyMappers.ServiceExecutionFenceMapper fences, BeautyMappers.SourceObservationMapper observations,
-            BeautyMappers.SourceAllocationGuardMapper guards, BeautyMappers.WorkOrderMapper orders,
-            BeautyMappers.ServiceTaskMapper tasks, BeautyMappers.ServiceSubmissionMapper submissions,
-            BeautyMappers.TradeBindingMapper bindings, ObjectMapper json,
+    ServiceExecutionFenceCoordinator serviceExecutionFenceCoordinator(
+            ServiceExecutionSchemaVerifier schema,
+            BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.SourceObservationMapper observations,
+            BeautyMappers.SourceAllocationGuardMapper guards,
+            BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.TradeBindingMapper bindings,
+            ObjectMapper json,
             @Qualifier("beautyReceptionClock") Clock clock) {
-        return new ServiceExecutionFenceCoordinator(schema, fences, observations, guards, orders, tasks,
-                submissions, bindings, json, clock);
+        return new ServiceExecutionFenceCoordinator(
+                schema,
+                fences,
+                observations,
+                guards,
+                orders,
+                tasks,
+                submissions,
+                bindings,
+                json,
+                clock);
     }
 
     @Bean
@@ -89,7 +332,9 @@ public class BeautySourceConfiguration {
             BeautyMappers.GuestClaimReceiptMapper claims,
             ObjectProvider<ServiceExecutionPort> owner,
             ObjectProvider<ServiceTaskStockPreparationCoordinator> stock,
-            @Qualifier("beautyReceptionClock") Clock clock) {
+            DirectTaskPlanSchemaVerifier directPlans,
+            @Qualifier("beautyReceptionClock") Clock clock,
+            TaskStartOriginalReader reader) {
         var service =
                 new ServiceTaskExecutionServiceImpl(
                         db,
@@ -105,7 +350,9 @@ public class BeautySourceConfiguration {
                         submissions,
                         claims,
                         owner,
-                        clock);
+                        clock,
+                        reader);
+        service.setDirectPlanSchema(directPlans);
         service.setStockObservationProvider(stock);
         return service;
     }
@@ -150,7 +397,8 @@ public class BeautySourceConfiguration {
             ObjectMapper json,
             @Qualifier("beautyReceptionClock") Clock clock,
             ServiceExecutionFenceCoordinator executionFences) {
-        return new ServiceSourceObservation(rows, checkout, manual, manager, json, clock, executionFences);
+        return new ServiceSourceObservation(
+                rows, checkout, manual, manager, json, clock, executionFences);
     }
 
     @Bean
@@ -189,7 +437,16 @@ public class BeautySourceConfiguration {
             @Qualifier("beautyReceptionClock") Clock clock,
             ServiceExecutionFenceCoordinator executionFences) {
         return new ServiceSourceBinding(
-                db, query, observations, guards, orders, tasks, submissions, bindings, clock, executionFences);
+                db,
+                query,
+                observations,
+                guards,
+                orders,
+                tasks,
+                submissions,
+                bindings,
+                clock,
+                executionFences);
     }
 
     @Bean
@@ -255,16 +512,33 @@ public class BeautySourceConfiguration {
     @Bean(name = "beautyServiceExecutionRecoveryJob")
     @Profile("api")
     @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
-    ServiceExecutionRecoveryJob beautyServiceExecutionRecoveryJob(ServiceTaskExecutionService service) {
-        return new ServiceExecutionRecoveryJob(service);
+    ServiceExecutionRecoveryJob beautyServiceExecutionRecoveryJob(
+            ServiceTaskExecutionService service,
+            ObjectProvider<TaskStartCoordinator> starts,
+            ObjectProvider<ServiceTaskWorkflowServiceImpl> workflows) {
+        var coordinator = starts.getIfAvailable();
+        var job =
+                coordinator == null
+                        ? ServiceExecutionRecoveryJob.quantityOnly(service)
+                        : ServiceExecutionRecoveryJob.quantityAndStart(service, coordinator);
+        var workflow = workflows.getIfAvailable();
+        return workflow == null ? job : job.withWorkflows(workflow);
     }
 
     @Bean(name = "beautyServiceExecutionRecoveryDeclaration")
     @Profile("api")
     @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
     JobDeclaration beautyServiceExecutionRecoveryDeclaration() {
-        return new JobDeclaration("beauty-service-execution-recovery", "美业执行凭证恢复",
-                "核对原数量授权，不重放员工操作", "beauty-core",
-                "0 * * * * *", true, 120, 120, true, true);
+        return new JobDeclaration(
+                "beauty-service-execution-recovery",
+                "美业执行凭证恢复",
+                "核对原数量授权，不重放员工操作",
+                "beauty-core",
+                "0 * * * * *",
+                true,
+                120,
+                120,
+                true,
+                true);
     }
 }

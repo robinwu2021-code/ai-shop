@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "该接口已由独立ai-shop-bapp Flutter商户端ServiceCounterPage接入（服务业功能提交f001859，远端分支codex/service-store-complete）；本检查只扫描uni-app b-app，不包含Flutter。uni-app页面不属于本批交付，不将已交付Flutter接口误记为无调用方。",
+  "plan": "docs/technical/B端服务业-App接口与插件接口对照.md",
+  "contract": "docs/api/service-counter-state.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/service-orders/counter-quotes/{operationNo}/state"
+    }
+  ]
+}

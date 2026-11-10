@@ -1,6 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import org.springframework.boot.test.context.TestConfiguration;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationSegmentMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationUnitMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceBucketMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationBucketMapper;
 
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier;
@@ -401,7 +405,7 @@ class ResourceBookingExecutionIT {
             Mockito.when(schema.installation()).thenReturn(
                     ResourceOccupationSchemaVerifier.Installation.INSTALLED);
             var actualRows = ctx.getBean(ResourceOccupationMapper.class);
-            var guard = new ResourceOccupationGuard(schema, actualRows);
+            var guard = new ResourceOccupationGuard(schema, actualRows, ctx.getBean(ResourceOccupationSegmentMapper.class), ctx.getBean(ResourceOccupationUnitMapper.class), ctx.getBean(ResourceBucketMapper.class), ctx.getBean(ResourceOccupationBucketMapper.class));
             assertThatThrownBy(() -> DataScopeContext.executeWithoutScope(
                     () -> guard.inspect(new ResourceCommandScopeRow("MAIN", "E", "S"))))
                     .isInstanceOfSatisfying(BizException.class, failure -> assertThat(failure.errorCode())

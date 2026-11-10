@@ -1,0 +1,1193 @@
+{
+  "status": "SVC-B02-controlled-query-accepted",
+  "overallServiceBackendComplete": false,
+  "branch": "codex/service-bapp-backend",
+  "sourceHead": "a01b155fc",
+  "inheritedSourceFilesPreserved": 41,
+  "policyConfirmed": "Reuse existing effective rules; close cases lacking service deposit, partial-fulfillment refund or commission policy.",
+  "implemented": [
+    "GET /biz/x/beauty/work-orders",
+    "SQL store/entity/MAIN/context visibility, stable pagination and exact original-number lookup",
+    "UTC created-at half-open interval and real root states",
+    "embedded owner and typed bound standalone query, current actor and response ownership",
+    "single validation at MVC/independent protocol boundary"
+  ],
+  "review": {
+    "freshReadonly": true,
+    "importantFinding": "COMPLETED is demo-only; real root state SERVICE_FINISHED omitted",
+    "importantResolved": true,
+    "regressionObservedRed": true,
+    "minorBoundaryValidationAdjustedToJavaSection8": true,
+    "rereviewPerformed": false
+  },
+  "selectedVerification": {
+    "currentFocusedCasesValidatedIncrementally": 14,
+    "mysql9NativeQueryCases": 1,
+    "existingPublicReceptionIngressCases": 51,
+    "countsOverlapAcrossLogs": true,
+    "notClaimedWholeRepositoryPass": true
+  },
+  "knownInheritedFailures": [
+    "shop-base CheckoutContractTest old method count",
+    "shop-base ExecutionPreparationOriginalProtocolTest current manual proof shape / wire expectation",
+    "BookingServerWiringTest missing DataSource fixture",
+    "BeautyBm04AssemblyTest missing DataSource and wrong V599/V600 migration path"
+  ],
+  "evidenceReconciliation": [
+    "native-http final command: core7, public ingress1, channel5 passed; only new internal test constructed an invalid consumer envelope before invoking the route.",
+    "internal-final: corrected fixture consumer envelope; internal query test1 passed.",
+    "ingress-check: original BM04 public routes51 plus new ingress1 passed; later validation assertions covered by native-http current ingress.",
+    "state-regression: two failures witnessed before replacing COMPLETED with SERVICE_FINISHED.",
+    "compile-final verifies current production and test source compilation without re-running unchanged business cases.",
+    "wide inherited failures remain recorded and are not counted as green or silently modified."
+  ],
+  "evidence": [
+    {
+      "log": "/private/tmp/svc-b02-native-http.log",
+      "sha256": "c8dc0f014324e206e6de28da2eec0ec33b272d3910ff5b41caaf8753b548358f",
+      "buildSuccess": false,
+      "tests": [
+        {
+          "class": "ai.neargo.shop.beauty.config.WorkOrderWorkbenchWiringTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchSqlTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchNativeMysqlTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.WorkOrderWorkbenchTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.api.biz.WorkOrderWorkbenchIngressTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.BeautyReceptionResponsesTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.WorkOrderWorkbenchHttpTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.WorkOrderWorkbenchResponsesTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.WorkOrderWorkbenchInternalTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 1,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "log": "/private/tmp/svc-b02-internal-final.log",
+      "sha256": "749eb7bc87fb73fa4474fa1cc6ca388747e5d572111a2fa5a06de8df1e033bc3",
+      "buildSuccess": true,
+      "tests": [
+        {
+          "class": "ai.neargo.shop.beauty.scenario.WorkOrderWorkbenchInternalTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "log": "/private/tmp/svc-b02-ingress-check.log",
+      "sha256": "8ad895cafd56febf7b0ce0769e6779534efe664b928ff7cf577e002f5be37bc3",
+      "buildSuccess": true,
+      "tests": [
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBm04IngressTest",
+          "discovered": 51,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.api.biz.WorkOrderWorkbenchIngressTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "log": "/private/tmp/svc-b02-state-regression.log",
+      "sha256": "37ebf5c20e8f89f80cca03a267fc8fe18f732560c661e1d3646e1d4bc5b33f41",
+      "buildSuccess": false,
+      "tests": [
+        {
+          "class": "ai.neargo.shop.beauty.service.WorkOrderWorkbenchTest",
+          "discovered": 4,
+          "failures": 2,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "log": "/private/tmp/svc-b02-full-beauty.log",
+      "sha256": "a1998b63e4c6f5b501ede41d176a452ef9f6441027389079962eb648e664321e",
+      "buildSuccess": false,
+      "tests": [
+        {
+          "class": "ai.neargo.auth.store.CompositeIdentityLoaderTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.auth.store.SessionProfileTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.auth.store.ThreeRealmIsolationTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.auth.store.NoHeavyDependenciesTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.auth.store.SessionDaoTest",
+          "discovered": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.auth.store.LoginLogDaoTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.job.api.JobDeclarationTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.job.api.JobContractTest",
+          "discovered": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "服务间调用的传输层",
+          "discovered": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.geo.S2CoverTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.geo.GeoPolygonTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.svc.ServiceLocatorTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.svc.CallSourceClientInterceptorTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "discovered": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.svc.ExecutionRemoteErrorsTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.GoodsDescTest",
+          "discovered": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.MasksTest",
+          "discovered": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.PlaceNamesTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.CouponCalculationTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.ExpressCompaniesTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "发码限流闸",
+          "discovered": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.OpenHoursAtTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.FulfillmentsTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.BizKeyTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingRuleCatalogTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.SourcePriceMathTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingConfigCompilerTest",
+          "discovered": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingEngineTest",
+          "discovered": 29,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingFeeEngineTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingRuleEngineTest",
+          "discovered": 27,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.IndustryOrderCompositionFactsTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingFactsTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingSeedValidatorTest",
+          "discovered": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingBenefitBasisTest",
+          "discovered": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.MerchantTaxEngineTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.TaxSettingDefinitionTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.MerchantTaxConfigContractTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.TaxAdjustmentResolverTest",
+          "discovered": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.BenefitPlanSelectorTest",
+          "discovered": 30,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingRuleCatalogRestartTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.MoneyMinorTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.TaxEngineTest",
+          "discovered": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.common.pricing.PricingUnitTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.CheckoutContractTest",
+          "discovered": 4,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.ExecutionPreparationOriginalProtocolTest",
+          "discovered": 5,
+          "failures": 1,
+          "errors": 1,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.ExecutionEvidenceContractTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.ExecutionPreparationContractTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.IndustryOrderCompatibilityTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.ServiceExecutionContractTest",
+          "discovered": 19,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.PricingSourceRefTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.PricingFundingCapabilitiesTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.PricingSourceFactsTest",
+          "discovered": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.trade.IndustryChannelOrderFactsTest",
+          "discovered": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.pay.CallSourcesTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.pay.CallSourceCodecTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.pay.PaymentPortSourceTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.CatalogImageFactsTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.StockDispositionLifecycleContractTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.InventoryExecutionStockRetentionContractTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.CatalogMarketFactsTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.GoodsPricingPolicyFactsTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContractTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.ExecutionStockRetentionPreparationObservationTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.product.CatalogPriceSourceFactsTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.inventory.InventoryProductionFactsTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.inventory.InventoryDemandPlanFactsTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.inventory.InventoryProductionFactsCompatibilityTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.settle.PaymentOperationContractTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.points.PointsOrderEventTest",
+          "discovered": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.storedvalue.ExecutionScopeJsonTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.storedvalue.StoredValueWalletsCompatibilityTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.entitlement.StoredValueReceiptContractTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.entitlement.SourceRefTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.resource.ResourcePlanContractTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.spi.reach.ConsumerProfileTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.numbering.DocumentNumberFormatterTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.job.SelfTestJobTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.resource.ResourceRecoveryContractTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.event.outbox.OutboxRetryPolicyTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.event.outbox.OutboxLeaseTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.event.AfterCommitDeferredActionsTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "log": "/private/tmp/svc-b02-beauty-regression.log",
+      "sha256": "a72fe0ee7222efc7d42c62b752158e23a4a21ff5ea998751645c93296908c446",
+      "buildSuccess": false,
+      "tests": [
+        {
+          "class": "ai.neargo.shop.beauty.dto.ServiceDefinitionNotesTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.config.BeautyCheckExpressionTest",
+          "discovered": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.config.BeautyMigrationDataSourceTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.config.BeautySchemaValidatorTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchSqlTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.mapper.WorkOrderWorkbenchNativeMysqlTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 1
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.AppointmentMatchingSearchTest",
+          "discovered": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.ResourcePlanContractTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyConditionalWiringTest",
+          "discovered": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyPersistenceWiringTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.GuestReferenceContractTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.AppointmentIncompleteSearchTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyWriteGuardHostWiringTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautySourceWiringTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.AppointmentBusinessContractTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservationTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.WorkOrderQueryTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.ServiceTaskStockPreparationCoordinatorTest",
+          "discovered": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.ServiceTaskPreparationServiceImplTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.ServiceOperationPreparationTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImplTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.service.WorkOrderWorkbenchTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.BeautyStoreRelinkFactsPortImplTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.ServiceExecutionSchemaExpressionTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.policy.ServiceSubmissionAccessTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyWebIsolationTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBookingRoutesTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyPolicyControllerTest",
+          "discovered": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyDefinitionControllerTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBookingIngressTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBm04IngressTest",
+          "discovered": 51,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyPublicCatalogControllerTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.GuestIdentityTransportTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyProductClientTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyRemoteServiceTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BookingFactsTransportTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BookingChannelWiringTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyCatalogTransportTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.MerchantFactsTransportTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.ResourceRecoveryTransportTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BookingProtocolContractTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.ResourceRecoveryWiringTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "discovered": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 1
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemoteCheckoutPortTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemoteServiceExecutionPreparationPortTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemoteCurrentGuestClaimTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPortTest",
+          "discovered": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemoteCounterPurchaseTest",
+          "discovered": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.BeautyReceptionResponsesTest",
+          "discovered": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.WorkOrderWorkbenchHttpTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.WorkOrderWorkbenchResponsesTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.RemoteServiceTaskPreparationServiceTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.client.BookingResponseValidationTest",
+          "discovered": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.server.api.InternalBeautyTaskPreparationControllerTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyJobTargetTest",
+          "discovered": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BookingServerWiringTest",
+          "discovered": 2,
+          "failures": 2,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyDeploymentContractTest",
+          "discovered": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBm04AssemblyTest",
+          "discovered": 3,
+          "failures": 1,
+          "errors": 1,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BeautyBm04MachineTransportTest",
+          "discovered": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.scenario.BookingMachineTransportTest",
+          "discovered": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.architecture.BeautyArchitectureTest",
+          "discovered": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "log": "/private/tmp/svc-b02-compile-final.log",
+      "sha256": "61a7c68edb0489c2fe0b0f40feb65abd3d665faeac40367429e6d6202bfb2e9c",
+      "buildSuccess": true,
+      "tests": []
+    }
+  ],
+  "migrationsAddedOrChanged": false,
+  "sourceWorkspaceModified": false,
+  "appSourceModified": false,
+  "businessDataWritten": false,
+  "realPaymentsOrRefundsPerformed": false,
+  "deploymentPerformed": false,
+  "commitOrPushPerformed": false
+}

@@ -852,6 +852,7 @@ class ArchitectureTest {
                 // gateway：网关层新写的代码（端基类、安全框架适配、三端的端子类；ADR-060）。
                 // 不是业务域：没有自己的业务表，只管「请求怎么进来、谁能进」。搬来的出口仍在 portal 包。
                 "gateway",
+                "sql", // Shared native SQL metadata verification; no business state or domain dependency.
                 // Shared document identities and reservations, independent of business eligibility.
                 "numbering",
                 // App-level adapters compose existing merchant and member domains through their contracts.

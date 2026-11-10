@@ -1,6 +1,18 @@
 package ai.neargo.shop.merchant.service;
 
+import static ai.neargo.shop.spi.trade.ExecutionOriginalEvidence.EvidenceOutcome.PROVEN;
+
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.AcceptedStart;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.ActualOriginal;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.AppliedStart;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.CancelOriginal;
+import ai.neargo.shop.spi.resource.ResourceOccupationContract.OriginalLookup;
+import ai.neargo.shop.spi.resource.ServiceTaskStartAuthorityPort.StartAuthorityOriginal;
+import ai.neargo.shop.spi.trade.ExecutionEvidenceContract;
+import ai.neargo.shop.spi.trade.ExecutionOriginalEvidence;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -8,6 +20,41 @@ import java.util.Optional;
  * Industry adapters must derive an authorized server scope and stable payload bytes before entering this kernel.
  */
 public interface ResourceCommandService {
+    OccupationReceipt acceptOccupation(AcceptedStart request);
+    Optional<OccupationReceipt> findOccupation(OriginalLookup original);
+    OccupationExecution lockOccupationForExecution(Scope scope, String commandNo, long version);
+    Scope requireOccupationExecution(OccupationExecution execution);
+    void completeOccupation(OccupationExecution execution, AppliedStart result);
+    void sealBeforeEffect(ValidatedCancellation cancellation);
+    record ValidatedCancellation(CancelOriginal cancellation,
+            StartAuthorityOriginal sourceOriginal,
+            ExecutionOriginalEvidence coreOriginal, NativeRejection nativeRejection) {
+        public ValidatedCancellation {
+            cancellation.original().validate(); coreOriginal.validate();
+            ExecutionEvidenceContract.require(coreOriginal.reference().equals(cancellation.original().reference())
+                    && coreOriginal.outcome() == PROVEN);
+            if (nativeRejection == null) {
+                sourceOriginal.validate();
+                ExecutionEvidenceContract.require(sourceOriginal.cancellationRequested()
+                        && sourceOriginal.original().equals(cancellation.original().source())
+                        && sourceOriginal.cancellationActionNo().equals(cancellation.cancellationActionNo())
+                        && sourceOriginal.cancellationActionHash().equals(cancellation.cancellationActionHash())
+                        && sourceOriginal.cancellationCause().equals(cancellation.cause()));
+            } else ExecutionEvidenceContract.require(sourceOriginal == null
+                    && nativeRejection.reason().equals(cancellation.cause())
+                    && nativeRejection.proofHash().equals(ExecutionEvidenceContract.hash(
+                    "RESOURCE_NATIVE_REJECTION_V1", List.of(nativeRejection.actual(), nativeRejection.reason(), nativeRejection.acceptedHash()))));
+        }
+    }
+    record NativeRejection(String reason, ActualOriginal actual,
+            String acceptedHash, Instant observedAt, String proofHash) { }
+
+    record OccupationReceipt(Scope scope, ActualOriginal actual,
+            String status, long version, String frozenPayload, String resultPayload) { }
+    interface OccupationExecution {
+        OccupationReceipt command();
+        OwnerHead owner();
+    }
     /** Owns a short transaction so a later business rollback cannot erase the original accepted intent. */
     Receipt accept(Accept request);
 

@@ -6,7 +6,7 @@ import ai.neargo.shop.beauty.entity.BtyServiceExecutionStockIntent;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
 import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
-import ai.neargo.shop.beauty.service.impl.ServiceTaskExecutionServiceImpl.StockOriginal;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskExecutionServiceImpl.ExecutionOriginal;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract;
@@ -91,7 +91,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                 var before =
                         execution
                                 .getObject()
-                                .withStockOriginal(
+                                .withExecutionOriginal(
                                         binding,
                                         original -> {
                                             requireReady(original, grant);
@@ -100,7 +100,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                 var reference = provider.referenceOriginal(new ExecutionLookup(binding));
                 execution
                         .getObject()
-                        .withStockOriginal(
+                        .withExecutionOriginal(
                                 binding,
                                 original -> {
                                     requireReady(original, grant);
@@ -127,7 +127,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                     saved =
                             execution
                                     .getObject()
-                                    .withStockOriginal(
+                                    .withExecutionOriginal(
                                             binding,
                                             original -> {
                                                 requireReady(original, grant);
@@ -167,7 +167,7 @@ public final class ServiceTaskStockPreparationCoordinator {
             var fenceBeforeIo =
                     execution
                             .getObject()
-                            .withStockOriginal(
+                            .withExecutionOriginal(
                                     binding, ServiceTaskStockPreparationCoordinator::snapshot);
             // The same original may already be accepted remotely after a lost response.
             var observed = provider.queryStockOriginal(lookup);
@@ -182,7 +182,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                 access.requireSame(binding.scope(), current);
                 execution
                         .getObject()
-                        .withStockOriginal(
+                        .withExecutionOriginal(
                                 binding,
                                 original -> {
                                     requireReady(original, grant);
@@ -246,7 +246,7 @@ public final class ServiceTaskStockPreparationCoordinator {
         var fenceBeforeIo =
                 execution
                         .getObject()
-                        .withStockOriginal(
+                        .withExecutionOriginal(
                                 binding, ServiceTaskStockPreparationCoordinator::snapshot);
         var provider = bridge.getIfAvailable();
         if (provider == null) return projection(binding, "PREPARATION_OWNER_UNAVAILABLE");
@@ -315,7 +315,7 @@ public final class ServiceTaskStockPreparationCoordinator {
         var receipt = observation.receipt();
         return execution
                 .getObject()
-                .withStockOriginal(
+                .withExecutionOriginal(
                         binding,
                         original -> {
                             var row =
@@ -427,7 +427,7 @@ public final class ServiceTaskStockPreparationCoordinator {
         read(row);
         return execution
                 .getObject()
-                .withStockOriginal(
+                .withExecutionOriginal(
                         binding,
                         original ->
                                 view(
@@ -439,7 +439,7 @@ public final class ServiceTaskStockPreparationCoordinator {
     private ServiceTaskPreparationVO missing(ExecutionBinding binding, String reason) {
         return execution
                 .getObject()
-                .withStockOriginal(
+                .withExecutionOriginal(
                         binding,
                         original -> {
                             String quantity =
@@ -520,6 +520,30 @@ public final class ServiceTaskStockPreparationCoordinator {
                 observedAt);
     }
 
+    /** Schema metadata is inspected by the facade before entering canonical root locks. */
+    void requireActionReferenceSchema() {
+        schema.requireAvailable();
+    }
+
+    /**
+     * Exact already-persisted B3 reference; never bootstraps a creator identity or calls an owner.
+     */
+    ExecutionReference referenceForAction(ExecutionOriginal original) {
+        var binding = original.command().intent().binding();
+        var saved =
+                rows.lock(
+                        binding.scope().entityNo(),
+                        binding.scope().storeNo(),
+                        binding.executionNo());
+        if (saved == null)
+            throw BizException.of(
+                    ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "HUMAN_REFERENCE_REQUIRED");
+        var reference = read(saved).reference();
+        require(binding.submissionNo().equals(saved.getSubmissionNo()));
+        requireReference(binding, original, reference, reference.grantNo());
+        return reference;
+    }
+
     private RetentionLookup read(BtyServiceExecutionStockIntent row) {
         var ref = db.json.readValue(row.getReferenceJson(), ExecutionReference.class);
         var lookup = db.json.readValue(row.getLookupJson(), RetentionLookup.class);
@@ -588,7 +612,7 @@ public final class ServiceTaskStockPreparationCoordinator {
 
     private static void requireReference(
             ExecutionBinding binding,
-            StockOriginal original,
+            ExecutionOriginal original,
             ExecutionReference ref,
             String grantNo) {
         ref.validate();
@@ -618,13 +642,13 @@ public final class ServiceTaskStockPreparationCoordinator {
                         && command.requestKeyHash().equals(ref.prepareKeyHash()));
     }
 
-    private static boolean locallyReady(StockOriginal original) {
+    private static boolean locallyReady(ExecutionOriginal original) {
         return original.fence().getSuspensionIntentRevision() == null
                 && original.currentIntent().suspension() == null
                 && "READY_UNCHANGED".equals(original.currentIntent().continuity().state());
     }
 
-    private static void requireReady(StockOriginal original, Grant grant) {
+    private static void requireReady(ExecutionOriginal original, Grant grant) {
         require(
                 locallyReady(original)
                         && "PREPARED".equals(original.fence().getObservedGrantState())
@@ -632,7 +656,7 @@ public final class ServiceTaskStockPreparationCoordinator {
                         && grant.grantRevision() == original.fence().getObservedGrantRevision());
     }
 
-    private static String snapshot(StockOriginal original) {
+    private static String snapshot(ExecutionOriginal original) {
         var f = original.fence();
         return ServiceExecutionContract.canonical(
                 List.of(
@@ -645,7 +669,7 @@ public final class ServiceTaskStockPreparationCoordinator {
     private BtyServiceExecutionStockIntent row(
             ExecutionBinding binding,
             RetentionLookup lookup,
-            StockOriginal original,
+            ExecutionOriginal original,
             ExecutionOriginalEvidence evidence,
             String actor) {
         var ref = lookup.reference();

@@ -1,5 +1,10 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract.CompleteExecution;
+import ai.neargo.shop.spi.trade.ExecutionCompletionContract.CompletionReceipt;
+import ai.neargo.shop.spi.trade.ExecutionStartContract.AcknowledgeResourceStart;
+import ai.neargo.shop.spi.trade.ExecutionStartContract.StartAcknowledgement;
+
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionLookup;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionScope;
 import java.util.Objects;
@@ -53,4 +58,14 @@ public interface ServiceExecutionService {
             return value != null && !value.isBlank() && value.length() <= 64 && value.equals(value.strip());
         }
     }
+    /** Acknowledges independently verified actual effects without starting human participation. */
+    StartAcknowledgement markStarted(AcknowledgeResourceStart request);
+
+    /** Returns the immutable original acknowledgement rather than a current grant projection. */
+    StartAcknowledgement queryStartOriginal(ExecutionEvidenceLookup request);
+    /** Atomically records one real completed original and advances its reserved COUNT unit once. */
+    CompletionReceipt completeExecution(CompleteExecution request);
+
+    /** Original completion proof remains readable after source suspension or later cleaning. */
+    CompletionReceipt queryCompletionOriginal(ExecutionEvidenceLookup request);
 }

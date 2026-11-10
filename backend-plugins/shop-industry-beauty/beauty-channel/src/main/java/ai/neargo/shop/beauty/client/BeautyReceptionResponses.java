@@ -12,14 +12,21 @@ import ai.neargo.shop.beauty.dto.ReceptionExceptionVO;
 import ai.neargo.shop.beauty.dto.RecoveryRequestVO;
 import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
 import ai.neargo.shop.beauty.dto.SourceObservationVO;
+import ai.neargo.shop.beauty.dto.TaskActionResultVO;
+import ai.neargo.shop.beauty.dto.TaskWorkflowVO;
 import ai.neargo.shop.beauty.dto.WalkInVO;
 import ai.neargo.shop.beauty.dto.WorkOrderBillVO;
 import ai.neargo.shop.beauty.dto.WorkOrderDetailVO;
+import ai.neargo.shop.beauty.dto.WorkOrderQueryReq;
+import ai.neargo.shop.beauty.dto.WorkOrderSummaryVO;
 import ai.neargo.shop.beauty.dto.WorkOrderTaskVO;
 import ai.neargo.shop.beauty.dto.WorkOrderVO;
+import ai.neargo.shop.beauty.spi.BeautyTaskWorkflowInternalApi;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.security.InternalCall;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -31,7 +38,77 @@ final class BeautyReceptionResponses {
     static <T> T require(InternalCall<?> call, T result) {
         check(call != null && result != null);
         String target = call.binding().targetNo();
+        if (BeautyTaskWorkflowInternalApi.ENDPOINT.equals(call.binding().endpoint())) {
+            check(call.request() instanceof BeautyTaskWorkflowInternalApi.Target);
+            var requested = (BeautyTaskWorkflowInternalApi.Target) call.request();
+            same(target, requested.taskNo());
+            switch (call.binding().action()) {
+                case "ACCEPT" -> {
+                    check(result instanceof TaskActionResultVO);
+                    var value = (TaskActionResultVO) result;
+                    same(target, value.taskNo());
+                    text(value.operationNo());
+                    check(!value.canStart() && value.slots() != null && !value.slots().isEmpty());
+                }
+                case "PROPOSE_HANDOVER" -> {
+                    check(result instanceof String);
+                    text((String) result);
+                    check(((String) result).length() <= 32);
+                }
+                case "START", "ACT", "QUERY", "RECOVER", "CANCEL_PENDING" -> {
+                    check(result instanceof TaskWorkflowVO);
+                    var value = (TaskWorkflowVO) result;
+                    same(target, value.taskNo());
+                    same(requested.workOrderNo(), value.workOrderNo());
+                    check(
+                            value.taskRevision() >= 0
+                                    && value.occupationRevision() >= 0
+                                    && value.segments() != null);
+                    text(value.taskStatus());
+                    var segments = new HashSet<String>();
+                    for (var segment : value.segments()) {
+                        text(segment.segmentNo());
+                        text(segment.resourceNo());
+                        check(
+                                segments.add(segment.segmentNo())
+                                        && segment.startedAt() != null
+                                        && (segment.endedAt() == null
+                                                || !segment.endedAt().isBefore(segment.startedAt()))
+                                        && (segment.cleaningCompletedAt() == null
+                                                || segment.endedAt() != null
+                                                        && !segment.cleaningCompletedAt()
+                                                                .isBefore(segment.endedAt())));
+                    }
+                }
+                default -> check(false);
+            }
+            return result;
+        }
         switch (result) {
+            case PageData<?> page -> {
+                check(call.request() instanceof WorkOrderQueryReq);
+                var query = (WorkOrderQueryReq) call.request();
+                check(
+                        page.records() != null
+                                && page.total() >= 0
+                                && page.page() == query.page()
+                                && page.size() == query.size()
+                                && page.records().size() <= query.size());
+                var numbers = new HashSet<String>();
+                for (Object row : page.records()) {
+                    check(row instanceof WorkOrderSummaryVO);
+                    var summary = (WorkOrderSummaryVO) row;
+                    same(call.binding().entityNo(), summary.entityNo());
+                    same(call.binding().storeNo(), summary.storeNo());
+                    text(summary.workOrderNo());
+                    text(summary.status());
+                    check(
+                            numbers.add(summary.workOrderNo())
+                                    && summary.scopeRevision() > 0
+                                    && summary.revision() >= 0
+                                    && summary.createdAt() != null);
+                }
+            }
             case GuestRegistrationVO value -> registration(value);
             case GuestClaimVO value -> {
                 same(target, value.guestNo());

@@ -100,4 +100,15 @@ public class OrdServiceExecution extends BaseEntity {
 
     private String reasonCode;
 
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String actualResourceOwnerNo;
+
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String actualResourceCommandNo;
+
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String actualResourcePayloadSchema;
+
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String actualResourcePayloadHash;
 }

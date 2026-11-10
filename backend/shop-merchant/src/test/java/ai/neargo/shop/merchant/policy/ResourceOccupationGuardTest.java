@@ -1,4 +1,8 @@
 package ai.neargo.shop.merchant.policy;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationSegmentMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationUnitMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceBucketMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationBucketMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,7 +49,7 @@ class ResourceOccupationGuardTest {
         var rows = mock(ResourceOccupationMapper.class);
         when(schema.installation()).thenReturn(ResourceOccupationSchemaVerifier.Installation.UNSUPPORTED);
         when(rows.countCommonArtifacts(S)).thenReturn(0L);
-        var guard = new ResourceOccupationGuard(schema, rows);
+        var guard = new ResourceOccupationGuard(schema, rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class));
         assertThat(guard.used(S, "R", T, empty(), 0, 0)).isZero();
         verify(rows, never()).countInvalid(S);
         verify(rows, never()).projected(S, "R", T, "OCCUPIED");
@@ -62,7 +66,7 @@ class ResourceOccupationGuardTest {
         var schema = mock(ResourceOccupationSchemaVerifier.class);
         var rows = mock(ResourceOccupationMapper.class);
         when(schema.installation()).thenReturn(ResourceOccupationSchemaVerifier.Installation.CORRUPT);
-        assertThatThrownBy(() -> new ResourceOccupationGuard(schema, rows)
+        assertThatThrownBy(() -> new ResourceOccupationGuard(schema, rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class))
                 .used(S, "R", T, empty(), 0, 0)).isInstanceOfSatisfying(BizException.class, failure ->
                         assertThat(failure.errorCode()).isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
         verifyNoInteractions(rows);
@@ -78,9 +82,9 @@ class ResourceOccupationGuardTest {
         when(rows.missing(S, "R", T, T.plusMinutes(5))).thenReturn(2L);
         var bucket = empty();
         bucket.setOccupiedQty(1);
-        assertThat(new ResourceOccupationGuard(schema, rows).used(S, "R", T, bucket, 1, 0)).isEqualTo(4);
+        assertThat(new ResourceOccupationGuard(schema, rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class)).used(S, "R", T, bucket, 1, 0)).isEqualTo(4);
         bucket.setOccupiedQty(0);
-        assertThatThrownBy(() -> new ResourceOccupationGuard(schema, rows).used(S, "R", T, bucket, 1, 0))
+        assertThatThrownBy(() -> new ResourceOccupationGuard(schema, rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class)).used(S, "R", T, bucket, 1, 0))
                 .isInstanceOfSatisfying(BizException.class, failure ->
                         assertThat(failure.errorCode()).isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
     }
@@ -90,7 +94,7 @@ class ResourceOccupationGuardTest {
         var schema = mock(ResourceOccupationSchemaVerifier.class);
         var rows = mock(ResourceOccupationMapper.class);
         when(schema.installation()).thenReturn(ResourceOccupationSchemaVerifier.Installation.ABSENT);
-        assertThatThrownBy(() -> new ResourceOccupationGuard(schema, rows).requireCommon(S))
+        assertThatThrownBy(() -> new ResourceOccupationGuard(schema, rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class)).requireCommon(S))
                 .isInstanceOf(BizException.class);
         verifyNoInteractions(rows);
     }
@@ -101,7 +105,7 @@ class ResourceOccupationGuardTest {
         var rows = mock(ResourceOccupationMapper.class);
         when(schema.installation()).thenReturn(ResourceOccupationSchemaVerifier.Installation.INSTALLED);
         when(rows.missing(S, "R", T, T.plusMinutes(5))).thenReturn(Long.MAX_VALUE);
-        var guard = new ResourceOccupationGuard(schema, rows);
+        var guard = new ResourceOccupationGuard(schema, rows, mock(ResourceOccupationSegmentMapper.class), mock(ResourceOccupationUnitMapper.class), mock(ResourceBucketMapper.class), mock(ResourceOccupationBucketMapper.class));
         assertThatThrownBy(() -> guard.used(S, "R", T, empty(), 1, 0))
                 .isInstanceOfSatisfying(BizException.class, failure ->
                         assertThat(failure.errorCode()).isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));

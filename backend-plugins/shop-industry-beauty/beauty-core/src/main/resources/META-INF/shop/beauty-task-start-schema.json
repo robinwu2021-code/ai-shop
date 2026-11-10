@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "platformVersion": 15,
+  "owner": "beauty-core/primary",
+  "table": "bty_service_submission",
+  "columns": [
+    {
+      "name": "execution_no",
+      "definition": "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL"
+    },
+    {
+      "name": "action_observation_json",
+      "definition": "JSON NULL"
+    }
+  ],
+  "index": {
+    "name": "uk_bty_submission_execution",
+    "columns": [
+      "tenant_no",
+      "entity_no",
+      "action",
+      "execution_no"
+    ]
+  },
+  "checks": {
+    "ck_bty_task_action": "(action<>'TASK_ACTION' OR COALESCE((JSON_TYPE(frozen_command)='OBJECT' AND\n    status='TASK_INTENDED' AND\n    next_retry_at IS NULL AND\n    failure_code IS NULL AND\n    version=0 AND\n    deleted=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.schema'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='TASK_ACTION_V1' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.purpose'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.purpose'))='START_TASK' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.actionNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.actionNo'))=submission_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))=tenant_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))=entity_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))=store_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))=work_order_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))=request_key_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.intentHash'))='STRING' AND\n    JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.intentHash'))=payload_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.requirementNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.requirementNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.roleCode'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.roleCode'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.sourceLineRef'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.sourceLineRef'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.personnelNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.personnelNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.resourceNo'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.slot.resourceNo'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.namespaceHash'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.namespaceHash'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.targetHash'))='STRING' AND\n    LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.targetHash'))))>0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.scopeRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.scopeRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.taskVersion'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.taskVersion')>=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.bindingRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.bindingRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.bindingVersion'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.bindingVersion')>=0 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.sourceFenceRevision'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.expected.sourceFenceRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.slot.ordinal'))='INTEGER' AND\n    JSON_EXTRACT(frozen_command,'$.slot.ordinal')>=0),0)) OR (action='TASK_ACTION' AND COALESCE((JSON_TYPE(frozen_command)='OBJECT' AND\n    status='TASK_INTENDED' AND\n    version=0 AND\n    deleted=0 AND\n    next_retry_at IS NULL AND\n    failure_code IS NULL AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.schema'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='TASK_ACTION_V2' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.purpose'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.purpose'))='START_TASK' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.actionNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.actionNo'))=submission_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.intentHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.intentHash'))=payload_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.requestKeyHash'))=request_key_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.tenantNo'))=tenant_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.entityNo'))=entity_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.scope.storeNo'))=store_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.context.workOrderNo'))=work_order_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.context.taskNo'))='STRING' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.canonicalAccountNo'))='STRING' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.namespaceHash'))='STRING' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.targetHash'))='STRING' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.reference'))='OBJECT' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.originalBinding'))='OBJECT' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.initialPlan'))='OBJECT' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.scopeRevision'))='INTEGER' AND JSON_EXTRACT(frozen_command,'$.expected.scopeRevision')>=1 AND JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.taskVersion'))='INTEGER' AND JSON_EXTRACT(frozen_command,'$.expected.taskVersion')>=0 AND JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.bindingRevision'))='INTEGER' AND JSON_EXTRACT(frozen_command,'$.expected.bindingRevision')>=1 AND JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.bindingVersion'))='INTEGER' AND JSON_EXTRACT(frozen_command,'$.expected.bindingVersion')>=0 AND JSON_TYPE(JSON_EXTRACT(frozen_command,'$.expected.sourceFenceRevision'))='INTEGER' AND JSON_EXTRACT(frozen_command,'$.expected.sourceFenceRevision')>=1 AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.actor'))='OBJECT' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.currentPersonnel'))='OBJECT' AND\n    JSON_SCHEMA_VALID('{\"type\":\"array\",\"minItems\":1,\"maxItems\":100,\"uniqueItems\":true,\"items\":{\"type\":\"object\",\"required\":[\"requirementNo\",\"ordinal\",\"assignmentRevision\"],\"additionalProperties\":false,\"properties\":{\"requirementNo\":{\"type\":\"string\",\"minLength\":1},\"ordinal\":{\"type\":\"integer\",\"minimum\":0},\"assignmentRevision\":{\"type\":\"integer\",\"minimum\":1}}}}',JSON_EXTRACT(frozen_command,'$.ownSlots')) AND\n    JSON_SCHEMA_VALID('{\"type\":\"array\",\"minItems\":1,\"maxItems\":100,\"items\":{\"type\":\"object\",\"required\":[\"assignmentNo\",\"assignmentRevision\",\"requirementNo\",\"ordinal\",\"roleCode\",\"resourceNo\",\"personnelNo\",\"acceptActionNo\",\"recordHash\",\"qualificationHash\",\"identity\",\"canonicalAccountNo\",\"personnel\"],\"additionalProperties\":false,\"properties\":{\"assignmentNo\":{\"type\":\"string\",\"minLength\":1},\"assignmentRevision\":{\"type\":\"integer\",\"minimum\":1},\"requirementNo\":{\"type\":\"string\",\"minLength\":1},\"ordinal\":{\"type\":\"integer\",\"minimum\":0},\"roleCode\":{\"type\":\"string\",\"minLength\":1},\"resourceNo\":{\"type\":\"string\",\"minLength\":1},\"personnelNo\":{\"type\":\"string\",\"minLength\":1},\"acceptActionNo\":{\"type\":\"string\",\"minLength\":1},\"recordHash\":{\"type\":\"string\",\"minLength\":1},\"qualificationHash\":{\"type\":\"string\",\"minLength\":1},\"identity\":{\"type\":\"object\"},\"canonicalAccountNo\":{\"type\":\"string\",\"minLength\":1},\"personnel\":{\"type\":\"object\"}}}}',JSON_EXTRACT(frozen_command,'$.acceptedRoster'))),0))",
+    "ck_bty_task_start_columns": "(action='TASK_START' AND execution_no IS NOT NULL AND action_observation_json IS NOT NULL) OR (action<>'TASK_START' AND execution_no IS NULL AND action_observation_json IS NULL)",
+    "ck_bty_task_start": "action<>'TASK_START' OR COALESCE((deleted=0 AND (JSON_TYPE(JSON_EXTRACT(action_observation_json,'$.cancellation'))='NULL' OR JSON_SCHEMA_VALID('{\"type\":\"object\",\"required\":[\"purpose\",\"actionNo\",\"actionHash\",\"cause\",\"source\",\"core\",\"denial\"],\"additionalProperties\":false,\"properties\":{\"purpose\":{\"enum\":[\"SOURCE_SUSPENSION\",\"CORE_SUSPENSION\",\"EXPLICIT_ABORT\"]},\"actionNo\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":32},\"actionHash\":{\"type\":\"string\",\"pattern\":\"^[0-9a-f]{64}$\"},\"cause\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"source\":{\"type\":[\"object\",\"null\"]},\"core\":{\"type\":[\"object\",\"null\"]},\"denial\":{\"type\":[\"object\",\"null\"]}}}',JSON_EXTRACT(action_observation_json,'$.cancellation'))) AND\n    execution_no IS NOT NULL AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.schema'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='TASK_START_V1' AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.submissionNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.submissionNo'))=submission_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.frozenHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.frozenHash'))=payload_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.action.reference.executionNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.reference.executionNo'))=execution_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.action.requestKeyHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.requestKeyHash'))=request_key_hash AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.action.context.workOrderNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.context.workOrderNo'))=work_order_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.action.context.scope.tenantNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.context.scope.tenantNo'))=tenant_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.action.context.scope.entityNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.context.scope.entityNo'))=entity_no AND\n    JSON_TYPE(JSON_EXTRACT(frozen_command,'$.action.context.scope.storeNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.context.scope.storeNo'))=store_no AND\n    JSON_SCHEMA_VALID('{\"type\":\"object\",\"required\":[\"schema\",\"submissionNo\",\"action\",\"originalPlanSchema\",\"originalPlanJson\",\"originalPlanHash\",\"resourcePlanJson\",\"resourcePlanHash\",\"sourceGroups\",\"booking\",\"retention\",\"retentionRoster\",\"nativeKey\",\"ackActionNo\",\"frozenHash\"],\"additionalProperties\":false,\"properties\":{\"schema\":{\"type\":\"string\",\"minLength\":1},\"submissionNo\":{\"type\":\"string\",\"minLength\":1},\"action\":{\"type\":\"object\"},\"originalPlanSchema\":{\"type\":\"string\",\"minLength\":1},\"originalPlanJson\":{\"type\":\"string\",\"minLength\":1},\"originalPlanHash\":{\"type\":\"string\",\"minLength\":1},\"resourcePlanJson\":{\"type\":\"string\",\"minLength\":1},\"resourcePlanHash\":{\"type\":\"string\",\"minLength\":1},\"sourceGroups\":{\"type\":\"array\",\"minItems\":1},\"booking\":{\"type\":[\"object\",\"null\"]},\"retention\":{\"type\":\"object\"},\"retentionRoster\":{\"type\":\"array\",\"minItems\":1},\"nativeKey\":{\"type\":\"string\",\"minLength\":1},\"ackActionNo\":{\"type\":\"string\",\"minLength\":1},\"frozenHash\":{\"type\":\"string\",\"minLength\":1}}}',frozen_command) AND\n    JSON_SCHEMA_VALID('{\"type\":\"object\",\"required\":[\"schema\",\"version\",\"phase\",\"nativeOriginal\",\"acknowledgement\",\"cancellation\",\"stopRequired\",\"pendingReason\",\"observationHash\"],\"additionalProperties\":false,\"properties\":{\"schema\":{\"enum\":[\"TASK_START_OBSERVATION_V1\"]},\"version\":{\"type\":\"integer\",\"minimum\":0},\"phase\":{\"enum\":[\"SOURCE_FROZEN\",\"DISPATCHING\",\"OWNER_ACCEPTED\",\"RESOURCE_APPLIED\",\"ACKED\",\"ABORT_REQUESTED\",\"RESOURCE_SEALED\"]},\"nativeOriginal\":{\"type\":[\"object\",\"null\"]},\"acknowledgement\":{\"type\":[\"object\",\"null\"]},\"cancellation\":{\"type\":[\"object\",\"null\"]},\"stopRequired\":{\"type\":\"boolean\"},\"pendingReason\":{\"type\":[\"string\",\"null\"]},\"observationHash\":{\"type\":\"string\",\"pattern\":\"^[0-9a-f]{64}$\"}}}',action_observation_json) AND\n    JSON_EXTRACT(action_observation_json,'$.version')=version AND\n    JSON_UNQUOTE(JSON_EXTRACT(action_observation_json,'$.phase'))=status AND\n    (failure_code <=> JSON_UNQUOTE(NULLIF(JSON_EXTRACT(action_observation_json,'$.pendingReason'),CAST('null' AS JSON)))) AND\n    (status NOT IN ('ACKED','RESOURCE_SEALED') OR next_retry_at IS NULL OR JSON_TYPE(JSON_EXTRACT(action_observation_json,'$.cancellation'))='OBJECT' OR failure_code='CORE_SUSPENSION_OBSERVATION_REQUIRED') AND\n    (status NOT IN ('RESOURCE_APPLIED','ACKED') OR JSON_TYPE(JSON_EXTRACT(action_observation_json,'$.nativeOriginal.applied'))='OBJECT') AND\n    (status<>'ACKED' OR JSON_TYPE(JSON_EXTRACT(action_observation_json,'$.acknowledgement.original'))='OBJECT') AND\n    (status<>'RESOURCE_SEALED' OR JSON_TYPE(JSON_EXTRACT(action_observation_json,'$.nativeOriginal.seal'))='OBJECT') AND\n    (status<>'ABORT_REQUESTED' OR JSON_TYPE(JSON_EXTRACT(action_observation_json,'$.cancellation'))='OBJECT' OR failure_code='CORE_SUSPENSION_OBSERVATION_REQUIRED')),0)"
+  },
+  "triggers": [
+    {
+      "name": "trg_bty_task_start_immutable",
+      "table": "bty_service_submission",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.action='TASK_START' OR NEW.action='TASK_START' THEN\n        IF NOT (NEW.tenant_no <=> OLD.tenant_no) OR NOT (NEW.entity_no <=> OLD.entity_no) OR NOT (NEW.store_no <=> OLD.store_no) OR NOT (NEW.work_order_no <=> OLD.work_order_no) OR NOT (NEW.submission_no <=> OLD.submission_no) OR NOT (NEW.action <=> OLD.action) OR NOT (NEW.request_key_hash <=> OLD.request_key_hash) OR NOT (NEW.payload_hash <=> OLD.payload_hash) OR NOT (NEW.execution_no <=> OLD.execution_no) OR NOT (NEW.frozen_command <=> OLD.frozen_command) OR NOT (NEW.created_at <=> OLD.created_at) OR NOT (NEW.created_by <=> OLD.created_by) OR NOT (NEW.deleted <=> OLD.deleted) OR NEW.version<>OLD.version+1 THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start identity is immutable and version must advance';\n        END IF;\n        IF NOT (NEW.status=OLD.status OR\n            (OLD.status='SOURCE_FROZEN' AND NEW.status IN ('DISPATCHING','ABORT_REQUESTED')) OR\n            (OLD.status='DISPATCHING' AND NEW.status IN ('OWNER_ACCEPTED','RESOURCE_APPLIED','ABORT_REQUESTED','RESOURCE_SEALED')) OR\n            (OLD.status='OWNER_ACCEPTED' AND NEW.status IN ('RESOURCE_APPLIED','ABORT_REQUESTED','RESOURCE_SEALED')) OR\n            (OLD.status='ABORT_REQUESTED' AND NEW.status IN ('RESOURCE_APPLIED','RESOURCE_SEALED')) OR\n            (OLD.status='RESOURCE_APPLIED' AND NEW.status='ACKED')) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start phase cannot regress or invent release';\n        END IF;\n        IF JSON_TYPE(JSON_EXTRACT(OLD.action_observation_json,'$.cancellation'))='OBJECT' AND NOT (JSON_EXTRACT(NEW.action_observation_json,'$.cancellation') <=> JSON_EXTRACT(OLD.action_observation_json,'$.cancellation')) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start original evidence is permanent';\n        END IF;\n        IF JSON_TYPE(JSON_EXTRACT(OLD.action_observation_json,'$.nativeOriginal.actual'))='OBJECT' AND NOT (JSON_EXTRACT(NEW.action_observation_json,'$.nativeOriginal.actual') <=> JSON_EXTRACT(OLD.action_observation_json,'$.nativeOriginal.actual')) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start original evidence is permanent';\n        END IF;\n        IF JSON_TYPE(JSON_EXTRACT(OLD.action_observation_json,'$.nativeOriginal.applied'))='OBJECT' AND NOT (JSON_EXTRACT(NEW.action_observation_json,'$.nativeOriginal.applied') <=> JSON_EXTRACT(OLD.action_observation_json,'$.nativeOriginal.applied')) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start original evidence is permanent';\n        END IF;\n        IF JSON_TYPE(JSON_EXTRACT(OLD.action_observation_json,'$.nativeOriginal.seal'))='OBJECT' AND NOT (JSON_EXTRACT(NEW.action_observation_json,'$.nativeOriginal.seal') <=> JSON_EXTRACT(OLD.action_observation_json,'$.nativeOriginal.seal')) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start original evidence is permanent';\n        END IF;\n        IF JSON_TYPE(JSON_EXTRACT(OLD.action_observation_json,'$.acknowledgement'))='OBJECT' AND NOT (JSON_EXTRACT(NEW.action_observation_json,'$.acknowledgement') <=> JSON_EXTRACT(OLD.action_observation_json,'$.acknowledgement')) THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start original evidence is permanent';\n        END IF;\n        IF JSON_EXTRACT(OLD.action_observation_json,'$.stopRequired')=true AND JSON_EXTRACT(NEW.action_observation_json,'$.stopRequired')<>true THEN\n            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start stop is sticky';\n        END IF;\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_bty_task_start_no_delete",
+      "table": "bty_service_submission",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.action='TASK_START' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='task start original is permanent';\n    END IF;\nEND"
+    }
+  ],
+  "migrationScript": "V15__beauty_task_start.sql",
+  "migrationSha256": "726aa64eab468b7f50861cf57628d18a9a1d416b4d0f258c04969379e0e92d42",
+  "flywayChecksum": 729205446,
+  "history": [
+    {
+      "script": "V1__beauty_p1_tables.sql",
+      "checksum": -2139921768
+    },
+    {
+      "script": "V2__beauty_appointment_resource_fence.sql",
+      "checksum": 89233043
+    },
+    {
+      "script": "V3__beauty_appointment_business.sql",
+      "checksum": 1761810780
+    },
+    {
+      "script": "V4__beauty_appointment_resource_decision.sql",
+      "checksum": -333919983
+    },
+    {
+      "script": "V5__beauty_reception_work_order.sql",
+      "checksum": -1247647173
+    },
+    {
+      "script": "V6__beauty_reception_identity_guard.sql",
+      "checksum": -996646010
+    },
+    {
+      "script": "V7__beauty_appointment_assignment_units.sql",
+      "checksum": -1208882332
+    },
+    {
+      "script": "V8__beauty_source_observation.sql",
+      "checksum": -507325468
+    },
+    {
+      "script": "V9__beauty_manual_source_observation.sql",
+      "checksum": 1352387920
+    },
+    {
+      "script": "V10__beauty_service_execution_fence.sql",
+      "checksum": 1472641557
+    },
+    {
+      "script": "V11__beauty_service_execution_stock_intent.sql",
+      "checksum": -2039014345
+    },
+    {
+      "script": "V12__beauty_direct_task_plan.sql",
+      "checksum": 758856179
+    },
+    {
+      "script": "V13__beauty_task_action.sql",
+      "checksum": 1440832623
+    },
+    {
+      "script": "V14__beauty_task_acceptance.sql",
+      "checksum": -1707073465
+    },
+    {
+      "script": "V15__beauty_task_start.sql",
+      "checksum": 729205446
+    }
+  ]
+}
