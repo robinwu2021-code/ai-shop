@@ -1,0 +1,165 @@
+{
+  "task": "SVC-B04",
+  "status": "accepted_for_current_backend_contract",
+  "ownerBase": "5c588723",
+  "hostBase": "c050f20ed",
+  "ownerFiles": {
+    "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/checkout/collection/DynamicCollectionService.java": "ddb3a90799ec676692424c34c4bb7ccb702df548f78330f55fe6d5143a17085b",
+    "backend/pay/pay-portal/src/main/java/ai/neargo/shop/pay/api/biz/v2/BizCollectionController.java": "6bc1a1a82ebc971de4b5e7c06dbe4a8c26d17deca8e604d3d4d8bec410188b1c",
+    "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/checkout/collection/DynamicCollectionServiceTest.java": "e4971657d8b145aea3b647b01d811ef99f17546645e81c1efd6d2a3abdda079d",
+    "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/checkout/collection/SourceCommandExecutorTest.java": "911b8596c1320bdb9d6cbcd3abb81b03a4642431ba4ef75e7d596b6e31046c33",
+    "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/checkout/collection/SourceCommandExecutorMysqlTest.java": "6878042f4249e029885d3c85c48c092009066eaaec3a686c8c7b531a76ba01dd",
+    "backend/pay/pay-portal/src/test/java/ai/neargo/shop/pay/api/biz/v2/BizCollectionControllerTest.java": "605fccac6fc33aadcf8d43b4ce73893dfd7791737a075b595a81a7207a6f8c40"
+  },
+  "evidence": [
+    {
+      "group": "host",
+      "log": "/private/tmp/svc-b04-host-green.log",
+      "cases": [
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.trade.RetailPricingCompatibilityTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.payclient.PayBizCollectionHttpTest"
+        },
+        {
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.payclient.PayBizOnboardingHttpTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.scenario.RetailStandardBarcodeFlowTest"
+        }
+      ],
+      "passed": 18
+    },
+    {
+      "group": "owner",
+      "log": "/private/tmp/svc-b04-owner-green.log",
+      "cases": [
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.checkout.collection.CollectionStoreAccessTest"
+        },
+        {
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.checkout.collection.DynamicCollectionServiceTest"
+        },
+        {
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.checkout.collection.SourceCommandExecutorTest"
+        },
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.api.biz.v2.BizCollectionControllerTest"
+        }
+      ],
+      "passed": 26
+    },
+    {
+      "group": "owner-final",
+      "log": "/private/tmp/svc-b04-owner-final.log",
+      "cases": [
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.checkout.collection.SourceCommandExecutorTest"
+        },
+        {
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.checkout.collection.SourceCommandExecutorMysqlTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.pay.api.biz.v2.BizCollectionControllerTest"
+        }
+      ],
+      "passed": 16
+    },
+    {
+      "group": "host-final-query-fix",
+      "log": "/private/tmp/svc-b04-host-final.log",
+      "cases": [
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.payclient.PayBizCollectionHttpTest"
+        },
+        {
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "class": "ai.neargo.shop.payclient.PayBizOnboardingHttpTest"
+        }
+      ],
+      "passed": 13
+    }
+  ],
+  "database": {
+    "version": "9.7.4",
+    "port": 13389,
+    "stopped": true,
+    "ownedDataDirectoryRemoved": true,
+    "normal3308Unchanged": true
+  },
+  "migrationsModified": false,
+  "appSourceModified": false,
+  "deployment": false,
+  "push": false,
+  "closed": [
+    "legacy /biz/payment/collection for service checkout",
+    "embedded legacy contract",
+    "App service collection before formal integration and B05 settlement authorization"
+  ],
+  "note": "Groups overlap; do not sum repeated cases into a full-suite count. Owner tests use clean 5c588723 snapshot plus scoped changes; unrelated near-pay WIP fails compilation on BrandCouponUseProof dependencies and is excluded.",
+  "ownerCommit": "4a97d2bc98675c19eff5ad31ab215b1d7a9d533b",
+  "review": {
+    "independent": true,
+    "blockingFindings": 1,
+    "fixed": "Encoded lawful original-key query was refused by full-target guard; exact relative raw collection path now accepts query encoding, without opening encoded/traversal paths.",
+    "remainingCriticalOrImportant": 0
+  },
+  "orphanGuard": {
+    "passed": false,
+    "newRoutesRecognizedAsStaged": 2,
+    "inheritedDebtUnchanged": true,
+    "log": "/private/tmp/svc-b04-orphans.log"
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Service collection original-key recovery",
+    "version": "2026-11-11"
+  },
+  "paths": {
+    "/biz/pay/v2/collections": {
+      "post": {
+        "x-source-controller": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java",
+        "x-owner": "near-pay DynamicCollectionService and SourceCommandExecutor; current payment.create membership and current store ownership required.",
+        "responses": {
+          "200": {
+            "description": "Original near-pay PortalResponse, without another host envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "requestNo",
+                        "payOrderNo",
+                        "status",
+                        "expireAt"
+                      ],
+                      "properties": {
+                        "requestNo": {
+                          "type": "string"
+                        },
+                        "payOrderNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "expireAt": {
+                          "type": "integer",
+                          "format": "int64",
+                          "description": "Original payment deadline in epoch milliseconds; short checkout capability may expire sooner."
+                        },
+                        "checkoutUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Only POST may mint a capability. GET and terminal/expired POST replay return null."
+                        },
+                        "bizNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Original PayOrder business reference; omitted input retains the legacy generated outOrderNo reference."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current membership/store permission rejected."
+          },
+          "404": {
+            "description": "Original request not found in the trusted scope."
+          },
+          "409": {
+            "description": "IDEMPOTENCY_CONFLICT: original key with changed normalized intent."
+          },
+          "503": {
+            "description": "Unknown/unavailable owner outcome: retain requestNo and query original; never create a replacement key."
+          }
+        },
+        "operationId": "createOrReplayOriginalCollection",
+        "summary": "Create or replay one payment under the permanent requestNo",
+        "description": "Use requestNo in the body. An Idempotency-Key header alone is insufficient. Exact normalized intent includes optional bizNo. POST replay may mint another short token for the same original unexpired payment; it never extends the payment deadline.",
+        "parameters": [
+          {
+            "name": "X-Merchant-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestNo",
+                  "storeNo",
+                  "amountMinor"
+                ],
+                "properties": {
+                  "requestNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$"
+                  },
+                  "storeNo": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  },
+                  "subject": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "expireMinutes": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1440,
+                    "default": 15
+                  },
+                  "bizNo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "x-source-controller": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java",
+        "x-owner": "near-pay DynamicCollectionService and SourceCommandExecutor; current payment.create membership and current store ownership required.",
+        "responses": {
+          "200": {
+            "description": "Original near-pay PortalResponse, without another host envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "requestNo",
+                        "payOrderNo",
+                        "status",
+                        "expireAt"
+                      ],
+                      "properties": {
+                        "requestNo": {
+                          "type": "string"
+                        },
+                        "payOrderNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "expireAt": {
+                          "type": "integer",
+                          "format": "int64",
+                          "description": "Original payment deadline in epoch milliseconds; short checkout capability may expire sooner."
+                        },
+                        "checkoutUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Only POST may mint a capability. GET and terminal/expired POST replay return null."
+                        },
+                        "bizNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Original PayOrder business reference; omitted input retains the legacy generated outOrderNo reference."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current membership/store permission rejected."
+          },
+          "404": {
+            "description": "Original request not found in the trusted scope."
+          },
+          "409": {
+            "description": "IDEMPOTENCY_CONFLICT: original key with changed normalized intent."
+          },
+          "503": {
+            "description": "Unknown/unavailable owner outcome: retain requestNo and query original; never create a replacement key."
+          }
+        },
+        "operationId": "readOriginalCollection",
+        "summary": "Read original payment coordinates without creating a payment or token",
+        "parameters": [
+          {
+            "name": "X-Merchant-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "requestNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "SVC-B04已实现实际near-pay原键创建/恢复与宿主BIZ桥接；uni-app及Flutter服务结算尚未接入，保持旧扫码入口关闭，按TDD §2/B09接线，不声称已有Flutter调用方。",
+  "plan": "docs/technical/TDD-服务业App后端能力补齐-2026-11-10.md",
+  "contract": "docs/api/service-collection-recovery.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/collections"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/collections"
+    }
+  ]
+}

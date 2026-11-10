@@ -90,20 +90,18 @@ public final class BizOnboardingForwarder {
   }
 
   public static boolean allowed(String method, String target) {
-    if (method == null
-        || target == null
-        || target.contains("%")
-        || target.contains("\\")
-        || target.contains("..")
-        || target.contains("#")) return false;
+    if (method == null || target == null) return false;
     URI uri;
     try {
       uri = URI.create(target);
     } catch (IllegalArgumentException bad) {
       return false;
     }
-    if (uri.isAbsolute() || uri.getAuthority() != null) return false;
-    String p = uri.getPath(), base = "/biz/pay/v2";
+    if (uri.isAbsolute() || uri.getAuthority() != null || uri.getRawFragment() != null) return false;
+    String p = uri.getRawPath(), base = "/biz/pay/v2";
+    // Only the exact raw collection path admits encoded query values; the owner validates their decoded keys.
+    if ((method.equals("GET") || method.equals("POST")) && p.equals(base + "/collections")) return true;
+    if (target.contains("%") || target.contains("\\") || target.contains("..") || target.contains("#")) return false;
     if (method.equals("GET")
         && Set.of(base + "/memberships", base + "/capability-progress", base + "/onboardings")
             .contains(p)) return true;
