@@ -340,21 +340,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 
 #### POST `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout`
@@ -376,21 +376,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 
 #### POST `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover`
@@ -412,21 +412,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 
 #### GET `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}`
@@ -7883,26 +7883,26 @@ entityPlanPurchase
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `requestNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
-| `status` | `string` | 是 | — |
-| `purchaseSource` | `string` | 否 | — |
-| `dueAt` | `string` | 是 | — |
-| `instructions` | `null` \| `object`（见下） | 是 | — |
-| `claims` | `object`（见下）\[\] | 是 | — |
-| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
+| `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
+| `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
+| `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
+| `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
+| `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
+| `claims` | `object`（见下）\[\] | 是 | 商家付款申报与审核记录，不等于真实到账。 |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | 可按动作号核对及恢复的运营动作记录。 |
 
 `claims[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `claimNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
-| `reviewNote` | `string,null` | 是 | — |
+| `claimNo` | `string` | 是 | 原商家付款申报号。 |
+| `status` | `string` | 是 | 申报状态；SUBMITTED 为待核款。 |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | 商家冻结的原始申报内容。 |
+| `reviewNote` | `string,null` | 是 | 审核说明；未审核时为 null。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{e}/{o}/cancel`
@@ -7924,26 +7924,26 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `requestNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
-| `status` | `string` | 是 | — |
-| `purchaseSource` | `string` | 否 | — |
-| `dueAt` | `string` | 是 | — |
-| `instructions` | `null` \| `object`（见下） | 是 | — |
-| `claims` | `object`（见下）\[\] | 是 | — |
-| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
+| `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
+| `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
+| `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
+| `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
+| `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
+| `claims` | `object`（见下）\[\] | 是 | 商家付款申报与审核记录，不等于真实到账。 |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | 可按动作号核对及恢复的运营动作记录。 |
 
 `claims[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `claimNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
-| `reviewNote` | `string,null` | 是 | — |
+| `claimNo` | `string` | 是 | 原商家付款申报号。 |
+| `status` | `string` | 是 | 申报状态；SUBMITTED 为待核款。 |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | 商家冻结的原始申报内容。 |
+| `reviewNote` | `string,null` | 是 | 审核说明；未审核时为 null。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{e}/{o}/confirm`
@@ -7965,10 +7965,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `paymentNo` | `string,null` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `actionNo` | `string` | 是 | 原运营核款或对账关闭动作号。 |
+| `status` | `string` | 是 | 资金动作状态；ACCEPTED 仅为受理，APPLIED/REJECTED 为已核验结果。 |
+| `paymentNo` | `string,null` | 是 | 资金底座记录的真实支付号；尚无实收时为 null。 |
+| `reason` | `string` | 是 | 原审核理由或资金核验拒绝原因。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{e}/{o}/decline`
@@ -8008,7 +8008,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `assetKey` | `string` | 是 | — |
+| `assetKey` | `string` | 是 | 绑定主体、门店、订单与凭证用途的私有资产键；上传接口仍须验证归属。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{e}/{o}/evidence/content`
@@ -8030,7 +8030,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `assetKey` | `string` | 是 | — |
+| `assetKey` | `string` | 是 | 绑定主体、门店、订单与凭证用途的私有资产键；上传接口仍须验证归属。 |
 
 
 #### GET `/ops/merchant-plan-purchases/{e}/{o}/evidence/url`
@@ -8052,7 +8052,7 @@ entityPlanEvidenceUrl
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `url` | `string` | 是 | — |
+| `url` | `string` | 是 | 授权后签发的短时私有凭证读取地址。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{e}/{o}/recover`
@@ -8074,26 +8074,26 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `requestNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
-| `status` | `string` | 是 | — |
-| `purchaseSource` | `string` | 否 | — |
-| `dueAt` | `string` | 是 | — |
-| `instructions` | `null` \| `object`（见下） | 是 | — |
-| `claims` | `object`（见下）\[\] | 是 | — |
-| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
+| `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
+| `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
+| `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
+| `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
+| `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
+| `claims` | `object`（见下）\[\] | 是 | 商家付款申报与审核记录，不等于真实到账。 |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | 可按动作号核对及恢复的运营动作记录。 |
 
 `claims[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `claimNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
-| `reviewNote` | `string,null` | 是 | — |
+| `claimNo` | `string` | 是 | 原商家付款申报号。 |
+| `status` | `string` | 是 | 申报状态；SUBMITTED 为待核款。 |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | 商家冻结的原始申报内容。 |
+| `reviewNote` | `string,null` | 是 | 审核说明；未审核时为 null。 |
 
 
 #### GET `/ops/merchant-plan-purchases/{e}/assistance-context`
@@ -8114,23 +8114,23 @@ entityPlanAssistanceContext
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `owners` | `object`（见下）\[\] | 是 | — |
-| `stores` | `object`（见下）\[\] | 是 | — |
+| `owners` | `object`（见下）\[\] | 是 | 可用于本主体代购的服务器授权责任账号集合。 |
+| `stores` | `object`（见下）\[\] | 是 | 可用于本主体代购的服务器授权门店集合。 |
 
 `owners[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `accountNo` | `string` | 是 | — |
-| `displayName` | `string` | 是 | — |
-| `subjectKind` | `string` | 是 | — |
+| `accountNo` | `string` | 是 | 责任账号编号；不能从旧订单推测。 |
+| `displayName` | `string` | 是 | 账号展示名称。 |
+| `subjectKind` | `string` | 是 | 账号对应的主体身份种类。 |
 
 `stores[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店编号。 |
+| `name` | `string` | 是 | 门店展示名称。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{e}/assisted`
@@ -8151,26 +8151,26 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `requestNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
-| `status` | `string` | 是 | — |
-| `purchaseSource` | `string` | 否 | — |
-| `dueAt` | `string` | 是 | — |
-| `instructions` | `null` \| `object`（见下） | 是 | — |
-| `claims` | `object`（见下）\[\] | 是 | — |
-| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
+| `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
+| `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
+| `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
+| `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
+| `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
+| `claims` | `object`（见下）\[\] | 是 | 商家付款申报与审核记录，不等于真实到账。 |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | 可按动作号核对及恢复的运营动作记录。 |
 
 `claims[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `claimNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
-| `reviewNote` | `string,null` | 是 | — |
+| `claimNo` | `string` | 是 | 原商家付款申报号。 |
+| `status` | `string` | 是 | 申报状态；SUBMITTED 为待核款。 |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | 商家冻结的原始申报内容。 |
+| `reviewNote` | `string,null` | 是 | 审核说明；未审核时为 null。 |
 
 
 #### GET `/ops/merchant-plan-purchases/{e}/offers`
@@ -8208,16 +8208,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `offerNo` | `string` | 是 | — |
-| `version` | `number` | 是 | — |
-| `planCode` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `days` | `number` | 是 | — |
-| `price` | [`PlanMoney`](#planmoney) | 是 | — |
-| `storeQuota` | `number` | 是 | — |
-| `staffQuota` | `number` | 是 | — |
-| `crossStoreStats` | `boolean` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `offerNo` | `string` | 是 | 主体套餐销售报价编号。 |
+| `version` | `number` | 是 | 报价版本；下单必须绑定所选版本。 |
+| `planCode` | `string` | 是 | 报价对应的主体套餐档位代码。 |
+| `name` | `string` | 是 | 展示名称。 |
+| `days` | `number` | 是 | 本次购买增加的套餐有效天数。 |
+| `price` | [`PlanMoney`](#planmoney) | 是 | 该版本冻结的销售价格，不代表银行实收。 |
+| `storeQuota` | `number` | 是 | 该版本冻结的主体门店额度。 |
+| `staffQuota` | `number` | 是 | 该版本冻结的主体员工额度。 |
+| `crossStoreStats` | `boolean` | 是 | 是否包含跨门店统计能力。 |
+| `enabled` | `boolean` | 是 | 是否允许创建新的购买订单；不修改既有订单快照。 |
 
 
 #### GET `/ops/merchant-plan-purchases/{entity}/{order}/cash-receipts`
@@ -8275,21 +8275,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/payout`
@@ -8312,21 +8312,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 
 #### POST `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/recover`
@@ -8349,21 +8349,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 
 #### GET `/ops/merchant-plans`
@@ -13973,41 +13973,41 @@ Trusted bank cash, independent of the sales quote.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `currency` | `string` | 是 | — |
-| `minor` | `string,number` | 是 | — |
+| `currency` | `string` | 是 | 真实资金币种代码；不得回落为订单报价币种。 |
+| `minor` | `string,number` | 是 | 最小金额单位整数（数字或整数字符串）；所有币种固定两位小数。 |
 
 ### CashReceipt
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `paymentNo` | `string` | 是 | — |
-| `paymentAttemptNo` | `string` | 是 | — |
-| `platformMerchantNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `refundedMinor` | `string,number` | 是 | — |
-| `pendingRefund` | `boolean` | 是 | — |
-| `exceptionCash` | `boolean` | 是 | — |
-| `closed` | `boolean` | 是 | — |
+| `paymentNo` | `string` | 是 | 资金底座确认的原始真实支付号。 |
+| `paymentAttemptNo` | `string` | 是 | 原始支付尝试编号，用于核对该笔实收来源。 |
+| `platformMerchantNo` | `string` | 是 | 实际收款的平台商户号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 可信真实实收金额，独立于销售报价。 |
+| `refundedMinor` | `string,number` | 是 | 该笔实收已核实退回的最小金额单位累计值。 |
+| `pendingRefund` | `boolean` | 是 | 是否仍有未完成退款；为 true 时不可解除订单占用。 |
+| `exceptionCash` | `boolean` | 是 | 是否为异常实收；正常已交付权益对应款不能走异常款退款。 |
+| `closed` | `boolean` | 是 | 资金底座是否已通过银行对账关闭该笔收款。 |
 
 ### CashRefund
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `refundNo` | `string` | 是 | — |
-| `paymentNo` | `string` | 是 | — |
-| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
-| `status` | `string` | 是 | — |
-| `reason` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
-| `actions` | `object`（见下）\[\] | 是 | — |
+| `refundNo` | `string` | 是 | 服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。 |
+| `paymentNo` | `string` | 是 | 退款绑定的原始真实支付号。 |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | 本次冻结的真实应退金额，不能以销售报价代替。 |
+| `status` | `string` | 是 | 退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。 |
+| `reason` | `string` | 是 | 原始退款申请理由。 |
+| `rejection` | `string,null` | 是 | 退款协调或银行核验拒绝原因；无拒绝时为 null。 |
+| `actions` | `object`（见下）\[\] | 是 | 买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。 |
 
 `actions[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `rejection` | `string,null` | 是 | — |
+| `actionNo` | `string` | 是 | 原实际退回核验动作号。 |
+| `status` | `string` | 是 | 核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。 |
+| `rejection` | `string,null` | 是 | 本动作明确拒绝原因；无拒绝时为 null。 |
 
 ### Category
 
@@ -14602,94 +14602,94 @@ Reward rule history includes imported legacy revisions.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `owners` | `object`（见下）\[\] | 是 | — |
-| `stores` | `object`（见下）\[\] | 是 | — |
+| `owners` | `object`（见下）\[\] | 是 | 可用于本主体代购的服务器授权责任账号集合。 |
+| `stores` | `object`（见下）\[\] | 是 | 可用于本主体代购的服务器授权门店集合。 |
 
 `owners[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `accountNo` | `string` | 是 | — |
-| `displayName` | `string` | 是 | — |
-| `subjectKind` | `string` | 是 | — |
+| `accountNo` | `string` | 是 | 责任账号编号；不能从旧订单推测。 |
+| `displayName` | `string` | 是 | 账号展示名称。 |
+| `subjectKind` | `string` | 是 | 账号对应的主体身份种类。 |
 
 `stores[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店编号。 |
+| `name` | `string` | 是 | 门店展示名称。 |
 
 ### EntityPlanAction
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `actionNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `paymentNo` | `string,null` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `actionNo` | `string` | 是 | 原运营核款或对账关闭动作号。 |
+| `status` | `string` | 是 | 资金动作状态；ACCEPTED 仅为受理，APPLIED/REJECTED 为已核验结果。 |
+| `paymentNo` | `string,null` | 是 | 资金底座记录的真实支付号；尚无实收时为 null。 |
+| `reason` | `string` | 是 | 原审核理由或资金核验拒绝原因。 |
 
 ### EntityPlanClaim
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `claimNo` | `string` | 是 | — |
-| `amount` | [`PlanMoney`](#planmoney) | 是 | — |
-| `paidAt` | `string` | 是 | — |
-| `bankReference` | `string` | 是 | — |
-| `evidenceKey` | `string` | 是 | — |
+| `claimNo` | `string` | 是 | 商家付款申报幂等号；不作为到账事实。 |
+| `amount` | [`PlanMoney`](#planmoney) | 是 | 商家申报的实际付款金额。 |
+| `paidAt` | `string` | 是 | 商家申报的实际付款时间，ISO 8601 UTC。 |
+| `bankReference` | `string` | 是 | 商家申报的银行流水参考号。 |
+| `evidenceKey` | `string` | 是 | 该订单范围内上传的商家付款凭证资产键。 |
 
 ### EntityPlanEvidenceTicket
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `assetKey` | `string` | 是 | — |
+| `assetKey` | `string` | 是 | 绑定主体、门店、订单与凭证用途的私有资产键；上传接口仍须验证归属。 |
 
 ### EntityPlanOffer
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `offerNo` | `string` | 是 | — |
-| `version` | `number` | 是 | — |
-| `planCode` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `days` | `number` | 是 | — |
-| `price` | [`PlanMoney`](#planmoney) | 是 | — |
-| `storeQuota` | `number` | 是 | — |
-| `staffQuota` | `number` | 是 | — |
-| `crossStoreStats` | `boolean` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `offerNo` | `string` | 是 | 主体套餐销售报价编号。 |
+| `version` | `number` | 是 | 报价版本；下单必须绑定所选版本。 |
+| `planCode` | `string` | 是 | 报价对应的主体套餐档位代码。 |
+| `name` | `string` | 是 | 展示名称。 |
+| `days` | `number` | 是 | 本次购买增加的套餐有效天数。 |
+| `price` | [`PlanMoney`](#planmoney) | 是 | 该版本冻结的销售价格，不代表银行实收。 |
+| `storeQuota` | `number` | 是 | 该版本冻结的主体门店额度。 |
+| `staffQuota` | `number` | 是 | 该版本冻结的主体员工额度。 |
+| `crossStoreStats` | `boolean` | 是 | 是否包含跨门店统计能力。 |
+| `enabled` | `boolean` | 是 | 是否允许创建新的购买订单；不修改既有订单快照。 |
 
 ### EntityPlanPurchase
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `requestNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
-| `status` | `string` | 是 | — |
-| `purchaseSource` | `string` | 否 | — |
-| `dueAt` | `string` | 是 | — |
-| `instructions` | `null` \| `object`（见下） | 是 | — |
-| `claims` | `object`（见下）\[\] | 是 | — |
-| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | 主体套餐购买订单号。 |
+| `requestNo` | `string` | 是 | 创建订单的原始幂等请求号。 |
+| `entityNo` | `string` | 是 | 订单所属商家主体编号。 |
+| `storeNo` | `string` | 是 | 下单时服务器验证并冻结的门店编号。 |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | 下单时冻结的销售报价及额度快照。 |
+| `status` | `string` | 是 | 购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。 |
+| `purchaseSource` | `string` | 否 | 创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。 |
+| `dueAt` | `string` | 是 | 本订单银行付款截止时间，ISO 8601。 |
+| `instructions` | `null` \| `object`（见下） | 是 | 冻结收款指引；尚未准备或未配置真实收款账户时为 null。 |
+| `claims` | `object`（见下）\[\] | 是 | 商家付款申报与审核记录，不等于真实到账。 |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | 可按动作号核对及恢复的运营动作记录。 |
 
 `claims[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `claimNo` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
-| `reviewNote` | `string,null` | 是 | — |
+| `claimNo` | `string` | 是 | 原商家付款申报号。 |
+| `status` | `string` | 是 | 申报状态；SUBMITTED 为待核款。 |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | 商家冻结的原始申报内容。 |
+| `reviewNote` | `string,null` | 是 | 审核说明；未审核时为 null。 |
 
 ### EntityPlanSignedRead
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `url` | `string` | 是 | — |
+| `url` | `string` | 是 | 授权后签发的短时私有凭证读取地址。 |
 
 ### ExceptionKind
 
@@ -17614,8 +17614,8 @@ Entity quota contracts, intentionally distinct from store mall entitlements.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `currency` | `string` | 是 | — |
-| `minor` | `number` | 是 | — |
+| `currency` | `string` | 是 | 资金币种代码；所有币种均以两位小数的最小金额单位计量。 |
+| `minor` | `number` | 是 | 最小金额单位整数，不使用浮点元金额。 |
 
 ### PlanQuotaSource
 

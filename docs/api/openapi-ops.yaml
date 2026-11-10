@@ -16112,8 +16112,10 @@ components:
       properties:
         currency:
           type: "string"
+          description: "资金币种代码；所有币种均以两位小数的最小金额单位计量。"
         minor:
           type: "number"
+          description: "最小金额单位整数，不使用浮点元金额。"
       required:
         - "currency"
         - "minor"
@@ -16124,24 +16126,34 @@ components:
       properties:
         offerNo:
           type: "string"
+          description: "主体套餐销售报价编号。"
         version:
           type: "number"
+          description: "报价版本；下单必须绑定所选版本。"
         planCode:
           type: "string"
+          description: "报价对应的主体套餐档位代码。"
         name:
           type: "string"
+          description: "展示名称。"
         days:
           type: "number"
+          description: "本次购买增加的套餐有效天数。"
         price:
           "$ref": "#/components/schemas/PlanMoney"
+          description: "该版本冻结的销售价格，不代表银行实收。"
         storeQuota:
           type: "number"
+          description: "该版本冻结的主体门店额度。"
         staffQuota:
           type: "number"
+          description: "该版本冻结的主体员工额度。"
         crossStoreStats:
           type: "boolean"
+          description: "是否包含跨门店统计能力。"
         enabled:
           type: "boolean"
+          description: "是否允许创建新的购买订单；不修改既有订单快照。"
       required:
         - "offerNo"
         - "version"
@@ -16159,18 +16171,25 @@ components:
       properties:
         offerNo:
           type: "string"
+          description: "要新增或更新的销售报价编号。"
         expectedVersion:
           type: "number"
+          description: "期望现有版本；新增报价传 0，防止覆盖并发修改。"
         planCode:
           type: "string"
+          description: "主体套餐档位代码。"
         name:
           type: "string"
+          description: "展示名称。"
         days:
           type: "number"
+          description: "购买有效天数。"
         price:
           "$ref": "#/components/schemas/PlanMoney"
+          description: "新版本销售价格。"
         enabled:
           type: "boolean"
+          description: "是否对后续新购买开放销售。"
       required:
         - "offerNo"
         - "expectedVersion"
@@ -16185,14 +16204,19 @@ components:
       properties:
         claimNo:
           type: "string"
+          description: "商家付款申报幂等号；不作为到账事实。"
         amount:
           "$ref": "#/components/schemas/PlanMoney"
+          description: "商家申报的实际付款金额。"
         paidAt:
           type: "string"
+          description: "商家申报的实际付款时间，ISO 8601 UTC。"
         bankReference:
           type: "string"
+          description: "商家申报的银行流水参考号。"
         evidenceKey:
           type: "string"
+          description: "该订单范围内上传的商家付款凭证资产键。"
       required:
         - "claimNo"
         - "amount"
@@ -16206,20 +16230,27 @@ components:
       properties:
         actionNo:
           type: "string"
+          description: "运营真实核款动作幂等号；未知结果必须查询并沿用原号。"
         claimNo:
           type:
             - "string"
             - "null"
+          description: "关联商家申报号；运营直接代购核款时为 null。"
         reason:
           type: "string"
+          description: "审核与银行核对理由，留作审计。"
         amount:
           "$ref": "#/components/schemas/PlanMoney"
+          description: "商家申报的实际付款金额。"
         paidAt:
           type: "string"
+          description: "商家申报的实际付款时间，ISO 8601 UTC。"
         bankReference:
           type: "string"
+          description: "商家申报的银行流水参考号。"
         evidenceKey:
           type: "string"
+          description: "该订单范围内上传的商家付款凭证资产键。"
       required:
         - "actionNo"
         - "amount"
@@ -16233,12 +16264,16 @@ components:
       properties:
         actionNo:
           type: "string"
+          description: "对账关闭动作幂等号；恢复不创建新动作。"
         reference:
           type: "string"
+          description: "独立银行对账参考号。"
         evidenceKey:
           type: "string"
+          description: "本订单 RECONCILIATION 用途的私有对账凭证资产键。"
         reason:
           type: "string"
+          description: "关闭并解除原订单占用的审计理由。"
       required:
         - "actionNo"
         - "reference"
@@ -16250,14 +16285,18 @@ components:
       properties:
         actionNo:
           type: "string"
+          description: "原运营核款或对账关闭动作号。"
         status:
           type: "string"
+          description: "资金动作状态；ACCEPTED 仅为受理，APPLIED/REJECTED 为已核验结果。"
         paymentNo:
           type:
             - "string"
             - "null"
+          description: "资金底座记录的真实支付号；尚无实收时为 null。"
         reason:
           type: "string"
+          description: "原审核理由或资金核验拒绝原因。"
       required:
         - "actionNo"
         - "status"
@@ -16269,20 +16308,28 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "主体套餐购买订单号。"
         requestNo:
           type: "string"
+          description: "创建订单的原始幂等请求号。"
         entityNo:
           type: "string"
+          description: "订单所属商家主体编号。"
         storeNo:
           type: "string"
+          description: "下单时服务器验证并冻结的门店编号。"
         offer:
           "$ref": "#/components/schemas/EntityPlanOffer"
+          description: "下单时冻结的销售报价及额度快照。"
         status:
           type: "string"
+          description: "购买业务状态；仅 APPLIED 表示权益开通，REFUNDED 表示异常款已核实退回。"
         purchaseSource:
           type: "string"
+          description: "创建来源 MERCHANT/OPERATOR；运营代购仍需真实银行核款。"
         dueAt:
           type: "string"
+          description: "本订单银行付款截止时间，ISO 8601。"
         instructions:
           anyOf:
             - type: "null"
@@ -16290,12 +16337,15 @@ components:
               properties:
                 platformMerchantNo:
                   type: "string"
+                  description: "指引绑定的平台收款商户号。"
                 instructions:
                   "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
+                  description: "服务器下发的银行收款指引字段。"
               required:
                 - "platformMerchantNo"
                 - "instructions"
               additionalProperties: false
+          description: "冻结收款指引；尚未准备或未配置真实收款账户时为 null。"
         claims:
           type: "array"
           items:
@@ -16303,24 +16353,30 @@ components:
             properties:
               claimNo:
                 type: "string"
+                description: "原商家付款申报号。"
               status:
                 type: "string"
+                description: "申报状态；SUBMITTED 为待核款。"
               declaration:
                 "$ref": "#/components/schemas/EntityPlanClaim"
+                description: "商家冻结的原始申报内容。"
               reviewNote:
                 type:
                   - "string"
                   - "null"
+                description: "审核说明；未审核时为 null。"
             required:
               - "claimNo"
               - "status"
               - "declaration"
               - "reviewNote"
             additionalProperties: false
+          description: "商家付款申报与审核记录，不等于真实到账。"
         actions:
           type: "array"
           items:
             "$ref": "#/components/schemas/EntityPlanAction"
+          description: "可按动作号核对及恢复的运营动作记录。"
       required:
         - "orderNo"
         - "requestNo"
@@ -16338,14 +16394,19 @@ components:
       properties:
         requestNo:
           type: "string"
+          description: "本次代购幂等请求号；结果未知时冻结并重用。"
         offerNo:
           type: "string"
+          description: "所选在售主体套餐报价编号。"
         offerVersion:
           type: "number"
+          description: "所选报价的精确版本，由服务器再次校验。"
         storeNo:
           type: "string"
+          description: "从服务器授权门店集合选择的门店编号。"
         ownerAccountNo:
           type: "string"
+          description: "从服务器返回的主体责任账号集合选择的原账号。"
       required:
         - "requestNo"
         - "offerNo"
@@ -16363,15 +16424,19 @@ components:
             properties:
               accountNo:
                 type: "string"
+                description: "责任账号编号；不能从旧订单推测。"
               displayName:
                 type: "string"
+                description: "账号展示名称。"
               subjectKind:
                 type: "string"
+                description: "账号对应的主体身份种类。"
             required:
               - "accountNo"
               - "displayName"
               - "subjectKind"
             additionalProperties: false
+          description: "可用于本主体代购的服务器授权责任账号集合。"
         stores:
           type: "array"
           items:
@@ -16379,12 +16444,15 @@ components:
             properties:
               storeNo:
                 type: "string"
+                description: "门店编号。"
               name:
                 type: "string"
+                description: "门店展示名称。"
             required:
               - "storeNo"
               - "name"
             additionalProperties: false
+          description: "可用于本主体代购的服务器授权门店集合。"
       required:
         - "owners"
         - "stores"
@@ -16394,6 +16462,7 @@ components:
       properties:
         assetKey:
           type: "string"
+          description: "绑定主体、门店、订单与凭证用途的私有资产键；上传接口仍须验证归属。"
       required:
         - "assetKey"
       additionalProperties: false
@@ -16402,6 +16471,7 @@ components:
       properties:
         url:
           type: "string"
+          description: "授权后签发的短时私有凭证读取地址。"
       required:
         - "url"
       additionalProperties: false
@@ -16410,10 +16480,12 @@ components:
       properties:
         currency:
           type: "string"
+          description: "真实资金币种代码；不得回落为订单报价币种。"
         minor:
           type:
             - "string"
             - "number"
+          description: "最小金额单位整数（数字或整数字符串）；所有币种固定两位小数。"
       required:
         - "currency"
         - "minor"
@@ -16424,22 +16496,30 @@ components:
       properties:
         paymentNo:
           type: "string"
+          description: "资金底座确认的原始真实支付号。"
         paymentAttemptNo:
           type: "string"
+          description: "原始支付尝试编号，用于核对该笔实收来源。"
         platformMerchantNo:
           type: "string"
+          description: "实际收款的平台商户号。"
         amount:
           "$ref": "#/components/schemas/CashMoney"
+          description: "可信真实实收金额，独立于销售报价。"
         refundedMinor:
           type:
             - "string"
             - "number"
+          description: "该笔实收已核实退回的最小金额单位累计值。"
         pendingRefund:
           type: "boolean"
+          description: "是否仍有未完成退款；为 true 时不可解除订单占用。"
         exceptionCash:
           type: "boolean"
+          description: "是否为异常实收；正常已交付权益对应款不能走异常款退款。"
         closed:
           type: "boolean"
+          description: "资金底座是否已通过银行对账关闭该笔收款。"
       required:
         - "paymentNo"
         - "paymentAttemptNo"
@@ -16455,10 +16535,13 @@ components:
       properties:
         refundNo:
           type: "string"
+          description: "退款申请幂等号，须为 cash- 加 UUID，最多 64 字符；可能返回已有 late- 规范退款号。"
         paymentNo:
           type: "string"
+          description: "所退款项的可信原始支付号；金额由服务器冻结剩余可退实收。"
         reason:
           type: "string"
+          description: "申请退回异常实收的审计理由。"
       required:
         - "refundNo"
         - "paymentNo"
@@ -16469,16 +16552,22 @@ components:
       properties:
         actionNo:
           type: "string"
+          description: "本次实际退回核验动作幂等号；未知结果必须查询并沿用原请求。"
         actualAmount:
           "$ref": "#/components/schemas/CashMoney"
+          description: "实际银行退回金额，必须匹配该退款冻结的真实金额与币种。"
         paidOutAt:
           type: "string"
+          description: "实际银行退回时间，ISO 8601 UTC 秒精度。"
         payeeReference:
           type: "string"
+          description: "运营已核实的原付款方标识，仅用于私有核验，不返回买家。"
         bankReference:
           type: "string"
+          description: "实际银行退款流水参考号；录入本字段不发起银行转账。"
         evidenceKey:
           type: "string"
+          description: "本订单 REFUND_PROOF 用途的独立私有退款凭证资产键。"
       required:
         - "actionNo"
         - "actualAmount"
@@ -16492,18 +16581,24 @@ components:
       properties:
         refundNo:
           type: "string"
+          description: "服务器规范退款号；包括 cash- 申请和已有 late- 自动补偿退款。"
         paymentNo:
           type: "string"
+          description: "退款绑定的原始真实支付号。"
         amount:
           "$ref": "#/components/schemas/CashMoney"
+          description: "本次冻结的真实应退金额，不能以销售报价代替。"
         status:
           type: "string"
+          description: "退款阶段 PREPARED/AWAITING_PAYOUT/PAYOUT_ACCEPTED/REFUNDED/REJECTED；仅 REFUNDED 证明已退回。"
         reason:
           type: "string"
+          description: "原始退款申请理由。"
         rejection:
           type:
             - "string"
             - "null"
+          description: "退款协调或银行核验拒绝原因；无拒绝时为 null。"
         actions:
           type: "array"
           items:
@@ -16511,17 +16606,21 @@ components:
             properties:
               actionNo:
                 type: "string"
+                description: "原实际退回核验动作号。"
               status:
                 type: "string"
+                description: "核验状态 ACCEPTED/APPLIED/REJECTED；ACCEPTED 不证明退款完成。"
               rejection:
                 type:
                   - "string"
                   - "null"
+                description: "本动作明确拒绝原因；无拒绝时为 null。"
             required:
               - "actionNo"
               - "status"
               - "rejection"
             additionalProperties: false
+          description: "买家安全的原核验动作状态集合；不包含原付款方、银行流水或平台凭证。"
       required:
         - "refundNo"
         - "paymentNo"

@@ -525,18 +525,18 @@ export const NAME_COLLISIONS = {
   "issue_no": "同 user_coupon_no：mkt_coupon_issue 与 pmt_coupon_issue 各自建了唯一键，是两族。\n  pmt_user_coupon 里的 issue_no 指的是 pmt_coupon_issue —— 同族内是外键，跨族不是。",
   "tax_no": "**它根本不是编号，是纳税人识别号这个业务值**（ord_invoice_request 开票抬头填的、stl_settle_invoice 结算发票上印的）。两张表都没给它建唯一键。\n  同一个纳税人识别号本来就该在多张表里重复出现，按它 join 得到的是笛卡尔积。",
   "receiver_no": "notify_message 与 notify_push_token 都是「收件人编号」，但**都是多态的**：\n  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，STAFF 时是 mch_staff.staff_no（两族编号，取值空间不重叠但也不保证）。\n  所以它不是任何一张表的外键，按名字 join 会把店员的设备连到买家身上：**推送发错人**，而且不报错。要连必须带上 receiver_type 一起连。",
-  "request_no": "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；ord_invoice_request 是开票申请单号。**三族**，互不相干。\n  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
+  "request_no": "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；ord_invoice_request 是开票申请单号。**三族**，互不相干。\n  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。 主体购买request_no按typed创建者限定，门店认领request_no按原老板限定，均为各自原命令幂等号，不与其他请求族按同号关联。",
   "invoice_no": "**三个方向的票，这是最危险的一组同名**：\n  stl_purchase_invoice 是**进项**（供应商开给平台，决定平台能不能列支成本）；\n  ord_invoice_request 是**销项·对消费者**（平台开给买家，ADR-017 §3.4 条件 2，决定归集资金模式成不成立）；\n  stl_settle_invoice 是**销项·对商家**（平台开给商家的结算凭证，P-12.2.4）。\n  义务人、方向、法律后果各不相同 —— 按名字 join 出来的「发票」会把进项当销项，而三边都有值、都不报错。",
   "express_no": "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   "apply_no": "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n  两者都是「某人申请某事」，但申请的对象完全不同 —— 按名字 join 会把入驻单连到社区提报上。",
   "ref_no": "stl_points_pool 是积分池指向的业务单据；mch_store_audit 是审核单指向的业务记录（kind=SERVICE_AREA 时是 mch_service_area.area_no）。\n  两者都是「指针列」，但**指向的表由同行的另一列决定**（前者看 pool 类型，后者看 kind）——所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
-  "operator_no": "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
+  "operator_no": "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。 主体购买动作operator_no为运营审核身份，只作原动作审计，不是其他业务操作人的通用外键。",
   "template_no": "**同一个列名下有独立的模板族**：notify_template 是消息模板，notify_message.template_no 引用它；prd_spec_template.template_no 是商品规格模板，ent_template/ent_template_version是支付权益模板；三族互不相干。\n  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
   "txn_no": "mch_deposit_txn.txn_no 是保证金流水号（平台代管商家资金，将来要退还）；\n  mch_debt_txn.txn_no 是商家欠款流水号（平台垫付后向商家追偿）。\n  两者都是各自表的唯一业务键（各自建了 uk），资金方向相反 ——按名字 join 会把保证金扣款连到欠款追偿上，而两边都有值、不报错。",
   "source_no": "mbr_member_source.source_no 是会员引荐来源码（记录「这个会员从哪个推广渠道来」，建了全局唯一键）；\n  mch_debt_txn.source_no 是欠款来源单号（指向售后单号或结算单号，可为空，由 source_type 决定含义）。\n  两者都是「来源」但完全不同义 —— 按名字 join 会把会员拉新来源连到商家欠款上。",
   "log_no": "mch_staff_log.log_no 是员工操作日志的流水号；\n  pay_risk_shadow_log.log_no 是支付风控影子模式拦截记录的流水号（只记录、不真拦）。\n  两者都是各自表的唯一业务键，所属域完全不同 —— 按名字 join 会把员工操作连到风控影子记录上。",
   "unit_no": "资源持有单元与手工服务永久数量单元独立发号，仅 ord_service_execution 以 tenant/entity/store 引用本族数量单元。；prd_execution_retention 与 prd_execution_retention_route 保存服务数量单元原号及其完整原权威上下文，不能当作资源持有单元号。",
-  "action_no": "手工收款声明动作与服务执行动作是两个不可变命名空间，不按同名号跨族关联。",
+  "action_no": "手工收款声明动作与服务执行动作是两个不可变命名空间，不按同名号跨族关联。 mch_plan_purchase_action由tenant+order_no+action_no限定，核款/对账命令不与其他业务动作连接。",
   "source_line_no": "结算原始行由 ord_checkout_line 持有，服务数量单元须同时核对 tenant/caller/operation/order/subOrder。；ord_price_quote_line.source_line_no 是报价来源行标识，须遵循来源协议，非结算行的无条件外键。",
   "source_operation_no": "原始结算操作别名须核对完整作用域；仅服务数量单元登记带 caller/entity/store 的精确引用。",
   "declaration_no": "收款声明与声明动作属于原收款族；执行尝试仅以 tenant/entity/store 绑定原声明，不建立跨族全局别名。",
@@ -545,7 +545,8 @@ export const NAME_COLLISIONS = {
   "tier_no": "档位仅在 (tenant_no,version_no) 内唯一；pmt_activity_reservation 须同时匹配 tenant_no 与 version_no 才能引用 pmt_recharge_tier。；sv_recharge、sv_lot、sv_release_tier 保存各自活动/版本/发布上下文中的档位，不能只按tier_no连接全局根。",
   "catalog_no": "目录仅在主体内唯一；prd_store_catalog_version 须同时匹配 tenant_no 与 entity_no 才能引用 prd_store_catalog。",
   "actor_account_no": "支付 ord_checkout_payment_request 与 stl_payment_operation 保存解析后的 mch_account.mch_account_no（包括 USR 路径）；mch_staff_log 历史保存 login userNo，禁止全局连商家账号。",
-  "execution_no": "普通退款义务条件路径 ord_refund_obligation.execution_no → ord_refund_execution.execution_no；PRF- + after_sale_no 路径指 ord_points_refund_execution.after_sale_no，不能画无条件普通执行边。"
+  "execution_no": "普通退款义务条件路径 ord_refund_obligation.execution_no → ord_refund_execution.execution_no；PRF- + after_sale_no 路径指 ord_points_refund_execution.after_sale_no，不能画无条件普通执行边。",
+  "claim_no": "mch_store_entity_claim是门店经营主体认领回执；mch_plan_purchase_claim是主体额度包付款申报，分别按tenant+原门店/订单及各自编号授权，不能按claim_no跨族关联。"
 };
 
 // Exact source-audited memberships; new tables require explicit review.
@@ -560,7 +561,8 @@ export const COLLISION_MEMBERS = {
   "action_no": [
     "ord_manual_service_admission_action",
     "ord_service_execution_action",
-    "pay_ent_exception_action"
+    "pay_ent_exception_action",
+    "mch_plan_purchase_action"
   ],
   "source_line_no": [
     "ord_checkout_line",
@@ -1058,7 +1060,9 @@ export const COLLISION_MEMBERS = {
     "stl_cash_refund_reverse",
     "prn_job",
     "prn_request",
-    "prn_batch"
+    "prn_batch",
+    "mch_store_entity_claim",
+    "mch_plan_purchase"
   ],
   "invoice_no": [
     "stl_purchase_invoice",
@@ -1101,7 +1105,8 @@ export const COLLISION_MEMBERS = {
     "ent_usage",
     "ord_ent_service_order",
     "sv_recharge",
-    "pmt_recharge_intent"
+    "pmt_recharge_intent",
+    "mch_plan_purchase_action"
   ],
   "template_no": [
     "prd_spec_template",
@@ -1151,6 +1156,10 @@ export const COLLISION_MEMBERS = {
     "mch_booking_owner",
     "mch_resource_command",
     "mch_booking_hold"
+  ],
+  "claim_no": [
+    "mch_store_entity_claim",
+    "mch_plan_purchase_claim"
   ]
 };
 

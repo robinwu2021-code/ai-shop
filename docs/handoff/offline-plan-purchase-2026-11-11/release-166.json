@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-11",
+  "target": "166",
+  "status": "DEPLOYING",
+  "implementationCommit": "9928917bb",
+  "hostReleaseBranch": "codex/offline-plan-closure-20261111",
+  "appCommit": "e1c501c",
+  "jarSha256": "fc909bb181069286d4d4e6526b74030f657fc08225d9fb00b93b46ffcce07f39",
+  "verification": {
+    "backendRelevant": {
+      "tests": 80,
+      "failures": 0,
+      "errors": 0
+    },
+    "opsFull": {
+      "files": 96,
+      "tests": 955,
+      "failures": 0
+    },
+    "flutterRelevant": {
+      "tests": 38,
+      "failures": 0
+    },
+    "targetedReview": "Both original P2 fixes accepted; final repeated-rejection regression passed."
+  },
+  "migration": {
+    "rehearsal": {
+      "hostExecuted": 2,
+      "hostVersion": "650",
+      "commerceExecuted": 1,
+      "commerceVersion": "13"
+    },
+    "production": {
+      "hostExecuted": 2,
+      "hostVersion": "650",
+      "commerceExecuted": 1,
+      "commerceVersion": "13"
+    },
+    "firstAttempt": "Runtime DML-only account could not create V649 tables; original API restored UP. No new tables were present. Flyway validated only failed V649, repaired that failed record, then applied unchanged resources with a scoped temporary migration account.",
+    "runtimeDdlGranted": false
+  },
+  "backups": {
+    "runtime": "/data0/app/ai-shop/releases/offline-plan-20261111-9928917bb",
+    "database": "/data0/mysql9/backups/offline-plan-20261111",
+    "apiBefore": "bd7b14adaa49587bfca1f0ccdebf29e4bfc3b8448d912f916d7b70c0a97b9077",
+    "opsBefore": "114d4369997a7bdbec847848f1f227fba21cbf81d7503d9f3024c1f4247b3aeb"
+  },
+  "scope": {
+    "api": true,
+    "opsBackend": true,
+    "opsWeb": true,
+    "nearPayIndependentReplaced": false,
+    "inventoryReplaced": false,
+    "storedValueMigrationPerformed": false,
+    "realBankConfigured": false,
+    "realBankTransferTested": false
+  }
+}

@@ -23,6 +23,20 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  // 主体购买沿用真实Controller权限；复合授权仍由运行时同时校验，表册不改变授权。
+  ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}(?:\/\{orderNo\}(?:\/(?:cash-receipts|cash-refunds|evidence\/url))?|\/offers)?$/, "merchant:merchant:read"],
+  ["GET", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assistance-context$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/assisted$/, "commerce:mall:assisted:purchase", "同时要求merchant:merchant:ban"],
+  ["PUT", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/offers$/, "system:param:update"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/cash-refunds(?:\/\{refundNo\}\/(?:payout|recover))?$/, "commerce:mall:offline:refund:confirm", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/confirm$/, "commerce:mall:offline:confirm", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/decline$/, "commerce:mall:offline:review", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/cancel$/, "commerce:mall:offline:void", "同时要求merchant:merchant:ban"],
+  ["POST", /^\/ops\/merchant-plan-purchases\/\{entityNo\}\/\{orderNo\}\/(?:recover|evidence(?:\/content)?)$/, "merchant:merchant:ban", "同时要求核款/作废/退款三者之一；恢复原动作及私有证据，不是独立资金授权"],
+  ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/(?:actions\/\{actionNo\}|cash-receipts|cash-refunds)$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/recover$/, "commerce:mall:order:read"],
+  ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/cash-refunds(?:\/\{refundNo\}\/(?:payout|recover))?$/, "commerce:mall:offline:refund:confirm"],
+  ["POST", /^\/ops\/order-payment-resolutions\/\{payNo\}\/\{paymentNo\}\/refund$/, "pay:order:manage"],
   // 套餐商城（可移植 commerce starter）。码就是控制器 context.operator(...) 里写的那个，
   // 已是细码，由 V625/V627 播种、只授给 SUPER_ADMIN；改这里须与控制器同改。
   // 商城分类（控制器 context.operator 里的码）
