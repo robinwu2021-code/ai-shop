@@ -27,6 +27,12 @@ public interface CheckoutService {
     /** Read the immutable original displayed quote under current merchant scope. */
     CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation);
 
+    /** Read durable acceptance and placement without creating another confirmation or order. */
+    CounterState readCounterState(CheckoutScope scope, OperationRef operation);
+
+    /** Original authorized receipts are recovered separately from the immutable display quote. */
+    record CounterState(CounterConfirmation confirmation, CheckoutResult result, boolean canAccept) {}
+
     /** Explicit current cashier acceptance is required independently from member identity. */
     CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request);
 

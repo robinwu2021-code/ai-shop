@@ -985,7 +985,23 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
 
 
     /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
+    /** A read reference reveals neither the saved human proof nor execution authorization. */
+    public record TaskPreparationRef(String taskNo, String operationNo) {}
+
     public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+        @Select("""
+                SELECT JSON_UNQUOTE(JSON_EXTRACT(s.frozen_command,'$.intent.binding.taskNo')) AS task_no,
+                       s.submission_no AS operation_no
+                FROM bty_service_submission s JOIN bty_work_order w
+                  ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
+                  AND w.work_order_no=s.work_order_no AND w.deleted=0
+                WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND s.work_order_no=#{workOrderNo} AND s.action='START' AND s.deleted=0
+                ORDER BY s.id
+                """)
+        List<TaskPreparationRef> selectTaskPreparationRefs(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
+
         /** START has its own discriminator and CAS; legacy schema2/3 recovery never consumes it. */
         @Update(
                 """

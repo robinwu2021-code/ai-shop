@@ -31,11 +31,11 @@ public class ManualServicePurchasePolicy {
     @Autowired private MerchantOperatorAccessPort merchants;
 
     /** Read requires exact action proof or a genuine current session, without receipt permissions. */
-    public void requireCounterReader(CheckoutScope scope, OperationRef operation) {
+    public CashierActor requireCounterReader(CheckoutScope scope, OperationRef operation) {
         if (scope == null || operation == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        requireCounterPreparer(scope, "COUNTER_READ", operation.operationNo(), operation);
+        return requireCounterPreparer(scope, "COUNTER_READ", operation.operationNo(), operation);
     }
 
     /** Full scoped request binding is required before alternate remote cashier resolution. */
