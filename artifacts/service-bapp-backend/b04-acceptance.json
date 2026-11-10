@@ -154,12 +154,23 @@
     "independent": true,
     "blockingFindings": 1,
     "fixed": "Encoded lawful original-key query was refused by full-target guard; exact relative raw collection path now accepts query encoding, without opening encoded/traversal paths.",
-    "remainingCriticalOrImportant": 0
+    "remainingCriticalOrImportant": 0,
+    "fixedTest": "PayBizCollectionHttpTest.encodedOriginalKeyQueryIsPreservedWithoutOpeningEncodedOrTraversalPaths"
   },
   "orphanGuard": {
     "passed": false,
     "newRoutesRecognizedAsStaged": 2,
     "inheritedDebtUnchanged": true,
     "log": "/private/tmp/svc-b04-orphans.log"
+  },
+  "hostIntegration": {
+    "commit": "722d91d6d2010213651eb628dbcf6dd4a9d7d0d7",
+    "target": "codex/food-next01",
+    "protectedFiles": 187,
+    "sharedWipMergedReversibly": [
+      "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/client/BizOnboardingForwarder.java",
+      "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizPayOnboardingController.java"
+    ],
+    "otherProtectedFileBytesUnchanged": true
   }
 }
