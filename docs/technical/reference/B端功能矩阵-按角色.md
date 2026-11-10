@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 514 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 526 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,11 +16,11 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 91 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 93 | ✅ | — | — | — | — | — |
 | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 42 | ✅ | — | — | — | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 34 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 24 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
@@ -35,10 +35,10 @@
 | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `PRINT_EXPORT` | 更正与作废 App 外收款记录（原因必填、留痕） | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
@@ -97,6 +97,8 @@
 - `/biz/staff/{mchAccountNo}/store`
 - `/biz/store/create`
 - `/biz/store/{storeNo}/default`
+- `/biz/store/{storeNo}/entity`
+- `/biz/store/{storeNo}/entity/relink-check`
 - `/biz/store/{storeNo}/payment`
 - `/biz/store/{storeNo}/rename`
 - `/biz/store/{storeNo}/slug`
@@ -222,6 +224,51 @@
 - `/biz/store/{storeNo}/stock-reconcile/{operationNo}`
 - `/biz/store/{storeNo}/stock-sync`
 
+### `FINANCE`　（OWNER）
+
+- `/biz/deposit`
+- `/biz/deposit/txns`
+- `/biz/merchant/debt`
+- `/biz/merchant/onboarding`
+- `/biz/merchant/pay-channel`
+- `/biz/merchant/pay-service`
+- `/biz/merchant/pay-service/apply`
+- `/biz/merchant/payment`
+- `/biz/merchant/payment/store/{storeNo}`
+- `/biz/merchant/payment/{payChannel}/refresh`
+- `/biz/pay/v2/channel-account-claims`
+- `/biz/pay/v2/channel-account-claims/by-request/{requestNo}`
+- `/biz/pay/v2/channel-account-claims/{claimNo}`
+- `/biz/pay/v2/channel-account-claims/{claimNo}/commands/{requestNo}`
+- `/biz/pay/v2/channel-account-claims/{claimNo}/files`
+- `/biz/pay/v2/channel-account-claims/{claimNo}/files/{fileNo}`
+- `/biz/pay/v2/channel-account-claims/{claimNo}/submit`
+- `/biz/payout-account`
+- `/biz/points/store-account`
+- `/biz/points/store-agreement`
+- `/biz/points/store-agreement/sign`
+- `/biz/points/store-agreement/terminate`
+- `/biz/points/store-entries`
+- `/biz/points/store-statement`
+- `/biz/points/store-statement-confirm`
+- `/biz/points/store-statement-dispute`
+- `/biz/points/store-statement-lines`
+- `/biz/points/store-statements`
+- `/biz/points/store-terms`
+- `/biz/points/store-types`
+- `/biz/pricing-manual-adjustments/{no}:approve`
+- `/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}`
+- `/biz/settle/batch`
+- `/biz/settle/bills`
+- `/biz/settle/bills/{settleNo}`
+- `/biz/settle/daily-flow`
+- `/biz/settle/income`
+- `/biz/settle/invoice-pending`
+- `/biz/settle/invoice-title`
+- `/biz/settle/invoices`
+- `/biz/settle/rate-card`
+- `/biz/settle/statement`
+
 ### `GOODS`　（OWNER、MANAGER）
 
 - `/biz/card-product-bindings`
@@ -302,43 +349,6 @@
 - `/biz/pricing-manual-adjustments/{no}`
 - `/biz/pricing-manual-adjustments/{no}:quote`
 - `/biz/quote/{quoteNo}/revise`
-
-### `FINANCE`　（OWNER）
-
-- `/biz/deposit`
-- `/biz/deposit/txns`
-- `/biz/merchant/debt`
-- `/biz/merchant/pay-channel`
-- `/biz/merchant/pay-service`
-- `/biz/merchant/pay-service/apply`
-- `/biz/merchant/payment`
-- `/biz/merchant/payment/store/{storeNo}`
-- `/biz/merchant/payment/{payChannel}/refresh`
-- `/biz/payout-account`
-- `/biz/points/store-account`
-- `/biz/points/store-agreement`
-- `/biz/points/store-agreement/sign`
-- `/biz/points/store-agreement/terminate`
-- `/biz/points/store-entries`
-- `/biz/points/store-statement`
-- `/biz/points/store-statement-confirm`
-- `/biz/points/store-statement-dispute`
-- `/biz/points/store-statement-lines`
-- `/biz/points/store-statements`
-- `/biz/points/store-terms`
-- `/biz/points/store-types`
-- `/biz/pricing-manual-adjustments/{no}:approve`
-- `/biz/pricing-manual-policies/{currency}/{reasonCode}/{kind}`
-- `/biz/settle/batch`
-- `/biz/settle/bills`
-- `/biz/settle/bills/{settleNo}`
-- `/biz/settle/daily-flow`
-- `/biz/settle/income`
-- `/biz/settle/invoice-pending`
-- `/biz/settle/invoice-title`
-- `/biz/settle/invoices`
-- `/biz/settle/rate-card`
-- `/biz/settle/statement`
 
 ### `CUSTOMER`　（OWNER、MANAGER）
 
@@ -562,6 +572,14 @@
 - `/biz/pickup/{orderNo}/report`
 - `/biz/stores/{storeNo}/pos/access`
 
+### `REVIEW`　（OWNER、MANAGER、CS）
+
+- `/biz/review`
+- `/biz/review/appeals`
+- `/biz/review/{reviewNo}`
+- `/biz/review/{reviewNo}/appeal`
+- `/biz/review/{reviewNo}/reply`
+
 ### `SV_CONSUME_CREATE`　（OWNER）
 
 - `/biz/stored-value/consumptions`
@@ -583,12 +601,6 @@
 - `/biz/entitlement-usage`
 - `/biz/entitlement-uses/{operationNo}`
 - `/biz/entitlements/{instanceNo}`
-
-### `REVIEW`　（OWNER、MANAGER、CS）
-
-- `/biz/review`
-- `/biz/review/{reviewNo}/appeal`
-- `/biz/review/{reviewNo}/reply`
 
 ### `ENT_USE`　（OWNER）
 

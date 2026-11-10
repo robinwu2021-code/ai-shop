@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 463 个受控功能点**
+统计：**50 个权限码 × 6 个角色 × 475 个受控功能点**
 （另有 0 个登录即可、21 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,11 +21,11 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 68 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 70 | ✅ | — | — | — | — | — |
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
+| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 40 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
-| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 32 | ✅ | — | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
@@ -37,10 +37,10 @@
 | `biz:print:resolve` | `PRINT_RESOLVE` | 更正与作废 App 外收款记录（原因必填、留痕） | 9 | ✅ | ✅ | — | — | — | — |
 | `biz:print:device` | `PRINT_DEVICE` | 更正与作废 App 外收款记录（原因必填、留痕） | 6 | ✅ | ✅ | — | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:review` | `REVIEW` | 评价回复、差评申诉 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
@@ -113,6 +113,8 @@
 | —（b-app 未接） | — | `/biz/personnel/{}/account-links` | — | — |
 | —（b-app 未接） | — | `/biz/personnel/{}/status-changes` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
+| —（b-app 未接） | — | `/biz/store/{}/entity/relink-check` | — | — |
+| —（b-app 未接） | — | `/biz/store/{}/entity` | — | — |
 | —（b-app 未接） | — | `/biz/x/commerce/account-operations` | — | — |
 | —（b-app 未接） | — | `/biz/x/commerce/catalog-scopes/{}{}` | — | — |
 | —（b-app 未接） | — | `/biz/x/commerce/stores/{}/catalog-scopes` | — | — |
@@ -271,6 +273,56 @@
 | —（b-app 未接） | — | `/biz/card-product-presets` | — | — |
 | —（b-app 未接） | — | `/biz/store-sales-catalog` | — | — |
 
+### `biz:finance`　结算账单、费率卡、收款进件、积分开关
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 保证金账户 | GET | `/biz/deposit` | `mDeposit` | deposit |
+| 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
+| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
+| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
+| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
+| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
+| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
+| 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
+| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
+| 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
+| 当前门店积分账本 | GET | `/biz/points/store-account` | `mStorePointAccount` | points |
+| 当前门店有效积分签约 | GET | `/biz/points/store-agreement` | `mStorePointAgreement` | points |
+| 主体属主签署当前门店积分协议 | POST | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | — |
+| 主体属主终止当前门店积分协议 | POST | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | — |
+| 当前门店积分流水 | GET | `/biz/points/store-entries` | `mStorePointEntries` | points-records |
+| 当前门店指定积分账单 | GET | `/biz/points/store-statement` | `mStorePointStatement` | — |
+| 确认当前门店指定修订积分账单 | POST | `/biz/points/store-statement-confirm` | `mConfirmStorePointStatement` | — |
+| 对当前门店积分账单提出异议 | POST | `/biz/points/store-statement-dispute` | `mDisputeStorePointStatement` | — |
+| 当前门店指定修订积分账单明细 | GET | `/biz/points/store-statement-lines` | `mStorePointStatementLines` | — |
+| 当前门店积分账单 | GET | `/biz/points/store-statements` | `mStorePointStatements` | — |
+| 当前积分签约条款 | GET | `/biz/points/store-terms` | `mStorePointTerms` | — |
+| 当前门店可见的积分类型 | GET | `/biz/points/store-types` | `mStorePointTypes` | points、points-records |
+| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
+| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
+| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
+| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
+| 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
+| 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
+| 我提交的票 | GET | `/biz/settle/invoices` | `mMyInvoices` | invoice |
+| 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
+| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
+| 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
+| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
+| —（b-app 未接） | — | `/biz/merchant/pay-service/apply` | — | — |
+| —（b-app 未接） | — | `/biz/merchant/onboarding` | — | — |
+| —（b-app 未接） | — | `/biz/merchant/pay-service` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/by-request/{}` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/{}` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/{}/files` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/{}/files/{}` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/{}/commands/{}` | — | — |
+| —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/{}/submit` | — | — |
+
 ### `biz:campaign`　营销活动、开团、报价
 
 **可用角色**：老板、店长
@@ -316,48 +368,6 @@
 | —（b-app 未接） | — | `/biz/pricing-manual-adjustments` | — | — |
 | —（b-app 未接） | — | `/biz/pricing-manual-adjustments/{}` | — | — |
 | —（b-app 未接） | — | `/biz/pricing-manual-adjustments/{}{}` | — | — |
-
-### `biz:finance`　结算账单、费率卡、收款进件、积分开关
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 保证金账户 | GET | `/biz/deposit` | `mDeposit` | deposit |
-| 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
-| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
-| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
-| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
-| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
-| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
-| 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
-| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
-| 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
-| 当前门店积分账本 | GET | `/biz/points/store-account` | `mStorePointAccount` | points |
-| 当前门店有效积分签约 | GET | `/biz/points/store-agreement` | `mStorePointAgreement` | points |
-| 主体属主签署当前门店积分协议 | POST | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | — |
-| 主体属主终止当前门店积分协议 | POST | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | — |
-| 当前门店积分流水 | GET | `/biz/points/store-entries` | `mStorePointEntries` | points-records |
-| 当前门店指定积分账单 | GET | `/biz/points/store-statement` | `mStorePointStatement` | — |
-| 确认当前门店指定修订积分账单 | POST | `/biz/points/store-statement-confirm` | `mConfirmStorePointStatement` | — |
-| 对当前门店积分账单提出异议 | POST | `/biz/points/store-statement-dispute` | `mDisputeStorePointStatement` | — |
-| 当前门店指定修订积分账单明细 | GET | `/biz/points/store-statement-lines` | `mStorePointStatementLines` | — |
-| 当前门店积分账单 | GET | `/biz/points/store-statements` | `mStorePointStatements` | — |
-| 当前积分签约条款 | GET | `/biz/points/store-terms` | `mStorePointTerms` | — |
-| 当前门店可见的积分类型 | GET | `/biz/points/store-types` | `mStorePointTypes` | points、points-records |
-| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
-| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
-| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
-| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
-| 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
-| 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
-| 我提交的票 | GET | `/biz/settle/invoices` | `mMyInvoices` | invoice |
-| 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
-| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
-| 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
-| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
-| —（b-app 未接） | — | `/biz/merchant/pay-service/apply` | — | — |
-| —（b-app 未接） | — | `/biz/merchant/pay-service` | — | — |
 
 ### `biz:customer`　顾客列表（含累计消费额）、经营数据
 
@@ -600,6 +610,18 @@
 | 分拣单 | GET | `/biz/pickup/picking` | `mPickingList` | picking |
 | —（b-app 未接） | — | `/biz/stores/{}/pos/access` | — | — |
 
+### `biz:review`　评价回复、差评申诉
+
+**可用角色**：老板、店长、客服
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 评价列表 | GET | `/biz/review` | `mReviewList` | reviews |
+| 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
+| 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
+| —（b-app 未接） | — | `/biz/review/appeals` | — | — |
+| —（b-app 未接） | — | `/biz/review/{}` | — | — |
+
 ### `pay:sv:account:read`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
@@ -633,16 +655,6 @@
 | —（b-app 未接） | — | `/biz/entitlement-uses/{}` | — | — |
 | —（b-app 未接） | — | `/biz/entitlement-usage` | — | — |
 | —（b-app 未接） | — | `/biz/entitlements/{}` | — | — |
-
-### `biz:review`　评价回复、差评申诉
-
-**可用角色**：老板、店长、客服
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 评价列表 | GET | `/biz/review` | `mReviewList` | reviews |
-| 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
-| 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
 
 ### `pay:sv:recharge:create`　查看主体级权益目录，不授予变更能力
 
@@ -928,6 +940,7 @@
 | `/biz/inventory/food-stock-projections/{}` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/items/{}/valuation` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
+| `/biz/merchant/onboarding` | `biz:finance` | 老板 |
 | `/biz/merchant/pay-service` | `biz:finance` | 老板 |
 | `/biz/merchant/pay-service/apply` | `biz:finance` | 老板 |
 | `/biz/order/{}/full` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
@@ -938,6 +951,13 @@
 | `/biz/pay/qr-code/{}/disabled` | `undefined` | 老板 |
 | `/biz/pay/refund` | `undefined` | 老板 |
 | `/biz/pay/statement` | `undefined` | 老板 |
+| `/biz/pay/v2/channel-account-claims` | `biz:finance` | 老板 |
+| `/biz/pay/v2/channel-account-claims/by-request/{}` | `biz:finance` | 老板 |
+| `/biz/pay/v2/channel-account-claims/{}` | `biz:finance` | 老板 |
+| `/biz/pay/v2/channel-account-claims/{}/commands/{}` | `biz:finance` | 老板 |
+| `/biz/pay/v2/channel-account-claims/{}/files` | `biz:finance` | 老板 |
+| `/biz/pay/v2/channel-account-claims/{}/files/{}` | `biz:finance` | 老板 |
+| `/biz/pay/v2/channel-account-claims/{}/submit` | `biz:finance` | 老板 |
 | `/biz/payment/collect-status` | `undefined` | 老板 |
 | `/biz/payment/links` | `undefined` | 老板 |
 | `/biz/payment/links/{}/reissue` | `undefined` | 老板 |
@@ -1022,6 +1042,8 @@
 | `/biz/print/templates/{}/versions` | `biz:print:config` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/resources` | `biz:store:admin` | 老板 |
+| `/biz/review/appeals` | `biz:review` | 老板、店长、客服 |
+| `/biz/review/{}` | `biz:review` | 老板、店长、客服 |
 | `/biz/schedule-rules` | `biz:store:admin` | 老板 |
 | `/biz/schedules` | `biz:store:admin` | 老板 |
 | `/biz/service-orders/counter-quotes` | `undefined` | 老板 |
@@ -1035,6 +1057,8 @@
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 | `/biz/store-sales-catalog` | `biz:goods` | 老板、店长 |
 | `/biz/store-sales-catalog/versions` | `biz:goods` | 老板、店长 |
+| `/biz/store/{}/entity` | `biz:store:admin` | 老板 |
+| `/biz/store/{}/entity/relink-check` | `biz:store:admin` | 老板 |
 | `/biz/store/{}/stock-reconcile` | `biz:store:admin` | 老板 |
 | `/biz/store/{}/stock-reconcile/{}` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/stored-value/accounts` | `pay:sv:account:read` | 老板 |

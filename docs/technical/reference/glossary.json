@@ -30921,6 +30921,42 @@
       ],
       "terms": [
         {
+          "key": "auth.identity.role.clerk",
+          "zh-CN": "店员",
+          "en": "Clerk",
+          "ar": "الموظف"
+        },
+        {
+          "key": "auth.identity.role.courier",
+          "zh-CN": "配送员",
+          "en": "Courier",
+          "ar": "مندوب التوصيل"
+        },
+        {
+          "key": "auth.identity.role.cs",
+          "zh-CN": "客服",
+          "en": "Customer service",
+          "ar": "خدمة العملاء"
+        },
+        {
+          "key": "auth.identity.role.manager",
+          "zh-CN": "店长",
+          "en": "Manager",
+          "ar": "المدير"
+        },
+        {
+          "key": "auth.identity.role.owner",
+          "zh-CN": "店主",
+          "en": "Owner",
+          "ar": "المالك"
+        },
+        {
+          "key": "auth.identity.role.picker",
+          "zh-CN": "理货员",
+          "en": "Picker",
+          "ar": "موظف التجهيز"
+        },
+        {
           "key": "err.address.phone_format",
           "zh-CN": "收货人手机号格式不对：中国大陆应为 11 位手机号，其他国家/地区填当地号码（3–20 位数字）",
           "en": "Recipient phone number looks wrong: 11 digits for the Chinese mainland, 3-20 digits elsewhere",
@@ -30943,6 +30979,12 @@
           "zh-CN": "该时段暂未开放预约",
           "en": "That time slot is not open for booking",
           "ar": "هذه الفترة غير متاحة للحجز"
+        },
+        {
+          "key": "err.auth.login_ticket_invalid",
+          "zh-CN": "登录验证已过期，请重新登录",
+          "en": "Login verification expired. Please sign in again.",
+          "ar": "انتهت صلاحية التحقق. يرجى تسجيل الدخول مجدداً."
         },
         {
           "key": "err.bad_request",
@@ -37836,6 +37878,13 @@
       },
       {
         "host": "BizKey",
+        "name": "OPERATING_ENTITY",
+        "value": "OE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "MANAGEMENT_SPACE",
         "value": "MGS",
         "zh": "",
@@ -42736,6 +42785,13 @@
       },
       {
         "host": "OrdPaymentResolution",
+        "name": "REFUNDING",
+        "value": "REFUNDING",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdPaymentResolution",
         "name": "RESOLVED",
         "value": "RESOLVED",
         "zh": "",
@@ -44754,6 +44810,7 @@
           "PHONE_REQUIRED_FOR_MERCHANT",
           "ZIP_TOO_LARGE",
           "SERVICE_AREA_POLYGON_INVALID",
+          "LOGIN_TICKET_INVALID",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
@@ -45770,6 +45827,16 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "Market",
+        "values": [
+          "CN",
+          "TW",
+          "AE"
+        ],
+        "zh": "",
+        "module": "shop-merchant"
       },
       {
         "name": "Method",
@@ -53521,6 +53588,14 @@
       "name": "NAME",
       "type": "String",
       "value": "\"settle-batch\"",
+      "zh": "",
+      "module": "shop-app"
+    },
+    {
+      "host": "PayChannelAccountClaimForwarder",
+      "name": "BASE",
+      "type": "String",
+      "value": "\"/biz/pay/v2/channel-account-claims\"",
       "zh": "",
       "module": "shop-app"
     },

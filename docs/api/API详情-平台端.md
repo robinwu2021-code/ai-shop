@@ -288,6 +288,165 @@ _无字段_
 | `createdAt` | `string` | 否 | 创建时间 |
 
 
+#### GET `/ops/biz-mall/offline/orders/{order}/cash-receipts`
+
+mallCashReceipts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`CashReceipt`](#cashreceipt)\[\]
+
+
+#### GET `/ops/biz-mall/offline/orders/{order}/cash-refunds`
+
+mallCashRefunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)\[\]
+
+
+#### POST `/ops/biz-mall/offline/orders/{order}/cash-refunds`
+
+requestMallCashRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
+
+#### POST `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout`
+
+payoutMallCashRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+| `refund` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
+
+#### POST `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover`
+
+recoverMallCashRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `order` | path | `string` | 是 | — |
+| `refund` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
+
+#### GET `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}`
+
+Read the durable original outcome without replaying the command. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `actionNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/biz-mall/offline/orders/{orderNo}/claims`
 
 某订单的买家申报 */
@@ -335,7 +494,7 @@ _无字段_
 
 #### POST `/ops/biz-mall/offline/orders/{orderNo}/confirmations`
 
-核款：录入实际到账
+confirmOfflinePayment
 
 **入参**
 
@@ -438,6 +597,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
 | `paymentDueAt` | `string` | 是 | 付款截止 |
@@ -464,12 +624,30 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
 | `paymentDueAt` | `string` | 是 | 付款截止 |
 | `profileNo` | `string` | 是 | 档案号 |
 | `profileVersion` | `number` | 是 | 档案版本 |
 | `instructions` | [`Record<string,string>`](#recordstringstring) | 是 | 指引内容 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/recover`
+
+Recover the original offline order workflow without replaying bank/release commands. */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### POST `/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts`
@@ -7669,6 +7847,525 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/merchant-plan-purchases/{e}`
+
+entityPlanPurchases
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`EntityPlanPurchase`](#entityplanpurchase)\[\]
+
+
+#### GET `/ops/merchant-plan-purchases/{e}/{o}`
+
+entityPlanPurchase
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`EntityPlanPurchase`](#entityplanpurchase)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
+| `status` | `string` | 是 | — |
+| `purchaseSource` | `string` | 否 | — |
+| `dueAt` | `string` | 是 | — |
+| `instructions` | `null` \| `object`（见下） | 是 | — |
+| `claims` | `object`（见下）\[\] | 是 | — |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+
+`claims[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
+| `reviewNote` | `string,null` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/cancel`
+
+cancelEntityPlanPurchase
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanPurchase`](#entityplanpurchase)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
+| `status` | `string` | 是 | — |
+| `purchaseSource` | `string` | 否 | — |
+| `dueAt` | `string` | 是 | — |
+| `instructions` | `null` \| `object`（见下） | 是 | — |
+| `claims` | `object`（见下）\[\] | 是 | — |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+
+`claims[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
+| `reviewNote` | `string,null` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/confirm`
+
+confirmEntityPlanPurchase
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanAction`](#entityplanaction)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `paymentNo` | `string,null` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/decline`
+
+declineEntityPlanPurchase
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/evidence`
+
+reserveEntityPlanEvidence
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanEvidenceTicket`](#entityplanevidenceticket)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/evidence/content`
+
+uploadEntityPlanEvidence
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanEvidenceTicket`](#entityplanevidenceticket)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | — |
+
+
+#### GET `/ops/merchant-plan-purchases/{e}/{o}/evidence/url`
+
+entityPlanEvidenceUrl
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`EntityPlanSignedRead`](#entityplansignedread)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `url` | `string` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/{o}/recover`
+
+recoverEntityPlanPurchase
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+| `o` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanPurchase`](#entityplanpurchase)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
+| `status` | `string` | 是 | — |
+| `purchaseSource` | `string` | 否 | — |
+| `dueAt` | `string` | 是 | — |
+| `instructions` | `null` \| `object`（见下） | 是 | — |
+| `claims` | `object`（见下）\[\] | 是 | — |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+
+`claims[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
+| `reviewNote` | `string,null` | 是 | — |
+
+
+#### GET `/ops/merchant-plan-purchases/{e}/assistance-context`
+
+entityPlanAssistanceContext
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`EntityAssistanceContext`](#entityassistancecontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `owners` | `object`（见下）\[\] | 是 | — |
+| `stores` | `object`（见下）\[\] | 是 | — |
+
+`owners[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | — |
+| `displayName` | `string` | 是 | — |
+| `subjectKind` | `string` | 是 | — |
+
+`stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{e}/assisted`
+
+assistedEntityPlanPurchase
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanPurchase`](#entityplanpurchase)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
+| `status` | `string` | 是 | — |
+| `purchaseSource` | `string` | 否 | — |
+| `dueAt` | `string` | 是 | — |
+| `instructions` | `null` \| `object`（见下） | 是 | — |
+| `claims` | `object`（见下）\[\] | 是 | — |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+
+`claims[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
+| `reviewNote` | `string,null` | 是 | — |
+
+
+#### GET `/ops/merchant-plan-purchases/{e}/offers`
+
+entityPlanOffers
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`EntityPlanOffer`](#entityplanoffer)\[\]
+
+
+#### PUT `/ops/merchant-plan-purchases/{e}/offers`
+
+saveEntityPlanOffer
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `e` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`EntityPlanOffer`](#entityplanoffer)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `offerNo` | `string` | 是 | — |
+| `version` | `number` | 是 | — |
+| `planCode` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `days` | `number` | 是 | — |
+| `price` | [`PlanMoney`](#planmoney) | 是 | — |
+| `storeQuota` | `number` | 是 | — |
+| `staffQuota` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+
+
+#### GET `/ops/merchant-plan-purchases/{entity}/{order}/cash-receipts`
+
+entityCashReceipts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+| `order` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`CashReceipt`](#cashreceipt)\[\]
+
+
+#### GET `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds`
+
+entityCashRefunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+| `order` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)\[\]
+
+
+#### POST `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds`
+
+requestEntityCashRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+| `order` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/payout`
+
+payoutEntityCashRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+| `order` | path | `string` | 是 | — |
+| `refund` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
+
+#### POST `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/recover`
+
+recoverEntityCashRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+| `order` | path | `string` | 是 | — |
+| `refund` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CashRefund`](#cashrefund)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
+
 #### GET `/ops/merchant-plans`
 
 到期与降级看板
@@ -9788,6 +10485,37 @@ _无字段_
 
 
 ### payops
+
+#### GET `/ops/order-payment-resolutions`
+
+orderPaymentResolutions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/ops/order-payment-resolutions/{payNo}/{paymentNo}/refund`
+
+refundOrderPaymentResolution
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `payNo` | path | `string` | 是 | — |
+| `paymentNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
 
 #### GET `/ops/payments/apps`
 
@@ -13239,6 +13967,48 @@ App 版本策略的一行（`GET /ops/app-versions`；TDD-商户App问题回报�
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 | `codes` | [`Record<string,string>`](#recordstringstring) | 否 | 这家承运商在各物流渠道里叫什么（`{ kuaidi100: "shentong", wx: "STO" }`）。 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过 |
 
+### CashMoney
+
+Trusted bank cash, independent of the sales quote.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string` | 是 | — |
+| `minor` | `string,number` | 是 | — |
+
+### CashReceipt
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | — |
+| `paymentAttemptNo` | `string` | 是 | — |
+| `platformMerchantNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `refundedMinor` | `string,number` | 是 | — |
+| `pendingRefund` | `boolean` | 是 | — |
+| `exceptionCash` | `boolean` | 是 | — |
+| `closed` | `boolean` | 是 | — |
+
+### CashRefund
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 是 | — |
+| `paymentNo` | `string` | 是 | — |
+| `amount` | [`CashMoney`](#cashmoney) | 是 | — |
+| `status` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+| `actions` | `object`（见下）\[\] | 是 | — |
+
+`actions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `rejection` | `string,null` | 是 | — |
+
 ### Category
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -13827,6 +14597,99 @@ Reward rule history includes imported legacy revisions.
 某时刻实际生效的费率表，键为 `${businessMode}\|${trafficSource}`。
 
 类型：`Record<string,number>`
+
+### EntityAssistanceContext
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `owners` | `object`（见下）\[\] | 是 | — |
+| `stores` | `object`（见下）\[\] | 是 | — |
+
+`owners[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | — |
+| `displayName` | `string` | 是 | — |
+| `subjectKind` | `string` | 是 | — |
+
+`stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+### EntityPlanAction
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `paymentNo` | `string,null` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+### EntityPlanClaim
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | — |
+| `amount` | [`PlanMoney`](#planmoney) | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `bankReference` | `string` | 是 | — |
+| `evidenceKey` | `string` | 是 | — |
+
+### EntityPlanEvidenceTicket
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | — |
+
+### EntityPlanOffer
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `offerNo` | `string` | 是 | — |
+| `version` | `number` | 是 | — |
+| `planCode` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `days` | `number` | 是 | — |
+| `price` | [`PlanMoney`](#planmoney) | 是 | — |
+| `storeQuota` | `number` | 是 | — |
+| `staffQuota` | `number` | 是 | — |
+| `crossStoreStats` | `boolean` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+
+### EntityPlanPurchase
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `offer` | [`EntityPlanOffer`](#entityplanoffer) | 是 | — |
+| `status` | `string` | 是 | — |
+| `purchaseSource` | `string` | 否 | — |
+| `dueAt` | `string` | 是 | — |
+| `instructions` | `null` \| `object`（见下） | 是 | — |
+| `claims` | `object`（见下）\[\] | 是 | — |
+| `actions` | [`EntityPlanAction`](#entityplanaction)\[\] | 是 | — |
+
+`claims[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `declaration` | [`EntityPlanClaim`](#entityplanclaim) | 是 | — |
+| `reviewNote` | `string,null` | 是 | — |
+
+### EntityPlanSignedRead
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `url` | `string` | 是 | — |
 
 ### ExceptionKind
 
@@ -15010,6 +15873,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
 | `paymentDueAt` | `string` | 是 | 付款截止 |
@@ -16743,6 +17607,15 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 | `trialDays` | `number` | 是 | 试用天数。0 = 这一档不提供试用 |
 | `enabled` | `boolean` | 是 | 启用中 |
 | `subscriberCount` | `number` | 是 | 当前有几家在用这一档。 **改定义的人必须看得到这个数** —— 它是「只影响之后新订阅的人」那句话的具体量。 不给这个数，改档位的人只能凭感觉判断影响面。 |
+
+### PlanMoney
+
+Entity quota contracts, intentionally distinct from store mall entitlements.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string` | 是 | — |
+| `minor` | `number` | 是 | — |
 
 ### PlanQuotaSource
 

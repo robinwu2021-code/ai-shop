@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1167 个接口**：后端已实现 943（81%）· 前端在调 1027
+**合计 1194 个接口**：后端已实现 945（79%）· 前端在调 1028
 
 ---
 
@@ -1162,7 +1162,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **557** 个接口 ｜ 后端已实现 **441**（79%）｜ 前端在调 **419**
+共 **584** 个接口 ｜ 后端已实现 **443**（76%）｜ 前端在调 **420**
 
 ### aftersale（5）
 
@@ -1174,7 +1174,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### commerce（45）
+### commerce（52）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1184,14 +1184,21 @@
 | PUT | `/ops/biz-mall/categories/{code}` | 改分类：上级 / 名称 / 图标 / 排序 / 启停 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/claims` | 待审申报队列 */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders` | 代客下单 */ | — | `MallOrderView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{order}/cash-receipts` | mallCashReceipts | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | mallCashRefunds | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds` | requestMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/payout` | payoutMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{order}/cash-refunds/{refund}/recover` | recoverMallCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}` | Read the durable original outcome without replaying the command. */ | — | `object` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline` | 拒绝申报：不等于无款，不释放占用 */ | — | `MallOfflineClaimView` | — | ⬜ | ⬜ |
-| POST | `/ops/biz-mall/offline/orders/{orderNo}/confirmations` | 核款：录入实际到账 | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/confirmations` | confirmOfflinePayment | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/evidence` | 预留一个运营凭证资产键 */ | — | `MallOfflineEvidenceTicket` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/evidence/content` | 上传凭证字节（image/jpeg 或 image/png，≤10MB | — | `MallOfflineEvidenceUploaded` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/evidence/url` | 读凭证（5 分钟签名地址） */ | — | `MallOfflineSignedRead` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/instructions` | 代客发出付款指引（幂等） */ | — | `MallOfflineInstructionsView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/orders/{orderNo}/instructions` | 读已发出的指引 | — | `MallOfflineInstructionsView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/recover` | Recover the original offline order workflow without replaying bank/release commands. */ | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts` | 线下退款实际出款确认 */ | — | `MallRefundView` | — | ⬜ | ⬜ |
 | POST | `/ops/biz-mall/offline/orders/{orderNo}/voids` | 对账作废：之后来款仍入账并走退款 */ | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
 | GET | `/ops/biz-mall/offline/profile` | 收款档案（按币种） | — | `object` | — | ⬜ | ⬜ |
@@ -1552,7 +1559,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（45）
+### merchant（63）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1563,6 +1570,24 @@
 | PUT | `/ops/admission/pay-quotas/{merchantNo}` | 设置收款额度上限 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/admission/policies` | 三档准入策略 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/admission/policies/{legalForm}` | updateAdmissionPolicy | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/merchant-plan-purchases/{e}` | entityPlanPurchases | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/{o}` | entityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/cancel` | cancelEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/confirm` | confirmEntityPlanPurchase | — | `EntityPlanAction` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/decline` | declineEntityPlanPurchase | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/evidence` | reserveEntityPlanEvidence | — | `EntityPlanEvidenceTicket` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/evidence/content` | uploadEntityPlanEvidence | — | `EntityPlanEvidenceTicket` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/{o}/evidence/url` | entityPlanEvidenceUrl | — | `EntityPlanSignedRead` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/{o}/recover` | recoverEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/assistance-context` | entityPlanAssistanceContext | — | `EntityAssistanceContext` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{e}/assisted` | assistedEntityPlanPurchase | — | `EntityPlanPurchase` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{e}/offers` | entityPlanOffers | — | `数组` | — | ⬜ | ⬜ |
+| PUT | `/ops/merchant-plan-purchases/{e}/offers` | saveEntityPlanOffer | — | `EntityPlanOffer` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{entity}/{order}/cash-receipts` | entityCashReceipts | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds` | entityCashRefunds | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds` | requestEntityCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/payout` | payoutEntityCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
+| POST | `/ops/merchant-plan-purchases/{entity}/{order}/cash-refunds/{refund}/recover` | recoverEntityCashRefund | — | `CashRefund` | — | ⬜ | ⬜ |
 | GET | `/ops/merchant-plans` | 到期与降级看板 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/merchant-plans/{merchantNo}/grant` | 授予 / 延长 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | PUT | `/ops/merchant-plans/{merchantNo}/quota` | 单商家额度覆盖 | — | `MerchantPlanRow` | — | ✅ | ✅ |
@@ -1673,10 +1698,12 @@
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ⬜ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ⬜ |
 
-### payops（21）
+### payops（23）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/order-payment-resolutions` | orderPaymentResolutions | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/order-payment-resolutions/{payNo}/{paymentNo}/refund` | refundOrderPaymentResolution | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/payments/apps` | payOpsApps | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/payments/apps/{appNo}/credentials` | payOpsAppCredentials | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke` | 吊销即时生效：下一次用这一版签的请求就 401 */ | — | `object` | — | ✅ | ⬜ |
