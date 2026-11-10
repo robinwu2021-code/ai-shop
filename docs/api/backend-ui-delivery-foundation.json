@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "这些基础接口由独立ai-shop-bapp Flutter仓库接入，本仓Vue b-app不是调用方；本批后端已部署，Flutter实现/包发布/业务验收分列。包含原基线已部署的两条评价读取接口，仅登记已有外部Flutter消费事实，不改评价业务。",
+  "plan": "docs/technical/基础能力-剩余功能与执行清单-2026-11-10.md",
+  "contract": "docs/api/app-foundation-flutter.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/app/legal-subjects"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/app/operating-entities"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/app/operating-entities/{id}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/app/operating-entities/context"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/app/operating-entities/create-results/{key}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/auth/identities/mine"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/auth/session"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/merchant/store-claims/{claimNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/merchant/store-claims/by-request/{requestNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/capability-progress"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/memberships"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/draft"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/draft/commands/{requestNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/files"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/files/{fileNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/pay/v2/onboardings/{no}/readiness"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/review/{reviewNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/review/appeals"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/store/{storeNo}/entity/relink-check"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/app/operating-entities"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/identities"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/auth/identities/enter"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/merchant/onboarding"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/merchant/store-claims/{claimNo}/resume"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/merchant-creations"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/merchant-profile-revisions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/cancel"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/draft/confirm"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/files"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/pay/v2/onboardings/{no}/newebpay-materials"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/store/{storeNo}/entity"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/pay/v2/onboardings/{no}/draft"
+    }
+  ]
+}

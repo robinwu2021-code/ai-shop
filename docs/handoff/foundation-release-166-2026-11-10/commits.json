@@ -1,0 +1,8 @@
+{
+  "branch": "codex/foundation-profile-166-20261110",
+  "hostCodeCommit": "d6d762fcbdf4783268153db3008e71a623be7766",
+  "payCodeCommit": "13c954a213b1df9ae2aea2b768c2bec33b50c487",
+  "payReleaseRecordCommit": "a85aa4a15df257993fc394212f9988f3a49a6290",
+  "inventoryCodeChanged": false,
+  "originalSharedWorktreeChangesPreserved": true
+}

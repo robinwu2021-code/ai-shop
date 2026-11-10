@@ -7,10 +7,8 @@
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/NativeChannelAfterSaleService.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/stock/FoodProductionStockService.java"
   ],
-  "unchangedBaselineUndecidedRoutes": [
-    "/biz/review/appeals",
-    "/biz/review/{reviewNo}"
-  ],
+  "unchangedBaselineUndecidedRoutes": [],
   "fullArchitectureSuiteGreen": false,
-  "baselineCommit": "a01b155fc"
+  "baselineCommit": "a01b155fc",
+  "existingReviewRouteDecisionsRecordedWithoutBusinessChange": true
 }

@@ -36,5 +36,17 @@
       "ai.neargo.shop.payclient.PayMerchantCreationRelayTest",
       "ai.neargo.shop.payclient.PayMerchantProfileRelayTest"
     ]
+  },
+  "bizEndpointPermissions": {
+    "status": "PASS",
+    "summary": [
+      "[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.52 s -- in ai.neargo.shop.arch.BizEndpointPermTest"
+    ]
+  },
+  "externalFlutterDelivery": {
+    "status": "PASS",
+    "entries": 35,
+    "existingBaselineChanged": false,
+    "validatorTests": 6
   }
 }

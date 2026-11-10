@@ -564,6 +564,8 @@ class BizEndpointPermTest {
 
                     // ---- 评价与售后：对着顾客说话 ----
                     put("/biz/review", BizPerms.REVIEW);
+                    put("/biz/review/appeals", BizPerms.REVIEW);
+                    put("/biz/review/{reviewNo}", BizPerms.REVIEW);
                     put("/biz/review/{reviewNo}/reply", BizPerms.REVIEW);
                     put("/biz/review/{reviewNo}/appeal", BizPerms.REVIEW);
                     put("/biz/after-sale", BizPerms.AFTERSALE);

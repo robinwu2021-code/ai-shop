@@ -29,3 +29,5 @@
 
 
 提交前补齐经营主体Service接口/impl分包及新路由权限台账，宿主定向构建/测试通过后只重发API；PAY未因该结构调整重发。[架构边界记录](./architecture-boundary.json)明确保留原基线失败，不宣称全量架构测试全绿。迁移临时账号及两份演练库已[清理](./cleanup.json)，生产数据及原始备份保留。
+
+提交追踪见[两仓提交记录](./commits.json)。补充35条真实Handler/公开OpenAPI/外部Flutter消费者的交付登记，按既有分阶段机制说明本仓Vue不直接调用，未增加历史欠账；原有两条评价读取路由仅登记已有biz:review保护，不改业务代码，BizEndpointPermTest十二例通过。
