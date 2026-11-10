@@ -143,6 +143,14 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
     }
 
     @Override
+    public List<CashReceipt> receipts(String tenant, String orderNo) {
+        return collection.receipts(tenant, orderNo).stream().map(r -> new CashReceipt(
+                r.paymentNo(), r.paymentAttemptNo(), r.platformMerchantNo(),
+                new ai.neargo.commerce.api.common.Money(r.currency(), r.amountMinor()),
+                r.refundedMinor(), r.pendingRefund(), r.exceptionCash(), r.closed())).toList();
+    }
+
+    @Override
     public void reconcile(Reconciliation c) {
         if (c == null || c.reconciledAt() == null)
             throw new IllegalArgumentException("OFFLINE_RECONCILIATION_REQUIRED");

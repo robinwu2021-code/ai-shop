@@ -39,7 +39,9 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
       String previousPlan,
       Long previousExpiry,
       String previousGrant,
-      PaymentIntentCommand intent) {}
+      PaymentIntentCommand intent,
+      String creatorNo,
+      String creatorKind) {}
 
   public EntityPlanPurchaseServiceImpl(
       JdbcTemplate db,
@@ -108,7 +110,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     if (a.operator() && !opsVisible.test(a.entityNo())) throw denied();
     var e =
         one(
-            "SELECT * FROM mch_entity WHERE tenant_no=? AND entity_no=? AND deleted=0",
+            "SELECT * FROM mch_entity WHERE tenant_no=? AND entity_no=?"+(a.operator()?"":" AND deleted=0"),
             TENANT,
             a.entityNo());
     if (e == null || !a.operator() && ownerMembership(a, false) == null) throw denied();
@@ -288,8 +290,95 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
 
   @Override
   public OrderView buy(Actor a, Buy c) {
-    var entity = authorize(a);
     if (a.operator()) throw denied();
+    return createPurchase(a, a, c, c, null);
+  }
+
+  @Override
+  public AssistanceContext assistanceContext(Actor a) {
+    operator(a);
+    var owners =
+        db
+            .queryForList(
+                "SELECT mch_account_no,display_name,user_no FROM mch_account WHERE tenant_no=? AND"
+                    + " entity_no=? AND is_owner=1 AND status='ACTIVE' AND deleted=0 ORDER BY"
+                    + " mch_account_no",
+                TENANT,
+                a.entityNo())
+            .stream()
+            .map(
+                r ->
+                    new AssistanceOwner(
+                        str(r, "mch_account_no"),
+                        str(r, "display_name"),
+                        str(r, "user_no") == null || str(r, "user_no").isBlank() ? "MCH" : "USR"))
+            .toList();
+    var stores =
+        db
+            .queryForList(
+                "SELECT store_no,name FROM mch_store WHERE tenant_no=? AND entity_no=? AND"
+                    + " status='ACTIVE' AND deleted=0 ORDER BY store_no",
+                TENANT,
+                a.entityNo())
+            .stream()
+            .map(r -> new AssistanceStore(str(r, "store_no"), str(r, "name")))
+            .toList();
+    return new AssistanceContext(owners, stores);
+  }
+
+  @Override
+  public OrderView assistedBuy(Actor creator, AssistedBuy c) {
+    operator(creator);
+    if (one(
+            "SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND store_no=?"
+                + " AND status='ACTIVE' AND deleted=0",
+            TENANT,
+            creator.entityNo(),
+            c.storeNo())
+        == null) throw denied();
+    var owner =
+        one(
+            "SELECT mch_account_no,user_no FROM mch_account WHERE tenant_no=? AND entity_no=?"
+                + " AND mch_account_no=? AND is_owner=1 AND status='ACTIVE' AND deleted=0",
+            TENANT,
+            creator.entityNo(),
+            c.ownerAccountNo());
+    if (owner == null) throw denied();
+    String user = str(owner, "user_no");
+    boolean linked = user != null && !user.isBlank();
+    var buyer =
+        new Actor(
+            linked ? user : c.ownerAccountNo(),
+            creator.entityNo(),
+            c.storeNo(),
+            false,
+            linked ? "USR" : "MCH");
+    return createPurchase(
+        creator,
+        buyer,
+        new Buy(c.requestNo(), c.offerNo(), c.offerVersion()),
+        c,
+        c.ownerAccountNo());
+  }
+
+  private String creatorKind(Actor creator) {
+    return creator.operator() ? "OPS" : creator.subjectKind();
+  }
+
+  private void checkReplay(
+      Map<String, Object> r, Actor buyer, Object request, String ownerAccount) {
+    var frozen = snapshot(r);
+    if (!json.readTree(r.get("request_json").toString()).equals(json.readTree(encode(request)))
+        || !buyer.entityNo().equals(frozen.entityNo())
+        || !Objects.equals(buyer.storeNo(), frozen.storeNo())
+        || !buyer.userNo().equals(frozen.buyerNo())
+        || !buyer.subjectKind().equals(frozen.buyerKind())
+        || ownerAccount != null && !ownerAccount.equals(frozen.ownerAccountNo())) throw bad();
+  }
+
+  private OrderView createPurchase(
+      Actor creator, Actor a, Buy c, Object request, String ownerAccount) {
+    var entity = authorize(a);
     if (c == null || c.requestNo() == null || !c.requestNo().matches("[A-Za-z0-9_-]{1,64}"))
       throw bad();
     // Resolve the trusted version before the write, but never disclose instructions until issuance.
@@ -304,15 +393,15 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             .orElse(null);
     var replay =
         one(
-            "SELECT order_no,request_json FROM mch_plan_purchase WHERE tenant_no=? AND buyer_no=?"
-                + " AND buyer_kind=? AND request_no=?",
+            "SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND creator_no=?"
+                + " AND creator_kind=? AND request_no=?",
             TENANT,
-            a.userNo(),
-            a.subjectKind(),
+            creator.userNo(),
+            creatorKind(creator),
             c.requestNo());
     if (replay != null) {
-      if (!decode(replay.get("request_json"), Buy.class).equals(c)) throw bad();
-      return issue(a, str(replay, "order_no"));
+      checkReplay(replay, a, request, ownerAccount);
+      return issue(creator, str(replay, "order_no"));
     }
     if (offer == null || !currency(entity).equals(offer.price().currency())) throw bad();
     validMoney(offer.price(), true);
@@ -324,19 +413,34 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         write(
             () -> {
               ownership.lockEntityAndCheck(TENANT, a.entityNo());
+              authorize(creator);
               authorize(a);
-              var owner = ownerMembership(a, true);
-              if (owner == null) throw denied();
+              var owner =
+                  ownerAccount == null
+                      ? ownerMembership(a, true)
+                      : one(
+                          "SELECT mch_account_no,user_no FROM mch_account WHERE tenant_no=? AND"
+                              + " entity_no=? AND mch_account_no=? AND is_owner=1 AND"
+                              + " status='ACTIVE' AND deleted=0 FOR UPDATE",
+                          TENANT,
+                          a.entityNo(),
+                          ownerAccount);
+              if (owner == null
+                  || ownerAccount != null
+                      && !("USR".equals(a.subjectKind())
+                          ? a.userNo().equals(str(owner, "user_no"))
+                          : (str(owner, "user_no") == null || str(owner, "user_no").isBlank())
+                              && a.userNo().equals(str(owner, "mch_account_no")))) throw denied();
               var old =
                   one(
-                      "SELECT order_no,request_json FROM mch_plan_purchase WHERE tenant_no=? AND"
-                          + " buyer_no=? AND buyer_kind=? AND request_no=? FOR UPDATE",
+                      "SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND"
+                          + " creator_no=? AND creator_kind=? AND request_no=? FOR UPDATE",
                       TENANT,
-                      a.userNo(),
-                      a.subjectKind(),
+                      creator.userNo(),
+                      creatorKind(creator),
                       c.requestNo());
               if (old != null) {
-                if (!decode(old.get("request_json"), Buy.class).equals(c)) throw bad();
+                checkReplay(old, a, request, ownerAccount);
                 return str(old, "order_no");
               }
               var currentOffer =
@@ -362,6 +466,14 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                       a.entityNo(),
                       a.storeNo())
                   == null) throw denied();
+              if (creator.operator()
+                  && one(
+                          "SELECT store_no FROM mch_store WHERE tenant_no=? AND entity_no=? AND"
+                              + " store_no=? AND status='ACTIVE' AND deleted=0",
+                          TENANT,
+                          a.entityNo(),
+                          a.storeNo())
+                      == null) throw denied();
               var plan =
                   one(
                       "SELECT * FROM mch_entity_plan WHERE tenant_no=? AND entity_no=? AND"
@@ -408,24 +520,28 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                       prior,
                       expiry,
                       grant,
-                      intent);
+                      intent,
+                      creator.userNo(),
+                      creatorKind(creator));
               db.update(
                   "INSERT INTO"
-                      + " mch_plan_purchase(tenant_no,order_no,entity_no,buyer_no,buyer_kind,request_no,request_json,snapshot_json,status,open_entity,created_at)"
-                      + " VALUES(?,?,?,?,?,?,?,?,'PREPARED',?,?)",
+                      + " mch_plan_purchase(tenant_no,order_no,entity_no,buyer_no,buyer_kind,creator_no,creator_kind,request_no,request_json,snapshot_json,status,open_entity,created_at)"
+                      + " VALUES(?,?,?,?,?,?,?,?,?,?,'PREPARED',?,?)",
                   TENANT,
                   no,
                   a.entityNo(),
                   a.userNo(),
                   a.subjectKind(),
+                  creator.userNo(),
+                  creatorKind(creator),
                   c.requestNo(),
-                  encode(c),
+                  encode(request),
                   encode(frozen),
                   a.entityNo(),
                   now);
               return no;
             });
-    return issue(a, order);
+    return issue(creator, order);
   }
 
   private OrderView issue(Actor a, String no) {
@@ -483,7 +599,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         s.intent().expiresAt(),
         "PREPARED".equals(str(r, "status")) ? null : s.intent().offline(),
         claims,
-        actions);
+        actions,"OPS".equals(s.creatorKind())?"OPERATOR":"MERCHANT");
   }
 
   private PrivateEvidencePort.Scope scope(Actor a, Snapshot s, String purpose) {
@@ -513,7 +629,10 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
         || own
             && (!a.userNo().equals(str(r, "submitter_no"))
                 || !a.subjectKind().equals(str(r, "subject_kind"))
-                || !purpose(a).equals(str(r, "purpose")))) throw denied();
+                || !(a.operator()
+                    ? Set.of("PLATFORM_RECEIPT", "REFUND_PROOF", "RECONCILIATION")
+                        .contains(str(r, "purpose"))
+                    : "BUYER_RECEIPT".equals(str(r, "purpose"))))) throw denied();
     return new PrivateEvidencePort.Scope(
         new StoreRef(TENANT, s.storeNo()),
         s.entityNo(),
@@ -524,10 +643,14 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   }
 
   @Override
-  public String reserveEvidence(Actor a, String no) {
+  public String reserveEvidence(Actor a,String no){return reserveEvidence(a,no,purpose(a));}
+  @Override public String reserveEvidence(Actor a, String no,String evidencePurpose) {
+    if (a.operator()
+        ? !Set.of("PLATFORM_RECEIPT", "REFUND_PROOF", "RECONCILIATION").contains(evidencePurpose)
+        : !"BUYER_RECEIPT".equals(evidencePurpose)) throw denied();
     var s = snapshot(row(a, no, false));
     String key =
-        media.newKey(scope(a, s, purpose(a)), UUID.randomUUID().toString().replace("-", ""));
+        media.newKey(scope(a, s, evidencePurpose), UUID.randomUUID().toString().replace("-", ""));
     write(
         () ->
             db.update(
@@ -537,7 +660,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                 key,
                 a.userNo(),
                 a.subjectKind(),
-                purpose(a)));
+                evidencePurpose));
     return key;
   }
 
@@ -559,10 +682,14 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     return media.signedRead(scope, key);
   }
 
-  private void requireEvidence(Actor a, String no, String key) {
-    var scope = reserved(a, no, key, true);
-    if (!media.stored(scope, key)) throw bad();
+  private void requireEvidence(Actor a,String no,String key){
+    requireEvidence(a, no, key, purpose(a));
   }
+  private void requireEvidence(Actor a,String no,String key,String expected){var scope=reserved(a,no,key,true);if(!expected.equals(scope.purpose())||!media.stored(scope,key))throw bad();}
+  @Override public void verifyRefundEvidence(Actor a,String no,String key){operator(a);
+    requireEvidence(a, no, key, "REFUND_PROOF");
+  }
+
 
   private ClaimView claimView(Map<String, Object> r) {
     return new ClaimView(
@@ -604,7 +731,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             if (!decode(old.get("command_json"), Claim.class).equals(c)) throw bad();
             return claimView(old);
           }
-          if (!Set.of("AWAITING_PAYMENT", "CANCELLATION_REQUESTED", "CANCELLED")
+          if (!Set.of("AWAITING_PAYMENT", "CANCELLATION_REQUESTED", "CANCELLED", "REFUNDED")
               .contains(str(order, "status"))) throw bad();
           db.update(
               "INSERT INTO mch_plan_purchase_claim(tenant_no,order_no,claim_no,command_json,status)"
@@ -680,14 +807,12 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                 || !decode(old.get("command_json"), Confirm.class).equals(c)) throw bad();
             return null;
           }
-          if (!"SUBMITTED".equals(str(order, "status"))) throw bad();
-          if (one(
-                  "SELECT claim_no FROM mch_plan_purchase_claim WHERE tenant_no=? AND order_no=?"
-                      + " AND claim_no=? AND status='SUBMITTED'",
-                  TENANT,
-                  no,
-                  c.claimNo())
-              == null) throw bad();
+          if(c.claimNo()==null){
+            if(!Set.of("AWAITING_PAYMENT","CANCELLATION_REQUESTED","CANCELLED","REFUNDED").contains(str(order,"status"))
+                ||!"OPS".equals(snapshot(order).creatorKind())&&!Set.of("CANCELLED","REFUNDED").contains(str(order,"status")))throw bad();
+          }else{
+            if(!"SUBMITTED".equals(str(order,"status"))||one("SELECT claim_no FROM mch_plan_purchase_claim WHERE tenant_no=? AND order_no=? AND claim_no=? AND status='SUBMITTED'",TENANT,no,c.claimNo())==null)throw bad();
+          }
           db.update(
               "INSERT INTO"
                   + " mch_plan_purchase_action(tenant_no,order_no,action_no,operator_no,command_json,confirmed_at,status)"
@@ -714,6 +839,11 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             c.actionNo()));
   }
 
+  private String refusedClaimStatus(Map<String,Object> order,Confirm c){
+    if(c.claimNo()!=null)return "SUBMITTED";
+    if(order.get("closure_json")!=null)return decode(order.get("closure_json"),VoidAction.class).returnedFunds()?"REFUNDED":"CANCELLED";
+    return "AWAITING_PAYMENT";
+  }
   private void advance(String no, String actionNo) {
     var order = one("SELECT * FROM mch_plan_purchase WHERE tenant_no=? AND order_no=?", TENANT, no);
     var s = snapshot(order);
@@ -742,7 +872,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                   false,
                   Instant.ofEpochMilli(accepted)));
     } catch (IllegalArgumentException refusal) {
-      reject(no, actionNo, refusal, "SUBMITTED");
+      reject(no, actionNo, refusal, refusedClaimStatus(order,c), false);
       return;
     }
     if (result == null
@@ -887,7 +1017,21 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     return order(a, no);
   }
 
-  public record VoidAction(VoidCommand command, String operatorNo, long acceptedAt) {}
+  @Override public RecoverySweep recoverPending(String after,int limit){
+    if(limit<1||limit>200)throw bad();
+    var rows=db.queryForList("SELECT order_no,status,snapshot_json FROM mch_plan_purchase WHERE tenant_no=? AND order_no>? AND status IN ('PREPARED','CONFIRMING','CLOSING') ORDER BY order_no LIMIT ?",TENANT,after==null?"":after,limit);int failed=0;
+    for(var r:rows)try{
+      String no=str(r,"order_no");
+      if("PREPARED".equals(str(r,"status"))){var intent=snapshot(r).intent();var result=payments.create(intent);if(result==null||result.status()!=AsyncStatus.PENDING||!intent.amount().equals(result.amount())||!intent.orderNo().equals(result.orderNo())||!intent.platformMerchantNo().equals(result.platformMerchantNo()))throw new IllegalStateException("PAYMENT_ISSUANCE_UNKNOWN");write(()->db.update("UPDATE mch_plan_purchase SET status='AWAITING_PAYMENT' WHERE tenant_no=? AND order_no=? AND status='PREPARED'",TENANT,no));}
+      else if("CLOSING".equals(str(r,"status")))advanceVoid(no);
+      else for(var action:db.queryForList("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND status='ACCEPTED' AND kind='CONFIRM'",TENANT,no))advance(no,str(action,"action_no"));
+    }catch(RuntimeException retry){failed++;}
+    return new RecoverySweep(rows.size(),failed,rows.isEmpty()?after:str(rows.getLast(),"order_no"));
+  }
+
+  public record VoidAction(VoidCommand command,String operatorNo,long acceptedAt,String previousStatus,boolean returnedFunds,Map<String,String> dispositions) {
+    public VoidAction {dispositions=dispositions==null?Map.of():Map.copyOf(dispositions);}
+  }
 
   @Override
   public OrderView cancel(Actor a, String no) {
@@ -912,7 +1056,16 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
   @Override
   public OrderView voidOrder(Actor a, String no, VoidCommand c) {
     operator(a);
-    requireEvidence(a, no, c.evidenceKey());
+    var initial=row(a,no,false);String priorStatus=str(initial,"status");
+    boolean returning=Set.of("UNMATCHED","REVIEW_REQUIRED","REFUNDED").contains(priorStatus)||"CLOSING".equals(priorStatus)&&initial.get("closure_json")!=null&&decode(initial.get("closure_json"),VoidAction.class).returnedFunds();
+    requireEvidence(a,no,c.evidenceKey(),returning?"RECONCILIATION":"PLATFORM_RECEIPT");
+    Map<String,String> dispositions=new TreeMap<>();
+    if(returning){
+      var actual=money.receipts(TENANT,no);
+      if(actual.isEmpty()||actual.stream().anyMatch(x->x.pendingRefund()||x.refundedMinor()!=x.amount().minor()))throw bad();
+      var original=snapshot(initial).intent().paymentAttemptNo();
+      for(var receipt:actual)if(!original.equals(receipt.paymentAttemptNo()))dispositions.put(receipt.paymentNo(),"VERIFIED_REFUNDED");
+    }
     write(
         () -> {
           var r = row(a, no, true);
@@ -930,9 +1083,8 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                 || !a.userNo().equals(str(prior, "operator_no"))) throw bad();
             return null;
           }
-          if (previous != null) throw bad();
-          if (!Set.of("PREPARED", "AWAITING_PAYMENT", "CANCELLATION_REQUESTED")
-              .contains(str(r, "status"))) throw bad();
+          if (previous != null&&!returning) throw bad();
+          if(!Set.of("PREPARED","AWAITING_PAYMENT","CANCELLATION_REQUESTED","UNMATCHED","REVIEW_REQUIRED","REFUNDED").contains(str(r,"status"))||!Objects.equals(priorStatus,str(r,"status")))throw bad();
           db.update(
               "INSERT INTO"
                   + " mch_plan_purchase_action(tenant_no,order_no,action_no,operator_no,command_json,confirmed_at,kind,status)"
@@ -946,7 +1098,7 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
           db.update(
               "UPDATE mch_plan_purchase SET status='CLOSING',closure_json=? WHERE tenant_no=? AND"
                   + " order_no=?",
-              encode(new VoidAction(c, a.userNo(), clock.millis())),
+              encode(new VoidAction(c,a.userNo(),clock.millis(),priorStatus,returning,dispositions)),
               TENANT,
               no);
           return null;
@@ -963,24 +1115,16 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
     var c = v.command();
     // Idempotently establish the original intent, including an interrupted issuance.
     payments.create(s.intent());
-    try {
-      money.reconcile(
-          new OfflineCollectionPort.Reconciliation(
-              s.intent(),
-              v.operatorNo(),
-              c.reference(),
-              c.reason(),
-              c.evidenceKey(),
-              Instant.ofEpochMilli(v.acceptedAt()),
-              Map.of()));
-    } catch (IllegalArgumentException refusal) {
-      reject(no, c.actionNo(), refusal, "CANCELLATION_REQUESTED");
-      return;
+    var already=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
+    if(v.returnedFunds()){
+      var actual=money.receipts(TENANT,no);
+      if(actual.isEmpty()||actual.stream().anyMatch(x->x.pendingRefund()||x.refundedMinor()!=x.amount().minor()))throw new IllegalStateException("REFUND_NOT_VERIFIED");
     }
-    var closed =
-        payments.query(new PaymentQuery(TENANT, no, s.intent().paymentAttemptNo(), s.intent()));
-    if (closed == null || !closed.definitivelyClosed() || closed.closureReference().isEmpty())
-      throw new IllegalStateException("PAYMENT_CLOSURE_UNKNOWN");
+    if(already==null||already.closureReference().isEmpty())try{
+      money.reconcile(new OfflineCollectionPort.Reconciliation(s.intent(),v.operatorNo(),c.reference(),c.reason(),c.evidenceKey(),Instant.ofEpochMilli(v.acceptedAt()),v.dispositions()));
+    }catch(IllegalArgumentException refusal){reject(no,c.actionNo(),refusal,v.previousStatus()==null?"CANCELLATION_REQUESTED":v.previousStatus(),true);return;}
+    var closed=payments.query(new PaymentQuery(TENANT,no,s.intent().paymentAttemptNo(),s.intent()));
+    if(closed==null||closed.closureReference().isEmpty()||!closed.definitivelyClosed()&&!(v.returnedFunds()&&closed.status()==AsyncStatus.SUCCEEDED))throw new IllegalStateException("PAYMENT_CLOSURE_UNKNOWN");
     write(
         () -> {
           db.update(
@@ -990,15 +1134,16 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
               no,
               c.actionNo());
           return db.update(
-              "UPDATE mch_plan_purchase SET status='CANCELLED',open_entity=NULL WHERE tenant_no=?"
+              "UPDATE mch_plan_purchase SET status=?,open_entity=NULL WHERE tenant_no=?"
                   + " AND order_no=? AND status='CLOSING'",
+              v.returnedFunds()?"REFUNDED":"CANCELLED",
               TENANT,
               no);
         });
   }
 
   private void reject(
-      String no, String actionNo, IllegalArgumentException refusal, String nextStatus) {
+      String no, String actionNo, IllegalArgumentException refusal, String nextStatus, boolean clearClosure) {
     String code =
         refusal.getMessage() != null && refusal.getMessage().matches("[A-Z0-9_]{1,64}")
             ? refusal.getMessage()
@@ -1019,9 +1164,10 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
                   actionNo);
           if (changed == 1)
             db.update(
-                "UPDATE mch_plan_purchase SET status=?,closure_json=NULL WHERE tenant_no=? AND"
+                "UPDATE mch_plan_purchase SET status=?,closure_json=IF(?,NULL,closure_json) WHERE tenant_no=? AND"
                     + " order_no=?",
                 nextStatus,
+                clearClosure,
                 TENANT,
                 no);
           return null;
@@ -1044,8 +1190,6 @@ public final class EntityPlanPurchaseServiceImpl implements EntityPlanPurchaseSe
             "SELECT status,payment_no FROM mch_plan_purchase WHERE tenant_no=? AND order_no=?",
             TENANT,
             no);
-    return Optional.of(
-        paymentNo.equals(str(after, "payment_no"))
-            && Set.of("APPLIED", "REVIEW_REQUIRED").contains(str(after, "status")));
+    return Optional.of(one("SELECT action_no FROM mch_plan_purchase_action WHERE tenant_no=? AND order_no=? AND payment_no=? AND status IN ('APPLIED','REVIEW_REQUIRED','UNMATCHED') LIMIT 1",TENANT,no,paymentNo)!=null);
   }
 }

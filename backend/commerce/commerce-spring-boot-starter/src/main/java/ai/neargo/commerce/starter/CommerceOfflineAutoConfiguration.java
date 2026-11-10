@@ -35,6 +35,14 @@ import javax.sql.DataSource;
         havingValue = "true")
 public class CommerceOfflineAutoConfiguration {
     @Bean
+    @ConditionalOnMissingBean(ai.neargo.commerce.api.port.OfflineCashRefundPort.class)
+    @DependsOn("commerceMigrationInitializer")
+    ai.neargo.commerce.api.port.OfflineCashRefundPort commerceOfflineCashRefunds(DataSource ds,CommerceUnitOfWork uow,
+            OfflineCollectionPort collection,ai.neargo.commerce.api.port.PlatformPaymentPort payments) {
+        return new ai.neargo.commerce.core.offline.DefaultOfflineCashRefundPort(new ai.neargo.commerce.persistence.JdbcCashRefundRepository(ds),uow,collection,payments,Clock.systemUTC());
+    }
+
+    @Bean
     @ConditionalOnMissingBean(OfflineRepository.class)
     @DependsOn("commerceMigrationInitializer")
     OfflineRepository commerceOfflineRepository(DataSource ds) {
@@ -54,7 +62,9 @@ public class CommerceOfflineAutoConfiguration {
             MallFacade mall,
             PaymentFacade payments,
             ObjectProvider<RefundFacade> refunds,
+            ObjectProvider<ai.neargo.commerce.core.mall.RefundRepository> normalRefunds,
             OfflineCollectionPort collection,
+            ai.neargo.commerce.api.port.OfflineCashRefundPort cashRefunds,
             PrivateEvidencePort evidence,
             CommerceIdGenerator ids,
             org.springframework.core.env.Environment env) {
@@ -77,6 +87,6 @@ public class CommerceOfflineAutoConfiguration {
                 evidence,
                 Clock.systemUTC(),
                 ids,
-                profileNo.trim());
+                profileNo.trim()).cashRefunds(cashRefunds).normalRefunds(normalRefunds.getIfAvailable());
     }
 }

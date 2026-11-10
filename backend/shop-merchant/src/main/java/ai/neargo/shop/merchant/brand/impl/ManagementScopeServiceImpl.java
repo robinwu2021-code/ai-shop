@@ -30,9 +30,9 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
  final ManagementRepository db;
  private static final Map<String,Set<String>> PERMISSIONS=Map.of(
   "SPACE",Set.of("management.enter","management.resource.read","management.grant.manage","brand.manage","brand.change.read","brand.change.decide","sv.policy.read","sv.policy.manage","sv.store.activity.approve","sv.store.report.all"),
-  "BRAND",Set.of("brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage","sv.brand.activity.read","sv.brand.activity.manage","sv.brand.activity.publish","sv.brand.activity.approve","sv.brand.report","sv.activity.report"),
-  "STORE",Set.of("store.read","store.brand.change","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage","sv.store.activity.read","sv.store.activity.manage","sv.store.activity.publish","sv.store.report","sv.activity.report"),
-  "ENTITY",Set.of("entity.read","payment.merchant.read","sv.issuer.settlement.authorize","sv.issuer.collection.confirm","sv.settlement.read","sv.settlement.generate","sv.settlement.reconcile","sv.settlement.dispute","sv.settlement.dispute.resolve","sv.settlement.adjust","sv.settlement.payment.register","sv.settlement.receipt.confirm","sv.settlement.payment.void","sv.settlement.audit"),
+  "BRAND",Set.of("promotion.activity.read","promotion.activity.manage","promotion.activity.publish","promotion.coupon.read","promotion.coupon.manage","promotion.coupon.issue","promotion.cost.rule.manage","brand.read","brand.manage","brand.audit.read","brand.change.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage","sv.brand.activity.read","sv.brand.activity.manage","sv.brand.activity.publish","sv.brand.activity.approve","sv.brand.report","sv.activity.report"),
+  "STORE",Set.of("promotion.participate","store.read","store.brand.change","sv.issuer.read","sv.issuer.configure","sv.policy.read","sv.policy.manage","sv.store.activity.read","sv.store.activity.manage","sv.store.activity.publish","sv.store.report","sv.activity.report"),
+  "ENTITY",Set.of("promotion.sponsor.authorize","promotion.cost.read","promotion.cost.authorize","promotion.cost.confirm","entity.read","payment.merchant.read","sv.issuer.settlement.authorize","sv.issuer.collection.confirm","sv.settlement.read","sv.settlement.generate","sv.settlement.reconcile","sv.settlement.dispute","sv.settlement.dispute.resolve","sv.settlement.adjust","sv.settlement.payment.register","sv.settlement.receipt.confirm","sv.settlement.payment.void","sv.settlement.audit"),
   "PAYMENT_MERCHANT",Set.of("payment.merchant.read"));
  public ManagementScopeServiceImpl(ManagementRepository db){this.db=db;}
  public Map<String,Object> space(Actor a,String m){return db.one("SELECT * FROM mch_management_space WHERE tenant_no=? AND management_no=? AND deleted=0",a.tenantNo(),m);}
@@ -118,8 +118,14 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
  private void seedOwnedResource(Actor a,String m,String type,String no,Set<String> permissions){
   for(String permission:permissions){var g=db.base(a);g.put("grant_no",BizKey.next(BizKey.MANAGEMENT_GRANT));g.put("management_no",m);g.put("actor_no",a.actorKey());g.put("resource_type",type);g.put("resource_no",no);g.put("permission_code",permission);g.put("status","ACTIVE");g.put("valid_from",Timestamp.from(Instant.now()));g.put("delegatable",1);g.put("authority_source_type","SPACE_OWNER");g.put("authority_source_no",m);g.put("authority_snapshot",db.encode(Map.of("actor",a.actorKey(),"creationAuthorized",true)));db.insert("mch_management_grant",g);}
  }
- public Map<String,Object> grant(Actor a,String m,GrantCommand c){return db.write(()->{
+ public Set<String> permissions(String type){return PERMISSIONS.getOrDefault(type,Set.of());}
+ public Map<String,Object> grant(Actor a,String m,GrantCommand c){return grant(a,m,c,null);}
+ public Map<String,Object> grant(Actor a,String m,GrantCommand c,String key){return db.write(()->{
   lock(a,m);require(a,m,"SPACE",m,"management.grant.manage");
+  String digest=ManagementRepository.hash(db.encode(c));
+  String command=key==null?null:db.commandId(a,m,"GRANT_ISSUE",key);
+  if(command!=null){var prior=db.replay(command,digest);if(prior!=null){requireGrantResource(a,m,prior);return prior;}}
+
   new Actor(a.tenantNo(),c.actorNo());
   if(!PERMISSIONS.getOrDefault(c.resourceType(),Set.of()).contains(c.permissionCode()))throw BizException.of(ErrorCode.BAD_REQUEST);
   String target=c.actorNo().substring(c.actorNo().indexOf(':')+1);
@@ -134,7 +140,7 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
   var existing=db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type=? AND resource_no=? AND permission_code=?",a.tenantNo(),m,c.actorNo(),c.resourceType(),c.resourceNo(),c.permissionCode());
   if(existing!=null&&c.expectedRevision()==null){
    if(!valid(a,existing,new HashSet<>())||bool(existing,"delegatable")!=c.delegatable()||c.validFrom()!=null||c.validTo()!=null)throw BizException.of(ErrorCode.CONFLICT);
-   return db.view(existing);
+   var result=db.view(existing);if(command!=null)db.emit(a,command,m,"GRANT_ISSUE",digest,result);return result;
   }
   String no=existing==null?BizKey.next(BizKey.MANAGEMENT_GRANT):str(existing,"grant_no");
   if("PARENT_GRANT".equals(sourceType)&&sourceNo.equals(no))throw BizException.of(ErrorCode.FORBIDDEN);
@@ -145,7 +151,7 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
   else{int changed=db.update("UPDATE mch_management_grant SET status='ACTIVE',valid_from=?,valid_to=?,delegatable=?,authority_source_type=?,authority_source_no=?,authority_snapshot=?,updated_at=?,updated_by=?,version=version+1 WHERE tenant_no=? AND grant_no=? AND version=?",row.get("valid_from"),row.get("valid_to"),row.get("delegatable"),sourceType,sourceNo,row.get("authority_snapshot"),Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,c.expectedRevision());if(changed!=1)throw BizException.of(ErrorCode.CONFLICT);}
   db.update("UPDATE mch_management_space SET auth_revision=auth_revision+1,version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND management_no=?",Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),m);
   var result=db.view(db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND grant_no=?",a.tenantNo(),no));
-  db.emit(a,ManagementRepository.hash(a.tenantNo()+no+result.get("revision")),m,"GRANT_CHANGED",ManagementRepository.hash(db.encode(c)),result);return result;
+  db.emit(a,command==null?ManagementRepository.hash(a.tenantNo()+no+result.get("revision")):command,m,command==null?"GRANT_CHANGED":"GRANT_ISSUE",digest,result);return result;
  });}
  public boolean canDelegate(Actor a,String m,String type,String no,String permission){
   var space=space(a,m);if(space==null)return false;
@@ -153,17 +159,29 @@ public class ManagementScopeServiceImpl implements ManagementScopeService {
   String entity=resourceEntity(a,type,no);if(!entity.isEmpty()&&ownerAccounts(a).stream().anyMatch(owner->entity.equals(str(owner,"entity_no"))))return true;
   return db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type=? AND resource_no=? AND permission_code=? AND delegatable=1 AND deleted=0",a.tenantNo(),m,a.actorKey(),type,no,permission).stream().anyMatch(grant->valid(a,grant,new HashSet<>()));
  }
- public Map<String,Object> revoke(Actor a,String m,String no,long revision,String reason){return db.write(()->{
+ public Map<String,Object> grantResult(Actor a,String m,String action,String key){
+  if(!Set.of("GRANT_ISSUE","GRANT_REVOKE").contains(action))throw BizException.of(ErrorCode.BAD_REQUEST);
+  require(a,m,"SPACE",m,"management.enter");require(a,m,"SPACE",m,"management.resource.read");require(a,m,"SPACE",m,"management.grant.manage");var result=db.command(a,m,action,key);requireGrantResource(a,m,result);return result;
+ }
+ private void requireGrantResource(Actor a,String m,Map<String,Object> grant){
+  if(!canDelegate(a,m,(String)grant.get("resourceType"),(String)grant.get("resourceNo"),(String)grant.get("permissionCode")))throw BizException.of(ErrorCode.FORBIDDEN);
+ }
+ public Map<String,Object> revoke(Actor a,String m,String no,long revision,String reason){return revoke(a,m,no,revision,reason,null);}
+ public Map<String,Object> revoke(Actor a,String m,String no,long revision,String reason,String key){return db.write(()->{
   lock(a,m);require(a,m,"SPACE",m,"management.grant.manage");text(reason,255);
+  String digest=ManagementRepository.hash(db.encode(List.of(no,revision,reason)));
+  String command=key==null?null:db.commandId(a,m,"GRANT_REVOKE",key);
+  if(command!=null){var prior=db.replay(command,digest);if(prior!=null){requireGrantResource(a,m,prior);return prior;}}
+
   var row=db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND grant_no=? AND deleted=0",a.tenantNo(),m,no);
   if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
   // The revoker must also control the grant's actual resource, not just its space.
   if(!canDelegate(a,m,str(row,"resource_type"),str(row,"resource_no"),str(row,"permission_code")))throw BizException.of(ErrorCode.FORBIDDEN);
   if("SPACE".equals(str(row,"resource_type"))&&str(row,"actor_no").equals(str(space(a,m),"owner_actor_no")))throw BizException.of(ErrorCode.CONFLICT);
-  if("REVOKED".equals(str(row,"status")))return db.view(row);
+  if("REVOKED".equals(str(row,"status"))){var result=db.view(row);if(command!=null)db.emit(a,command,m,"GRANT_REVOKE",digest,result);return result;}
   if(num(row,"version")!=revision)throw BizException.of(ErrorCode.CONFLICT);
   db.update("UPDATE mch_management_grant SET status='REVOKED',version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND grant_no=? AND version=?",Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,revision);
   db.update("UPDATE mch_management_space SET auth_revision=auth_revision+1,version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND management_no=?",Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),m);
-  var result=db.view(db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND grant_no=?",a.tenantNo(),no));db.emit(a,ManagementRepository.hash(a.tenantNo()+no+result.get("revision")),m,"GRANT_REVOKED",ManagementRepository.hash(reason),result);return result;
+  var result=db.view(db.one("SELECT * FROM mch_management_grant WHERE tenant_no=? AND grant_no=?",a.tenantNo(),no));db.emit(a,command==null?ManagementRepository.hash(a.tenantNo()+no+result.get("revision")):command,m,command==null?"GRANT_REVOKED":"GRANT_REVOKE",command==null?ManagementRepository.hash(reason):digest,result);return result;
  });}
 }

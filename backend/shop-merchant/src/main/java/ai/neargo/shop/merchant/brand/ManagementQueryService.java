@@ -12,6 +12,8 @@ public interface ManagementQueryService {
     /** List effective or explicit resource grants after validating the requested view. */
     Page resources(Actor a,String m,String type,String view,String actorNo,String cursor,int size);
 
+    Page grantOptions(Actor a,String m,String brand,String cursor,int size);
+
     /** List only active recipients reachable through the current delegation authority. */
     Page recipients(Actor a,String m,String cursor,int size);
 

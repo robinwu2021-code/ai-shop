@@ -15,6 +15,12 @@ import type {
 const seg = encodeURIComponent;
 
 export const commerceHttp: CommerceApi = {
+  mallCashReceipts: (store,order) => client.get(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-receipts`, {storeNo:store}),
+  mallCashRefunds: (store,order) => client.get(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-refunds`, {storeNo:store}),
+  requestMallCashRefund: (store,order,v) => client.post(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-refunds`,v, {storeNo:store}),
+  payoutMallCashRefund: (store,order,refund,v) => client.post(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-refunds/${encodeURIComponent(refund)}/payout`,v, {storeNo:store}),
+  recoverMallCashRefund: (store,order,refund) => client.post(`/ops/biz-mall/offline/orders/${encodeURIComponent(order)}/cash-refunds/${encodeURIComponent(refund)}/recover`,{}, {storeNo:store}),
+
   // ── 目录 ──
   mallCatalog: () => client.get<MallCatalogOverview>("/ops/biz-mall/catalog"),
   mallBusinessTypes: () => client.get<MallBusinessTypeView[]>("/ops/business-types"),
@@ -85,6 +91,8 @@ export const commerceHttp: CommerceApi = {
     client.post<MallOfflineActionView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/confirmations`, v, { storeNo }),
   voidOfflineOrder: (storeNo, orderNo, v) =>
     client.post<MallOfflineActionView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/voids`, v, { storeNo }),
+  recoverOfflineOrder: (storeNo, orderNo) =>
+    client.post(`/ops/biz-mall/offline/orders/${seg(orderNo)}/recover`, {}, {storeNo}),
   confirmOfflineRefundPayout: (storeNo, orderNo, refundNo, v) =>
     client.post<MallRefundView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/refunds/${seg(refundNo)}/payouts`, v, { storeNo }),
 };

@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Portable Commerce Mall \u2014 new host HTTP contracts",
+    "title": "Portable Commerce Mall — new host HTTP contracts",
     "version": "task8-v1+p3",
     "description": "New endpoints only; existing 29 onboarding operations unchanged. Trusted session realm/tenant/store and named capabilities. No body actor, payer identity, paid flag or provider proof. CNY JSAPI protocol adapter is fail-closed until authoritative app-bound payer binding is installed; TWD online routes (NewebPay, LINE Pay, JKOPay) remain unavailable. Task8 adds offline bank-transfer purchase: merchant declarations, private evidence, operator confirmation/void, assisted STORE orders and offline refund payouts. TWD policy twd-whole-v1 uses cash/allocation quantum 100."
   },
@@ -8309,6 +8309,918 @@
           }
         }
       }
+    },
+    "/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/cash-refunds": {
+      "get": {
+        "operationId": "offlineBuyerCashRefunds",
+        "summary": "offlineBuyerCashRefunds",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CashRefundView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/recover": {
+      "post": {
+        "operationId": "offlineRecoverOriginal",
+        "summary": "offlineRecoverOriginal",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:order:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "recovered": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "recovered"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/cash-receipts": {
+      "get": {
+        "operationId": "offlineCashReceipts",
+        "summary": "offlineCashReceipts",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:order:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CashReceipt"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/cash-refunds": {
+      "get": {
+        "operationId": "offlineCashRefunds",
+        "summary": "offlineCashRefunds",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:order:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CashRefundView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "offlineRequestCashRefund",
+        "summary": "offlineRequestCashRefund",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:refund:confirm",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CashRefundView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashRefundRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/cash-refunds/{refundNo}/payout": {
+      "post": {
+        "operationId": "offlineCashRefundPayout",
+        "summary": "offlineCashRefundPayout",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:refund:confirm",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "refundNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CashRefundView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashRefundPayout"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/cash-refunds/{refundNo}/recover": {
+      "post": {
+        "operationId": "offlineCashRefundRecover",
+        "summary": "offlineCashRefundRecover",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:refund:confirm",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "refundNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; accepted commands are not proof of money. Read persisted refund status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CashRefundView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11174,6 +12086,175 @@
             "format": "int32"
           }
         }
+      },
+      "CashReceipt": {
+        "type": "object",
+        "properties": {
+          "paymentNo": {
+            "type": "string"
+          },
+          "paymentAttemptNo": {
+            "type": "string"
+          },
+          "platformMerchantNo": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "refundedMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingRefund": {
+            "type": "boolean"
+          },
+          "exceptionCash": {
+            "type": "boolean"
+          },
+          "closed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paymentNo",
+          "paymentAttemptNo",
+          "platformMerchantNo",
+          "amount",
+          "refundedMinor",
+          "pendingRefund",
+          "exceptionCash",
+          "closed"
+        ],
+        "description": "Verified real cash from the payment ledger, independent of order quote. Pending refunds reserve refundable capacity."
+      },
+      "CashRefundRequest": {
+        "type": "object",
+        "properties": {
+          "refundNo": {
+            "type": "string",
+            "pattern": "^cash-[A-Za-z0-9_-]{1,59}$"
+          },
+          "paymentNo": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "refundNo",
+          "paymentNo",
+          "reason"
+        ],
+        "description": "Refund the full remaining balance of this verified original payment. Amount, currency and original payment identity are frozen by the server."
+      },
+      "CashRefundPayout": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "actualAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "paidOutAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Whole-second actual outgoing transfer time, no later than now."
+          },
+          "payeeReference": {
+            "type": "string"
+          },
+          "bankReference": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionNo",
+          "actualAmount",
+          "paidOutAt",
+          "payeeReference",
+          "bankReference",
+          "evidenceKey"
+        ],
+        "description": "Record an actual bank transfer; does not execute one. Requires stored private REFUND_PROOF. Replay the same actionNo with the exact original command; correct explicit rejection using a new actionNo."
+      },
+      "CashRefundAction": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rejection": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "actionNo",
+          "status",
+          "rejection"
+        ]
+      },
+      "CashRefundView": {
+        "type": "object",
+        "properties": {
+          "refundNo": {
+            "type": "string"
+          },
+          "paymentNo": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PREPARED",
+              "AWAITING_PAYOUT",
+              "PAYOUT_ACCEPTED",
+              "REFUNDED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "rejection": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashRefundAction"
+            }
+          }
+        },
+        "required": [
+          "refundNo",
+          "paymentNo",
+          "amount",
+          "status",
+          "reason",
+          "rejection",
+          "actions"
+        ],
+        "description": "Buyer-safe progress only; excludes platform proof, payee identifiers and bank references. REFUNDED requires a verified complete refund fact. HTTP success alone is not refund completion."
       }
     }
   }

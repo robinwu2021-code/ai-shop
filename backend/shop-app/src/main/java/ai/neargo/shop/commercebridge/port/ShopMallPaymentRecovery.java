@@ -17,6 +17,7 @@ public final class ShopMallPaymentRecovery implements PlatformPaymentRecoveryPor
   private final PaymentFacade core;
   private final RefundFacade coreRefunds;
   private final ai.neargo.shop.merchant.plan.EntityPlanPurchaseService entityPlans;
+  private final ai.neargo.commerce.api.port.OfflineCashRefundPort cashRefunds;
 
   public ShopMallPaymentRecovery(
       PlatformCollectionService payments,
@@ -34,6 +35,10 @@ public final class ShopMallPaymentRecovery implements PlatformPaymentRecoveryPor
       PaymentFacade core,
       RefundFacade coreRefunds,
       ai.neargo.shop.merchant.plan.EntityPlanPurchaseService entityPlans) {
+    this(payments,refunds,handoffs,core,coreRefunds,entityPlans,null);
+  }
+  public ShopMallPaymentRecovery(PlatformCollectionService payments,PlatformRefundService refunds,PlatformMoneyHandoffService handoffs,PaymentFacade core,RefundFacade coreRefunds,ai.neargo.shop.merchant.plan.EntityPlanPurchaseService entityPlans,ai.neargo.commerce.api.port.OfflineCashRefundPort cashRefunds) {
+    this.cashRefunds=cashRefunds;
     this.entityPlans = entityPlans;
     this.payments = payments;
     this.refunds = refunds;
@@ -85,6 +90,7 @@ public final class ShopMallPaymentRecovery implements PlatformPaymentRecoveryPor
     var receipt = refunds.query(refund.get());
     if (!"SUCCESS".equals(receipt.state())) return false;
     try {
+      if(cashRefunds!=null){var key=receipt.request().key();var handled=cashRefunds.recoverHandoff(key.tenantNo(),key.orderNo(),key.refundNo());if(handled.isPresent()){if(handled.get())handoffs.acknowledge(receipt.paymentNo());return true;}}
       if (coreRefunds == null) return true;
       var key = receipt.request().key();
       var result =

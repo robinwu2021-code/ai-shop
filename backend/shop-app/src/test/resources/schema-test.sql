@@ -12531,8 +12531,10 @@ CREATE TABLE IF NOT EXISTS mch_plan_purchase
     payment_no VARCHAR(64) DEFAULT NULL,
     closure_json TEXT DEFAULT NULL,
     created_at BIGINT NOT NULL,
+    creator_no VARCHAR(64) NOT NULL,
+    creator_kind VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_plan_request UNIQUE (tenant_no,creator_kind,creator_no,request_no),
     PRIMARY KEY (tenant_no,order_no),
-    CONSTRAINT uk_plan_request UNIQUE (tenant_no,buyer_kind,buyer_no,request_no),
     CONSTRAINT uk_plan_open_entity UNIQUE (tenant_no,open_entity)
 );
 
@@ -19470,6 +19472,8 @@ INSERT IGNORE INTO sys_merchant_plan_def
 (plan_code,name,store_quota,staff_quota,cross_store_stats,trial_days,enabled,sort,tenant_no,created_at,updated_at,version,deleted)
 SELECT 'CHAIN','连锁版',30,15,1,14,1,30,'MAIN',NOW(),NOW(),0,0 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def WHERE plan_code='CHAIN');
+UPDATE mch_plan_purchase SET creator_no=buyer_no,creator_kind=buyer_kind,
+  snapshot_json=JSON_SET(snapshot_json,'$.creatorNo',buyer_no,'$.creatorKind',buyer_kind);
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

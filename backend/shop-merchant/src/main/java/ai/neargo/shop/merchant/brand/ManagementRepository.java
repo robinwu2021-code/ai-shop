@@ -93,6 +93,11 @@ public class ManagementRepository {
   if(!Objects.equals(commandHash,payload.get("commandHash")))throw BizException.of(ErrorCode.CONFLICT);
   return decode(encode(payload.get("resultSnapshot")));
  }
+ public Map<String,Object> command(ManagementModels.Actor a,String target,String action,String key){
+  var row=one("SELECT payload FROM mch_management_command WHERE tenant_no=? AND command_id=?",a.tenantNo(),commandId(a,target,action,key));
+  if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
+  return decode(encode(decode(row.get("payload")).get("resultSnapshot")));
+ }
  public void emit(ManagementModels.Actor a,String id,String target,String action,String commandHash,Map<String,Object> result){
   var payload=new LinkedHashMap<String,Object>();payload.put("tenantNo",a.tenantNo());payload.put("actorKey",a.actorKey());
   payload.put("action",action);payload.put("target",target);payload.put("commandHash",commandHash);payload.put("resultSnapshot",result);

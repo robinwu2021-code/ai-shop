@@ -582,6 +582,9 @@ public final class MerchantMappers {
     }
 
     public interface MchEntityMapper extends BaseMapper<MchEntity> {
+        /** Financial history remains scoped but readable after soft deletion; MP data-scope still applies. */
+        @org.apache.ibatis.annotations.Select("SELECT entity_no FROM mch_entity WHERE tenant_no='MAIN' AND entity_no=#{entityNo}")
+        String financialVisibleEntity(@org.apache.ibatis.annotations.Param("entityNo") String entityNo);
     }
 
     /**

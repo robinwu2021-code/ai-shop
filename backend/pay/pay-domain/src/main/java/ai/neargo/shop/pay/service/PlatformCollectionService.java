@@ -45,6 +45,12 @@ public interface PlatformCollectionService {
             String evidenceReference, long reconciledAt, Map<String, String> unmatchedDispositions) {
         public OfflineVoid { unmatchedDispositions = Collections.unmodifiableMap(new TreeMap<>(unmatchedDispositions)); }
     }
+    /** Sanitized immutable cash authority; no bank accounts or private evidence. */
+    record CashReceipt(String paymentNo, String paymentAttemptNo, String platformMerchantNo,
+            long amountMinor, String currency, long refundedMinor, boolean pendingRefund,
+            boolean exceptionCash, boolean closed) {}
+    default List<CashReceipt> receipts(String tenant, String orderNo) { throw new UnsupportedOperationException(); }
+
     record ManualReceipt(String disposition, Receipt receipt) {}
     default OfflineInstructions configureOffline(OfflineProfile profile) { throw new UnsupportedOperationException(); }
     default Optional<OfflineInstructions> offlineInstructions(String tenant, String profile, String currency) { return Optional.empty(); }

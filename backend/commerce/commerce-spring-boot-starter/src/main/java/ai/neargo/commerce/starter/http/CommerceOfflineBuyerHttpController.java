@@ -29,6 +29,9 @@ public final class CommerceOfflineBuyerHttpController extends MallHttpSupport {
     }
 
 
+    @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/cash-refunds")
+    public Object cashRefunds(@PathVariable("storeNo") String store,@PathVariable("orderNo") String order){var a=context.buyer(store,"commerce:mall:read");return ok(offline.cashRefunds(a.actor(),new OrderQuery(a.store(),code(order))));}
+
     public record QuoteRequest(List<QuoteLine> lines, String currency) {}
 
     @PostMapping("/biz/stores/{storeNo}/mall/offline/quotes")

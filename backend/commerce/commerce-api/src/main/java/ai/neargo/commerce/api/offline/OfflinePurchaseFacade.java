@@ -43,6 +43,12 @@ public interface OfflinePurchaseFacade {
      * never from the caller. A merchant ACCOUNT quotes for itself; an OPERATOR quotes as assisted STORE purchase.
      */
     QuoteView quote(ActorContext actor, QuoteCommand command);
+    /** Verified real receipts and buyer-safe exception refund progress, scoped to this order. */
+    default List<ai.neargo.commerce.api.port.OfflineCollectionPort.CashReceipt> cashReceipts(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}
+    default List<ai.neargo.commerce.api.port.OfflineCashRefundPort.View> cashRefunds(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}
+    default ai.neargo.commerce.api.port.OfflineCashRefundPort.View requestCashRefund(ActorContext actor,OrderQuery order,ai.neargo.commerce.api.port.OfflineCashRefundPort.Request command){throw new UnsupportedOperationException();}
+    default ai.neargo.commerce.api.port.OfflineCashRefundPort.View payoutCashRefund(ActorContext actor,OrderQuery order,String refundNo,ai.neargo.commerce.api.port.OfflineCashRefundPort.Payout command){throw new UnsupportedOperationException();}
+    default ai.neargo.commerce.api.port.OfflineCashRefundPort.View recoverCashRefund(ActorContext actor,OrderQuery order,String refundNo){throw new UnsupportedOperationException();}
     record RefundPayoutCommand(OrderQuery order,String refundNo,Money actualAmount,Instant paidOutAt,
             String payeeReference,String bankReference,String evidenceKey) {}
     /**
@@ -77,6 +83,7 @@ public interface OfflinePurchaseFacade {
     ActionView voidOrder(ActorContext actor,VoidCommand command);
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */
     void recover(FulfillmentQuery query);
+    default void resume(ActorContext actor,OrderQuery order){throw new UnsupportedOperationException();}
     record Sweep(int visited, int failed, String nextOrderNo) {}
     /** Trusted scheduler: bounded scan of orders with ACCEPTED actions, resuming after {@code afterOrderNo}. */
     Sweep recoverPending(String tenantNo, String afterOrderNo, int limit);

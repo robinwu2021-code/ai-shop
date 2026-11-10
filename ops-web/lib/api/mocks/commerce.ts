@@ -1,3 +1,4 @@
+import { ApiError } from "../error";
 // 覆盖范围：套餐商城（commerce）。规则全部在 lib/mock/db/commerce.ts 强制，这里只做形状转换与延迟。
 import * as m from "@/lib/mock/db/commerce";
 import type { CommerceApi } from "../contracts/commerce";
@@ -53,6 +54,12 @@ async function blobUrl(file: Blob): Promise<string> {
 }
 
 export const commerceMock: CommerceApi = {
+  mallCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  mallCashRefunds: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  requestMallCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  payoutMallCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  recoverMallCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+
   mallCatalog: async () => wait(catalog()),
   mallBusinessTypes: async () => wait(catalog().businessTypes as MallBusinessTypeView[]),
   createMallBusinessType: async (v) => wait(m.createType(v), 350),
@@ -119,5 +126,6 @@ export const commerceMock: CommerceApi = {
   offlineAction: async (storeNo, no, actionNo) => wait(clone(m.actionOf(storeNo, no, actionNo))),
   confirmOfflinePayment: async (storeNo, no, v) => wait(m.confirmPayment(storeNo, no, v), 400),
   voidOfflineOrder: async (storeNo, no, v) => wait(m.voidOrder(storeNo, no, v), 400),
+  recoverOfflineOrder: async () => { throw new ApiError(10400,"Offline order recovery requires a real bank ledger"); },
   confirmOfflineRefundPayout: async (storeNo, no, r, v) => wait(m.payout(storeNo, no, r, v), 400),
 };

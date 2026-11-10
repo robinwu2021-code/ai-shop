@@ -1,3 +1,4 @@
+import type {CashRefundApi} from "@/lib/offline-cash-types";
 import type { EntityPlanPurchaseApi } from "../../entity-plan-purchase-types";
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
@@ -32,7 +33,7 @@ export interface PayServiceApplyResult {
   storeLinks: unknown[];
 }
 
-export interface MerchantApi extends EntityPlanPurchaseApi {
+export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"entityCashRefunds"|"requestEntityCashRefund"|"payoutEntityCashRefund"|"recoverEntityCashRefund">, EntityPlanPurchaseApi {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   /**

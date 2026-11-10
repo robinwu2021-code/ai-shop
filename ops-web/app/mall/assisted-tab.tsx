@@ -7,6 +7,8 @@
 // 下单幂等键在报价那一刻生成并保持不变：网络抖动重点一次不会下两单。
 import * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import {useFinancialLock} from "@/components/offline/financial-lock";
+import {isApiError} from "@/lib/api/error";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
@@ -31,6 +33,11 @@ export function AssistedTab({ c }: { c: MallCopy }) {
   const [idem, setIdem] = React.useState("");
   const [order, setOrder] = React.useState<MallOrderView | null>(null);
   const [ins, setIns] = React.useState<MallOfflineInstructionsView | null>(null);
+  const [pending,setPending]=React.useState<{storeNo:string;quoteNo:string;idempotencyKey:string;shippingAddress:null}|null>(null);
+  const [absent,setAbsent]=React.useState(false);
+  const [checking,setChecking]=React.useState(false);
+  const definiteRefusal=React.useRef(false);
+  const [lookupError,setLookupError]=React.useState(false);
   const [open, setOpen] = React.useState<string | null>(null);
 
   // 只列**当前在售且已发布**的版本 —— 草稿、停售报出来就是假价
@@ -44,13 +51,41 @@ export function AssistedTab({ c }: { c: MallCopy }) {
     onSuccess: (q) => { setQuote(q); setIdem(newOpNo("IDEM")); setOrder(null); setIns(null); },
   });
   const place = useMutation({
-    mutationFn: () => api.offlineAssistedPlace(storeNo, { quoteNo: quote!.quoteNo!, idempotencyKey: idem, shippingAddress: null }),
-    onSuccess: (o) => { setOrder(o); notify.success(fill(c.toastPlaced, { no: o.orderNo ?? "" })); },
+    mutationFn: async () => {
+      const v=pending??{storeNo,quoteNo:quote!.quoteNo!,idempotencyKey:idem,shippingAddress:null};setPending(v);setAbsent(false);
+      return api.offlineAssistedPlace(v.storeNo,{quoteNo:v.quoteNo,idempotencyKey:v.idempotencyKey,shippingAddress:null});
+    },
+    onError: (err) => {definiteRefusal.current=isApiError(err)&&[10400,10403,10404,10409].includes(err.code);},
+    onSuccess: (o) => { setPending(null);setAbsent(false);setOrder(o); notify.success(fill(c.toastPlaced, { no: o.orderNo ?? "" })); },
   });
   const issue = useMutation({
     mutationFn: () => api.issueOfflineInstructions(storeNo, order!.orderNo!),
     onSuccess: (i) => { setIns(i); notify.success(c.toastIssued); },
   });
+
+  useFinancialLock("mall-assisted",!!pending||place.isPending);
+  const locked=!!pending||checking||doQuote.isPending||place.isPending||issue.isPending;
+  async function lookup(){
+    if(!pending)return;setChecking(true);setLookupError(false);
+    try{
+      // Read through every page; a partial first page cannot prove absence.
+      let afterOrderNo:string|undefined;
+      let found: MallOrderView|undefined;
+      do {
+        const rows=await api.mallOrders(pending.storeNo,{afterOrderNo,limit:100});
+        for(const row of rows){
+          if(!row.order?.orderNo)throw new Error("INCOMPLETE_LOOKUP");
+          const detail=await api.mallOrder(pending.storeNo,row.order.orderNo);
+          if(detail.quote?.quoteNo===pending.quoteNo){found=row.order;break;}
+        }
+        if(found||rows.length<100){afterOrderNo=undefined;break;}
+        const next=rows.at(-1)?.order?.orderNo;
+        if(!next||next===afterOrderNo)throw new Error("INCOMPLETE_LOOKUP");
+        afterOrderNo=next;
+      }while(afterOrderNo);
+      if(found){setOrder(found);setPending(null);}else if(definiteRefusal.current)setPending(null);else setAbsent(true);
+    }catch{setLookupError(true);}finally{setChecking(false);}
+  }
 
   const hasHardware = (quote?.components ?? []).some((x) => x.kind === "HARDWARE");
   const compColumns: Column<MallQuoteComponent>[] = [
@@ -63,20 +98,20 @@ export function AssistedTab({ c }: { c: MallCopy }) {
   return (
     <div className="space-y-4">
       <HelpNote>{c.assistedHelp}</HelpNote>
-      <StoreBar c={c} id="assist-store" value={storeNo} onSubmit={(v) => { setStoreNo(v); reset(); }} />
+      <fieldset disabled={locked}><StoreBar c={c} id="assist-store" value={storeNo} onSubmit={(v) => { setStoreNo(v); reset(); }} /></fieldset>
       {!storeNo ? <p className="txt-caption text-muted-foreground">{c.storeFirst}</p> : (
         <div className="space-y-4">
           {catalog.error && <DataTable columns={[]} rows={undefined} error={showErr(catalog.error)} onRetry={() => catalog.refetch()} rowKey={() => ""} empty={c.noSellable} />}
           <div className="grid gap-3 md:grid-cols-4">
             <div className="space-y-1">
               <Label htmlFor="as-cur">{c.fieldCurrency}</Label>
-              <Select id="as-cur" className="w-full" value={currency} onChange={(e) => { setCurrency(e.target.value); setSku(""); reset(); }}>
+              <Select disabled={locked} id="as-cur" className="w-full" value={currency} onChange={(e) => { setCurrency(e.target.value); setSku(""); reset(); }}>
                 {["TWD", "CNY"].map((x) => <option key={x} value={x}>{x}</option>)}
               </Select>
             </div>
             <div className="space-y-1 md:col-span-2">
               <Label htmlFor="as-sku" required>{c.fieldSku}</Label>
-              <Select id="as-sku" className="w-full" value={sku} onChange={(e) => { setSku(e.target.value); reset(); }}>
+              <Select disabled={locked} id="as-sku" className="w-full" value={sku} onChange={(e) => { setSku(e.target.value); reset(); }}>
                 <option value="">{sellable.length ? c.pickSku : c.noSellable}</option>
                 {sellable.map(({ def, v }) => (
                   <option key={def.skuNo} value={v!.draft!.skuVersionNo}>{def.title} · {v!.draft!.skuVersionNo}</option>
@@ -85,11 +120,12 @@ export function AssistedTab({ c }: { c: MallCopy }) {
             </div>
             <div className="space-y-1">
               <Label htmlFor="as-qty" required>{c.colQty}</Label>
-              <Input id="as-qty" inputMode="numeric" value={qty} onChange={(e) => { setQty(e.target.value); reset(); }} />
+              <Input disabled={locked} id="as-qty" inputMode="numeric" value={qty} onChange={(e) => { setQty(e.target.value); reset(); }} />
             </div>
           </div>
-          <Button disabled={!sku || Number(qty) < 1} loading={doQuote.isPending} onClick={() => doQuote.mutate()}>{c.btnQuote}</Button>
+          <Button disabled={locked || !sku || Number(qty) < 1} loading={doQuote.isPending} onClick={() => doQuote.mutate()}>{c.btnQuote}</Button>
 
+          {pending&&<Notice tone="warning"><p>{c.reviewUnknown}</p><p>{pending.storeNo} · {pending.quoteNo} · {pending.idempotencyKey}</p><Button disabled={checking||place.isPending} onClick={()=>void lookup()}>{c.reviewLookup}</Button>{absent&&<Button disabled={checking||place.isPending} onClick={()=>place.mutate()}>{c.reviewRetry}</Button>}{lookupError&&<p role="alert">{c.reviewUnknown}</p>}</Notice>}
           {quote && (
             <div className="space-y-3 rounded-card border border-border p-4">
               <FieldGrid>
@@ -100,7 +136,7 @@ export function AssistedTab({ c }: { c: MallCopy }) {
               </FieldGrid>
               <DataTable columns={compColumns} rows={quote.components} error={showErr(doQuote.error)} onRetry={() => doQuote.mutate()} rowKey={(x) => x.componentNo ?? ""} empty={c.componentsEmpty} />
               {hasHardware && <Notice tone="warning">{c.assistedNoHardware}</Notice>}
-              {!order && <Button disabled={hasHardware} loading={place.isPending} onClick={() => place.mutate()}>{c.btnPlace}</Button>}
+              {!order && <Button disabled={locked || hasHardware} loading={place.isPending} onClick={() => place.mutate()}>{c.btnPlace}</Button>}
             </div>
           )}
 

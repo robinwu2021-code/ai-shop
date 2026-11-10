@@ -39,6 +39,22 @@ public class OpsPlanPurchaseController {
     return new Actor(SecurityUtils.currentUserNo(), entity, null, true);
   }
 
+  @GetMapping("/assistance-context")
+  @PreAuthorize(
+      "@perm.can('commerce:mall:assisted:purchase') and @perm.can('" + Perms.MERCHANT_BAN + "')")
+  public AssistanceContext assistanceContext(@PathVariable String entityNo) {
+    return service.assistanceContext(actor(entityNo));
+  }
+
+  @PostMapping("/assisted")
+  @PreAuthorize(
+      "@perm.can('commerce:mall:assisted:purchase') and @perm.can('" + Perms.MERCHANT_BAN + "')")
+  public OrderView assistedBuy(@PathVariable String entityNo, @Valid @RequestBody AssistedBuy c) {
+    var order = service.assistedBuy(actor(entityNo), c);
+    audit.record("PLAN_ASSISTED_PURCHASE", order.orderNo(), "owner=" + c.ownerAccountNo(), true);
+    return order;
+  }
+
   @GetMapping("/offers")
   @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
   public List<Offer> offers(@PathVariable String entityNo) {
@@ -89,7 +105,7 @@ public class OpsPlanPurchaseController {
 
   @PostMapping("/{orderNo}/recover")
   @PreAuthorize(
-      "(@perm.can('commerce:mall:offline:confirm') or @perm.can('commerce:mall:offline:void')) and"
+      "(@perm.can('commerce:mall:offline:confirm') or @perm.can('commerce:mall:offline:void') or @perm.can('commerce:mall:offline:refund:confirm')) and"
           + " @perm.can('"
           + Perms.MERCHANT_BAN
           + "')")
@@ -111,17 +127,17 @@ public class OpsPlanPurchaseController {
 
   @PostMapping("/{orderNo}/evidence")
   @PreAuthorize(
-      "(@perm.can('commerce:mall:offline:confirm') or @perm.can('commerce:mall:offline:void')) and"
+      "(@perm.can('commerce:mall:offline:confirm') or @perm.can('commerce:mall:offline:void') or @perm.can('commerce:mall:offline:refund:confirm')) and"
           + " @perm.can('"
           + Perms.MERCHANT_BAN
           + "')")
-  public Map<String, String> reserve(@PathVariable String entityNo, @PathVariable String orderNo) {
-    return Map.of("assetKey", service.reserveEvidence(actor(entityNo), orderNo));
+  public Map<String, String> reserve(@PathVariable String entityNo, @PathVariable String orderNo,@RequestParam(defaultValue="PLATFORM_RECEIPT") String purpose) {
+    return Map.of("assetKey", service.reserveEvidence(actor(entityNo), orderNo,purpose));
   }
 
   @PostMapping("/{orderNo}/evidence/content")
   @PreAuthorize(
-      "(@perm.can('commerce:mall:offline:confirm') or @perm.can('commerce:mall:offline:void')) and"
+      "(@perm.can('commerce:mall:offline:confirm') or @perm.can('commerce:mall:offline:void') or @perm.can('commerce:mall:offline:refund:confirm')) and"
           + " @perm.can('"
           + Perms.MERCHANT_BAN
           + "')")

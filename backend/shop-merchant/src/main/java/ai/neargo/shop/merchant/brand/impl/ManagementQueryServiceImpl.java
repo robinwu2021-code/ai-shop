@@ -68,8 +68,36 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
   if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);
   if(cursor!=null){var c=tokens.decode("RESOURCE_CURSOR",cursor);if(!fingerprint.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);before=((Number)c.get("before")).longValue();}
   var raw=db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND deleted=0 AND id<? AND (? IS NULL OR resource_type=?) AND (? IS NULL OR actor_no=?) ORDER BY id DESC LIMIT ?",a.tenantNo(),m,before,type,type,target,target,size+1);var chosen=raw.stream().limit(size).toList();
-  var items=chosen.stream().filter(g->manage?scopes.canDelegate(a,m,str(g,"resource_type"),str(g,"resource_no"),str(g,"permission_code")):scopes.valid(a,g,new HashSet<>())).map(db::view).toList();
+  var items=chosen.stream().filter(g->manage?scopes.canDelegate(a,m,str(g,"resource_type"),str(g,"resource_no"),str(g,"permission_code")):scopes.valid(a,g,new HashSet<>())).map(g->{var result=db.view(g);result.put("effective",scopes.valid(a,g,new HashSet<>()));boolean ownerSpace="SPACE".equals(str(g,"resource_type"))&&str(g,"actor_no").equals(str(scopes.space(a,m),"owner_actor_no"));result.put("canRevoke",manage&&!ownerSpace&&"ACTIVE".equals(str(g,"status")));return result;}).toList();
   return new Page(items,raw.size()>size?tokens.encode("RESOURCE_CURSOR",Map.of("scope",fingerprint,"before",num(chosen.getLast(),"id")),900):null);
+ }
+ public Page grantOptions(Actor a,String m,String brand,String cursor,int size){
+  var space=scopes.resolve(a,m);scopes.require(a,m,"SPACE",m,"management.resource.read");scopes.require(a,m,"SPACE",m,"management.grant.manage");
+  scopes.require(a,m,"BRAND",brand,"brand.read");
+  if(db.one("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND brand_no=? AND deleted=0",a.tenantNo(),m,brand)==null)throw BizException.of(ErrorCode.NOT_FOUND);
+  if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);
+  String fingerprint=hash(db.encode(List.of(a.tenantNo(),a.actorKey(),m,brand))),after="";
+  if(cursor!=null){var c=tokens.decode("GRANT_OPTION_CURSOR",cursor);if(!fingerprint.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);after=(String)c.get("after");}
+  var args=new ArrayList<Object>(List.of(a.tenantNo(),m,a.actorKey(),m,brand));
+  String owned="";var entities=scopes.ownerAccounts(a).stream().map(r->str(r,"entity_no")).distinct().toList();
+  if(!entities.isEmpty()){
+   String slots=String.join(",",Collections.nCopies(entities.size(),"?"));
+   for(var spec:List.of(List.of("ENTITY","mch_entity","entity_no"),List.of("STORE","mch_store","store_no"),List.of("PAYMENT_MERCHANT","mch_payment_merchant","pay_merchant_no"))){
+    owned+=" UNION SELECT '"+spec.getFirst()+"',"+spec.get(2)+" FROM "+spec.get(1)+" WHERE tenant_no=? AND deleted=0 AND entity_no IN ("+slots+")";
+    args.add(a.tenantNo());args.addAll(entities);
+   }
+  }
+  args.add(after);args.add(size+1);
+  var candidates=db.rows("SELECT resource_type,resource_no FROM (SELECT DISTINCT resource_type,resource_no FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND deleted=0 UNION SELECT 'SPACE',? UNION SELECT 'BRAND',?"+owned+") r WHERE CONCAT(resource_type,':',resource_no)>? ORDER BY resource_type,resource_no LIMIT ?",args.toArray());
+  var chosen=candidates.stream().limit(size).toList();var items=new ArrayList<Map<String,Object>>();
+  for(var row:chosen){String type=str(row,"resource_type"),no=str(row,"resource_no");var permissions=scopes.permissions(type).stream().filter(p->scopes.canDelegate(a,m,type,no,p)).sorted().toList();if(permissions.isEmpty())continue;
+   String table=switch(type){case "BRAND"->"mch_brand";case "STORE"->"mch_store";case "ENTITY"->"mch_entity";case "PAYMENT_MERCHANT"->"mch_payment_merchant";default->null;};
+   String column=switch(type){case "BRAND"->"brand_no";case "STORE"->"store_no";case "ENTITY"->"entity_no";case "PAYMENT_MERCHANT"->"pay_merchant_no";default->null;};
+   String name=no;if("SPACE".equals(type))name=str(space,"name");else if(table!=null&&!"PAYMENT_MERCHANT".equals(type)){var resource=db.one("SELECT name FROM "+table+" WHERE tenant_no=? AND "+column+"=? AND deleted=0",a.tenantNo(),no);if(resource==null)continue;name=str(resource,"name");}
+   items.add(Map.of("resourceType",type,"resourceNo",no,"name",name,"permissions",permissions));
+  }
+  String next=candidates.size()>size?tokens.encode("GRANT_OPTION_CURSOR",Map.of("scope",fingerprint,"after",str(chosen.getLast(),"resource_type")+":"+str(chosen.getLast(),"resource_no")),900):null;
+  return new Page(items,next);
  }
  public Page recipients(Actor a,String m,String cursor,int size){
   scopes.resolve(a,m);scopes.require(a,m,"SPACE",m,"management.resource.read");

@@ -76,6 +76,8 @@
 | `ReadOnlyNotice` | `read-only-notice.tsx` | 权限降级提示，句式统一 |
 | `ShowArchivedToggle` / `ArchiveActions` / `ArchivedAt` / `archivedRowClass` / `archiveConfirm` | `archive.tsx` | G1 软删除的页面侧统一件 |
 | `Providers` | `providers.tsx` | React Query / 主题 / toast 的挂载点 |
+| `CashRefundsSection` | `offline/cash-refunds.tsx` | 两套线下购买订单共用的异常实收退款、原动作恢复与银行对账解除占用；资金状态以服务器核验为准 |
+| `FinancialLockContext` / `useFinancialLock` | `offline/financial-lock.tsx` | 未完成资金命令的抽屉关闭与浏览器离开保护；原始敏感意图仅留在挂载期间内存 |
 | `AppShell` | `layout/app-shell.tsx` | 外壳：Rail + 顶栏 + 内容区 |
 | `Rail` | `layout/rail.tsx` | L1 图标栏（18 个业务域） |
 | `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章）；可由顶栏开关收起 |

@@ -32,6 +32,19 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
     }
 
 
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/recover")
+    public Object recoverOriginal(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order){var a=context.operator("commerce:mall:order:read");offline.resume(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order)));return ok(Map.of("recovered",true));}
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/cash-receipts")
+    public Object cashReceipts(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order){var a=context.operator("commerce:mall:order:read");return ok(offline.cashReceipts(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order))));}
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/cash-refunds")
+    public Object cashRefunds(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order){var a=context.operator("commerce:mall:order:read");return ok(offline.cashRefunds(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order))));}
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/cash-refunds")
+    public Object requestCashRefund(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order,@RequestBody String body){var a=context.operator("commerce:mall:offline:refund:confirm");var c=json.read(body,ai.neargo.commerce.api.port.OfflineCashRefundPort.Request.class);return ok(offline.requestCashRefund(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order)),c));}
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/cash-refunds/{refundNo}/payout")
+    public Object payoutCashRefund(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order,@PathVariable("refundNo") String refund,@RequestBody String body){var a=context.operator("commerce:mall:offline:refund:confirm");var c=json.read(body,ai.neargo.commerce.api.port.OfflineCashRefundPort.Payout.class);return ok(offline.payoutCashRefund(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order)),code(refund),c));}
+    @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/cash-refunds/{refundNo}/recover")
+    public Object recoverCashRefund(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order,@PathVariable("refundNo") String refund){var a=context.operator("commerce:mall:offline:refund:confirm");return ok(offline.recoverCashRefund(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order)),code(refund)));}
+
     public record QuoteRequest(List<QuoteLine> lines, String currency) {}
     public record EmptyRequest() {}
 

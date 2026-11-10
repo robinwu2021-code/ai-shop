@@ -46,7 +46,7 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         this.gateways = gateways;
     }
 
-    private record Frozen(
+    record Frozen(
             String business,
             Request request,
             String originalExternal,
@@ -101,7 +101,7 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         }
     }
 
-    private static String paymentNo(Key k) {
+    static String paymentNo(Key k) {
         return "MR" + digest(k).substring(0, 60);
     }
 
@@ -366,7 +366,7 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         return scenes.size() == 1 ? scenes.getFirst() : null;
     }
 
-    private static String bankKey(String tenant, String reference) {
+    static String bankKey(String tenant, String reference) {
         try {
             return HexFormat.of()
                     .formatHex(
@@ -411,7 +411,7 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
                         if ("SUCCESS".equals(current.state)) {
                             require(
                                     stored != null
-                                            && p.equals(json.readValue(stored, OfflinePayout.class)),
+                                            && samePayout(p, json.readValue(stored, OfflinePayout.class)),
                                     "OFFLINE_PAYOUT_CONFLICT");
                             return receipt(current);
                         }
@@ -441,6 +441,11 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         } catch (org.springframework.dao.DuplicateKeyException duplicate) {
             throw new IllegalArgumentException("OFFLINE_BANK_REFERENCE_CONFLICT", duplicate);
         }
+    }
+
+    private static boolean samePayout(OfflinePayout a, OfflinePayout b) {
+        return new OfflinePayout(a.key(),a.operatorNo(),a.actualMinor(),a.currency(),a.paidOutAt(),
+                a.payeeReference(),a.bankReference(),a.evidenceReference(),b.confirmedAt()).equals(b);
     }
 
     private static Receipt receipt(Row row) {

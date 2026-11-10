@@ -85,6 +85,64 @@ class PlatformOfflineCollectionMysqlTest {
     }
 
     @Test
+    void reconciliationRequiresCanonicalRefundAndPreservesPaidCashHistory() throws Exception {
+        try (var f = new Fixture()) {
+            var a = f.request("A", f.profile(1, "TWD"));
+            f.base.service.create(a);
+            var cash = f.base.service.confirmOffline(f.proof(a,"stray",9900,"TWD","NORMAL")).receipt();
+            var close = new PlatformCollectionService.OfflineVoid(a.key(),"ops","recon","returned","private",40000,
+                    Map.of(cash.paymentNo(),"arbitrary note is not money"));
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            var refunds = f.refunds();
+            var first = new PlatformRefundService.Key("MAIN","A","partial");
+            refunds.refund(new PlatformRefundService.Request(first,"S1",cash.key().attemptNo(),cash.paymentNo(),"platform-mch",9900,4000,"TWD","return"));
+            assertTrue(f.base.service.receipts("MAIN","A").getFirst().pendingRefund());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            refunds.confirmOfflinePayout(f.payout(first,4000,"out-part"));
+            assertEquals(4000,f.base.service.receipts("MAIN","A").getFirst().refundedMinor());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            var rest = new PlatformRefundService.Key("MAIN","A","rest");
+            refunds.refund(new PlatformRefundService.Request(rest,"S1",cash.key().attemptNo(),cash.paymentNo(),"platform-mch",9900,5900,"TWD","return"));
+            var payout = f.payout(rest,5900,"out-rest");
+            var finalRefund = refunds.confirmOfflinePayout(payout);
+            f.base.jdbc.update("UPDATE stl_payment SET order_no='unrelated' WHERE payment_no=?",finalRefund.paymentNo());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            f.base.jdbc.update("UPDATE stl_payment SET order_no='A',origin_payment_no='unrelated' WHERE payment_no=?",finalRefund.paymentNo());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            f.base.jdbc.update("UPDATE stl_payment SET origin_payment_no=?,refund_verified_minor=1 WHERE payment_no=?",cash.paymentNo(),finalRefund.paymentNo());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            f.base.jdbc.update("UPDATE stl_payment SET refund_verified_minor=5900 WHERE payment_no=?",finalRefund.paymentNo());
+            assertEquals("CLOSED",f.base.service.reconcileOffline(close).state());
+            assertEquals("CLOSED",f.base.service.reconcileOffline(close).state());
+            assertTrue(f.base.service.receipts("OTHER","A").isEmpty());
+            assertTrue(f.base.service.receipts("MAIN","absent").isEmpty());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(
+                    new PlatformCollectionService.OfflineVoid(a.key(),"ops","new-proof","returned","private",40000,close.unmatchedDispositions())));
+        }
+        try (var f = new Fixture()) {
+            var a = f.request("A",f.profile(1,"TWD"));
+            f.base.service.create(a);
+            var cash = f.base.service.confirmOffline(f.proof(a,"paid",10000,"TWD","NORMAL")).receipt();
+            assertFalse(f.base.service.receipts("MAIN","A").getFirst().exceptionCash());
+            var close = new PlatformCollectionService.OfflineVoid(a.key(),"ops","recon","returned","private",40000,Map.of());
+            assertThrows(IllegalArgumentException.class, () -> f.base.service.reconcileOffline(close));
+            var key = new PlatformRefundService.Key("MAIN","A","full");
+            var refunds = f.refunds();
+            refunds.refund(new PlatformRefundService.Request(key,"S1","A",cash.paymentNo(),"platform-mch",10000,10000,"TWD","return"));
+            var payout = f.payout(key,10000,"out-full");
+            var paid = refunds.confirmOfflinePayout(payout);
+            assertEquals(paid,refunds.confirmOfflinePayout(new PlatformRefundService.OfflinePayout(key,"ops",10000,"TWD",20000,"buyer-account","out-full","payout-proof",31000)));
+            assertEquals("30000",f.base.jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(platform_manual_proof,'$.confirmedAt')) FROM stl_payment WHERE payment_no=?",String.class,paid.paymentNo()));
+            assertEquals("SUCCESS",f.base.service.reconcileOffline(close).state());
+            var receipt = f.base.service.receipts("MAIN","A").getFirst();
+            assertTrue(receipt.closed()); assertTrue(receipt.exceptionCash()); assertEquals(10000,receipt.refundedMinor());
+            var late = f.base.service.confirmOffline(f.proof(a,"later",10000,"TWD","NORMAL"));
+            assertEquals("UNMATCHED",late.disposition());
+            assertEquals(2,f.base.service.receipts("MAIN","A").size());
+        }
+    }
+
+    @Test
     void placedOrderIssuesItsFrozenProfileVersionAfterReconfiguration() throws Exception {
         try (var f = new Fixture()) {
             var v1 = f.profile(1, "TWD");

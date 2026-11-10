@@ -66,3 +66,15 @@ describe("commerce http", () => {
     expect(await commerceHttp.offlineProfile("TWD")).toBeNull();
   });
 });
+it("mall cash recovery scopes every operation and never sends payout details on lookup",async()=>{
+ const fetch=ok({refundNo:"late-R1",status:"PAYOUT_ACCEPTED"});vi.stubGlobal("fetch",fetch);
+ await commerceHttp.mallCashReceipts("S/1","O/1");await commerceHttp.mallCashRefunds("S/1","O/1");
+ const request={refundNo:"cash-R1",paymentNo:"P1",reason:"extra cash"};await commerceHttp.requestMallCashRefund("S/1","O/1",request);
+ const payout={actionNo:"A1",actualAmount:{currency:"TWD",minor:"99900"},paidOutAt:"2026-11-11T00:00:00Z",payeeReference:"ORIGINAL_PAYER",bankReference:"ACTUAL_RETURN",evidenceKey:"PRIVATE"};
+ await commerceHttp.payoutMallCashRefund("S/1","O/1","late-R1",payout);await commerceHttp.recoverMallCashRefund("S/1","O/1","late-R1");
+ for(const [url]of fetch.mock.calls)expect(url).toContain("storeNo=S%2F1");expect(fetch.mock.calls[0][0]).toContain("/orders/O%2F1/cash-receipts");expect(fetch.mock.calls[1][1].body).toBeUndefined();expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual(request);expect(JSON.parse(fetch.mock.calls[3][1].body)).toEqual(payout);expect(fetch.mock.calls[4][0]).toContain("/cash-refunds/late-R1/recover");expect(JSON.parse(fetch.mock.calls[4][1].body)).toEqual({});
+});
+it("recovers only the scoped original offline order without replaying bank evidence or release",async()=>{
+ const fetch=ok({recovered:true});vi.stubGlobal("fetch",fetch);expect(await commerceHttp.recoverOfflineOrder("S/1","O/1")).toEqual({recovered:true});
+ expect(fetch.mock.calls[0][0]).toContain("/ops/biz-mall/offline/orders/O%2F1/recover?storeNo=S%2F1");expect(fetch.mock.calls[0][1].method).toBe("POST");expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({});
+});

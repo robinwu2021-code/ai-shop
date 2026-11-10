@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "Standalone ai-shop-bapp Flutter implements these routes; repository Vue b-app is not the consumer. Code/local integration delivered,166 deployment and real bank setup deferred.",
+  "reason": "Standalone ai-shop-bapp Flutter consumes these routes; repository Vue b-app is not the consumer. Initial local delivery and phase-2 refund progress are tracked in the handoff; 166 deployment is authorized after fixes/verification and pending. Real bank setup is deferred.",
   "plan": "docs/technical/TDD-主体额度包线下购买-2026-11-11.md",
   "contract": "docs/api/entity-plan-offline-purchase.openapi.json",
   "consumerRepository": "ai-shop-bapp",
@@ -50,6 +50,11 @@
       "app": "b-app",
       "method": "GET",
       "path": "/biz/plan/purchases/{orderNo}/evidence/url"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/plan/purchases/{orderNo}/cash-refunds"
     }
   ]
 }

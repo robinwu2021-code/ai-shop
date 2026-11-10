@@ -38,6 +38,12 @@ public class MallRecoveryJob implements JobHandler {
     private String handoffCursor;
     private String offlineCursor;
     private OfflinePurchaseFacade offline;
+    private ai.neargo.commerce.api.port.OfflineCashRefundPort cashRefunds;
+    private String cashRefundCursor;
+    private ai.neargo.shop.merchant.plan.EntityPlanPurchaseService entityPlans;
+    private String entityPlanCursor;
+    @Autowired(required=false) void setEntityPlans(ai.neargo.shop.merchant.plan.EntityPlanPurchaseService plans){this.entityPlans=plans;}
+    @Autowired(required=false) void setCashRefunds(ai.neargo.commerce.api.port.OfflineCashRefundPort cashRefunds){this.cashRefunds=cashRefunds;}
 
     public MallRecoveryJob(
             MallRecoveryFacade core,
@@ -120,6 +126,8 @@ public class MallRecoveryJob implements JobHandler {
                 failed++;
             }
         }
+        if(cashRefunds!=null)try{var result=cashRefunds.recoverPending("MAIN",cashRefundCursor,batchSize);cashRefundCursor=result.visited()<batchSize?null:result.nextRefundNo();failed+=result.failed();}catch(RuntimeException retry){failed++;}
+        if(entityPlans!=null)try{var result=entityPlans.recoverPending(entityPlanCursor,batchSize);entityPlanCursor=result.visited()<batchSize?null:result.nextOrderNo();failed+=result.failed();}catch(RuntimeException retry){failed++;}
         String detail =
                 "账本交接检查%d，订单检查%d，线下核款恢复%d，待重试%d"
                         .formatted(checked, orders, offlineOrders, failed);

@@ -43,6 +43,19 @@ public interface EntityPlanPurchaseService {
       @NotBlank @Size(max = 64) String offerNo,
       long offerVersion) {}
 
+  record AssistedBuy(
+      @NotBlank @Size(max = 64) String requestNo,
+      @NotBlank @Size(max = 64) String offerNo,
+      long offerVersion,
+      @NotBlank @Size(max = 64) String storeNo,
+      @NotBlank @Size(max = 64) String ownerAccountNo) {}
+
+  record AssistanceOwner(String accountNo, String displayName, String subjectKind) {}
+
+  record AssistanceStore(String storeNo, String name) {}
+
+  record AssistanceContext(List<AssistanceOwner> owners, List<AssistanceStore> stores) {}
+
   record Claim(
       @NotBlank @Size(max = 64) String claimNo,
       @NotNull Money amount,
@@ -58,7 +71,7 @@ public interface EntityPlanPurchaseService {
 
   record Confirm(
       @NotBlank @Size(max = 64) String actionNo,
-      @NotBlank @Size(max = 64) String claimNo,
+      @Size(max = 64) String claimNo,
       @NotNull Money amount,
       @NotNull Instant paidAt,
       @NotBlank @Size(max = 128) String bankReference,
@@ -79,7 +92,7 @@ public interface EntityPlanPurchaseService {
       Instant dueAt,
       OfflineCollectionTerms instructions,
       List<ClaimView> claims,
-      List<ActionView> actions) {}
+      List<ActionView> actions,String purchaseSource) {}
 
   List<Offer> offers(Actor actor);
 
@@ -89,9 +102,21 @@ public interface EntityPlanPurchaseService {
 
   OrderView buy(Actor buyer, Buy command);
 
+  AssistanceContext assistanceContext(Actor operator);
+
+  OrderView assistedBuy(Actor operator, AssistedBuy command);
+
   OrderView order(Actor actor, String orderNo);
 
   String reserveEvidence(Actor actor, String orderNo);
+
+  default String reserveEvidence(Actor actor, String orderNo, String purpose) {
+    throw new UnsupportedOperationException();
+  }
+
+  default void verifyRefundEvidence(Actor actor, String orderNo, String key) {
+    throw new UnsupportedOperationException();
+  }
 
   void uploadEvidence(Actor actor, String orderNo, String key, PrivateEvidencePort.Upload upload);
 
@@ -104,6 +129,8 @@ public interface EntityPlanPurchaseService {
   ActionView confirm(Actor operator, String orderNo, Confirm command);
 
   OrderView recover(Actor operator, String orderNo);
+  record RecoverySweep(int visited,int failed,String nextOrderNo){}
+  default RecoverySweep recoverPending(String afterOrderNo,int limit){throw new UnsupportedOperationException();}
 
   OrderView cancel(Actor actor, String orderNo);
 

@@ -29,6 +29,30 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     private final Clock clock;
     private final CommerceIdGenerator ids;
     private String profileNo;
+    private OfflineCashRefundPort cashRefunds;
+    private ai.neargo.commerce.core.mall.RefundRepository normalRefunds;
+    public DefaultOfflinePurchaseFacade normalRefunds(ai.neargo.commerce.core.mall.RefundRepository repository){this.normalRefunds=repository;return this;}
+    private List<OfflineCashRefundPort.View> lateRefunds(ActorContext a,OrderQuery q){
+        if(normalRefunds==null)return List.of();
+        return locked(a,q,capability(a,"commerce:mall:order:read"),o->normalRefunds.forOrder(o).stream().filter(r->r.preview().refundNo().startsWith("late-")&&r.command()!=null).map(r->new OfflineCashRefundPort.View(r.preview().refundNo(),r.command().originalPaymentNo(),r.view().cashAmount(),r.view().status()==AsyncStatus.SUCCEEDED?"REFUNDED":r.view().status()==AsyncStatus.FAILED?"REJECTED":"AWAITING_PAYOUT","关闭后迟到款退回原付款方",null,List.of())).toList());
+    }
+    private OfflineCashRefundPort.View lateRefund(ActorContext a,OrderQuery q,String no){return lateRefunds(a,q).stream().filter(r->r.refundNo().equals(no)).findFirst().orElseThrow(()->fail("NOT_FOUND"));}
+    private OfflineCashRefundPort.View adoptLate(ActorContext a,OrderQuery q,String no){
+        var command=locked(a,q,"commerce:mall:offline:refund:confirm",o->normalRefunds.forOrder(o).stream().filter(r->r.preview().refundNo().equals(no)&&no.startsWith("late-")).map(ai.neargo.commerce.core.mall.RefundSnapshot.State::command).filter(Objects::nonNull).findFirst().orElseThrow(()->fail("NOT_FOUND")));
+        return cashRefunds.adopt(cashTarget(q),a.principalNo(),command);
+    }
+    public DefaultOfflinePurchaseFacade cashRefunds(OfflineCashRefundPort cashRefunds){this.cashRefunds=Objects.requireNonNull(cashRefunds);return this;}
+    private OfflineCashRefundPort.Target cashTarget(OrderQuery q){if(cashRefunds==null)throw fail("REFUND_UNAVAILABLE");return new OfflineCashRefundPort.Target(q.store(),q.orderNo(),false);}
+    public List<OfflineCollectionPort.CashReceipt> cashReceipts(ActorContext a,OrderQuery q){operator(a);locked(a,q,"commerce:mall:order:read",o->null);uow.requireOutsideTransaction();return collection.receipts(a.tenantNo(),q.orderNo());}
+    public List<OfflineCashRefundPort.View> cashRefunds(ActorContext a,OrderQuery q){locked(a,q,capability(a,"commerce:mall:order:read"),o->null);var all=new ArrayList<>(cashRefunds.list(cashTarget(q)));for(var late:lateRefunds(a,q))if(all.stream().noneMatch(r->r.refundNo().equals(late.refundNo())))all.add(late);return List.copyOf(all);}
+    public OfflineCashRefundPort.View requestCashRefund(ActorContext a,OrderQuery q,OfflineCashRefundPort.Request c){operator(a);locked(a,q,"commerce:mall:offline:refund:confirm",o->null);if(c==null)throw fail("INVALID_REQUEST");
+        var receipt=collection.receipts(a.tenantNo(),q.orderNo()).stream().filter(r->r.paymentNo().equals(c.paymentNo())).findFirst().orElseThrow(()->fail("REFUND_ORIGINAL_UNPROVEN"));
+        var original=locked(a,q,"commerce:mall:offline:refund:confirm",o->payment(o));
+        if(receipt.closed()&&receipt.paymentAttemptNo().equals(original.paymentAttemptNo())){if(refunds==null)throw fail("REFUND_UNAVAILABLE");var result=refunds.recoverLatePayment(new FulfillmentQuery(a.tenantNo(),q.orderNo()));return adoptLate(a,q,result.refundNo());}
+        return cashRefunds.request(cashTarget(q),a.principalNo(),c);}
+    public OfflineCashRefundPort.View payoutCashRefund(ActorContext a,OrderQuery q,String no,OfflineCashRefundPort.Payout c){operator(a);if(c==null)throw fail("INVALID_REQUEST");verifyEvidence(a,q,List.of(c.evidenceKey()),"REFUND_PROOF","commerce:mall:offline:refund:confirm");if(no.startsWith("late-")){adoptLate(a,q,no);var result=cashRefunds.payout(cashTarget(q),a.principalNo(),no,c);if("REFUNDED".equals(result.status())){refunds.recover(new RefundQuery(a.tenantNo(),q.orderNo(),no));payments.recover(new FulfillmentQuery(a.tenantNo(),q.orderNo()));}return result;}return cashRefunds.payout(cashTarget(q),a.principalNo(),no,c);}
+    public OfflineCashRefundPort.View recoverCashRefund(ActorContext a,OrderQuery q,String no){operator(a);locked(a,q,"commerce:mall:offline:refund:confirm",o->null);if(no.startsWith("late-")){adoptLate(a,q,no);var result=cashRefunds.recover(cashTarget(q),no);refunds.recover(new RefundQuery(a.tenantNo(),q.orderNo(),no));payments.recover(new FulfillmentQuery(a.tenantNo(),q.orderNo()));return result;}return cashRefunds.recover(cashTarget(q),no);}
+
     public DefaultOfflinePurchaseFacade(MallRepository orders,FulfillmentRepository operations,OfflineRepository offline,
             SubscriptionAccountRepository accounts,CommerceUnitOfWork uow,StoreDirectoryPort stores,ActorAuthorizationPort auth,
             DefaultMallFacade mall,PaymentFacade payments,RefundFacade refunds,OfflineCollectionPort collection,
@@ -253,6 +277,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         text(c.refundNo(),64);text(c.payeeReference(),128);text(c.bankReference(),128);
         verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"REFUND_PROOF","commerce:mall:offline:refund:confirm");
         uow.requireOutsideTransaction();
+        if(refunds==null)throw fail("REFUND_UNAVAILABLE");
         try {
             collection.payout(new OfflineCollectionPort.RefundPayout(actor.tenantNo(),c.order().orderNo(),c.refundNo(),
                     actor.principalNo(),c.actualAmount(),c.paidOutAt(),c.payeeReference(),c.bankReference(),c.evidenceKey(),clock.instant()));
@@ -362,6 +387,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             }));
     }
 
+    public void resume(ActorContext a,OrderQuery q){operator(a);locked(a,q,"commerce:mall:order:read",o->null);recover(new FulfillmentQuery(a.tenantNo(),q.orderNo()));}
     public Sweep recoverPending(String tenant,String after,int limit) {
         uow.requireOutsideTransaction();
         if(tenant==null || tenant.isBlank() || limit<1 || limit>100)throw fail("INVALID_REQUEST");

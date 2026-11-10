@@ -44,6 +44,11 @@ public interface ManagementScopeService {
     /** Create or reactivate the exact authorized resource capability with source-chain checks. */
     Map<String,Object> grant(Actor a,String m,GrantCommand c);
 
+    Map<String,Object> grant(Actor a,String m,GrantCommand c,String key);
+    Map<String,Object> revoke(Actor a,String m,String no,long revision,String reason,String key);
+    Map<String,Object> grantResult(Actor a,String m,String action,String key);
+    Set<String> permissions(String resourceType);
+
     /** Check original ownership or valid parent-grant delegation authority. */
     boolean canDelegate(Actor a,String m,String type,String no,String permission);
 

@@ -1,3 +1,4 @@
+import type {CashRefundApi} from "@/lib/offline-cash-types";
 // 覆盖范围：套餐商城（commerce）—— 目录、商城订单、门店权益来源、线下银行转账核款。
 //
 // 端点与字段逐字对应 docs/api/commerce-mall-openapi.json（task8-v1，已冻结）。
@@ -23,7 +24,7 @@ import type {
 /** 线下待审队列的游标：按 (orderNo, claimNo) 翻页 */
 export type OfflineClaimCursor = { afterOrderNo?: string; afterClaimNo?: string; limit?: number };
 
-export interface CommerceApi {
+export interface CommerceApi extends Pick<CashRefundApi, "mallCashReceipts"|"mallCashRefunds"|"requestMallCashRefund"|"payoutMallCashRefund"|"recoverMallCashRefund"> {
   // ── 目录（读 commerce:catalog:read；写 :edit；发布/停售/启用 :publish）──
   /** 目录总览。空目录也返回结构（各数组为空），不是 404 */
   mallCatalog(): Promise<MallCatalogOverview>;
@@ -121,6 +122,8 @@ export interface CommerceApi {
   confirmOfflinePayment(storeNo: string, orderNo: string, v: MallOfflineConfirmRequest): Promise<MallOfflineActionView>;
   /** 对账作废：之后来款仍入账并走退款 */
   voidOfflineOrder(storeNo: string, orderNo: string, v: MallOfflineVoidRequest): Promise<MallOfflineActionView>;
+  /** Recover the original offline order workflow without replaying bank/release commands. */
+  recoverOfflineOrder(storeNo: string, orderNo: string): Promise<{recovered:boolean}>;
   /** 线下退款实际出款确认 */
   confirmOfflineRefundPayout(storeNo: string, orderNo: string, refundNo: string, v: MallOfflinePayoutRequest): Promise<MallRefundView>;
 }

@@ -115,6 +115,91 @@ final class PlatformOfflineLedger {
             return new ManualReceipt(!resulting.equals(p.key())?"UNMATCHED":receipt.closureReference()!=null?"LATE":"MATCHED",receipt);
         } catch (DuplicateKeyException duplicate) { throw new IllegalArgumentException("OFFLINE_BANK_REFERENCE_CONFLICT",duplicate); }
     }
+    List<CashReceipt> receipts(String tenant, String order) {
+        if (tenant == null || tenant.isBlank() || order == null || order.isBlank()) return List.of();
+        return jdbc.query("SELECT * FROM stl_payment WHERE tenant_no=? AND order_no=? AND direction='PAY' AND status='SUCCESS' AND pay_scene IN ('PLATFORM_MALL','MALL_UNMATCHED') AND deleted=0 ORDER BY payment_no FOR UPDATE",
+                (rs,n) -> {
+                    var frozen = json.readValue(rs.getString("payment_request_json"), PlatformCollectionServiceImpl.Frozen.class);
+                    var r = frozen.request();
+                    String no = rs.getString("payment_no");
+                    require(tenant.equals(r.key().tenantNo()) && order.equals(r.key().orderNo())
+                            && no.equals(PlatformCollectionServiceImpl.paymentNo(r.key()))
+                            && frozen.business().equals(rs.getString("pay_scene"))
+                            && r.merchantNo().equals(rs.getString("entity_no"))
+                            && r.amountMinor() == rs.getLong("amount_minor") && r.amountMinor() > 0
+                            && r.currency().equals(rs.getString("currency"))
+                            && r.channel().equals(rs.getString("pay_channel"))
+                            && r.method().equals(rs.getString("pay_method"))
+                            && (r.offline() == null || r.offline().merchantNo().equals(r.merchantNo())),
+                            "OFFLINE_CASH_METADATA_MISMATCH");
+                    var refunded = refundAuthority(r, no);
+                    boolean closed = rs.getString("platform_close_fence") != null;
+                    return new CashReceipt(no,r.key().attemptNo(),r.merchantNo(),r.amountMinor(),r.currency(),
+                            refunded.minor(),refunded.pending(),UNMATCHED.equals(frozen.business()) || closed,closed);
+                },tenant,order);
+    }
+
+    private record RefundAuthority(long minor, boolean pending) {}
+    /** Only consumed, independently verified refund facts against this exact original are money. */
+    private RefundAuthority refundAuthority(Request original, String no) {
+        var facts = jdbc.queryForList("SELECT * FROM stl_payment WHERE tenant_no=? AND origin_payment_no=? AND direction='REFUND' AND deleted=0 FOR UPDATE",
+                original.key().tenantNo(),no);
+        long total = 0;
+        boolean pending = false;
+        for (var row : facts) {
+            if ("RELEASED".equals(row.get("refund_capacity_state"))) continue;
+            if (!"SUCCESS".equals(row.get("status"))) { pending = true; continue; }
+            try {
+                var frozen = json.readValue((String)row.get("refund_request_json"), PlatformRefundServiceImpl.Frozen.class);
+                var r = frozen.request();
+                long amount = ((Number)row.get("amount_minor")).longValue();
+                boolean valid = PlatformRefundServiceImpl.paymentNo(r.key()).equals(row.get("payment_no"))
+                        && original.channel().equals(frozen.channel())
+                        && "PLATFORM_MALL".equals(row.get("pay_scene")) && "PLATFORM_MALL".equals(frozen.business())
+                        && original.key().tenantNo().equals(r.key().tenantNo())
+                        && original.key().orderNo().equals(row.get("order_no"))
+                        && original.key().orderNo().equals(r.key().orderNo())
+                        && original.key().attemptNo().equals(r.originalAttemptNo()) && no.equals(r.originalPaymentNo())
+                        && original.merchantNo().equals(r.merchantNo()) && r.merchantNo().equals(row.get("entity_no"))
+                        && original.currency().equals(r.currency()) && r.currency().equals(row.get("currency"))
+                        && original.amountMinor() == r.originalPaidMinor() && amount == r.refundMinor() && amount > 0
+                        && "CONSUMED".equals(row.get("refund_capacity_state")) && "SUCCEEDED".equals(row.get("refund_query_state"))
+                        && row.get("refund_verified_minor") instanceof Number verified && verified.longValue() == amount
+                        && row.get("refund_verified_at") instanceof Number at && at.longValue() > 0
+                        && row.get("refund_verified_provider_no") instanceof String provider && !provider.isBlank();
+                if ("OFFLINE".equals(original.channel())) {
+                    var proof = json.readValue((String)row.get("platform_manual_proof"), ai.neargo.shop.pay.service.PlatformRefundService.OfflinePayout.class);
+                    valid &= r.key().equals(proof.key()) && amount == proof.actualMinor()
+                            && r.currency().equals(proof.currency()) && proof.paidOutAt() > 0
+                            && proof.confirmedAt() >= proof.paidOutAt()
+                            && proof.bankReference().equals(row.get("refund_verified_provider_no"))
+                            && proof.bankReference().equals(row.get("trade_no"))
+                            && row.get("refund_verified_at") instanceof Number verifiedAt && verifiedAt.longValue() == proof.paidOutAt()
+                            && row.get("succeeded_at") instanceof Number succeeded && succeeded.longValue() == proof.paidOutAt()
+                            && proof.evidenceReference() != null && !proof.evidenceReference().isBlank()
+                            && proof.payeeReference() != null && !proof.payeeReference().isBlank()
+                            && PlatformRefundServiceImpl.bankKey(r.key().tenantNo(),proof.bankReference()).equals(row.get("platform_bank_ref_key"));
+                } else {
+                    var proof = json.readValue((String)row.get("platform_receipt_json"), ai.neargo.shop.spi.pay.RefundQueryResult.class);
+                    valid &= proof.status() == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
+                            && amount == proof.amountMinor() && r.currency().equals(proof.currency())
+                            && row.get("out_trade_no").equals(proof.outRefundNo())
+                            && Objects.equals(frozen.originalExternal(),proof.originalOutTradeNo())
+                            && Objects.equals(frozen.originalProvider(),proof.originalTradeNo())
+                            && Objects.equals(r.originalPaidMinor(),proof.originalTotalMinor())
+                            && r.merchantNo().equals(proof.receiverNo())
+                            && Objects.equals(row.get("refund_verified_provider_no"),proof.providerNo())
+                            && proof.actualRefundAt() != null && proof.actualRefundAt() > 0
+                            && proof.observedAt() >= proof.actualRefundAt()
+                            && row.get("refund_verified_at") instanceof Number verifiedAt && verifiedAt.longValue() == proof.observedAt()
+                            && row.get("succeeded_at") instanceof Number succeeded && succeeded.longValue() == proof.actualRefundAt();
+                }
+                if (valid) total = Math.addExact(total, amount); else pending = true;
+            } catch (RuntimeException invalid) { pending = true; }
+        }
+        return new RefundAuthority(total,pending || total > original.amountMinor());
+    }
+
     Receipt reconcile(OfflineVoid v) {
         require(v!=null && v.key()!=null && v.reconciledAt()>0,"OFFLINE_RECONCILIATION_REQUIRED");
         text(v.operatorNo(),64);text(v.reconciliationReference(),128);text(v.reason(),1024);text(v.evidenceReference(),1024);
@@ -123,11 +208,14 @@ final class PlatformOfflineLedger {
             require(r!=null && r.request().offline()!=null,"OFFLINE_INTENT_REQUIRED");
             String prior=jdbc.queryForObject("SELECT platform_reconciliation_proof FROM stl_payment WHERE payment_no=?",String.class,r.paymentNo());
             if (prior!=null) {require(v.equals(json.readValue(prior,OfflineVoid.class)),"OFFLINE_RECONCILIATION_CONFLICT");return;}
-            require(!"SUCCESS".equals(r.state()),"OFFLINE_ALREADY_PAID");
             var unmatched=jdbc.queryForList("SELECT payment_no FROM stl_payment WHERE tenant_no=? AND order_no=? AND pay_scene=? AND direction='PAY' FOR UPDATE",String.class,v.key().tenantNo(),v.key().orderNo(),UNMATCHED);
             require(v.unmatchedDispositions().keySet().equals(new HashSet<>(unmatched)),"OFFLINE_UNMATCHED_DISPOSITION_REQUIRED");
             v.unmatchedDispositions().values().forEach(x->text(x,1024));
-            jdbc.update("UPDATE stl_payment SET status='CLOSED',platform_close_fence=?,platform_reconciliation_proof=?,closed_at=?,version=version+1 WHERE payment_no=?",
+            for (var cash : receipts(v.key().tenantNo(),v.key().orderNo())) {
+                require(!cash.pendingRefund() && cash.refundedMinor() == cash.amountMinor(),
+                        "OFFLINE_CASH_NOT_REFUNDED");
+            }
+            jdbc.update("UPDATE stl_payment SET status=CASE WHEN status='SUCCESS' THEN 'SUCCESS' ELSE 'CLOSED' END,platform_close_fence=?,platform_reconciliation_proof=?,closed_at=?,version=version+1 WHERE payment_no=?",
                     "OFFLINE_VOID:"+hash(v.reconciliationReference(),r.paymentNo()),json.writeValueAsString(v),v.reconciledAt(),r.paymentNo());
         });
         return owner.query(v.key());

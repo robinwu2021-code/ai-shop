@@ -8,6 +8,7 @@
 // 线下面板把**三类状态分开**：申报（买家说付了）、资金（平台确认到账没有）、权益（门店能不能用）。
 // 核款回 ACCEPTED 只表示受理：资金端还没确认，恢复任务会继续推进，界面不能写「已到账」。
 import * as React from "react";
+import {CashRefundsSection} from "@/components/offline/cash-refunds";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MallOfflineReviewAttempt, mallOfflineReceiver } from "@/lib/mall-offline-review";
 import { api } from "@/lib/api";
@@ -51,7 +52,7 @@ export function OrderDrawer({ c, storeNo, orderNo, onClose }: { c: MallCopy; sto
       {q.error && !d ? (
         <DataTable columns={[]} rows={undefined} error={showErr(q.error)} onRetry={() => q.refetch()} rowKey={() => ""} empty={c.ordersEmpty} />
       ) : q.isLoading || !d ? <p className="txt-caption text-muted-foreground">{c.loading}</p> : (
-        <OrderBody c={c} storeNo={storeNo} d={d} src={{ error: showErr(q.error), onRetry: () => q.refetch() }} />
+        <OrderBody key={`${storeNo}:${orderNo}`} c={c} storeNo={storeNo} d={d} src={{ error: showErr(q.error), onRetry: () => q.refetch() }} />
       )}
       </OfflineReviewLock.Provider>
     </Drawer>
@@ -406,6 +407,7 @@ function ClaimReceipts({ c, storeNo, orderNo, keys }: { c: MallCopy; storeNo: st
 
 function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: MallOrderDetailView }) {
   const allow = useCan();
+  const exceptionLock = React.useContext(OfflineReviewLock);
   const orderNo = d.summary!.order!.orderNo!;
   const refresh = useRefreshOrder(storeNo, orderNo);
   const { confirm, dialog } = useConfirm();
@@ -496,7 +498,6 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
       {!paid && !closed && ins.data && (
         <div className="mt-3 flex flex-wrap gap-2">
           {allow("commerce:mall:offline:confirm") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => { setClaimFor(null); setMode("confirm"); }}>{c.btnDirectConfirm}</Button>}
-          {allow("commerce:mall:offline:void") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => setMode("void")}>{c.btnVoid}</Button>}
         </div>
       )}
       {mode === "confirm" && ins.data && (
@@ -508,6 +509,7 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
         <VoidForm c={c} storeNo={storeNo} orderNo={orderNo} unmatched={unmatched}
           onDone={(r) => { setLastAction(r); setMode(null); refresh(); }} onCancel={() => setMode(null)} />
       )}
+      <CashRefundsSection key={`${storeNo}:${orderNo}`} kind="mall" scope={storeNo} orderNo={orderNo} canRelease={!paid&&!closed} onChanged={refresh} onLock={exceptionLock} />
       {dialog}
     </DrawerSection>
   );

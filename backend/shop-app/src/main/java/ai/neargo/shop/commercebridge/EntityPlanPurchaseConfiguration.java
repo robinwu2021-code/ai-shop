@@ -29,6 +29,8 @@ import tools.jackson.databind.ObjectMapper;
     havingValue = "true")
 public class EntityPlanPurchaseConfiguration {
   @Bean
+  EntityPlanRefundService entityPlanRefundService(EntityPlanPurchaseService plans,OfflineCashRefundPort refunds,OfflineCollectionPort cash){return new ai.neargo.shop.merchant.plan.impl.EntityPlanRefundServiceImpl(plans,refunds,cash);}
+  @Bean
   EntityPlanPurchaseService entityPlanPurchaseService(
       JdbcTemplate jdbc,
       @Qualifier("transactionManager") PlatformTransactionManager tx,
@@ -49,12 +51,7 @@ public class EntityPlanPurchaseConfiguration {
         media,
         policies,
         ownership,
-        entity ->
-            entities.selectOne(
-                    Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, entity)
-                        .last("limit 1"))
-                != null,
+        entity -> entities.financialVisibleEntity(entity)!=null,
         Clock.systemUTC(),
         profile);
   }

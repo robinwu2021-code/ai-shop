@@ -124,6 +124,14 @@ function findPlan(merchantNo: string) {
 }
 
 export const merchantMock: MerchantApi = {
+  entityCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  entityCashRefunds: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  requestEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  payoutEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  recoverEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  entityPlanAssistanceContext: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+  assistedEntityPlanPurchase: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
+
   // Financial acceptance is never synthesized in the demo backend.
   entityPlanOffers: async () => [], entityPlanPurchases: async () => [],
   saveEntityPlanOffer: async () => { throw new ApiError(10400,"Real backend required"); },

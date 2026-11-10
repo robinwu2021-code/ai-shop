@@ -47,9 +47,9 @@ class EntityPlanOfflineLedgerMysqlTest {
       db.execute(
           "CREATE TABLE mch_account(tenant_no varchar(32),mch_account_no varchar(64),entity_no"
               + " varchar(64),user_no varchar(64),is_owner boolean,status varchar(16),deleted"
-              + " int,PRIMARY KEY(tenant_no,mch_account_no))");
+              + " int,display_name varchar(64) DEFAULT 'Local owner',PRIMARY KEY(tenant_no,mch_account_no))");
       db.update(
-          "INSERT INTO mch_account"
+          "INSERT INTO mch_account(tenant_no,mch_account_no,entity_no,user_no,is_owner,status,deleted)"
               + " VALUES('MAIN','MA1','E1','U1',1,'ACTIVE',0),('MAIN','MA2','E2','U2',1,'ACTIVE',0),('MAIN','U1','E1','OTHER',0,'ACTIVE',0)");
       db.execute(
           "CREATE TABLE mch_entity(tenant_no varchar(32),entity_no varchar(64),owner_user_no"
@@ -58,7 +58,7 @@ class EntityPlanOfflineLedgerMysqlTest {
       db.execute(
           "CREATE TABLE mch_store(tenant_no varchar(32),store_no varchar(64),entity_no"
               + " varchar(64),status varchar(16),plan_suspended boolean,deleted int,version"
-              + " bigint,updated_at datetime,PRIMARY KEY(tenant_no,store_no))");
+              + " bigint,updated_at datetime,name varchar(64) DEFAULT 'Local store',PRIMARY KEY(tenant_no,store_no))");
       String ddl =
           Files.readString(Path.of("src/main/resources/db/migration/V150__merchant_plan.sql"));
       for (String table : List.of("sys_merchant_plan_def", "mch_entity_plan")) {
@@ -70,10 +70,12 @@ class EntityPlanOfflineLedgerMysqlTest {
               Path.of("src/main/resources/db/migration/V649__entity_plan_offline_purchase.sql"));
       for (String sql : ddl.replaceAll("(?m)^--.*$", "").split(";"))
         if (!sql.isBlank()) db.execute(sql);
+      ddl=Files.readString(Path.of("src/main/resources/db/migration/V650__entity_plan_purchase_creator.sql"));for(String sql:ddl.replaceAll("(?m)^--.*$","").split(";"))if(!sql.isBlank())db.execute(sql);
+      ddl=new org.springframework.core.io.ClassPathResource("db/commerce/migration/V13__offline_cash_refund.sql").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);for(String sql:ddl.replaceAll("(?m)^--.*$","").split(";"))if(!sql.isBlank())db.execute(sql);
       db.update(
           "INSERT INTO mch_entity(tenant_no,entity_no,owner_user_no,market,deleted)"
               + " VALUES('MAIN','E1','U1','TW',0)");
-      db.update("INSERT INTO mch_store VALUES('MAIN','S1','E1','ACTIVE',0,0,0,NOW())");
+      db.update("INSERT INTO mch_store(tenant_no,store_no,entity_no,status,plan_suspended,deleted,version,updated_at) VALUES('MAIN','S1','E1','ACTIVE',0,0,0,NOW())");
       db.update(
           "INSERT INTO"
               + " sys_merchant_plan_def(plan_code,name,store_quota,staff_quota,cross_store_stats,enabled,created_at,updated_at)"
@@ -105,14 +107,17 @@ class EntityPlanOfflineLedgerMysqlTest {
             }
           };
       Instant now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+      var refundLedger=f.refunds();
+      var platform=new ShopMallPlatformPaymentAdapter(f.base.service,refundLedger,ShopMallPayerBindings.UNAVAILABLE);
+      var collection=new ShopMallOfflineCollectionAdapter(f.base.service,refundLedger);
+      var cashRefunds=new ai.neargo.commerce.core.offline.DefaultOfflineCashRefundPort(new ai.neargo.commerce.persistence.JdbcCashRefundRepository(f.base.ds),new ai.neargo.commerce.persistence.JdbcCommerceUnitOfWork(f.base.ds,tx),collection,platform,Clock.fixed(now,ZoneOffset.UTC));
       var service =
           new EntityPlanPurchaseServiceImpl(
               db,
               tx,
               new ObjectMapper(),
-              new ShopMallPlatformPaymentAdapter(
-                  f.base.service, null, ShopMallPayerBindings.UNAVAILABLE),
-              new ShopMallOfflineCollectionAdapter(f.base.service),
+              platform,
+              collection,
               media,
               (t, c) -> Optional.of(new MoneyPolicy("twd", "TWD", 2, 100, 100)),
               ownership,
@@ -262,7 +267,7 @@ class EntityPlanOfflineLedgerMysqlTest {
               "SELECT payment_no FROM stl_payment WHERE status='SUCCESS'", String.class);
       var handoffs = new PlatformMoneyHandoffServiceImpl(f.base.ds, tx);
       var recovery =
-          new ShopMallPaymentRecovery(f.base.service, null, handoffs, null, null, service);
+          new ShopMallPaymentRecovery(f.base.service, refundLedger, handoffs, null, null, service,cashRefunds);
       assertTrue(recovery.recover(payment));
       assertEquals(
           "DONE",
@@ -341,6 +346,36 @@ class EntityPlanOfflineLedgerMysqlTest {
               "SELECT platform_handoff_state FROM stl_payment WHERE payment_no=?",
               String.class,
               latePayment));
+      var refundService=new ai.neargo.shop.merchant.plan.impl.EntityPlanRefundServiceImpl(service,cashRefunds,collection);
+      var lateRefund=refundService.request(ops,next.orderNo(),new OfflineCashRefundPort.Request("cash-LATE",latePayment,"late real funds return"));
+      assertEquals("AWAITING_PAYOUT",lateRefund.status());
+      String bankCheck=service.reserveEvidence(ops,next.orderNo(),"RECONCILIATION");files.add(bankCheck);
+      String bankCheckFinal=bankCheck;
+      assertThrows(RuntimeException.class,()->service.voidOrder(ops,next.orderNo(),new VoidCommand("UNSAFE-RELEASE","CHECK",bankCheckFinal,"not refunded yet")));
+      String outgoing=service.reserveEvidence(ops,next.orderNo(),"REFUND_PROOF");files.add(outgoing);
+      var out=new OfflineCashRefundPort.Payout("OUT-LATE",lateRefund.amount(),now,"verified original payer","OUT-BANK-LATE",outgoing);
+      assertEquals("REFUNDED",refundService.payout(ops,next.orderNo(),lateRefund.refundNo(),out).status());
+      assertEquals("REFUNDED",refundService.payout(ops,next.orderNo(),lateRefund.refundNo(),out).status());
+      assertEquals("REFUNDED",service.voidOrder(ops,next.orderNo(),new VoidCommand("RELEASE-LATE","CHECK-REFUND",bankCheck,"verified full return")).status());
+      assertEquals("E1",db.queryForObject("SELECT open_entity FROM mch_plan_purchase WHERE order_no=?",String.class,another.orderNo()));
+      String refundPayment=db.queryForObject("SELECT payment_no FROM stl_payment WHERE direction='REFUND'",String.class);assertTrue(recovery.recover(refundPayment));
+      assertEquals("DONE",db.queryForObject("SELECT platform_handoff_state FROM stl_payment WHERE payment_no=?",String.class,refundPayment));
+      assertFalse(json.writeValueAsString(refundService.refunds(owner,next.orderNo())).contains("verified original payer"));
+      proof=service.reserveEvidence(ops,another.orderNo());files.add(proof);service.voidOrder(ops,another.orderNo(),new VoidCommand("CLOSE3","BANK-CHECK3",proof,"no payment"));
+      var mismatchOrder=service.buy(owner,new Buy("BUY4","P30",1));
+      proof=service.reserveEvidence(owner,mismatchOrder.orderNo());files.add(proof);service.submit(owner,mismatchOrder.orderNo(),new Claim("C4",mismatchOrder.offer().price(),now,"IN4",proof));
+      proof=service.reserveEvidence(ops,mismatchOrder.orderNo());files.add(proof);
+      assertEquals("UNMATCHED",service.confirm(ops,mismatchOrder.orderNo(),new Confirm("IN-A4","C4",new Money("TWD",19800),now,"IN4",proof,"actual lesser bank receipt")).status());
+      String received=refundService.receipts(ops,mismatchOrder.orderNo()).getFirst().paymentNo();
+      var mismatchRefund=refundService.request(ops,mismatchOrder.orderNo(),new OfflineCashRefundPort.Request("cash-MISMATCH",received,"return exact actual funds"));assertEquals(19800,mismatchRefund.amount().minor());
+      proof=service.reserveEvidence(ops,mismatchOrder.orderNo(),"REFUND_PROOF");files.add(proof);assertEquals("REFUNDED",refundService.payout(ops,mismatchOrder.orderNo(),mismatchRefund.refundNo(),new OfflineCashRefundPort.Payout("OUT4",mismatchRefund.amount(),now,"verified original payer4","OUT4",proof)).status());
+      proof=service.reserveEvidence(ops,mismatchOrder.orderNo(),"RECONCILIATION");files.add(proof);assertEquals("REFUNDED",service.voidOrder(ops,mismatchOrder.orderNo(),new VoidCommand("RELEASE4","CHECK4",proof,"all verified returned")).status());
+      assertNull(db.queryForObject("SELECT open_entity FROM mch_plan_purchase WHERE order_no=?",String.class,mismatchOrder.orderNo()));
+      var assisted=service.assistedBuy(ops,new AssistedBuy("ASSISTED1","P30",1,"S1","MA1"));assertEquals("OPERATOR",assisted.purchaseSource());
+      assertEquals("AWAITING_PAYMENT",assisted.status());proof=service.reserveEvidence(ops,assisted.orderNo());files.add(proof);
+      assertEquals("APPLIED",service.confirm(ops,assisted.orderNo(),new Confirm("DIRECT-ASSIST",null,assisted.offer().price(),now,"ASSIST-BANK",proof,"actual bank receipt for assisted purchase")).status());
+      assertEquals(0,f.base.sends.get());
+
     }
   }
 }

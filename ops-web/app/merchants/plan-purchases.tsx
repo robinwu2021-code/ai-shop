@@ -2,6 +2,7 @@
 
 import {useState} from "react";
 import {useQuery} from "@tanstack/react-query";
+import {useFinancialLock} from "@/components/offline/financial-lock";
 import {api} from "@/lib/api";
 import {isApiError} from "@/lib/api/error";
 import {useCan} from "@/lib/use-can";
@@ -11,6 +12,8 @@ import type {EntityPlanOffer,EntityPlanPurchase,EntityPlanConfirm} from "@/lib/e
 import {Button} from "@/components/ui/button";
 import {Input,Select} from "@/components/ui/input";
 import {DrawerSection,Field} from "@/components/ui/drawer";
+import {CashRefundsSection} from "@/components/offline/cash-refunds";
+import {EntityAssistedPurchase} from "./plan-assisted-purchase";
 import {PLAN_PURCHASES_COPY} from "./plan-purchases-copy";
 
 export function EntityPlanPurchasesPanel({entityNo}:{entityNo:string}) {
@@ -21,7 +24,8 @@ export function EntityPlanPurchasesPanel({entityNo}:{entityNo:string}) {
   <Button variant="outline" onClick={()=>q.refetch()}>{c.refresh}</Button>
   {q.error&&<p role="alert">{c.error}</p>}
   {q.data?.length===0&&<p>{c.empty}</p>}
-  {q.data?.map(o=><Purchase key={o.orderNo} order={o} onChanged={()=>q.refetch()}/>)}
+  {allow("commerce:mall:assisted:purchase")&&allow("merchant:merchant:ban")&&<EntityAssistedPurchase key={entityNo} entityNo={entityNo} offers={offers.data??[]} onChanged={()=>q.refetch()}/>}
+  {q.data?.map(o=><Purchase key={`${entityNo}:${o.orderNo}`} order={o} onChanged={()=>q.refetch()}/>)}
   {allow("system:param:update")&&<OfferEditor entityNo={entityNo} offers={offers.data??[]} onSaved={()=>offers.refetch()}/>}
  </DrawerSection>;
 }
@@ -44,15 +48,17 @@ function Purchase({order:o,onChanged}:{order:EntityPlanPurchase;onChanged:()=>un
  const [busy,b]=useState(false),[error,e]=useState(""),[evidence,k]=useState("");
  const [f,set]=useState({amount:"",at:"",reference:"",reason:""});
  const [attempt,a]=useState<EntityPlanConfirm|null>(null),[absent,markAbsent]=useState(false);
+ useFinancialLock(`confirm:${o.entityNo}:${o.orderNo}`,!!attempt||busy);
  const claim=o.claims.find(x=>x.status==="SUBMITTED");
  const canConfirm=allow("commerce:mall:offline:confirm")&&allow("merchant:merchant:ban");
  const canVoid=allow("commerce:mall:offline:void")&&allow("merchant:merchant:ban");
+ const direct=o.purchaseSource==="OPERATOR"&&o.status==="AWAITING_PAYMENT";
  const closing=["PREPARED","AWAITING_PAYMENT","CANCELLATION_REQUESTED"].includes(o.status);
  async function perform(work:()=>Promise<unknown>){b(true);e("");try{await work();await onChanged();}catch{e(c.error);await onChanged();}finally{b(false);}}
  async function confirm(command?:EntityPlanConfirm){
   const minor=parseMajor(f.amount,o.offer.price.currency);
-  if(!command&&(!minor||!Number.isSafeInteger(Number(minor))||!f.at||!f.reason.trim()||!f.reference.trim()||!evidence||!claim))return e(c.noProof);
-  const cmd=command??{actionNo:crypto.randomUUID(),claimNo:claim!.claimNo,amount:{currency:o.offer.price.currency,minor:Number(minor)},paidAt:new Date(f.at).toISOString().replace(/\.\d{3}Z$/,"Z"),bankReference:f.reference.trim(),evidenceKey:evidence,reason:f.reason.trim()};
+  if(!command&&(!minor||!Number.isSafeInteger(Number(minor))||!f.at||!f.reason.trim()||!f.reference.trim()||!evidence||(!claim&&!direct)))return e(c.noProof);
+  const cmd=command??{actionNo:crypto.randomUUID(),claimNo:claim?.claimNo??null,amount:{currency:o.offer.price.currency,minor:Number(minor)},paidAt:new Date(f.at).toISOString().replace(/\.\d{3}Z$/,"Z"),bankReference:f.reference.trim(),evidenceKey:evidence,reason:f.reason.trim()};
   a(cmd);markAbsent(false);b(true);e("");try{const r=await api.confirmEntityPlanPurchase(o.entityNo,o.orderNo,cmd);if(r.status!=="ACCEPTED")a(null);await onChanged();}catch(err){
    if(isApiError(err)&&err.code===10400){
     try {const fresh=await api.entityPlanPurchase(o.entityNo,o.orderNo);if(!fresh.actions.some(x=>x.actionNo===cmd.actionNo)){a(null);e(c.noProof);}else e(c.unknown);}catch{e(c.unknown);}
@@ -61,19 +67,20 @@ function Purchase({order:o,onChanged}:{order:EntityPlanPurchase;onChanged:()=>un
  }
  async function lookup(){if(!attempt)return;await perform(async()=>{const fresh=await api.entityPlanPurchase(o.entityNo,o.orderNo),found=fresh.actions.find(x=>x.actionNo===attempt.actionNo);if(found&&found.status!=="ACCEPTED")a(null);markAbsent(!found);});}
  const status=(s:string)=>c[s as keyof typeof c]??s;
- return <section className="border rounded-card p-3 mt-3 space-y-2"><strong>{o.offer.name}</strong><p>{o.orderNo}</p><p>{o.offer.price.currency} {o.offer.price.minor/100} · {status(o.status)}</p>
+ return <section className="border rounded-card p-3 mt-3 space-y-2"><strong>{o.offer.name}</strong><p>{o.orderNo} · {o.purchaseSource==="OPERATOR"?c.operator:c.merchant}</p><p>{o.offer.price.currency} {o.offer.price.minor/100} · {status(o.status)}</p>
   {o.instructions&&<p>{Object.values(o.instructions.instructions).join(" · ")}</p>}
   {o.actions.map(x=><p key={x.actionNo}>{status(x.status)} · {x.reason}</p>)}
   {o.claims.map(x=><div key={x.claimNo}><p>{status(x.status)} · {x.declaration.amount.currency} {x.declaration.amount.minor/100} · {x.reviewNote}</p><Button variant="outline" onClick={()=>perform(async()=>{const r=await api.entityPlanEvidenceUrl(o.entityNo,o.orderNo,x.declaration.evidenceKey);window.open(r.url,"_blank","noopener,noreferrer");})}>{c.buyerProof}</Button></div>)}
   {attempt?<div><p role="status">{c.unknown}</p><Button disabled={busy} onClick={lookup}>{c.lookup}</Button>{absent&&<Button disabled={busy} onClick={()=>confirm(attempt)}>{c.retry}</Button>}</div>:null}
-  {((claim&&canConfirm)||(closing&&canVoid))&&!attempt&&<fieldset disabled={busy} className="space-y-2">
+  {((claim||direct)&&canConfirm)&&!attempt&&<fieldset disabled={busy} className="space-y-2">
    <Field label={c.price}><Input value={f.amount} onChange={v=>set({...f,amount:v.target.value})}/></Field><Field label={c.paidAt}><Input type="datetime-local" step="1" value={f.at} onChange={v=>set({...f,at:v.target.value})}/></Field><Field label={c.reference}><Input value={f.reference} onChange={v=>set({...f,reference:v.target.value})}/></Field><Field label={c.reason}><Input value={f.reason} onChange={v=>set({...f,reason:v.target.value})}/></Field>
-   <Field label={c.proof}><Input type="file" accept="image/png,image/jpeg" onChange={v=>{const file=v.target.files?.[0];if(file)void perform(async()=>{const r=await api.reserveEntityPlanEvidence(o.entityNo,o.orderNo);await api.uploadEntityPlanEvidence(o.entityNo,o.orderNo,r.assetKey,file);k(r.assetKey);});}}/></Field>
-   {evidence&&<span>✓</span>}{claim&&canConfirm&&<Button onClick={()=>confirm()}>{c.confirm}</Button>}{closing&&canVoid&&<Button disabled={!evidence||!f.reference.trim()||!f.reason.trim()} onClick={()=>perform(()=>api.cancelEntityPlanPurchase(o.entityNo,o.orderNo,{actionNo:crypto.randomUUID(),reference:f.reference.trim(),evidenceKey:evidence,reason:f.reason.trim()}))}>{c.cancel}</Button>}
+   <Field label={c.proof}><Input type="file" accept="image/png,image/jpeg" onChange={v=>{const file=v.target.files?.[0];if(file)void perform(async()=>{const r=await api.reserveEntityPlanEvidence(o.entityNo,o.orderNo,closing&&!claim&&!direct?"RECONCILIATION":"PLATFORM_RECEIPT");await api.uploadEntityPlanEvidence(o.entityNo,o.orderNo,r.assetKey,file);k(r.assetKey);});}}/></Field>
+   {evidence&&<span>✓</span>}{(claim||direct)&&canConfirm&&<Button onClick={()=>confirm()}>{c.confirm}</Button>}
   </fieldset>}
   {claim&&!attempt&&allow("commerce:mall:offline:review")&&allow("merchant:merchant:ban")&&<div><Field label={c.reason}><Input disabled={busy} value={f.reason} onChange={v=>set({...f,reason:v.target.value})}/></Field><Button disabled={busy||!f.reason.trim()} onClick={()=>perform(()=>api.declineEntityPlanPurchase(o.entityNo,o.orderNo,claim.claimNo,f.reason.trim()))}>{c.decline}</Button></div>}
   {((canConfirm&&["PREPARED","CONFIRMING"].includes(o.status))||(canVoid&&o.status==="CLOSING"))&&<Button disabled={busy} onClick={()=>perform(()=>api.recoverEntityPlanPurchase(o.entityNo,o.orderNo))}>{c.recover}</Button>}
 
+  <CashRefundsSection kind="entity" allowUnfulfilledMatchedCash={o.status==="REVIEW_REQUIRED"} scope={o.entityNo} orderNo={o.orderNo} canRelease={closing||["UNMATCHED","REVIEW_REQUIRED"].includes(o.status)} onChanged={onChanged}/>
   {error&&<p role="alert">{error}</p>}
  </section>;
 }

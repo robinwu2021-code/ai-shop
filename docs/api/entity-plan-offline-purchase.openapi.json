@@ -575,6 +575,713 @@
           }
         }
       }
+    },
+    "/biz/plan/purchases/{orderNo}/cash-refunds": {
+      "get": {
+        "operationId": "get_biz_plan_purchase_cash_refunds",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner and selected-store authorization; buyer-safe progress only.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CashRefundView"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "biz:store:admin"
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/assistance-context": {
+      "get": {
+        "operationId": "get_plan_assistance_context",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AssistanceContext"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "commerce:mall:assisted:purchase + merchant:merchant:ban"
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/assisted": {
+      "post": {
+        "operationId": "create_plan_assisted_purchase",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "commerce:mall:assisted:purchase + merchant:merchant:ban",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistedBuy"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/cash-receipts": {
+      "get": {
+        "operationId": "get_plan_cash_receipts",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CashReceipt"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:read"
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/cash-refunds": {
+      "get": {
+        "operationId": "get_plan_cash_refunds",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CashRefundView"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:read"
+      },
+      "post": {
+        "operationId": "request_plan_cash_refund",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CashRefundView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:ban + commerce:mall:offline:refund:confirm",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashRefundRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/cash-refunds/{refundNo}/payout": {
+      "post": {
+        "operationId": "payout_plan_cash_refund",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refundNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CashRefundView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:ban + commerce:mall:offline:refund:confirm",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashRefundPayout"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/cash-refunds/{refundNo}/recover": {
+      "post": {
+        "operationId": "recover_plan_cash_refund",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refundNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CashRefundView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:ban + commerce:mall:offline:refund:confirm"
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/recover": {
+      "post": {
+        "operationId": "recover_plan_purchase",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:ban + (commerce:mall:offline:confirm or commerce:mall:offline:void or commerce:mall:offline:refund:confirm)"
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/cancel": {
+      "post": {
+        "operationId": "close_plan_purchase",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:ban + commerce:mall:offline:void",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/merchant-plan-purchases/{entityNo}/{orderNo}/evidence": {
+      "post": {
+        "operationId": "reserve_plan_operator_evidence",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Operator session and merchant data scope. Accepted commands are not proof of money or release of occupancy.",
+        "parameters": [
+          {
+            "name": "entityNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PLATFORM_RECEIPT",
+                "REFUND_PROOF",
+                "RECONCILIATION"
+              ],
+              "default": "PLATFORM_RECEIPT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assetKey": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "assetKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-required-capability": "merchant:merchant:ban + (commerce:mall:offline:confirm or commerce:mall:offline:void or commerce:mall:offline:refund:confirm)"
+      }
     }
   },
   "components": {
@@ -827,7 +1534,8 @@
               "REVIEW_REQUIRED",
               "CANCELLATION_REQUESTED",
               "CLOSING",
-              "CANCELLED"
+              "CANCELLED",
+              "REFUNDED"
             ]
           },
           "dueAt": {
@@ -855,6 +1563,13 @@
             "items": {
               "$ref": "#/components/schemas/ActionView"
             }
+          },
+          "purchaseSource": {
+            "type": "string",
+            "enum": [
+              "MERCHANT",
+              "OPERATOR"
+            ]
           }
         },
         "required": [
@@ -867,7 +1582,282 @@
           "dueAt",
           "instructions",
           "claims",
+          "actions",
+          "purchaseSource"
+        ]
+      },
+      "CashReceipt": {
+        "type": "object",
+        "properties": {
+          "paymentNo": {
+            "type": "string"
+          },
+          "paymentAttemptNo": {
+            "type": "string"
+          },
+          "platformMerchantNo": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "refundedMinor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingRefund": {
+            "type": "boolean"
+          },
+          "exceptionCash": {
+            "type": "boolean"
+          },
+          "closed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paymentNo",
+          "paymentAttemptNo",
+          "platformMerchantNo",
+          "amount",
+          "refundedMinor",
+          "pendingRefund",
+          "exceptionCash",
+          "closed"
+        ],
+        "description": "Verified real cash from the payment ledger, independent of order quote. Pending refunds reserve refundable capacity."
+      },
+      "CashRefundRequest": {
+        "type": "object",
+        "properties": {
+          "refundNo": {
+            "type": "string",
+            "pattern": "^cash-[A-Za-z0-9_-]{1,59}$"
+          },
+          "paymentNo": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "refundNo",
+          "paymentNo",
+          "reason"
+        ],
+        "description": "Refund the full remaining balance of this verified original payment. Amount, currency and original payment identity are frozen by the server."
+      },
+      "CashRefundPayout": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "actualAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "paidOutAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Whole-second actual outgoing transfer time, no later than now."
+          },
+          "payeeReference": {
+            "type": "string"
+          },
+          "bankReference": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionNo",
+          "actualAmount",
+          "paidOutAt",
+          "payeeReference",
+          "bankReference",
+          "evidenceKey"
+        ],
+        "description": "Record an actual bank transfer; does not execute one. Requires stored private REFUND_PROOF. Replay the same actionNo with the exact original command; correct explicit rejection using a new actionNo."
+      },
+      "CashRefundAction": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "rejection": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "actionNo",
+          "status",
+          "rejection"
+        ]
+      },
+      "CashRefundView": {
+        "type": "object",
+        "properties": {
+          "refundNo": {
+            "type": "string"
+          },
+          "paymentNo": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PREPARED",
+              "AWAITING_PAYOUT",
+              "PAYOUT_ACCEPTED",
+              "REFUNDED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "rejection": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashRefundAction"
+            }
+          }
+        },
+        "required": [
+          "refundNo",
+          "paymentNo",
+          "amount",
+          "status",
+          "reason",
+          "rejection",
           "actions"
+        ],
+        "description": "Buyer-safe progress only; excludes platform proof, payee identifiers and bank references. REFUNDED requires a verified complete refund fact. HTTP success alone is not refund completion."
+      },
+      "AssistedBuy": {
+        "type": "object",
+        "properties": {
+          "requestNo": {
+            "type": "string"
+          },
+          "offerNo": {
+            "type": "string"
+          },
+          "offerVersion": {
+            "type": "integer"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "ownerAccountNo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestNo",
+          "offerNo",
+          "offerVersion",
+          "storeNo",
+          "ownerAccountNo"
+        ]
+      },
+      "AssistanceOwner": {
+        "type": "object",
+        "properties": {
+          "accountNo": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "subjectKind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountNo",
+          "displayName",
+          "subjectKind"
+        ]
+      },
+      "AssistanceStore": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "storeNo",
+          "name"
+        ]
+      },
+      "AssistanceContext": {
+        "type": "object",
+        "properties": {
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistanceOwner"
+            }
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistanceStore"
+            }
+          }
+        },
+        "required": [
+          "owners",
+          "stores"
+        ]
+      },
+      "VoidCommand": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionNo",
+          "reference",
+          "evidenceKey",
+          "reason"
         ]
       }
     }
