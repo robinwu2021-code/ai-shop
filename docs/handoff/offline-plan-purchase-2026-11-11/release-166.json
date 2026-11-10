@@ -1,11 +1,11 @@
 {
   "date": "2026-11-11",
   "target": "166",
-  "status": "DEPLOYING",
+  "status": "PASS",
   "implementationCommit": "9928917bb",
   "hostReleaseBranch": "codex/offline-plan-closure-20261111",
   "appCommit": "e1c501c",
-  "jarSha256": "fc909bb181069286d4d4e6526b74030f657fc08225d9fb00b93b46ffcce07f39",
+  "jarSha256": "998fcca4dbc45e64a64649f31ee00f5d06c41df1c9e6d9a6aa4f57a89278af25",
   "verification": {
     "backendRelevant": {
       "tests": 80,
@@ -21,7 +21,24 @@
       "tests": 38,
       "failures": 0
     },
-    "targetedReview": "Both original P2 fixes accepted; final repeated-rejection regression passed."
+    "targetedReview": "Both original P2 fixes accepted; final repeated-rejection regression passed.",
+    "finalHostRecheck": {
+      "tests": 16,
+      "failures": 0,
+      "errors": 0
+    },
+    "nativeEndpointGuard": {
+      "tests": 3,
+      "failures": 0
+    },
+    "relatedMetadata": {
+      "tests": 40,
+      "failures": 0
+    },
+    "generatedDocs": {
+      "generators": 26,
+      "status": "PASS"
+    }
   },
   "migration": {
     "rehearsal": {
@@ -37,7 +54,21 @@
       "commerceVersion": "13"
     },
     "firstAttempt": "Runtime DML-only account could not create V649 tables; original API restored UP. No new tables were present. Flyway validated only failed V649, repaired that failed record, then applied unchanged resources with a scoped temporary migration account.",
-    "runtimeDdlGranted": false
+    "runtimeDdlGranted": false,
+    "cleanup": {
+      "temporaryUserCount": 0,
+      "rehearsalSchemaCount": 0,
+      "credentialFilesRemoved": true,
+      "runtimePrivileges": [
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE"
+      ],
+      "failedHostMigrations": 0,
+      "newTables": 6,
+      "creatorColumns": 2
+    }
   },
   "backups": {
     "runtime": "/data0/app/ai-shop/releases/offline-plan-20261111-9928917bb",
@@ -54,5 +85,53 @@
     "storedValueMigrationPerformed": false,
     "realBankConfigured": false,
     "realBankTransferTested": false
+  },
+  "finalBackendSourceCommit": "4f5dee116",
+  "finalRuntimeBackup": "/data0/app/ai-shop/releases/offline-plan-20261111-final-4f5dee116",
+  "runtime": {
+    "api": {
+      "port": 18082,
+      "health": "UP",
+      "jarSha256": "998fcca4dbc45e64a64649f31ee00f5d06c41df1c9e6d9a6aa4f57a89278af25"
+    },
+    "ops": {
+      "port": 18081,
+      "health": "UP",
+      "jarSha256": "998fcca4dbc45e64a64649f31ee00f5d06c41df1c9e6d9a6aa4f57a89278af25"
+    },
+    "deployLockReleased": true
+  },
+  "web": {
+    "path": "/ops-shop/",
+    "apiBase": "/ops-shop",
+    "mode": "REAL_BACKEND",
+    "release": "/data/www/ai-shop-ops/releases/offline-plan-20261111-final",
+    "previous": "/data/www/ai-shop-ops/releases/20261107-1808",
+    "sourceCommit": "9928917bb",
+    "indexSha256": "61805d719bd9575d0b09d3d4ddcc522420adb0a097e1d06809dbb10406c4c158",
+    "archiveSha256": "1b73c062f69f674cecbf70e882ae998cbbef325a42206163fd0ad2ee70c33175",
+    "indexAssetsHttp200": 20,
+    "pagesHttp200": [
+      "/ops-shop/login/",
+      "/ops-shop/merchants/",
+      "/ops-shop/mall/"
+    ],
+    "unauthenticatedProxiesHttp401": [
+      "/ops-shop/ops/merchant-plan-purchases/NO-SUCH-ENTITY/assistance-context",
+      "/ops-shop/ops/biz-mall/offline/orders/NO-SUCH-ORDER/cash-refunds?storeNo=NO-SUCH-STORE",
+      "/shop-api/biz/plan/purchases/offers"
+    ],
+    "publicMasterDataHttp200": "/ops-shop/common/master-data",
+    "nginxExactPublicAlias": {
+      "from": "/ops-shop/common/master-data",
+      "to": "http://127.0.0.1:18082/common/master-data",
+      "configurationTested": true,
+      "backup": "/data0/app/ai-shop/releases/offline-plan-20261111-9928917bb/nginx.before.conf"
+    },
+    "authenticatedRealBankBusinessAcceptance": false
+  },
+  "remotePublication": {
+    "app": "PUSHED: codex/offline-plan-closure-20261111 at e1c501c",
+    "host": "Local commits retained; pre-push shared repository guards have inherited failures. No hook or baseline bypass."
   }
 }
