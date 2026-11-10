@@ -129,6 +129,12 @@ class EntitlementServiceUseHttpFlowTest {
         var completed = postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("data");
         assertThat(completed.path("status").asString()).isEqualTo("COMMITTED");
         assertThat(postJson(mvc, "/biz/entitlement-uses", merchant, submit, id()).path("data")).isEqualTo(completed);
+        var cancelled = postJson(mvc, "/biz/entitlement-uses/" + operation + "/cancel", merchant,
+                Map.of("reason", "Cancel committed service use"), id());
+        assertThat(cancelled.path("code").asInt()).isEqualTo(10409);
+        var original = getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data");
+        assertThat(original.path("status").asString()).isEqualTo("COMMITTED");
+        assertThat(original.path("usageNo").asString()).isEqualTo(completed.path("usageNo").asString());
         var detail = getJson(mvc, "/mp/entitlement-usage/" + completed.path("usageNo").asString(), buyer).path("data");
         assertThat(detail.path("usage").path("units").asInt()).isEqualTo(1);
         assertThat(detail.path("remainingUnits").asInt()).isEqualTo(29);
