@@ -8,9 +8,9 @@
 //   · 谁已经降级 → 去回访（DOWNGRADED，顺便看降级后掉了多少单，那是定价的依据）
 //
 // 一期**没有在线支付**：商家点「升级」→ 联系平台 → 运营在这里授予。
-// 所以这一页是「收款链路」的替代品，不是它的前端 —— 页面上必须把这句话写出来，
-// 否则运营会去找那个不存在的「收款记录」。
+// 线下购买单独核款；原手工授予仍用于赠送和协议处理。
 import { useEffect, useState } from "react";
+import { EntityPlanPurchasesPanel } from "./plan-purchases";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -234,6 +234,8 @@ function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
           <Field label={c.plDowngradedAt}>{day(row.downgradedAt)}</Field>
         )}
       </DrawerSection>
+
+      <EntityPlanPurchasesPanel key={row.merchantNo} entityNo={row.merchantNo} />
 
       <DrawerSection title={c.plSecGrant} desc={c.plGrantMonthsHint}>
         {canGrant ? (

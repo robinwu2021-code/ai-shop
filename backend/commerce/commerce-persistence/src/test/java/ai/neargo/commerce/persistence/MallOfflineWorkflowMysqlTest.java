@@ -54,9 +54,17 @@ class MallOfflineWorkflowMysqlTest {
                     "platform","real-ref",evidence.assetKey(),false,"bank checked");
             assertThrows(IllegalStateException.class,()->api.confirm(f.mall().c.ops,command));
             assertEquals("ACCEPTED",db.jdbc.queryForObject("SELECT status FROM mall_offline_action",String.class));
+            assertEquals("ACCEPTED",api.action(f.mall().c.ops,q,"review").orElseThrow().status());
+            assertTrue(api.action(f.mall().c.ops,q,"absent").isEmpty());
+            assertEquals("FORBIDDEN",assertThrows(MallException.class,()->api.action(MallOrderConcurrencyMysqlTest.BUYER,q,"review")).code());
+            var wrongTenant=new ActorContext("other",SubjectKind.OPERATOR,"operator-a","trusted");
+            assertEquals("FORBIDDEN",assertThrows(MallException.class,()->api.action(wrongTenant,q,"review")).code());
+            var wrongOrder=new OrderQuery(q.store(),"another-order");
+            assertEquals("NOT_FOUND",assertThrows(MallException.class,()->api.action(f.mall().c.ops,wrongOrder,"review")).code());
             fail.set(false);
             api.recover(new FulfillmentQuery("tenant-a",f.order().orderNo()));
             assertEquals("UNMATCHED",db.jdbc.queryForObject("SELECT status FROM mall_offline_action",String.class));
+            assertEquals(new OfflinePurchaseFacade.ActionView("review","UNMATCHED","actual-ledger-row"),api.action(f.mall().c.ops,q,"review").orElseThrow());
             assertEquals(0,db.jdbc.queryForObject("SELECT COUNT(*) FROM mall_fulfillment_task WHERE task_type='DIGITAL'",Integer.class));
             assertEquals(f.order().orderNo(),db.jdbc.queryForObject("SELECT pending_change_order_no FROM mch_subscription_account",String.class));
         }
@@ -265,6 +273,7 @@ class MallOfflineWorkflowMysqlTest {
             };
             var api=service(db,f,money);
             var q=new OrderQuery(MallOrderConcurrencyMysqlTest.STORE,f.order().orderNo());
+            assertEquals("platform",api.instructions(MallOrderConcurrencyMysqlTest.BUYER,q).platformMerchantNo());
             var instructions=api.instructions(MallOrderConcurrencyMysqlTest.BUYER,q).instructions();
             assertEquals(f.order().orderNo().replaceAll("[^A-Za-z0-9]",""),instructions.get("transferRemark"));
             assertEquals("test-only",instructions.get("bank"));

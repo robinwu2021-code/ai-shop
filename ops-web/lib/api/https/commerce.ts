@@ -79,6 +79,8 @@ export const commerceHttp: CommerceApi = {
     client.get<MallOfflineSignedRead>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/evidence/url`, { storeNo, assetKey }),
   declineOfflineClaim: (storeNo, orderNo, claimNo, reason) =>
     client.post<MallOfflineClaimView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/claims/${seg(claimNo)}/decline`, { reason }, { storeNo }),
+  offlineAction: (storeNo, orderNo, actionNo) =>
+    client.get<MallOfflineActionView | null>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/actions/${seg(actionNo)}`, { storeNo }),
   confirmOfflinePayment: (storeNo, orderNo, v) =>
     client.post<MallOfflineActionView>(`/ops/biz-mall/offline/orders/${seg(orderNo)}/confirmations`, v, { storeNo }),
   voidOfflineOrder: (storeNo, orderNo, v) =>

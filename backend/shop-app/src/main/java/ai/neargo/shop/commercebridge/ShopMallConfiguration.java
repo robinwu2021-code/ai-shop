@@ -173,6 +173,7 @@ class ShopMallConfiguration {
             PlatformCollectionService collection,
             ObjectProvider<PlatformRefundService> refunds,
             PlatformMoneyHandoffService handoffs,
+            ObjectProvider<ai.neargo.shop.merchant.plan.EntityPlanPurchaseService> entityPlans,
             PaymentFacade payments,
             ObjectProvider<RefundFacade> coreRefunds) {
         return new ShopMallPaymentRecovery(
@@ -180,6 +181,6 @@ class ShopMallConfiguration {
                 refunds.getIfAvailable(),
                 handoffs,
                 payments,
-                coreRefunds.getIfAvailable());
+                coreRefunds.getIfAvailable(),entityPlans.getIfAvailable());
     }
 }

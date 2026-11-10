@@ -502,7 +502,7 @@ const zh = {
   stToastRestored: "已解除强制下线，货架恢复",
   stReadOnlyWhat: "解除门店强制下线",
   // ── 增值包与门店额度（P-11.2.2~11.2.6）──
-  plNotice: "一期没有在线支付：商家点「升级」→ 联系平台 → 运营在这里授予。到期后先进 7 天宽限期（能力全保留），宽限期满才降级压店。",
+  plNotice: "支持商家线下付款、运营核款后开通。手工授予用于赠送或协议处理，不能替代到账确认。到期后保留 7 天宽限期。",
   plSearchPh: "商家名 / 商家号",
   plFilterAll: "全部订阅",
   plFilterExpiring: "7 天内到期",
@@ -1170,7 +1170,7 @@ const en: typeof zh = {
   stToastRestored: "Forced offline lifted; the shelf is back",
   stReadOnlyWhat: "lifting a forced store offline",
   // ── Plans and store quota ──
-  plNotice: "No online payment in phase one: the merchant taps Upgrade, contacts the platform, and ops grants it here. On expiry they get a 7-day grace period with every capability intact; only after that do stores get pushed read-only.",
+  plNotice: "Merchants can submit offline payments for operator verification and activation. Manual grants are for gifts or agreements, not receipt confirmation. Expired plans retain a 7-day grace period.",
   plSearchPh: "Merchant name / no.",
   plFilterAll: "All subscriptions",
   plFilterExpiring: "Expiring within 7 days",

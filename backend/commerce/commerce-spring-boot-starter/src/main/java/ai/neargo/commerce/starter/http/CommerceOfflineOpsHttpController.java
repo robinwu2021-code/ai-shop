@@ -114,6 +114,15 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
         return ok(offline.claims(actor, opsOrder(actor, store, order)));
     }
 
+    @GetMapping("/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}")
+    public Object action(
+            @PathVariable("orderNo") String order,
+            @PathVariable("actionNo") String action,
+            @RequestParam("storeNo") String store) {
+        var actor = context.operator("commerce:mall:order:read");
+        return ok(offline.action(actor, opsOrder(actor, store, order), code(action)).orElse(null));
+    }
+
     public record EvidenceRequest(String purpose) {}
 
     @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/evidence")

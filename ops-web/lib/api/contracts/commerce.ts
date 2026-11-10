@@ -116,6 +116,8 @@ export interface CommerceApi {
   /** 拒绝申报：不等于无款，不释放占用 */
   declineOfflineClaim(storeNo: string, orderNo: string, claimNo: string, reason: string): Promise<MallOfflineClaimView>;
   /** 核款：录入实际到账；金额不符 → UNMATCHED，不发权益 */
+  /** Read the durable original outcome without replaying the command. */
+  offlineAction(storeNo: string, orderNo: string, actionNo: string): Promise<MallOfflineActionView | null>;
   confirmOfflinePayment(storeNo: string, orderNo: string, v: MallOfflineConfirmRequest): Promise<MallOfflineActionView>;
   /** 对账作废：之后来款仍入账并走退款 */
   voidOfflineOrder(storeNo: string, orderNo: string, v: MallOfflineVoidRequest): Promise<MallOfflineActionView>;

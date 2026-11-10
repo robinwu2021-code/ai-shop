@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "Standalone ai-shop-bapp Flutter implements these routes; repository Vue b-app is not the consumer. Code/local integration delivered,166 deployment and real bank setup deferred.",
+  "plan": "docs/technical/TDD-主体额度包线下购买-2026-11-11.md",
+  "contract": "docs/api/entity-plan-offline-purchase.openapi.json",
+  "consumerRepository": "ai-shop-bapp",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/plan/purchases/offers"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/plan/purchases"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/plan/purchases"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/plan/purchases/{orderNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/plan/purchases/{orderNo}/claims"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/plan/purchases/{orderNo}/cancel"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/plan/purchases/{orderNo}/evidence"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/plan/purchases/{orderNo}/evidence/content"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/plan/purchases/{orderNo}/evidence/url"
+    }
+  ]
+}

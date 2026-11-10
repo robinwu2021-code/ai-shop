@@ -1,0 +1,875 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Entity quota offline purchase for separate Flutter App",
+    "version": "2026-11-11",
+    "description": "Implemented and locally verified, not deployed; not a store mall plan."
+  },
+  "paths": {
+    "/biz/plan/purchases/offers": {
+      "get": {
+        "operationId": "get_biz_plan_purchases_offers",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Offer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases": {
+      "get": {
+        "operationId": "get_biz_plan_purchases",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrderView"
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_biz_plan_purchases",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Buy"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases/{orderNo}": {
+      "get": {
+        "operationId": "get_biz_plan_purchases_orderNo",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases/{orderNo}/claims": {
+      "post": {
+        "operationId": "post_biz_plan_purchases_orderNo_claims",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ClaimView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Claim"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases/{orderNo}/cancel": {
+      "post": {
+        "operationId": "post_biz_plan_purchases_orderNo_cancel",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderView"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases/{orderNo}/evidence": {
+      "post": {
+        "operationId": "post_biz_plan_purchases_orderNo_evidence",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assetKey": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "assetKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases/{orderNo}/evidence/content": {
+      "post": {
+        "operationId": "post_biz_plan_purchases_orderNo_evidence_content",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assetKey": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "assetKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/plan/purchases/{orderNo}/evidence/url": {
+      "get": {
+        "operationId": "get_biz_plan_purchases_orderNo_evidence_url",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "description": "Owner only, biz:store:admin and frozen selected store context. Check envelope.code; claim is not money.",
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business envelope; code=0 is transport business success, never infer activation except status APPLIED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Money": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "enum": [
+              "TWD",
+              "CNY"
+            ]
+          },
+          "minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Scale-2 minor units; TWD whole-unit cash quantum is100"
+          }
+        },
+        "required": [
+          "currency",
+          "minor"
+        ]
+      },
+      "Buy": {
+        "type": "object",
+        "properties": {
+          "requestNo": {
+            "type": "string"
+          },
+          "offerNo": {
+            "type": "string"
+          },
+          "offerVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "requestNo",
+          "offerNo",
+          "offerVersion"
+        ]
+      },
+      "Offer": {
+        "type": "object",
+        "properties": {
+          "offerNo": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "planCode": {
+            "enum": [
+              "PRO",
+              "CHAIN"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "storeQuota": {
+            "type": "integer"
+          },
+          "staffQuota": {
+            "type": "integer"
+          },
+          "crossStoreStats": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offerNo",
+          "version",
+          "planCode",
+          "name",
+          "days",
+          "price",
+          "storeQuota",
+          "staffQuota",
+          "crossStoreStats",
+          "enabled"
+        ]
+      },
+      "Claim": {
+        "type": "object",
+        "properties": {
+          "claimNo": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bankReference": {
+            "type": "string"
+          },
+          "evidenceKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claimNo",
+          "amount",
+          "paidAt",
+          "bankReference",
+          "evidenceKey"
+        ]
+      },
+      "ClaimView": {
+        "type": "object",
+        "properties": {
+          "claimNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "declaration": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "claimNo",
+          "status",
+          "declaration",
+          "reviewNote"
+        ]
+      },
+      "ActionView": {
+        "type": "object",
+        "properties": {
+          "actionNo": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "paymentNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionNo",
+          "status",
+          "paymentNo",
+          "reason"
+        ]
+      },
+      "Instructions": {
+        "type": "object",
+        "properties": {
+          "profileNo": {
+            "type": "string"
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "platformMerchantNo": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "receivingAccountKey": {
+            "type": "string"
+          },
+          "paymentWindowVersion": {
+            "type": "string"
+          },
+          "paymentWindowMs": {
+            "type": "integer"
+          },
+          "instructions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "profileNo",
+          "profileVersion",
+          "platformMerchantNo",
+          "currency",
+          "receivingAccountKey",
+          "paymentWindowVersion",
+          "paymentWindowMs",
+          "instructions"
+        ]
+      },
+      "OrderView": {
+        "type": "object",
+        "properties": {
+          "orderNo": {
+            "type": "string"
+          },
+          "requestNo": {
+            "type": "string"
+          },
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/Offer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PREPARED",
+              "AWAITING_PAYMENT",
+              "SUBMITTED",
+              "CONFIRMING",
+              "APPLIED",
+              "UNMATCHED",
+              "REVIEW_REQUIRED",
+              "CANCELLATION_REQUESTED",
+              "CLOSING",
+              "CANCELLED"
+            ]
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instructions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClaimView"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionView"
+            }
+          }
+        },
+        "required": [
+          "orderNo",
+          "requestNo",
+          "entityNo",
+          "storeNo",
+          "offer",
+          "status",
+          "dueAt",
+          "instructions",
+          "claims",
+          "actions"
+        ]
+      }
+    }
+  }
+}

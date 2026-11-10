@@ -31,6 +31,8 @@ public class DataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
 
+        registry.register("mch_plan_purchase", Map.of(ScopeDim.SELF,"buyer_no",ScopeDim.MERCHANT,"entity_no"));
+
         registry.register("ord_industry_order_source", Map.of(
                 ScopeDim.SELF, "buyer_no", ScopeDim.MERCHANT, "entity_no"));
         registry.register("ent_code_token", Map.of(

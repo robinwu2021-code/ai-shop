@@ -190,7 +190,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         if(!issued)throw fail("OFFLINE_INSTRUCTIONS_NOT_ISSUED");
         boolean cash=o.view().payable().minor()>0;
         return new InstructionsView(o.orderNo(),o.view().payable(),java.time.Instant.ofEpochMilli(o.paymentDueAt()),
-                terms.profileNo(),terms.profileVersion(),cash?withRemark(terms.instructions(),o.orderNo()):Map.of());
+                terms.profileNo(),terms.profileVersion(),terms.platformMerchantNo(),cash?withRemark(terms.instructions(),o.orderNo()):Map.of());
     }
     /** Ops confirms a transfer by locating the order; the buyer puts its number on the transfer. */
     static Map<String,String> withRemark(Map<String,String> instructions,String orderNo) {
@@ -262,6 +262,13 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         }
         if(refunds==null)throw fail("REFUND_UNAVAILABLE");
         return refunds.recover(new RefundQuery(actor.tenantNo(),c.order().orderNo(),c.refundNo()));
+    }
+
+    public Optional<ActionView> action(ActorContext actor, OrderQuery order, String actionNo) {
+        operator(actor);
+        text(actionNo,64);
+        return locked(actor,order,"commerce:mall:order:read",o ->
+                offline.action(actor.tenantNo(),o.orderNo(),actionNo).map(OfflineRepository.Action::view));
     }
 
     public ActionView confirm(ActorContext actor,ReviewCommand c) {

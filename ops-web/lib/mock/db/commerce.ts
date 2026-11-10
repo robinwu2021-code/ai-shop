@@ -74,7 +74,7 @@ export interface MallRefundRow extends MallRefundView {
 }
 
 export interface OfflineState {
-  instructions: (MallOfflineInstructionsView & { platformMerchantNo: string }) | null;
+  instructions: MallOfflineInstructionsView | null;
   claims: MallOfflineClaimView[];
   /** assetKey → 用途与内容（url 为空表示只预留未上传） */
   evidence: Record<string, { purpose: string; url: string | null }>;
@@ -950,7 +950,7 @@ export function instructionsOf(storeNo: string, orderNo: string) {
 }
 
 export const publicInstructions = (i: NonNullable<OfflineState["instructions"]>): MallOfflineInstructionsView =>
-  ({ orderNo: i.orderNo, payable: i.payable, paymentDueAt: i.paymentDueAt, profileNo: i.profileNo, profileVersion: i.profileVersion, instructions: i.instructions });
+  ({ orderNo: i.orderNo, payable: i.payable, paymentDueAt: i.paymentDueAt, profileNo: i.profileNo, profileVersion: i.profileVersion, platformMerchantNo: i.platformMerchantNo, instructions: i.instructions });
 
 export function claimsOf(storeNo: string, orderNo: string) {
   return offlineOf(findOrder(storeNo, orderNo)).claims;
@@ -993,6 +993,11 @@ export function declineClaim(storeNo: string, orderNo: string, claimNo: string, 
   // 拒绝的只是这份申报：订单、占用、付款窗口都不动，买家可以用新的 claimNo 重报
   c.status = "DECLINED";
   return c;
+}
+
+export function actionOf(storeNo: string, orderNo: string, actionNo: string) {
+  const action = offlineOf(findOrder(storeNo, orderNo)).actions[actionNo];
+  return action ? { actionNo, status: action.status, paymentNo: action.paymentNo } : null;
 }
 
 export function confirmPayment(storeNo: string, orderNo: string, v: {

@@ -982,6 +982,8 @@ export interface MallOfflinePendingClaim {
 
 /** 已发出的付款指引（冻结档案版本） */
 export interface MallOfflineInstructionsView {
+  /** Immutable receiver frozen with this order. */
+  platformMerchantNo: string;
   /** 订单号 */
   orderNo: string;
   /** 应付 */

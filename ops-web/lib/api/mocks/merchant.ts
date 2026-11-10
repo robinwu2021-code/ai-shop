@@ -1,3 +1,4 @@
+import { ApiError } from "../error";
 // 覆盖范围：商家治理（P-11.1）。写操作真改 db.merchants（重开能读回），状态机在此强制。
 import * as db from "@/lib/mock/db";
 import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
@@ -123,6 +124,18 @@ function findPlan(merchantNo: string) {
 }
 
 export const merchantMock: MerchantApi = {
+  // Financial acceptance is never synthesized in the demo backend.
+  entityPlanOffers: async () => [], entityPlanPurchases: async () => [],
+  saveEntityPlanOffer: async () => { throw new ApiError(10400,"Real backend required"); },
+  entityPlanPurchase: async () => { throw new ApiError(10404,"Not found"); },
+  confirmEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  declineEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  recoverEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  cancelEntityPlanPurchase: async () => { throw new ApiError(10400,"Real backend required"); },
+  reserveEntityPlanEvidence: async () => { throw new ApiError(10400,"Real backend required"); },
+  uploadEntityPlanEvidence: async () => { throw new ApiError(10400,"Real backend required"); },
+  entityPlanEvidenceUrl: async () => { throw new ApiError(10404,"Not found"); },
+
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),

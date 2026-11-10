@@ -203,7 +203,7 @@ class MallOpenApiResponseTest {
                                         switch (m.getName()) {
                                             case "instructions" ->
                                                     new ai.neargo.commerce.api.offline.OfflinePurchaseFacade
-                                                            .InstructionsView("order", money, at, "profile", 2,
+                                                            .InstructionsView("order", money, at, "profile", 2, "platform",
                                                             Map.of("bankCode", "TESTBANK", "transferRemark", "order"));
                                             case "claims" -> List.of(claim);
                                             case "pendingClaims" ->

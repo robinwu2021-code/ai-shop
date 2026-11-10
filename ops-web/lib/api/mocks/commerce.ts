@@ -116,6 +116,7 @@ export const commerceMock: CommerceApi = {
   },
   offlineEvidenceUrl: async (storeNo, no, key) => wait(m.evidenceUrl(storeNo, no, key)),
   declineOfflineClaim: async (storeNo, no, claimNo, reason) => wait(clone(m.declineClaim(storeNo, no, claimNo, reason)), 400),
+  offlineAction: async (storeNo, no, actionNo) => wait(clone(m.actionOf(storeNo, no, actionNo))),
   confirmOfflinePayment: async (storeNo, no, v) => wait(m.confirmPayment(storeNo, no, v), 400),
   voidOfflineOrder: async (storeNo, no, v) => wait(m.voidOrder(storeNo, no, v), 400),
   confirmOfflineRefundPayout: async (storeNo, no, r, v) => wait(m.payout(storeNo, no, r, v), 400),

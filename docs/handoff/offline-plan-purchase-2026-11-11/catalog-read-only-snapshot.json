@@ -1,0 +1,372 @@
+{
+  "businessTypes": [
+    {
+      "code": "FOOD",
+      "name": "餐飲",
+      "enabled": 1,
+      "catalogVersion": 1
+    },
+    {
+      "code": "RETAIL",
+      "name": "零售",
+      "enabled": 1,
+      "catalogVersion": 1
+    }
+  ],
+  "plans": [
+    {
+      "name": "餐飲免費版",
+      "tier": "FREE",
+      "type": "FOOD",
+      "planNo": "FOOD:FREE",
+      "version": "a2df356e941b496c8284a1df966b7876",
+      "saleStatus": "ON_SALE",
+      "publication": "PUBLISHED"
+    },
+    {
+      "name": "餐飲專業版（未開放）",
+      "tier": "PRO",
+      "type": "FOOD",
+      "planNo": "FOOD:PRO",
+      "version": "8c9c5eed9da7478e9977e1da36b3468b",
+      "saleStatus": "OFF_SALE",
+      "publication": "PUBLISHED"
+    },
+    {
+      "name": "餐飲連鎖版（未開放）",
+      "tier": "CHAIN",
+      "type": "FOOD",
+      "planNo": "FOOD:CHAIN",
+      "version": "6fff866f060b40f0a0c10bafa22a8b88",
+      "saleStatus": "OFF_SALE",
+      "publication": "PUBLISHED"
+    },
+    {
+      "name": "零售免費版",
+      "tier": "FREE",
+      "type": "RETAIL",
+      "planNo": "RETAIL:FREE",
+      "version": "0093f8eaf6ec432c93e0938f1db90ea0",
+      "saleStatus": "ON_SALE",
+      "publication": "PUBLISHED"
+    },
+    {
+      "name": "零售專業版",
+      "tier": "PRO",
+      "type": "RETAIL",
+      "planNo": "RETAIL:PRO",
+      "version": "767966963c464b7ba6eb640328973e74",
+      "saleStatus": "ON_SALE",
+      "publication": "PUBLISHED"
+    },
+    {
+      "name": "零售連鎖版",
+      "tier": "CHAIN",
+      "type": "RETAIL",
+      "planNo": "RETAIL:CHAIN",
+      "version": "3b7821a85e604be9ad8a162a4e01333e",
+      "saleStatus": "ON_SALE",
+      "publication": "PUBLISHED"
+    }
+  ],
+  "planEnds": [
+    {
+      "entitlement": "END_BIZ_APP",
+      "planVersion": "0093f8eaf6ec432c93e0938f1db90ea0"
+    },
+    {
+      "entitlement": "END_APP_POS",
+      "planVersion": "3b7821a85e604be9ad8a162a4e01333e"
+    },
+    {
+      "entitlement": "END_BIZ_APP",
+      "planVersion": "3b7821a85e604be9ad8a162a4e01333e"
+    },
+    {
+      "entitlement": "END_BIZ_APP",
+      "planVersion": "6fff866f060b40f0a0c10bafa22a8b88"
+    },
+    {
+      "entitlement": "END_APP_POS",
+      "planVersion": "767966963c464b7ba6eb640328973e74"
+    },
+    {
+      "entitlement": "END_BIZ_APP",
+      "planVersion": "767966963c464b7ba6eb640328973e74"
+    },
+    {
+      "entitlement": "END_BIZ_APP",
+      "planVersion": "8c9c5eed9da7478e9977e1da36b3468b"
+    },
+    {
+      "entitlement": "END_BIZ_APP",
+      "planVersion": "a2df356e941b496c8284a1df966b7876"
+    }
+  ],
+  "ends": [
+    {
+      "code": "END_APP_POS",
+      "scope": "STORE",
+      "types": [
+        "RETAIL"
+      ],
+      "enabled": 1,
+      "release": "VERIFIED",
+      "entitlement": "END_APP_POS",
+      "saleEnabled": 1
+    },
+    {
+      "code": "END_BIZ_APP",
+      "scope": "STORE",
+      "types": [
+        "FOOD",
+        "RETAIL"
+      ],
+      "enabled": 1,
+      "release": "VERIFIED",
+      "entitlement": "END_BIZ_APP",
+      "saleEnabled": 0
+    }
+  ],
+  "skus": [
+    {
+      "sku": "tw-paper-80-box",
+      "name": "熱敏紙 80mm × 50 卷",
+      "types": [
+        "RETAIL",
+        "FOOD"
+      ],
+      "product": "tw-paper-80",
+      "version": "5659fe18207f42d3b7f7e62d1cb8489a",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 56000,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "HARDWARE"
+    },
+    {
+      "sku": "tw-printer-80",
+      "name": "熱敏印表機 80mm",
+      "types": [
+        "RETAIL",
+        "FOOD"
+      ],
+      "product": "tw-printer-80",
+      "version": "5aaae107270040539b4bfe47106f095f",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 240000,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "HARDWARE"
+    },
+    {
+      "sku": "tw-retail-chain-m",
+      "name": "零售連鎖版・月付",
+      "types": [
+        "RETAIL"
+      ],
+      "product": "tw-retail-chain",
+      "version": "81eb943c8c984b599a55856146a3f092",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 59900,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "PLAN"
+    },
+    {
+      "sku": "tw-retail-chain-y",
+      "name": "零售連鎖版・年付",
+      "types": [
+        "RETAIL"
+      ],
+      "product": "tw-retail-chain",
+      "version": "1bd99522e816477e9c530baa5242e18d",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 599000,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "PLAN"
+    },
+    {
+      "sku": "tw-retail-pro-m",
+      "name": "零售專業版・月付",
+      "types": [
+        "RETAIL"
+      ],
+      "product": "tw-retail-pro",
+      "version": "b256ab6ea820448890c091ce70161f4d",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 19900,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "PLAN"
+    },
+    {
+      "sku": "tw-retail-pro-y",
+      "name": "零售專業版・年付",
+      "types": [
+        "RETAIL"
+      ],
+      "product": "tw-retail-pro",
+      "version": "8a064e74720a473b9270da32e1d7cf93",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 199000,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "PLAN"
+    },
+    {
+      "sku": "tw-starter-bundle",
+      "name": "開店套餐",
+      "types": [
+        "RETAIL"
+      ],
+      "product": "tw-starter-bundle",
+      "version": "4650222bd96a4436bbfc7c03a421fae2",
+      "currency": "TWD",
+      "published": "PUBLISHED",
+      "priceMinor": 399000,
+      "saleStatus": "ON_SALE",
+      "productSale": "ON_SALE",
+      "productType": "BUNDLE"
+    }
+  ],
+  "components": [
+    {
+      "gift": 0,
+      "type": "PLAN",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": 365,
+      "skuVersion": "8a064e74720a473b9270da32e1d7cf93",
+      "entitlement": null,
+      "planVersion": "767966963c464b7ba6eb640328973e74"
+    },
+    {
+      "gift": 0,
+      "type": "PLAN",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": 30,
+      "skuVersion": "b256ab6ea820448890c091ce70161f4d",
+      "entitlement": null,
+      "planVersion": "767966963c464b7ba6eb640328973e74"
+    },
+    {
+      "gift": 0,
+      "type": "PLAN",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": 365,
+      "skuVersion": "1bd99522e816477e9c530baa5242e18d",
+      "entitlement": null,
+      "planVersion": "3b7821a85e604be9ad8a162a4e01333e"
+    },
+    {
+      "gift": 0,
+      "type": "PLAN",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": 30,
+      "skuVersion": "81eb943c8c984b599a55856146a3f092",
+      "entitlement": null,
+      "planVersion": "3b7821a85e604be9ad8a162a4e01333e"
+    },
+    {
+      "gift": 0,
+      "type": "HARDWARE",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": null,
+      "skuVersion": "5aaae107270040539b4bfe47106f095f",
+      "entitlement": null,
+      "planVersion": null
+    },
+    {
+      "gift": 0,
+      "type": "HARDWARE",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": null,
+      "skuVersion": "5659fe18207f42d3b7f7e62d1cb8489a",
+      "entitlement": null,
+      "planVersion": null
+    },
+    {
+      "gift": 0,
+      "type": "PLAN",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": 365,
+      "skuVersion": "2c59383faefa4ababacea722bf113b40",
+      "entitlement": null,
+      "planVersion": "767966963c464b7ba6eb640328973e74"
+    },
+    {
+      "gift": 0,
+      "type": "HARDWARE",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": null,
+      "skuVersion": "2c59383faefa4ababacea722bf113b40",
+      "entitlement": null,
+      "planVersion": null
+    },
+    {
+      "gift": 0,
+      "type": "HARDWARE",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": null,
+      "skuVersion": "2c59383faefa4ababacea722bf113b40",
+      "entitlement": null,
+      "planVersion": null
+    },
+    {
+      "gift": 0,
+      "type": "PLAN",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": 365,
+      "skuVersion": "4650222bd96a4436bbfc7c03a421fae2",
+      "entitlement": null,
+      "planVersion": "767966963c464b7ba6eb640328973e74"
+    },
+    {
+      "gift": 0,
+      "type": "HARDWARE",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": null,
+      "skuVersion": "4650222bd96a4436bbfc7c03a421fae2",
+      "entitlement": null,
+      "planVersion": null
+    },
+    {
+      "gift": 0,
+      "type": "HARDWARE",
+      "units": 1,
+      "activation": "ON_FULFILLMENT",
+      "periodDays": null,
+      "skuVersion": "4650222bd96a4436bbfc7c03a421fae2",
+      "entitlement": null,
+      "planVersion": null
+    }
+  ],
+  "collectionProfileCount": 0,
+  "legacyDefinitions": [],
+  "legacySubscriptions": [
+    {
+      "plan": "FREE",
+      "status": "ACTIVE",
+      "grantedBy": "SELF_PAID",
+      "count": 2
+    }
+  ]
+}

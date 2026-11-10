@@ -26,6 +26,15 @@ describe("commerce http", () => {
     expect(init.headers.Authorization).toBe("Bearer TOKEN");
   });
 
+  it("looks up an original action without sending receipt details", async () => {
+    const fetch = ok({ actionNo: "ACT-1", status: "ACCEPTED", paymentNo: null });
+    vi.stubGlobal("fetch", fetch);
+    expect((await commerceHttp.offlineAction("S1", "MO-1", "ACT-1"))?.status).toBe("ACCEPTED");
+    expect(fetch.mock.calls[0]![0]).toContain("/ops/biz-mall/offline/orders/MO-1/actions/ACT-1?storeNo=S1");
+    expect((fetch.mock.calls[0]![1].method ?? "GET")).toBe("GET");
+    expect(fetch.mock.calls[0]![1].body).toBeUndefined();
+  });
+
   it("普通写操作仍是 JSON", async () => {
     const fetch = ok({ claimNo: "C1", status: "DECLINED" });
     vi.stubGlobal("fetch", fetch);

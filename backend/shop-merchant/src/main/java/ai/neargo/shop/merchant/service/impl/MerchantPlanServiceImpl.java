@@ -572,7 +572,7 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
         row.setExpireAt(now + nz(target.getTrialDays()) * DAY_MS);
         // ★ 一主体一次，永不回退 —— 允许重开等于把付费档变成免费档
         row.setTrialUsed(true);
-        row.setGrantedBy(MchEntityPlan.BY_PLATFORM);
+        row.setGrantedBy(MchEntityPlan.BY_TRIAL);
         row.setDowngradedAt(null);
         // 试用也是一次生效的订阅：上一轮降级压下的店该回来
         restoreSuspended(merchantNo);

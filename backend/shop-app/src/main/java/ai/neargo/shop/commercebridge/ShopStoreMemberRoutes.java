@@ -65,6 +65,7 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("POST", STORE + "(?:rename|status)"),
             // 方案（含试用）
             HostRoute.of("GET", "/biz/plan"),
+            HostRoute.of("GET,POST", "/biz/plan/purchases(?:/.*)?"),
             HostRoute.of("POST", "/biz/plan/trial"),
             // 评价
             HostRoute.of("GET,POST", "/biz/review(?:/.*)?"),

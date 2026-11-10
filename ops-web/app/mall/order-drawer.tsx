@@ -9,6 +9,7 @@
 // 核款回 ACCEPTED 只表示受理：资金端还没确认，恢复任务会继续推进，界面不能写「已到账」。
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MallOfflineReviewAttempt, mallOfflineReceiver } from "@/lib/mall-offline-review";
 import { api } from "@/lib/api";
 import { isApiError } from "@/lib/api/error";
 import { notify } from "@/lib/notify";
@@ -16,7 +17,7 @@ import { fill } from "@/lib/use-copy";
 import { useCan } from "@/lib/use-can";
 import { compareMinor, parseMajor, toMajorInput } from "@/lib/commerce-money";
 import type {
-  MallEvidencePurpose, MallMoney, MallOfflineActionView, MallOfflineClaimView, MallOrderDetailView, MallPaymentAttempt,
+  MallEvidencePurpose, MallMoney, MallOfflineActionView, MallOfflineClaimView, MallOfflineInstructionsView, MallOrderDetailView, MallPaymentAttempt,
   MallQuoteComponent, MallRefundReviewQuoteView, MallRefundView, MallShipment,
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -37,17 +38,22 @@ import {
 /** 子表的数据都来自同一个订单查询：错误态与重试也跟着它走 */
 interface Src { error: unknown; onRetry: () => void }
 
+const OfflineReviewLock = React.createContext<(locked: boolean) => void>(() => {});
+
 export function OrderDrawer({ c, storeNo, orderNo, onClose }: { c: MallCopy; storeNo: string; orderNo: string | null; onClose: () => void }) {
   const q = useQuery({ queryKey: ["mall-order", storeNo, orderNo], queryFn: () => api.mallOrder(storeNo, orderNo!), enabled: !!orderNo });
   const d = q.data;
+  const [reviewPending, setReviewPending] = React.useState(false);
   return (
-    <Drawer open={!!orderNo} onOpenChange={(o) => !o && onClose()} width="w-[760px]"
+    <Drawer open={!!orderNo} onOpenChange={(o) => !o && !reviewPending && onClose()} width="w-[760px]"
       title={orderNo ? fill(c.orderTitle, { no: orderNo }) : ""} desc={fill(c.orderStoreDesc, { store: storeNo })}>
-      {q.error ? (
+      <OfflineReviewLock.Provider value={setReviewPending}>
+      {q.error && !d ? (
         <DataTable columns={[]} rows={undefined} error={showErr(q.error)} onRetry={() => q.refetch()} rowKey={() => ""} empty={c.ordersEmpty} />
       ) : q.isLoading || !d ? <p className="txt-caption text-muted-foreground">{c.loading}</p> : (
         <OrderBody c={c} storeNo={storeNo} d={d} src={{ error: showErr(q.error), onRetry: () => q.refetch() }} />
       )}
+      </OfflineReviewLock.Provider>
     </Drawer>
   );
 }
@@ -436,8 +442,8 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
     { header: c.colSubmittedAt, cell: (x) => fmtAt(x.submittedAt) },
     { header: c.colActions, stickyEnd: "always", cell: (x) => (x.status === "SUBMITTED" || x.status === "REVIEWING") ? (
       <span className="flex gap-2">
-        {allow("commerce:mall:offline:confirm") && <Button size="sm" onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
-        {allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" onClick={() => decline(x)}>{c.btnDecline}</Button>}
+        {allow("commerce:mall:offline:confirm") && <Button size="sm" disabled={mode !== null} onClick={() => { setClaimFor(x.claimNo); setMode("confirm"); }}>{c.btnConfirmClaim}</Button>}
+        {allow("commerce:mall:offline:review") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => decline(x)}>{c.btnDecline}</Button>}
       </span>
     ) : null },
   ];
@@ -489,12 +495,12 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
 
       {!paid && !closed && ins.data && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {allow("commerce:mall:offline:confirm") && <Button size="sm" variant="outline" onClick={() => { setClaimFor(null); setMode("confirm"); }}>{c.btnDirectConfirm}</Button>}
-          {allow("commerce:mall:offline:void") && <Button size="sm" variant="outline" onClick={() => setMode("void")}>{c.btnVoid}</Button>}
+          {allow("commerce:mall:offline:confirm") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => { setClaimFor(null); setMode("confirm"); }}>{c.btnDirectConfirm}</Button>}
+          {allow("commerce:mall:offline:void") && <Button size="sm" variant="outline" disabled={mode !== null} onClick={() => setMode("void")}>{c.btnVoid}</Button>}
         </div>
       )}
       {mode === "confirm" && ins.data && (
-        <ConfirmForm c={c} storeNo={storeNo} orderNo={orderNo} payable={ins.data.payable} claimNo={claimFor}
+        <ConfirmForm c={c} storeNo={storeNo} orderNo={orderNo} instructions={ins.data} claimNo={claimFor}
           claim={(claims.data ?? []).find((x) => x.claimNo === claimFor)}
           onDone={(r) => { setLastAction(r); setMode(null); refresh(); }} onCancel={() => setMode(null)} />
       )}
@@ -507,61 +513,102 @@ function OfflinePanel({ c, storeNo, d }: { c: MallCopy; storeNo: string; d: Mall
   );
 }
 
+/** An unresolved review keeps its exact request in RAM for this mounted form. */
+function useOfflineReview(c: MallCopy, storeNo: string, orderNo: string, onDone: (r: MallOfflineActionView) => void) {
+  const lock = React.useContext(OfflineReviewLock);
+  React.useEffect(() => () => lock(false), [lock]);
+  const [attempt, setAttempt] = React.useState<MallOfflineReviewAttempt | null>(null);
+  const [result, setResult] = React.useState<MallOfflineActionView | null>(null);
+  const [, render] = React.useReducer((n: number) => n + 1, 0);
+  const refresh = useRefreshOrder(storeNo, orderNo);
+  const outcome = (r: MallOfflineActionView | null) => {
+    render();
+    if (!r) return;
+    setResult(r); refresh();
+    if (r.status === "ACCEPTED") return;
+    // UNMATCHED and REJECTED must never look like an entitlement success.
+    lock(false); onDone(r);
+  };
+  const save = useMutation({ mutationFn: (a: MallOfflineReviewAttempt) => a.submit(api, storeNo, orderNo), onSuccess: outcome, onSettled: () => render() });
+  const lookup = useMutation({ mutationFn: () => attempt!.resolve((actionNo) => api.offlineAction(storeNo, orderNo, actionNo)),
+    onSuccess: outcome, onSettled: () => render() });
+  return { attempt, result, save, lookup,
+    start: (intent: ConstructorParameters<typeof MallOfflineReviewAttempt>[0]) => {
+      const a = attempt ?? new MallOfflineReviewAttempt(intent);
+      lock(true); setAttempt(a); save.mutate(a);
+    } };
+}
+
+function ReviewRecovery({ c, review }: { c: MallCopy; review: ReturnType<typeof useOfflineReview> }) {
+  const { attempt, result, save, lookup } = review;
+  if (!attempt) return null;
+  const error = showErr(lookup.error ?? save.error);
+  return <div className="space-y-2">
+    {result && <ActionResult c={c} r={result} />}
+    <Notice tone="warning">{attempt.phase === "accepted" ? c.actAcceptedHint : attempt.phase === "absent" ? c.reviewAbsent : c.reviewUnknown}</Notice>
+    {!!(save.error || lookup.error) && <Notice tone="warning">{error instanceof Error ? error.message : String(error)}</Notice>}
+    <Button variant="outline" loading={lookup.isPending} disabled={save.isPending} onClick={() => lookup.mutate()}>{c.reviewLookup}</Button>
+    {attempt.phase === "absent" && <Button loading={save.isPending} disabled={lookup.isPending} onClick={() => save.mutate(attempt)}>{c.reviewRetry}</Button>}
+  </div>;
+}
+
 function ConfirmForm({
-  c, storeNo, orderNo, payable, claimNo, claim, onDone, onCancel,
+  c, storeNo, orderNo, instructions, claimNo, claim, onDone, onCancel,
 }: {
-  c: MallCopy; storeNo: string; orderNo: string; payable: MallMoney; claimNo: string | null; claim?: MallOfflineClaimView;
+  c: MallCopy; storeNo: string; orderNo: string; instructions: MallOfflineInstructionsView; claimNo: string | null; claim?: MallOfflineClaimView;
   onDone: (r: MallOfflineActionView) => void; onCancel: () => void;
 }) {
   const [actionNo] = React.useState(() => newOpNo("CFM"));
-  const [f, setF] = React.useState({ amount: "", at: "", receiver: "", bankRef: "", evidenceKey: "", historical: false, reason: "" });
+  const payable = instructions.payable;
+  const receiver = mallOfflineReceiver(instructions);
+  const review = useOfflineReview(c, storeNo, orderNo, onDone);
+  const [f, setF] = React.useState({ amount: "", at: "", bankRef: "", evidenceKey: "", historical: false, reason: "" });
   const minor = parseMajor(f.amount, payable.currency);
-  const save = useMutation({
-    mutationFn: () => api.confirmOfflinePayment(storeNo, orderNo, { actionNo, claimNo, actualAmount: { currency: payable.currency, minor: minor! },
-      actualPaidAt: new Date(f.at).toISOString(), actualReceiver: f.receiver.trim(), bankReference: f.bankRef.trim(), evidenceKey: f.evidenceKey,
-      historical: f.historical, reason: f.reason.trim() }),
-    onSuccess: (r) => {
-      notify.success(r.status === "APPLIED" ? c.toastConfirmed : r.status === "ACCEPTED" ? c.toastAccepted : c.toastUnmatched);
-      onDone(r);
-    },
-  });
+  const submit = () => review.start({ kind: "confirm", request: { actionNo, claimNo,
+    actualAmount: { currency: payable.currency, minor: minor! }, actualPaidAt: new Date(f.at).toISOString(),
+    actualReceiver: receiver!, bankReference: f.bankRef.trim(), evidenceKey: f.evidenceKey,
+    historical: f.historical, reason: f.reason.trim() } });
   const mismatch = minor !== null && minor !== payable.minor;
-  const valid = minor !== null && f.at && f.receiver.trim() && f.bankRef.trim() && f.evidenceKey && f.reason.trim();
+  const valid = minor !== null && f.at && receiver?.trim() && f.bankRef.trim() && f.evidenceKey && f.reason.trim();
   return (
     <div className="mt-3 space-y-3 rounded-card border border-border p-3">
       <div className="txt-strong">{claimNo ? fill(c.confirmForClaim, { no: claimNo }) : c.confirmDirect}</div>
       <Notice tone="warning">{c.confirmNotice}</Notice>
       {claim && <p className="txt-caption text-muted-foreground">{fill(c.claimDeclaredEcho, { amount: toMajorInput(claim.declaredAmount), at: fmtAt(claim.declaredPaidAt), ref: claim.bankReference || "—" })}</p>}
-      <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["PLATFORM_RECEIPT", "RECONCILIATION"]} selected={f.evidenceKey}
-        onSelect={(k) => setF((x) => ({ ...x, evidenceKey: k }))} />
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <Label htmlFor="cf-amt" required>{fill(c.fieldActualAmount, { cur: payable.currency })}</Label>
-          <Input id="cf-amt" inputMode="decimal" value={f.amount} invalid={!!f.amount && minor === null} onChange={(e) => setF((x) => ({ ...x, amount: e.target.value }))} />
-          {mismatch && <p className="txt-caption text-destructive">{fill(c.amountMismatchHint, { want: toMajorInput(payable) })}</p>}
+      {!receiver?.trim() && <Notice tone="warning">{c.receiverMissing}</Notice>}
+      <fieldset disabled={review.attempt !== null} className="space-y-3">
+        <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["PLATFORM_RECEIPT"]} selected={f.evidenceKey}
+          onSelect={(k) => setF((x) => ({ ...x, evidenceKey: k }))} />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="cf-amt" required>{fill(c.fieldActualAmount, { cur: payable.currency })}</Label>
+            <Input id="cf-amt" inputMode="decimal" value={f.amount} invalid={!!f.amount && minor === null} onChange={(e) => setF((x) => ({ ...x, amount: e.target.value }))} />
+            {mismatch && <p className="txt-caption text-destructive">{fill(c.amountMismatchHint, { want: toMajorInput(payable) })}</p>}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cf-at" required>{c.fieldActualPaidAt}</Label>
+            <Input id="cf-at" type="datetime-local" value={f.at} onChange={(e) => setF((x) => ({ ...x, at: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cf-recv" required>{c.fieldReceiver}</Label>
+            <div id="cf-recv" className="txt-body">{Object.entries(instructions.instructions).map(([k, v]) => `${k}: ${v}`).join(" · ") || "—"}</div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cf-ref" required>{c.fieldBankRef}</Label>
+            <Input id="cf-ref" value={f.bankRef} onChange={(e) => setF((x) => ({ ...x, bankRef: e.target.value }))} />
+          </div>
         </div>
+        <CheckboxField label={c.fieldHistorical} checked={f.historical} onChange={(v) => setF((x) => ({ ...x, historical: v === true }))} />
         <div className="space-y-1">
-          <Label htmlFor="cf-at" required>{c.fieldActualPaidAt}</Label>
-          <Input id="cf-at" type="datetime-local" value={f.at} onChange={(e) => setF((x) => ({ ...x, at: e.target.value }))} />
+          <Label htmlFor="cf-reason" required>{c.fieldReason}</Label>
+          <Textarea id="cf-reason" value={f.reason} onChange={(v) => setF((x) => ({ ...x, reason: v }))} />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="cf-recv" required>{c.fieldReceiver}</Label>
-          <Input id="cf-recv" value={f.receiver} placeholder={c.receiverPh} onChange={(e) => setF((x) => ({ ...x, receiver: e.target.value }))} />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel}>{c.btnCancel}</Button>
+          <Button disabled={!valid} loading={review.save.isPending} onClick={submit}>{c.btnSubmitConfirm}</Button>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="cf-ref" required>{c.fieldBankRef}</Label>
-          <Input id="cf-ref" value={f.bankRef} onChange={(e) => setF((x) => ({ ...x, bankRef: e.target.value }))} />
-        </div>
-      </div>
-      <CheckboxField label={c.fieldHistorical} checked={f.historical} onChange={(v) => setF((x) => ({ ...x, historical: v === true }))} />
-      <div className="space-y-1">
-        <Label htmlFor="cf-reason" required>{c.fieldReason}</Label>
-        <Textarea id="cf-reason" value={f.reason} onChange={(v) => setF((x) => ({ ...x, reason: v }))} />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel}>{c.btnCancel}</Button>
-        <Button disabled={!valid} loading={save.isPending} onClick={() => save.mutate()}>{c.btnSubmitConfirm}</Button>
-      </div>
+      </fieldset>
+      <ReviewRecovery c={c} review={review} />
     </div>
   );
 }
@@ -573,44 +620,45 @@ function VoidForm({
   const [f, setF] = React.useState({ recon: "", reason: "", evidenceKey: "" });
   const [disp, setDisp] = React.useState<Record<string, string>>(() => Object.fromEntries(unmatched.map((a) => [a.paymentNo!, ""])));
   const [extra, setExtra] = React.useState("");
-  const save = useMutation({
-    mutationFn: () => api.voidOfflineOrder(storeNo, orderNo, { actionNo, reconciliationReference: f.recon.trim(), reason: f.reason.trim(),
-      evidenceKey: f.evidenceKey, unmatchedDispositions: Object.fromEntries(Object.entries(disp).map(([k, v]) => [k, v.trim()])) }),
-    onSuccess: (r) => { notify.success(c.toastVoided); onDone(r); },
-  });
+  const review = useOfflineReview(c, storeNo, orderNo, onDone);
+  const submit = () => review.start({ kind: "void", request: { actionNo, reconciliationReference: f.recon.trim(), reason: f.reason.trim(),
+    evidenceKey: f.evidenceKey, unmatchedDispositions: Object.fromEntries(Object.entries(disp).map(([k, v]) => [k, v.trim()])) } });
   const valid = f.recon.trim() && f.reason.trim() && f.evidenceKey && Object.values(disp).every((v) => v.trim());
   return (
     <div className="mt-3 space-y-3 rounded-card border border-border p-3">
       <div className="txt-strong">{c.voidTitle}</div>
       <Notice tone="warning">{c.voidNotice}</Notice>
-      <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["RECONCILIATION"]} selected={f.evidenceKey}
-        onSelect={(k) => setF((x) => ({ ...x, evidenceKey: k }))} />
-      <div className="space-y-1">
-        <Label htmlFor="vd-recon" required>{c.fieldReconRef}</Label>
-        <Input id="vd-recon" value={f.recon} onChange={(e) => setF((x) => ({ ...x, recon: e.target.value }))} />
-      </div>
-      <div className="space-y-2">
-        <Label>{c.fieldDispositions}</Label>
-        {Object.keys(disp).length === 0 && <p className="txt-caption text-muted-foreground">{c.noUnmatched}</p>}
-        {Object.keys(disp).map((no) => (
-          <div key={no} className="space-y-1">
-            <code className="txt-caption">{no}</code>
-            <Textarea aria-label={no} value={disp[no]} placeholder={c.dispositionPh} onChange={(v) => setDisp((d) => ({ ...d, [no]: v }))} />
-          </div>
-        ))}
-        <div className="flex flex-wrap items-center gap-2">
-          <Input aria-label={c.addUnmatched} className="w-56" placeholder={c.addUnmatched} value={extra} onChange={(e) => setExtra(e.target.value)} />
-          <Button size="sm" variant="ghost" disabled={!extra.trim()} onClick={() => { setDisp((d) => ({ ...d, [extra.trim()]: "" })); setExtra(""); }}>{c.btnAdd}</Button>
+      <fieldset disabled={review.attempt !== null} className="space-y-3">
+        <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["RECONCILIATION"]} selected={f.evidenceKey}
+          onSelect={(k) => setF((x) => ({ ...x, evidenceKey: k }))} />
+        <div className="space-y-1">
+          <Label htmlFor="vd-recon" required>{c.fieldReconRef}</Label>
+          <Input id="vd-recon" value={f.recon} onChange={(e) => setF((x) => ({ ...x, recon: e.target.value }))} />
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="vd-reason" required>{c.fieldReason}</Label>
-        <Textarea id="vd-reason" value={f.reason} onChange={(v) => setF((x) => ({ ...x, reason: v }))} />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel}>{c.btnCancel}</Button>
-        <Button variant="destructive" disabled={!valid} loading={save.isPending} onClick={() => save.mutate()}>{c.btnSubmitVoid}</Button>
-      </div>
+        <div className="space-y-2">
+          <Label>{c.fieldDispositions}</Label>
+          {Object.keys(disp).length === 0 && <p className="txt-caption text-muted-foreground">{c.noUnmatched}</p>}
+          {Object.keys(disp).map((no) => (
+            <div key={no} className="space-y-1">
+              <code className="txt-caption">{no}</code>
+              <Textarea aria-label={no} value={disp[no]} placeholder={c.dispositionPh} onChange={(v) => setDisp((d) => ({ ...d, [no]: v }))} />
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <Input aria-label={c.addUnmatched} className="w-56" placeholder={c.addUnmatched} value={extra} onChange={(e) => setExtra(e.target.value)} />
+            <Button size="sm" variant="ghost" disabled={!extra.trim()} onClick={() => { setDisp((d) => ({ ...d, [extra.trim()]: "" })); setExtra(""); }}>{c.btnAdd}</Button>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="vd-reason" required>{c.fieldReason}</Label>
+          <Textarea id="vd-reason" value={f.reason} onChange={(v) => setF((x) => ({ ...x, reason: v }))} />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel}>{c.btnCancel}</Button>
+          <Button variant="destructive" disabled={!valid} loading={review.save.isPending} onClick={submit}>{c.btnSubmitVoid}</Button>
+        </div>
+      </fieldset>
+      <ReviewRecovery c={c} review={review} />
     </div>
   );
 }

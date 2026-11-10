@@ -44,9 +44,10 @@ class OfflineHttpContractTest {
                                                 new Money("TWD", 69900), Instant.parse("2026-11-04T01:00:00Z"),
                                                 Instant.parse("2026-11-04T02:00:00Z"), "ref", List.of("asset-1"));
                                         case "confirm" -> new ActionView("act", "APPLIED", "pay-1");
+                                        case "action" -> "absent".equals(a[2]) ? Optional.empty() : Optional.of(new ActionView("act", "APPLIED", "pay-1"));
                                         case "issue", "instructions" -> new InstructionsView("order",
                                                 new Money("TWD", 9007199254740993L),
-                                                Instant.parse("2026-11-05T00:00:00Z"), "profile", 2,
+                                                Instant.parse("2026-11-05T00:00:00Z"), "profile", 2, "platform-frozen",
                                                 Map.of("bankCode", "TESTBANK"));
                                         case "reserveEvidence" -> new EvidenceTicket(
                                                 "E1/S/mallpay/202611/k.jpg", (String) a[2]);
@@ -74,7 +75,9 @@ class OfflineHttpContractTest {
         var envelope =
                 new MallHttpEnvelopePort() {
                     public Object success(Object data) {
-                        return Map.of("code", 0, "msg", "success", "data", data);
+                        var result = new LinkedHashMap<String,Object>();
+                        result.put("code",0); result.put("msg","success"); result.put("data",data);
+                        return result;
                     }
 
                     public Failure failure(String code) {
@@ -97,6 +100,33 @@ class OfflineHttpContractTest {
                                 new CommerceOfflineBuyerHttpController(offline, context, envelope),
                                 new CommerceOfflineOpsHttpController(offline, mall, context, envelope))
                         .build();
+    }
+
+    @Test
+    void originalActionLookupUsesOrderReadAndReturnsOnlyPublicOutcome() throws Exception {
+        var response = mvc.perform(get("/ops/biz-mall/offline/orders/order/actions/act")
+                .param("storeNo", "S")).andReturn().getResponse();
+        assertEquals(200, response.getStatus());
+        assertEquals(List.of("commerce:mall:order:read"), capabilities);
+        assertEquals("action", methods.getFirst());
+        assertEquals(ops, calls.getFirst()[0]);
+        assertEquals(new OrderQuery(store, "order"), calls.getFirst()[1]);
+        assertEquals("act", calls.getFirst()[2]);
+        assertTrue(response.getContentAsString().contains("APPLIED"));
+        assertFalse(response.getContentAsString().contains("evidenceKey"));
+        assertFalse(response.getContentAsString().contains("bankReference"));
+        var absent = mvc.perform(get("/ops/biz-mall/offline/orders/order/actions/absent")
+                .param("storeNo", "S")).andReturn().getResponse();
+        assertEquals(200, absent.getStatus());
+        assertTrue(absent.getContentAsString().contains("\"data\":null"));
+    }
+
+    @Test
+    void instructionsExposeTheFrozenReceiver() throws Exception {
+        var response = mvc.perform(get("/ops/biz-mall/offline/orders/order/instructions")
+                .param("storeNo", "S")).andReturn().getResponse();
+        assertEquals(200, response.getStatus());
+        assertTrue(response.getContentAsString().contains("\"platformMerchantNo\":\"platform-frozen\""));
     }
 
     @Test

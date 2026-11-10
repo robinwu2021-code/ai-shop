@@ -3,6 +3,18 @@ import { client } from "../http-client";
 import type { MerchantApi } from "../contracts/merchant";
 
 export const merchantHttp: MerchantApi = {
+  entityPlanOffers: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`),
+  saveEntityPlanOffer: (e,c) => client.put(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/offers`,c),
+  entityPlanPurchases: (e) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}`),
+  entityPlanPurchase: (e,o) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}`),
+  confirmEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/confirm`,c),
+  declineEntityPlanPurchase: (e,o,claimNo,reason) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/decline`,{claimNo,reason}),
+  recoverEntityPlanPurchase: (e,o) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/recover`),
+  cancelEntityPlanPurchase: (e,o,c) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/cancel`,c),
+  reserveEntityPlanEvidence: (e,o) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence`),
+  uploadEntityPlanEvidence: (e,o,key,file) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence/content`,file,{assetKey:key}),
+  entityPlanEvidenceUrl: (e,o,key) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(e)}/${encodeURIComponent(o)}/evidence/url`,{assetKey:key}),
+
   storeModes: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/store-modes`),
   merchantFulfillment: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/fulfillment`),
   lockChannel: (storeNo, channel, reason) =>

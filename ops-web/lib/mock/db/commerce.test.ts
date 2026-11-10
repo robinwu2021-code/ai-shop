@@ -163,6 +163,9 @@ describe("线下收款：申报 ≠ 到账", () => {
     const r = await api.confirmOfflinePayment(S1, "MO-1002", { actionNo: "ACT-2", claimNo: null, actualAmount: { currency: "TWD", minor: "50000" },
       actualPaidAt: "2026-11-01T00:00:00.000Z", actualReceiver: "PLT-DEV-TW", bankReference: "BANK-NEW-2", evidenceKey: key, historical: false, reason: "少付" });
     expect(r.status).toBe("UNMATCHED");
+    expect(await api.offlineAction(S1, "MO-1002", "ACT-2")).toEqual(r);
+    expect(await api.offlineAction(S1, "MO-1002", "absent")).toBeNull();
+    expect(await api.offlineAction("TW-STORE-003", "MO-3001", "ACT-2")).toBeNull();
     const d = await api.mallOrder(S1, "MO-1002");
     expect([d.summary?.paymentStatus, d.summary?.fulfillmentStatus]).toEqual(["UNPAID", "PENDING"]);
     expect(d.paymentAttempts!.some((a) => a.errorCode === "MALL_UNMATCHED" && a.paymentNo === r.paymentNo)).toBe(true);
@@ -208,6 +211,7 @@ describe("线下收款：申报 ≠ 到账", () => {
     const i1 = await api.issueOfflineInstructions("TW-STORE-004", o.orderNo!);
     const i2 = await api.issueOfflineInstructions("TW-STORE-004", o.orderNo!);
     expect(i2).toEqual(i1);
+    expect(i1.platformMerchantNo).toBe(mall.s.profiles.TWD!.terms.platformMerchantNo);
     expect(i1.profileVersion).toBe(mall.s.profiles.TWD!.terms.profileVersion);
     // 同店第二笔数字单 → 唯一占用
     const q2 = await api.offlineAssistedQuote("TW-STORE-004", { lines: [{ skuVersionNo: "SV-RETAIL-PRO-Y-1", quantity: 1 }], currency: "TWD" });

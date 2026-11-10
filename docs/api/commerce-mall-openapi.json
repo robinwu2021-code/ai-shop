@@ -8170,6 +8170,145 @@
           }
         }
       }
+    },
+    "/ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}": {
+      "get": {
+        "operationId": "opsOfflineAction",
+        "summary": "Read the durable original offline review outcome without replaying or exposing receipt details",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:order:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          },
+          {
+            "name": "actionNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.:-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable outcome only. data=null when no action was recorded for this authorized tenant/order/action number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/OfflineActionView"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10521,6 +10660,10 @@
               "type": "string"
             },
             "description": "Empty when nothing is payable. Otherwise bank fields plus transferRemark (P3): order number, letters and digits only, to write on the transfer."
+          },
+          "platformMerchantNo": {
+            "type": "string",
+            "description": "Immutable receiving platform merchant frozen into this order; operators never enter this identifier manually."
           }
         },
         "additionalProperties": false,
@@ -10530,7 +10673,8 @@
           "paymentDueAt",
           "profileNo",
           "profileVersion",
-          "instructions"
+          "instructions",
+          "platformMerchantNo"
         ]
       },
       "OfflineEvidenceTicket": {

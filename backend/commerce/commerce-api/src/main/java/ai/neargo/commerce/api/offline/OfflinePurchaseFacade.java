@@ -56,7 +56,7 @@ public interface OfflinePurchaseFacade {
      * buyer writes on the transfer so the operator can find the order when confirming receipt.
      */
     record InstructionsView(String orderNo, Money payable, Instant paymentDueAt, String profileNo,
-            long profileVersion, Map<String, String> instructions) {}
+            long profileVersion, String platformMerchantNo, Map<String, String> instructions) {}
     /** Issues (idempotently) the frozen instructions for an offline order and returns them. */
     InstructionsView issue(ActorContext actor, OrderQuery order);
     InstructionsView instructions(ActorContext actor, OrderQuery order);
@@ -71,6 +71,8 @@ public interface OfflinePurchaseFacade {
     /** Pay-domain collection profile; each change creates a new immutable version. */
     OfflineCollectionTerms configureProfile(ActorContext actor, ProfileCommand command);
     Optional<OfflineCollectionTerms> profile(ActorContext actor, String currency);
+    /** Read-only durable outcome for an operator; absent means no action has been recorded. */
+    Optional<ActionView> action(ActorContext actor, OrderQuery order, String actionNo);
     ActionView confirm(ActorContext actor,ReviewCommand command);
     ActionView voidOrder(ActorContext actor,VoidCommand command);
     /** Trusted staged recovery consumes saved authorization, never synthesizes a new actor. */
