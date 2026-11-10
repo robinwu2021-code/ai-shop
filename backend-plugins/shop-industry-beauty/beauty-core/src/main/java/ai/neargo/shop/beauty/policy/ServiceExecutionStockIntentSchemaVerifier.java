@@ -252,7 +252,10 @@ public final class ServiceExecutionStockIntentSchemaVerifier {
                         .replaceAll("\\b(bigint|int)\\([0-9]+\\)", "$1");
         String expectedCollation = nullable(expected.get("collation"));
         String expectedCharset = nullable(expected.get("charset"));
-        if ("OWNER_TENANT".equals(expectedCollation)) {
+        // Frozen V11 LONGTEXT declarations inherit the table charset/collation in SQL.
+        if ("OWNER_TENANT".equals(expectedCollation)
+                || "longtext".equals(expected.path("type").asString())
+                        && expectedCharset == null && expectedCollation == null) {
             expectedCollation = tenantCollation;
             expectedCharset = "utf8mb4";
         } else if ("longtext".equals(type) && expectedCharset == null && expectedCollation == null) {

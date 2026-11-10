@@ -2911,3 +2911,113 @@ BASE为执行准备源码检查点87311602b。按[资源占用设计](./design/�
 资源journal判别、四张永久占用证据表及V607、全部美业所用预约/候选/事实/维护保护已编码，未开放实际START。独立初审4项Important经FIX1全部关闭：H2有限等价转换、BOOKING/DIRECT来源全元组、native fixture审计字段、成功START原件逆向效果完整性。限定复审SPEC PASS/QUALITY APPROVED，报告见[初审](./design/reviews/beauty-resource-occupation-source-review.md)和[复审](./design/reviews/beauty-resource-occupation-source-review-fix1.md)。
 
 按最新用户范围，仅美业embedded及必要共用依赖完成干净clean test-compile -DskipTests（BUILD SUCCESS，62秒）。源码SHA/62路径/日志SHA见[检查点](./design/schema/beauty-resource-occupation-source-checkpoint.json)。不是测试、原生安装、并发或部署通过。c2a直接排班、实际资格/开工/ACK和工作流仍待开发，库存issue/unpin及支付链未新增。
+
+
+## App服务提交合同补齐（2026-11-10）
+
+### 0 需求对账
+
+依据BM04/SRC-01及B端服务业接口对照：App须显式选服务、准备原报价并沿原号恢复；不因此开放BM05开工或宣称资金已核验。
+
+| AC | 设计落点 | 验证 |
+| --- | --- | --- |
+| 根与任务CAS独立于范围和绑定版本 | WorkOrderVO.revision、WorkOrderTaskVO.revision取持久实体version | WorkOrderQueryTest.projectsIndependentCasVersionsAndOnlyImplementedSubmissionAction |
+| 可提交任务由真实状态决定 | 复用ServiceSubmissionQuery.canFirstBind；未冻结OPEN/IN_SERVICE且无活动收费submission时给SUBMIT_SERVICES（OPEN接待草稿不参与互斥），逐任务给SUBMIT_SOURCE | 同上及frozenAndLegacyOrdersStayReadOnly |
+| 旧构造保持兼容、无版本不能写 | 旧构造追加null revision；旧JSON不新增null字段；新App缺字段/动作保持只读 | WorkOrderQueryTest.oldConstructorsDoNotInventVersions；App service_submission_test |
+
+### 1 合同
+
+仅扩展现有GET工单、开工单回执内的DTO投影：revision为持久实体version（非scopeRevision/bindingRevision）。不加端点、权限或迁移。availableActions只表达本域状态允许的已实现能力，写权限继续由原ServiceSubmissionAccess逐次核验；SUBMIT_SERVICES/SUBMIT_SOURCE不授开工权。
+
+### 2 实施顺序
+
+在beauty-api dto保留旧构造；beauty-core WorkOrderQuery填真实version，共用首次绑定判定；App工单显式选任务和发布版本加项，MANUAL_PREPARE使用原接待顾客凭证或会员号、OFFLINE支付模式、原幂等命令。未知结果仅恢复原提交，已有报价只确认原报价；用户购买确认与人工记账维持独立。
+
+### 5 验证与边界
+
+运行受影响API/core定向测试及App专项与分析；不部署、不写营业库。BM05实际开工/完成与扫码创建幂等不在此投影改动中假开。
+
+
+### App续接审查修复
+
+- 初次MANUAL_PREPARE在保存不可变intent前，通过ReceptionIdentity核验会员号或guest proof与原接待party一致；永久原键重放仍先返回原intent，不因新增预检改变旧回执。
+- 宿主新增GET `/biz/service-orders/counter-quotes/{operationNo}/state`，权限与原报价读取一致（CHECKOUT_PREPARE+ORDER_VIEW）。CheckoutService.CounterState返回原confirmation和原result；不接受新顾客、报价、金额或开单键。已持久placeKey而未CREATED的原操作投影PLACING，重入页面只能读取，不另发开单。
+- 原报价查询与state共用currentCounter：锁住原operation再锁quote，仅QUOTED且没有confirmation且已过期时原子转REQUOTE_REQUIRED/EXPIRED。已接受、已开单或未知创建不由此释放。美业resumeManual只消费所有者明确REJECTED/REQUOTE_REQUIRED后终结本地租约，才允许新的收费提交。
+- App恢复端点为既有`/service-submissions/{no}/recovery-requests`；接受回执从新state查询恢复，失败时保持只读，不重新接受原报价。旧形态尚未支持state的环境不得放开确认/开单。
+
+验证映射：CounterStateTest覆盖原确认/订单重入、未知开单、未接受报价过期及异店拒绝；ServiceSubmissionAccessTest覆盖错误会员可纠正和已认领guest模式核验；App service_submission_test覆盖原报价→接受→开单→人工申报、原请求重放、加项版本与恢复路径。
+
+
+### 6 本次App续接实现对账与验证结果
+
+本次为未提交工作区，以下取实际diff，不以提交号代替验证：
+
+| 模块／包／类 | 本次落点 |
+| --- | --- |
+| beauty-api / ai.neargo.shop.beauty.dto / WorkOrderVO、WorkOrderTaskVO | nullable实体revision，旧构造/旧回执保持无字段 |
+| beauty-core / ai.neargo.shop.beauty.service.impl / WorkOrderQuery、ServiceSubmissionQuery、ServiceSubmissionServiceImpl | 真实CAS/已实现动作，共用首次绑定判定，owner明确终态才结束租约 |
+| beauty-core / ai.neargo.shop.beauty.policy / ServiceSubmissionAccess | 保存intent前验证真实顾客selector |
+| shop-core / ai.neargo.shop.trade.service / CheckoutService；impl.CheckoutServiceImpl | CounterState、原确认/订单回读，未接受过期报价的原锁终结 |
+| shop-core / ai.neargo.shop.trade.policy / ManualServicePurchasePolicy | 原reader授权结果复用于canAccept，未增加权限 |
+| shop-core / ai.neargo.shop.trade.api.biz / BizManualServiceAdmissionController | GET counter-quotes/{operationNo}/state，沿原报价读权限 |
+| tests / WorkOrderQueryTest、ServiceSubmissionAccessTest、CounterStateTest | 实体版本与原确认/未知开单/过期/身份/账号范围10项 |
+| scenario / WorkOrderScopeIT | 更新可提交动作断言并核实际数据库version；运行被迁移前置阻塞 |
+
+`CounterState.canAccept`匹配原actor/realm/kind/account及QUOTED未确认状态。它不替代cash/confirm写权限；接受后的跨收银员开单仍走原CounterOrderPlacement规则。新state不嵌入旧严格CounterCheckoutQuote，历史报价和payload字节不改变。
+
+本机联合reactor使用真实源码shop-base/shop-core/beauty-api/core（避免本机旧.m2缺SPI）：WorkOrderQueryTest3、ServiceSubmissionAccessTest2、CounterStateTest5，共10通过，0失败/错误。App36通过，Dart定向分析0问题，12页Android模拟器通过并恢复普通App。日志归档于兄弟仓库`ai-shop-bapp/docs/review/service-store-2026-11-10`。
+
+原生MySQL9隔离场景选择WorkOrderScopeIT#unassignedOrderHasNoResourceOrExecutableTask及ServiceSubmissionIT的openDraftDoesNotPurchaseAndExplicitSelectionIsExact、prepareResponseLossRetainsOriginalOperationAfterRestart、workOrderProjectsActualBindingAndNeverExecutionPermission：4项均在V10迁移CHECK `ck_bsef_json_execution_no`报3812，未执行业务断言。该V10属于已提交冻结迁移，本次不改其字节、不绕过到旧schema；这是未完成的联验前置，不能声明营业链路通过。无部署、无营业库写入。
+
+
+## 2026-11-10 V10 MySQL迁移修复与原生联验
+
+### 0 需求与验收
+
+用户明确先解除V10阻塞，完成原生联验后推进服务业。维持冻结迁移和原Flyway checksum，不改历史或营业库。AC：V1→V10在本机MySQL9全量建表/验证/重放通过；CHECK仍拒绝缺失或不匹配的binding引用；原生服务提交与恢复实际进入业务断言。
+
+### 1 根因与边界
+
+最小隔离MySQL9实验：顶层CHECK(COALESCE(布尔表达式,0))报3812，CHECK((COALESCE(...,0))=1)通过且非法数据被拒。V10原SQL、生成器和冻结descriptor均保留字节。只在beauty私有Flyway连接执行这一份精确CREATE TABLE时适配顶层COALESCE；普通业务连接与平台Flyway不变。
+
+### 2 实现与计划
+
+BeautyMigrationDataSource读取冻结V10完整CREATE TABLE，只对此精确语句改写顶层COALESCE为显式=1。BeautySchemaValidator在migrate/validate的Flyway连接使用它，checksum依然由原资源计算。ServiceExecutionSchemaVerifier在MySQL上按同一等价表达式检查物理约束；不放宽字面量、分组、约束数量或ENFORCED校验。先跑受影响迁移/原生4项，再扩大至实际来源及开单场景，之后接入可用的后续服务动作。
+
+### 5 验证映射
+
+BeautySchemaMigrationIT#migratesValidatesAndDoesNotRepeat/installedV10PreservesBaseNineReadiness/jdbcEnumRepresentationAndLiteralCaseDriftRemainStrict；WorkOrderScopeIT#unassignedOrderHasNoResourceOrExecutableTask；ServiceSubmissionIT显式选择/丢响应恢复/绑定投影；新增精确迁移适配单测。原日志与checksum对比归档于App验收目录，未通过项如实保留。
+
+
+### 服务准备的App续接
+
+原生阻塞解除后推进既有POST工单任务preparations：只准备数量与耗材，不授予实际开工权。GET工单任务投影新增nullable preparationOperationNo（原START提交号），从已存在的bty_service_submission按原父链读取，不依赖客户端本地状态。尚未准备且人工来源已观察就绪的单个COUNT任务可给PREPARE_TASK；既有START只回读原操作。权限仍由实际SELF/任职/指派核验，不等于有订单查看权限就能准备。
+
+App提交原task/binding/scope版本；服务端返回稳定原操作后以GET operations/{no}及POST其recoveries回读/恢复。网络未知保留原键重放；准备待定不标作实际开工，canStart始终false。准备操作号由服务端工单投影实现跨设备重入。
+
+
+### 6 V10修复及服务准备最终结果
+
+V10阻塞已解除，未改变V1–V11 SQL或两份执行descriptor，13份资源与Git HEAD字节一致。Flyway仍记录原checksum；V10适配仅在显式migrate的私有连接执行，不进入validate或业务连接。MySQL元数据的charset引号、regexp_like及显式COALESCE结果类型由有限表达式语法处理，JSON路径大小写、字面量及布尔分组保留。
+
+V11原已在仓库，但初始化器只识别V10，本轮补齐其确切script/table身份和独立能力诊断；V9触发器检查排除两个已知扩展表，由各自verifier逐条检查其触发器。V11无显式charset的LONGTEXT按实际SQL继承所有者字符集/排序规则，改变列collation仍被拒绝。
+
+| AC/范围 | 最终逐方法结果 | 实现与测试 |
+| --- | --- | --- |
+| 迁移、只读校验、升级、物理篡改拒绝 | 原生36通过（增量修复重验） | BeautyMigrationDataSource/BeautySchemaValidator及两个SchemaVerifier；BeautySchemaMigrationIT |
+| 原提交、丢响应、并发同键/变参、恢复 | 原生29通过（受影响4项race最终重验） | ServiceSubmissionIT，永久原意图/原键/payload、外部prepare一次断言保留 |
+| 准备引用按工单父链读取，不授开工权 | 原生2通过 | BeautyMappers.TaskPreparationRef/WorkOrderQuery/WorkOrderTaskVO；WorkOrderScopeIT |
+| 真实人员任职SELF及原意图恢复 | 原生4通过 | ManualExecutionSourceIT，实际shop-merchant类与冻结V592/V593资源 |
+| 准备组合、身份、投影、DDL/表达式 | 纯测试28通过 | Query5、StockCoordinator15、Compose3、Access2、DDL2、Expression1 |
+| App准备/回读/恢复及未知回执 | App41通过、分析0 | service_task_preparation_page、service_api、service_store测试 |
+| 模拟器 | 15页通过并恢复普通App | 追加13–15服务准备状态页 |
+
+71项所选原生场景及28项纯测试最终通过，按项目增量约定合并原始通过与相关修复重验结果，不把失败日志删成全绿。构造器重建、原V1–V6 history过滤及并发可变进度三处夹具更新不修改生产业务规则。由于其他会话清理共享target造成ClassNotFound，验证改在独立worktree；该worktree只在测试POM加实际merchant依赖和V592/V593 test resources，不改变产品依赖。290份美业主Java源码与主工作区逐字节核对。
+
+日志和冻结指纹见兄弟仓库 `ai-shop-bapp/docs/review/service-store-2026-11-10/v10-resolution.json`。外部交易、数量、库存所有者按各fixture声明为受控边界，不能据此宣称166或真实支付/资源执行联验完成。未提交、未部署；实际开工/完工、扫码幂等和退款储值仍待对应所有者合同。
+
+### App现场开单接入既有BAPI-054（2026-11-10）
+
+本片无后端生产合同变更。App直接使用OpenWorkOrderReq无预约分支：storeNo、真实memberNo或登记guestNo、items(skuNo/qty)，合计最多10；不提交appointmentNo、expectedRevision、assignments或startAt。当前booking manage与biz:customer由既有owner核验，创建UNASSIGNED任务范围不产生预约、资源保留、实际开工或付款事实。散客登记仅同意必需，姓名／联系方式沿现合同可选。旧柜台报价的CNY限制与canStart=false不变。
+
+空开单回执保留客户端原body/key；已确认工单号仅作加密本机导航，按原号GET始终由owner核验。后端既有WorkOrderScopeIT四项未安排／数量展开／重放／旧范围拒绝在隔离MySQL9通过，七项相关当前生产源文件与测试worktree逐字一致，四个自建库已清理。App48专项及定向分析0问题，Android合成UI单独取证；不以fixture受控外部owner或本机原号记录代替营业环境、跨设备服务端列表或完整资源执行验收。

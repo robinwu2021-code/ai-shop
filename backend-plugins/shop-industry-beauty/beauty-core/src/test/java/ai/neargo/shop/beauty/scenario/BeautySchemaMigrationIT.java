@@ -1,5 +1,8 @@
 package ai.neargo.shop.beauty.scenario;
 
+import ai.neargo.shop.beauty.config.BeautyMigrationDataSource;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

@@ -227,6 +227,16 @@ public final class ServiceExecutionSchemaVerifier {
         require(keys.equals(expected) && unique.equals(expectedUnique));
     }
 
+    /** Render only the frozen boolean-valued COALESCE forms with an explicit MySQL result type. */
+    public static String mysqlCheck(String clause) {
+        if (clause.startsWith("COALESCE(")) return "(" + clause + ")=1";
+        String prefix = "JSON_VALID(binding_json) AND ";
+        if (clause.startsWith(prefix + "COALESCE(")) {
+            return prefix + "(" + clause.substring(prefix.length()) + ")=1";
+        }
+        return clause;
+    }
+
     private static void checkConstraints(Connection connection, String schema, JsonNode table) throws SQLException {
         Map<String, String> actual = new TreeMap<>();
         for (var row : query(connection,

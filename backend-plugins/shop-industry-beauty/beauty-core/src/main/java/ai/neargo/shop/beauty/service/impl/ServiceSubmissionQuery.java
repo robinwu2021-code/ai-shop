@@ -48,6 +48,14 @@ public final class ServiceSubmissionQuery {
         this.versions = versions;
     }
 
+    /** One first-binding rule serves both the public action projection and the locked write. */
+    static boolean canFirstBind(BtyServiceTask task) {
+        return "PENDING".equals(task.getStatus()) && task.getStartedAt() == null
+                && task.getDoneQty().signum() == 0 && task.getVoidedQty().signum() == 0
+                && task.getBindingRevision() == 0 && "COUNT".equals(task.getUom())
+                && task.getQty().intValueExact() > 0 && task.getQty().intValueExact() <= 10;
+    }
+
     public record Root(
             BtyWorkOrder order,
             BtyWorkOrderContext context,

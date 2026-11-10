@@ -152,6 +152,8 @@ public final class BeautySchemaValidator {
                                     == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
                     "Explicit beauty migration requires the full valid V1-V11 sequence");
         }
+        // In validate mode each known optional owner diagnoses its own ABSENT/CORRUPT state.
+        // Its damage cannot authorize execution, nor weaken the mandatory V1-V9 base inspection.
     }
 
     /** Read-only startup leaves known execution schema faults to the affected operation's verifier. */

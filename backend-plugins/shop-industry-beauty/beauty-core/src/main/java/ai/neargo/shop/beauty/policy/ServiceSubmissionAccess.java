@@ -9,6 +9,7 @@ import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCustomerRef;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceFacts;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
@@ -101,6 +102,25 @@ public final class ServiceSubmissionAccess {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
         return new Buyer(user, receipt, revision);
+    }
+
+    /** Invalid selectors must fail before an immutable source intent can block the work order. */
+    public void verifyManualSelector(BtyWorkOrderContext context, CounterCustomerRef selector, CustomerParty party) {
+        boolean matches;
+        if ("USER".equals(selector.kind())) {
+            matches = "USER".equals(party.kind()) && Objects.equals(party.userNo(),
+                    identities.customerMember(context.getEntityNo(), context.getStoreNo(), selector.memberNo()));
+        } else {
+            var verified = identities.verifyGuest(context.getEntityNo(), context.getStoreNo(),
+                    selector.guestNo(), selector.claimToken());
+            matches = Objects.equals(context.getIdentityRef(), selector.guestNo())
+                    && "GUEST".equals(context.getIdentityKind())
+                    && ("GUEST".equals(selector.kind()) && "GUEST".equals(verified.kind())
+                            && "GUEST".equals(party.kind())
+                        || "CLAIMED_GUEST".equals(selector.kind()) && "USER".equals(verified.kind())
+                            && "USER".equals(party.kind()) && Objects.equals(party.userNo(), verified.reference()));
+        }
+        if (!matches) throw BizException.of(ErrorCode.FORBIDDEN);
     }
 
     /** Party selected from the real reception/guest owner before counter preparation intent. */

@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -166,8 +167,9 @@ class ServiceSubmissionIT extends SourceFixture {
                             losePrepareResponse = false;
                             login(LoginUser.merchant("B", "current manager"));
                             var reconstructed =
-                                    context.getAutowireCapableBeanFactory()
-                                            .createBean(ServiceSubmissionServiceImpl.class);
+                                    (ServiceSubmissionServiceImpl) context.getAutowireCapableBeanFactory()
+                                            .autowire(ServiceSubmissionServiceImpl.class,
+                                                    AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR, false);
                             var recovered =
                                     reconstructed.recoverPending(
                                             "E", "S", "B", pending.submissionNo());
@@ -258,8 +260,9 @@ class ServiceSubmissionIT extends SourceFixture {
                                                         "response lost after local commit"));
                                     });
                             var reconstructed =
-                                    context.getAutowireCapableBeanFactory()
-                                            .createBean(ServiceSubmissionServiceImpl.class);
+                                    (ServiceSubmissionServiceImpl) context.getAutowireCapableBeanFactory()
+                                            .autowire(ServiceSubmissionServiceImpl.class,
+                                                    AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR, false);
                             var replay =
                                     reconstructed.recoverPending(
                                             "E", "S", "A", accepted.submissionNo());
@@ -1046,10 +1049,10 @@ class ServiceSubmissionIT extends SourceFixture {
                     .as("winner replay returns the complete current projection")
                     .isEqualTo(current);
             assertThat(replay)
-                    .as("only recovery lease revision may advance from the first projection")
+                    .as("original selection and quote stay fixed while recovery progress may advance")
                     .usingRecursiveComparison()
                     .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-                    .ignoringFields("revision")
+                    .ignoringFields("revision", "status", "phase", "blockingReasons")
                     .isEqualTo(original);
             assertThat(replay.revision()).isGreaterThanOrEqualTo(original.revision());
             if (changed) {
