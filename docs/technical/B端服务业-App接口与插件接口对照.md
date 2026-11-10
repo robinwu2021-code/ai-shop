@@ -73,3 +73,10 @@
 - 人工来源已观察就绪、单个COUNT待做任务可给PREPARE_TASK；真实SELF/任职/指派仍由准备服务验证。App不把订单/预约管理权限当作技师权限。
 - POST `/work-orders/{no}/tasks/{taskNo}/preparations`仍是数量和耗材准备；原操作回读/恢复沿既有operations/{no}及其recoveries，无新真实开工/完成入口。canStart=false。
 - 未知响应、空操作号或错误任务回执保留原幂等键，确认有效原号后才改用服务端原操作恢复；旧operations恢复合同不被强制当准备合同。
+
+
+## 服务业独立远端交付与端别登记
+
+本批仅服务业提交从远端基线c390e6ac4独立移植，功能提交771182c02对应共享工作区aa5ce5e9f，不携带此前5个本地零售/商户提交。Flutter代码与接口交接文档位于ai-shop-bapp的codex/service-store-complete（功能f001859、文档2d72bb8）。
+
+GET `/biz/service-orders/counter-quotes/{operationNo}/state`已被Flutter `apps/merchant_app/lib/features/service_store/service_counter_pages.dart`的load调用，用于回读原confirmation/result/canAccept。宿主API契约补入docs/api/service-counter-state.openapi.json；uni-app b-app尚未接这个原报价恢复页面，按现有分端交付机制登记backend-ui-delivery-service-counter.json。该登记只覆盖此单一路由，不修改历史孤儿端点基线，不声称uni-app页面已完成。以后本仓b-app接入时删除该登记；扫描器覆盖独立Flutter仓库后也应统一调整。

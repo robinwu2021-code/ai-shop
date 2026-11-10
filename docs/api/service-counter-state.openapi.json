@@ -1,0 +1,34 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Service counter original state read",
+    "version": "2026-11-10"
+  },
+  "paths": {
+    "/biz/service-orders/counter-quotes/{operationNo}/state": {
+      "get": {
+        "operationId": "readServiceCounterState",
+        "summary": "Read original service counter confirmation and placement state",
+        "description": "Current merchant scope and CHECKOUT_PREPARE + ORDER_VIEW are required. Business payload is CheckoutService.CounterState; the outer envelope follows the host API convention. Only an unaccepted expired quote may transition to REQUOTE_REQUIRED under its original lock; accepted or unknown placement is preserved.",
+        "parameters": [
+          {
+            "name": "operationNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business payload: nullable confirmation (ManualServiceAdmissionPort.CounterConfirmation), result (CheckoutPort.CheckoutResult), canAccept (boolean). canAccept requires the original actor/realm/kind/account and QUOTED without confirmation; it does not replace write permissions."
+          }
+        },
+        "x-source-controller": "backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizManualServiceAdmissionController.java",
+        "x-payload-java-type": "ai.neargo.shop.trade.service.CheckoutService.CounterState"
+      }
+    }
+  }
+}
