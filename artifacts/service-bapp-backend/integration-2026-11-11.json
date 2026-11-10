@@ -2,7 +2,7 @@
   "date": "2026-11-11",
   "base": "aa5ce5e9f01c2108dacad6d92763a6104601772e",
   "integrationTarget": "codex/food-next01",
-  "status": "verified_candidate_pending_commit_and_fast_forward",
+  "status": "committed_and_fast_forwarded_to_unified_development",
   "backendFeatureAlreadyPresent": {
     "source": "771182c023a800f8cb2cdc61bfab54e2b77fdf68",
     "stablePatchId": "3725b327ab8cd335614f4cb65112736563ca8e96"
@@ -152,5 +152,7 @@
   "next": [
     "App B02/B03 formal integration",
     "SVC-B04 original-key collection recovery"
-  ]
+  ],
+  "functionalCommit": "dc1d10b9ee5d42cde7ba862771678350b8b03a27",
+  "mainDirtyFilesPreserved": 187
 }
