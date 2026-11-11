@@ -71,6 +71,10 @@ class TableHasProducerTest {
     private static final Map<String, String> NO_PRODUCER = new LinkedHashMap<>();
 
     static {
+        NO_PRODUCER.put("mch_resource_occupation", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，header生产写入属于暂缓C2");
+        NO_PRODUCER.put("mch_resource_occupation_unit", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，永久consume/direct单位写入属于暂缓C2");
+        NO_PRODUCER.put("mch_resource_occupation_segment", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，实际分段证据写入属于暂缓C2");
+        NO_PRODUCER.put("mch_resource_occupation_bucket", "已核实：实际资源占用实施细化§10 c1仅保护；实际START关闭，实际占用桶投影写入属于暂缓C2");
         // Stage C retires the old engine. These tables remain only for historical test fixtures.
         // 支付服务 I3（TDD-支付服务-I3支付单退款流水）：表先建、写入逐片落地，落地一片删一行
         NO_PRODUCER.put("pay_refund_review_rule", "db/pay V8 种子；运营维护入口随 I5");
