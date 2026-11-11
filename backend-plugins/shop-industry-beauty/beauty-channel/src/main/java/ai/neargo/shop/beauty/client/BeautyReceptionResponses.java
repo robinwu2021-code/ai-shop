@@ -88,6 +88,16 @@ final class BeautyReceptionResponses {
             return result;
         }
         switch (result) {
+            case ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding value -> {
+                same(ai.neargo.shop.spi.entitlement.ServiceWorkOrderUseInternalApi.ENDPOINT,
+                        call.binding().endpoint());
+                same("RESERVE", call.binding().action());
+                check(call.request() instanceof ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Lookup);
+                check(value.lookup().equals(call.request()));
+                same(target, value.lookup().operationNo());
+                check(value.state() != ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.State.NOT_FOUND);
+            }
+
             case PageData<?> page -> {
                 check(call.request() instanceof WorkOrderQueryReq);
                 var query = (WorkOrderQueryReq) call.request();

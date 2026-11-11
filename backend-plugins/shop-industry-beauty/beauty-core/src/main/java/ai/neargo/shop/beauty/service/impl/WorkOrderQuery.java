@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.beauty.dto.CustomerIdentityVO;
+import ai.neargo.shop.beauty.dto.EntitlementAllocationVO;
+import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding;
 import ai.neargo.shop.beauty.dto.WorkOrderDetailVO;
 import ai.neargo.shop.beauty.dto.WorkOrderParticipationVO;
 import ai.neargo.shop.beauty.dto.WorkOrderStepVO;
@@ -72,7 +75,9 @@ public final class WorkOrderQuery {
         boolean canSubmit = !legacy && !root.getScopeFrozen()
                 && List.of("OPEN", "IN_SERVICE").contains(root.getStatus())
                 && submissions.selectActiveForWorkOrder(root.getEntityNo(), root.getStoreNo(),
-                        root.getWorkOrderNo()).isEmpty();
+                        root.getWorkOrderNo()).isEmpty()
+                && submissions.protectedStartsForWorkOrder(root.getEntityNo(), root.getStoreNo(),
+                        root.getWorkOrderNo()) == 0;
         Map<String, String> preparationNumbers = legacy ? Map.of() : submissions
                 .selectTaskPreparationRefs(root.getEntityNo(), root.getStoreNo(), root.getWorkOrderNo()).stream()
                 .collect(Collectors.toMap(BeautyMappers.TaskPreparationRef::taskNo,
@@ -208,7 +213,21 @@ public final class WorkOrderQuery {
                         legacy ? null : context.getIdentityRef()),
                 original,
                 projected,
-                legacy ? List.of() : canSubmit ? List.of("READ", "SUBMIT_SERVICES") : List.of("READ"));
+                legacy ? List.of() : canSubmit ? List.of("READ", "SUBMIT_SERVICES") : List.of("READ"),
+                legacy ? List.of() : entitlementAllocations(root));
+    }
+
+    private List<EntitlementAllocationVO> entitlementAllocations(BtyWorkOrder root) {
+        return submissions.entitlementsForWorkOrder(root.getEntityNo(), root.getStoreNo(),
+                root.getWorkOrderNo()).stream().map(row -> {
+            var frozen = db.json.readValue(row.getFrozenCommand(), WorkOrderEntitlementService.Frozen.class);
+            var receipt = row.getEntitlementReceiptJson() == null ? null : db.json.readValue(
+                    row.getEntitlementReceiptJson(), Binding.class);
+            return new EntitlementAllocationVO(row.getSubmissionNo(),
+                    frozen.origin().taskNo(), frozen.lookup().operationNo(),
+                    receipt == null ? null : receipt.bindingNo(), row.getEntitlementUsageNo(),
+                    frozen.origin().quantity(), row.getStatus());
+        }).toList();
     }
 
     private String sourceState(
@@ -224,6 +243,28 @@ public final class WorkOrderQuery {
             return "UNKNOWN";
         }
         for (var binding : rows) {
+            if ("SERVICE_USE".equals(binding.getSourceKind()) && "ENTITLEMENT_USE".equals(binding.getAdmissionKind())) {
+                var matches = submissions.entitlementsForWorkOrder(root.getEntityNo(), root.getStoreNo(),
+                        root.getWorkOrderNo()).stream()
+                        .filter(row -> binding.getSubmissionNo().equals(row.getSubmissionNo())).toList();
+                if (matches.size() != 1 || !"BOUND".equals(matches.getFirst().getStatus())) return "UNKNOWN";
+                var journal = matches.getFirst();
+                var receipt = db.json.readValue(journal.getEntitlementReceiptJson(),
+                        Binding.class);
+                if (!binding.getBindingNo().equals(receipt.bindingNo())
+                        || !binding.getSourceSnapshotHash().equals(receipt.sourceHash())
+                        || !task.getTaskNo().equals(receipt.origin().taskNo())
+                        || !journal.getEntitlementUsageNo().equals(receipt.usageNo())
+                        || binding.getQty().compareTo(BigDecimal.valueOf(receipt.origin().quantity())) != 0) return "BLOCKED";
+                var allocation = guards.selectOne(Wrappers.<BtySourceAllocationGuard>lambdaQuery()
+                        .eq(BtySourceAllocationGuard::getTenantNo, "MAIN")
+                        .eq(BtySourceAllocationGuard::getEntityNo, root.getEntityNo())
+                        .eq(BtySourceAllocationGuard::getGuardNo, binding.getGuardNo()));
+                if (allocation == null || !"ENTITLEMENT_USE".equals(allocation.getAdmissionKind())
+                        || !binding.getSourceSnapshotHash().equals(allocation.getSourceHash())
+                        || allocation.getAllocatedQty().compareTo(binding.getQty()) != 0) return "UNKNOWN";
+                continue;
+            }
             if (!"STORE_ORDER".equals(binding.getSourceKind())) {
                 return "UNKNOWN";
             }

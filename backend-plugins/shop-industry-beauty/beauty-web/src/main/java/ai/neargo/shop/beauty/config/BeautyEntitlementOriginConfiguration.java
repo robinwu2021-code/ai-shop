@@ -21,7 +21,7 @@ class BeautyEntitlementOriginConfiguration {
             var task = detail.tasks().stream().filter(row -> taskNo.equals(row.taskNo())).findFirst()
                     .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
             if (!workOrder.equals(detail.workOrder().workOrderNo())
-                    || !"OPEN".equals(detail.workOrder().status()) || !"USER".equals(detail.customer().kind())
+                    || !java.util.List.of("OPEN", "IN_SERVICE").contains(detail.workOrder().status()) || !"USER".equals(detail.customer().kind())
                     || !"PENDING".equals(task.status()) || task.bindingRevision() != 0
                     || task.revision() == null || !"COUNT".equals(task.uom())
                     || task.doneQty().signum() != 0 || task.voidedQty().signum() != 0

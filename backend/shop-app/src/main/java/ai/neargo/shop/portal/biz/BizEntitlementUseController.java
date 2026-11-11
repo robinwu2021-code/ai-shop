@@ -33,6 +33,7 @@ import java.util.HexFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -53,6 +54,12 @@ public class BizEntitlementUseController {
     private final EntitlementUsePort pay;
     private final EntitlementCodeAppService codes;
     private final ObjectProvider<ServiceWorkOrderOriginPort> workOrderOrigins;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.spi.member.CustomerIdentityPort customers;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.spi.storedvalue.StoredValueExecutionScopePort walletScopes;
+    @org.springframework.beans.factory.annotation.Value("${shop.pay.stored-value.brand-execution-enabled:false}")
+    private boolean walletSelectionEnabled;
     public BizEntitlementUseController(EntitlementServiceOrderService orders, EntitlementServiceUseCoordinator services,
                                        EntitlementOrderUseService ordinary, EntitlementUsePort pay,
                                        EntitlementCodeAppService codes,
@@ -62,14 +69,15 @@ public class BizEntitlementUseController {
         this.workOrderOrigins = workOrderOrigins;
     }
 
-    @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_USE + "')")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_USE + "') || @perm.canBiz('" + BizPerms.SV_CONSUME_CREATE + "')")
     @PostMapping("/biz/entitlement-uses/work-order-intents")
     public WorkOrderIntent workOrderIntent(@Valid @RequestBody WorkOrderIntentRequest request,
             @RequestHeader("Idempotency-Key") String key) {
         if (key.isBlank() || key.length() > 128) throw BizException.of(ErrorCode.BAD_REQUEST);
         var ctx = context(key);
         String entity = BizContext.requireMerchantNo();
-        requireStore(request.storeNo(), BizPerms.ENT_USE);
+        boolean monetary = "STORED_VALUE".equals(request.billingMode());
+        requireStore(request.storeNo(), monetary ? BizPerms.SV_CONSUME_CREATE : BizPerms.ENT_USE);
         String originalKey = "WORK_ORDER:" + hash(key);
         String operation = orders.operationNoForKey(ctx, entity, originalKey);
         var order = orders.findOperation(ctx.tenantNo(), entity, operation);
@@ -85,18 +93,56 @@ public class BizEntitlementUseController {
         }
         if (origin == null || !request.workOrderNo().equals(origin.workOrderNo())
                 || !request.taskNo().equals(origin.taskNo())) throw BizException.of(ErrorCode.CONFLICT);
-        order = orders.createForWorkOrder(ctx, entity, request.storeNo(), origin, originalKey);
+        if (order != null && (ai.neargo.shop.trade.service.impl.EntitlementServiceOrderServiceImpl
+                .amount(order.fact()) > 0) != monetary) throw BizException.of(ErrorCode.CONFLICT);
+        order = orders.createForWorkOrder(ctx, entity, request.storeNo(), origin, originalKey, monetary);
         return new WorkOrderIntent(order.operationNo(), order.serviceOrderNo(), origin.workOrderNo(),
                 origin.taskNo(), origin.scopeRevision(), origin.taskRevision(), order.status());
     }
 
     public record WorkOrderIntentRequest(@NotBlank @Size(max = 32) String storeNo,
-            @NotBlank @Size(max = 32) String workOrderNo, @NotBlank @Size(max = 32) String taskNo) {}
+            @NotBlank @Size(max = 32) String workOrderNo, @NotBlank @Size(max = 32) String taskNo,
+            @Pattern(regexp = "UNITS|STORED_VALUE") String billingMode) {
+        public WorkOrderIntentRequest(String storeNo, String workOrderNo, String taskNo) {
+            this(storeNo, workOrderNo, taskNo, null);
+        }
+    }
 
     public record WorkOrderIntent(String operationNo, String serviceOrderNo, String workOrderNo,
             String taskNo, long scopeRevision, long taskRevision, String status) {}
-    private void requireExecutable(ServiceOrderSnapshot order) {
-        if (order.workOrderOrigin() != null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SV_CONSUME_CREATE + "')")
+    @PostMapping("/biz/entitlement-uses/work-order-money-previews")
+    public BizStoredValueController.ConsumptionPreview moneyPreview(@Valid @RequestBody WorkOrderMoneyPreview q) {
+        var ctx = context("work-order-money-preview");
+        String entity = BizContext.requireMerchantNo();
+        requireStore(q.storeNo(), BizPerms.SV_CONSUME_CREATE);
+        var order = orders.requireMerchant(ctx, entity, q.storeNo(), q.orderRef());
+        ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice = null;
+        if (q.issuerRef() != null) {
+            if (!walletSelectionEnabled) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+            var customer = customers.resolveReference(ctx,
+                    new ai.neargo.shop.spi.member.CustomerIdentityPort.ReferenceQuery(entity, q.storeNo(), q.customerRef()));
+            if (!order.fact().userNo().equals(customer.userNo())) throw BizException.of(ErrorCode.NOT_FOUND);
+            var scope = walletScopes.current(ctx.tenantNo(), ctx.actorNo(), entity, q.storeNo(), order.fact().currency());
+            var query = new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Query(scope,
+                    new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Customer(customer.customerNo(), customer.userNo()));
+            choice = new ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice(query, q.issuerRef(), q.accountRef());
+        }
+        var quote = services.previewWorkOrderMoney(ctx, entity, q.storeNo(), q.orderRef(), choice);
+        order = orders.requireMerchant(ctx, entity, q.storeNo(), q.orderRef());
+        return new BizStoredValueController.ConsumptionPreview(EntitlementServiceViews.consumer(order),
+                BizStoredValueController.StoredValueQuoteView.from(quote));
+    }
+
+    public record WorkOrderMoneyPreview(@NotBlank @Size(max = 32) String storeNo,
+            @NotBlank @Size(max = 64) String orderRef, @Size(max = 2048) String issuerRef,
+            @Size(max = 2048) String accountRef, @Size(max = 256) String customerRef) {
+        @jakarta.validation.constraints.AssertTrue
+        @com.fasterxml.jackson.annotation.JsonIgnore
+        public boolean isSelectionComplete() {
+            return issuerRef == null ? accountRef == null && customerRef == null
+                    : accountRef != null && customerRef != null;
+        }
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_USE + "')")
@@ -131,7 +177,6 @@ public class BizEntitlementUseController {
                     new ServiceOrderCreate(q.customerRef(), q.storeNo(), q.items()), key)
                     : orders.requireMerchant(ctx, entity, q.storeNo(), q.orderRef());
         }
-        requireExecutable(order);
         if (q.units() != null && q.units() != order.fact().items().stream().mapToInt(i -> i.quantity()).sum()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -147,20 +192,22 @@ public class BizEntitlementUseController {
         String entity = BizContext.requireMerchantNo();
         service(q.sourceRef());
         var order = orders.requireMerchant(ctx, entity, q.sourceRef().sourceNo());
-        requireStore(order.fact().storeNo(), BizPerms.ENT_USE);
+        requireStore(order.fact().storeNo(), ai.neargo.shop.trade.service.impl.EntitlementServiceOrderServiceImpl.amount(order.fact()) > 0
+                ? BizPerms.SV_CONSUME_CREATE : BizPerms.ENT_USE);
         if (!order.fact().source().equals(q.sourceRef())) throw BizException.of(ErrorCode.CONFLICT);
-        requireExecutable(order);
         return Operation.from(services.submit(ctx, entity, order.fact().storeNo(),
                 new ServiceUseSubmit(order.serviceOrderNo(), q.previewRef(), q.authorizationRef(),
                         q.expectedAssetRevision())));
     }
-    @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_READ + "')")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_READ + "') || @perm.canBiz('" + BizPerms.SV_CONSUME_CREATE + "')")
     @GetMapping("/biz/entitlement-uses/{operationNo}")
     public Operation query(@PathVariable String operationNo) {
         var ctx = context("query-use"); String entity = BizContext.requireMerchantNo();
         var order = orders.findOperation(ctx.tenantNo(), entity, operationNo);
         if (order != null) {
-            requireStore(order.fact().storeNo(), BizPerms.ENT_READ);
+            requireStore(order.fact().storeNo(),
+                    ai.neargo.shop.trade.service.impl.EntitlementServiceOrderServiceImpl.amount(order.fact()) > 0
+                            ? BizPerms.SV_CONSUME_CREATE : BizPerms.ENT_READ);
             String status = EntitlementServiceViews.status(order);
             if (List.of("CREATED", "WAIT_AUTH", "WAIT_SUBMIT", "EXPIRED").contains(status)) {
                 return Operation.pending(operationNo, status);
@@ -172,13 +219,14 @@ public class BizEntitlementUseController {
         requireStore(original.command().storeNo(), BizPerms.ENT_READ);
         return Operation.from(pay.query(original.context(), entity, operationNo));
     }
-    @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_USE + "')")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ENT_USE + "') || @perm.canBiz('" + BizPerms.SV_CONSUME_CREATE + "')")
     @PostMapping("/biz/entitlement-uses/{operationNo}/cancel")
     public Operation cancel(@PathVariable String operationNo, @RequestBody CancelRequest q) {
         var ctx = context("cancel-use"); String entity = BizContext.requireMerchantNo();
         var order = orders.findOperation(ctx.tenantNo(), entity, operationNo);
         if (order == null) throw BizException.of(ErrorCode.NOT_FOUND);
-        requireStore(order.fact().storeNo(), BizPerms.ENT_USE);
+        requireStore(order.fact().storeNo(), ai.neargo.shop.trade.service.impl.EntitlementServiceOrderServiceImpl.amount(order.fact()) > 0
+                ? BizPerms.SV_CONSUME_CREATE : BizPerms.ENT_USE);
         return Operation.from(services.cancel(ctx, entity, order.fact().storeNo(), order.serviceOrderNo(), q.reason()));
     }
     private EntitlementContext context(String key) {

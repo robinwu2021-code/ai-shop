@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.dto;
 
 import ai.neargo.shop.spi.entitlement.DecisionRef;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding;
 import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
@@ -14,12 +15,19 @@ import java.time.LocalDate;
 /** Internal recovery data only; public views must explicitly select safe fields. */
 public record ServiceOrderSnapshot(String serviceOrderNo, String operationNo, String status,
         UseSourceFact fact, EntitlementContext context, PreviewBinding preview, UseCommand command,
-        DecisionRef decision, Instant deadline, String cancellationReason, Origin workOrderOrigin) {
+        DecisionRef decision, Instant deadline, String cancellationReason, Origin workOrderOrigin,
+        Binding workOrderClaim) {
+    public ServiceOrderSnapshot(String serviceOrderNo, String operationNo, String status,
+            UseSourceFact fact, EntitlementContext context, PreviewBinding preview, UseCommand command,
+            DecisionRef decision, Instant deadline, String cancellationReason, Origin workOrderOrigin) {
+        this(serviceOrderNo, operationNo, status, fact, context, preview, command, decision, deadline,
+                cancellationReason, workOrderOrigin, null);
+    }
     public ServiceOrderSnapshot(String serviceOrderNo, String operationNo, String status,
             UseSourceFact fact, EntitlementContext context, PreviewBinding preview, UseCommand command,
             DecisionRef decision, Instant deadline, String cancellationReason) {
         this(serviceOrderNo, operationNo, status, fact, context, preview, command, decision, deadline,
-                cancellationReason, null);
+                cancellationReason, null, null);
     }
     public record PreviewBinding(AssetKind kind, PreviewView preview, LocalDate serviceDay, Quote moneyQuote) {
         public PreviewBinding(AssetKind kind, PreviewView preview, LocalDate serviceDay) {

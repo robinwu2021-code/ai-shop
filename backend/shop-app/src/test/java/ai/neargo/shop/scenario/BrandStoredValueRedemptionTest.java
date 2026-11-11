@@ -33,6 +33,9 @@ import static org.assertj.core.api.Assertions.*;
 @ActiveProfiles("test")
 class BrandStoredValueRedemptionTest {
  @Autowired JdbcTemplate jdbc;@Autowired ObjectMapper json;
+ @MockitoBean ServiceWorkOrderUsePort workOrderUses;
+ @MockitoBean ServiceWorkOrderOriginPort workOrderOrigins;
+ @Autowired ServiceWorkOrderUseFactsPort workOrderFacts;
  @MockitoBean StoredValueBrandRuntimeReadiness readiness;
  @MockitoBean ai.neargo.shop.pay.storedvalue.settlement.StoredValueCrossEntityReadiness financialReadiness;
  @Autowired StoredValueCollectionGuard collectionGuard;
@@ -178,4 +181,50 @@ class BrandStoredValueRedemptionTest {
   var payment=settlementPayments.register(new StoredValueSettlements.Registration(payer,bill.billNo(),bill.revision(),bill.payableMinor(),Instant.now(),"TRANSFER","ISOLATED-P6-"+id(),List.of(),id()));assertThat(payment.status()).isEqualTo("REGISTERED");assertThat(jdbc.queryForObject("SELECT confirmed_receipt_minor FROM sv_settlement_bill WHERE bill_no=?",Long.class,bill.billNo())).isZero();settlementPayments.confirm(new StoredValueSettlements.Receipt(payee,payment.paymentNo(),payment.revision(),Instant.now(),id()));assertThat(jdbc.queryForObject("SELECT status FROM sv_settlement_bill WHERE bill_no=?",String.class,bill.billNo())).isEqualTo("SETTLED");assertThat(balance(f.issuer())).isEqualTo(8000);
 
  }
+ @Test
+ void workOrderWalletRequiresConsentAndRecoversOneOriginalAllocation() {
+  var f = fixture(1000000);
+  recharges.confirm(f.ctx(), f.entity(), f.create());
+  var selected = wallets.accounts(f.qb()).getFirst();
+  String goods = id(), sku = id();
+  jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,store_no,title,type,on_sale,audit_status,fulfillments,"
+          + "tenant_no,created_at,updated_at) VALUES (?,?,?,'Care','SERVICE',1,'APPROVED','[\"STORE_VERIFY\"]',"
+          + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", goods, f.entity(), f.b());
+  jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,created_at,"
+          + "updated_at) VALUES (?,?,?,'CN',5000,0,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", sku, goods, f.entity());
+  var origin = new ServiceWorkOrderOriginPort.Origin("WO1", "TASK1", 1, 0, f.user(), sku, 1);
+  var owner = new ai.neargo.shop.support.WorkOrderUseFixtureOwner(workOrderFacts);
+  org.mockito.Mockito.when(workOrderOrigins.resolve(f.entity(), f.b(), f.actor(), "WO1", "TASK1")).thenReturn(origin);
+  org.mockito.Mockito.when(workOrderUses.inspect(org.mockito.ArgumentMatchers.any()))
+          .thenAnswer(call -> owner.inspect(call.getArgument(0)));
+  org.mockito.Mockito.when(workOrderUses.reserve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+          .thenAnswer(call -> owner.reserve(call.getArgument(0), call.getArgument(1)));
+  org.mockito.Mockito.when(workOrderUses.reconcile(org.mockito.ArgumentMatchers.any()))
+          .thenAnswer(call -> owner.reconcile(call.getArgument(0)));
+  var order = orders.createForWorkOrder(f.ctx(), f.entity(), f.b(), origin, id(), true);
+  var quote = uses.previewWorkOrderMoney(f.ctx(), f.entity(), f.b(), order.serviceOrderNo(),
+          new Choice(f.qb(), selected.issuerRef(), selected.accountRef()));
+  assertThat(quote.redeemable()).isTrue();
+  var submit = new ServiceUseSubmit(order.serviceOrderNo(), quote.quoteRef(), null, quote.assetRevision());
+  assertThat(uses.submit(f.ctx(), f.entity(), f.b(), submit).status().name()).isEqualTo("WAIT_AUTH");
+  assertThat(owner.reservations).hasValue(0);
+  consent.confirm("MAIN", f.user(), order.serviceOrderNo(), new AuthorizationCommand(0,
+          quote.quoteRef(), quote.snapshotHash(), id()));
+  owner.loseBindingReply.set(true);
+  assertThat(uses.submit(f.ctx(), f.entity(), f.b(), submit).status().name()).isEqualTo("PROCESSING");
+  assertThat(balance(f.issuer())).isEqualTo(8000);
+  var recovered = uses.recover(f.ctx(), f.entity(), order.operationNo());
+  assertThat(recovered.status().name()).isEqualTo("COMMITTED");
+  assertThat(uses.submit(f.ctx(), f.entity(), f.b(), submit)).isEqualTo(recovered);
+  assertThat(owner.reservations).hasValue(1);
+  assertThat(owner.bindings).hasValue(1);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_usage WHERE operation_no=?", Integer.class,
+          order.operationNo())).isEqualTo(1);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_clearing_entry WHERE usage_no=?", Integer.class,
+          recovered.usageNo())).isEqualTo(1);
+  assertThatThrownBy(() -> uses.cancel(f.ctx(), f.entity(), f.b(), order.serviceOrderNo(), "Unsupported return"))
+          .isInstanceOf(BizException.class);
+  assertThat(balance(f.issuer())).isEqualTo(8000);
+ }
+
 }

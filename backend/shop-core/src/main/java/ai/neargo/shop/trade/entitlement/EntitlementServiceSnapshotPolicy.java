@@ -68,7 +68,9 @@ public final class EntitlementServiceSnapshotPolicy {
                         : json.readValue(row.getCommandSnapshot(), UseCommand.class),
                 row.getDecisionSnapshot() == null ? null
                         : json.readValue(row.getDecisionSnapshot(), DecisionRef.class),
-                row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason(), source.workOrderOrigin());
+                row.getDeadline().toInstant(ZoneOffset.UTC), row.getCancellationReason(), source.workOrderOrigin(),
+                row.getWorkOrderClaimSnapshot() == null ? null : json.readValue(row.getWorkOrderClaimSnapshot(),
+                        ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding.class));
     }
     public static String sourceHash(String snapshot, ObjectMapper json) {
         return hash(json.writeValueAsString(normalize(json.readTree(snapshot))));

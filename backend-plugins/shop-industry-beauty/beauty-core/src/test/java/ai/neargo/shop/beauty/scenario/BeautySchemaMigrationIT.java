@@ -88,7 +88,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                31,
+                32,
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -97,6 +97,24 @@ class BeautySchemaMigrationIT {
                 count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='1' AND success=1"));
         assertEquals(0, count("SELECT COUNT(*) FROM information_schema.tables "
                 + "WHERE table_schema=DATABASE() AND table_name='flyway_schema_history'"));
+    }
+
+    @Test
+    void v16SubmissionReadsDoNotRequireEntitlementColumns() throws Exception {
+        Flyway.configure().dataSource(new BeautyMigrationDataSource(source))
+                .locations("classpath:db/industry/beauty").table("bty_flyway_history").target("16")
+                .placeholderReplacement(false).load().migrate();
+        var config = new com.baomidou.mybatisplus.core.MybatisConfiguration();
+        config.addMapper(ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceSubmissionMapper.class);
+        var factory = new com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean();
+        factory.setDataSource(source);
+        factory.setConfiguration(config);
+        try (var session = factory.getObject().openSession(true)) {
+            var mapper = session.getMapper(ai.neargo.shop.beauty.mapper.BeautyMappers.ServiceSubmissionMapper.class);
+            assertTrue(mapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers.emptyWrapper()).isEmpty());
+            assertTrue(mapper.entitlementsForWorkOrder("E", "S", "W").isEmpty());
+        }
+        initialize("validate");
     }
 
     /** Test-only target9 constructs the historical deployed base; production never targets a partial sequence. */
@@ -131,7 +149,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
                 new ServiceExecutionSchemaVerifier(source).installation());
-        assertEquals(30, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+        assertEquals(31, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
                 + " AND table_name LIKE 'bty_%' AND table_name<>'bty_flyway_history'"));
     }
 

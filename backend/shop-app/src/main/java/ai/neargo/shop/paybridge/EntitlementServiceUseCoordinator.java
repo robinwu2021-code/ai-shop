@@ -13,6 +13,9 @@ public interface EntitlementServiceUseCoordinator {
     }
     PreviewView preview(EntitlementContext context, String entityNo, String storeNo, String serviceOrderNo,
                         String instanceNo, LocalDate requestedDay);
+    ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote previewWorkOrderMoney(
+            EntitlementContext context, String entityNo, String storeNo, String serviceOrderNo,
+            ai.neargo.shop.spi.storedvalue.StoredValueWallets.Choice choice);
     HoldView submit(EntitlementContext context, String entityNo, String storeNo, ServiceUseSubmit command);
     HoldView query(EntitlementContext context, String entityNo, String operationNo);
     HoldView recover(EntitlementContext context, String entityNo, String operationNo);

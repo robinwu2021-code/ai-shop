@@ -85,7 +85,9 @@ public final class TaskStartSchemaExtension {
                             ServiceExecutionSchemaVerifier.tokens(text(found.getFirst(),"action_statement"))));
             }
             var rows=query(connection,"SELECT version,script,type,checksum,success FROM `"+schema+"`.bty_flyway_history WHERE type<>'BASELINE'");
-            require(rows.size()==15 || rows.size()==16 && TaskWorkflowSchemaVerifier.installed(source));
+            require(rows.size() == 15 || (rows.size() == 16 || rows.size() == 17)
+                    && TaskWorkflowSchemaVerifier.installed(source)
+                    && (rows.size() == 16 || entitlementSuccessor(rows)));
             for(int i=0;i<15;i++) {
                 final String version=Integer.toString(i+1); var expected=d.path("history").get(i);
                 var found=rows.stream().filter(r -> version.equals(text(r,"version"))).toList();
@@ -98,6 +100,26 @@ public final class TaskStartSchemaExtension {
         } catch(Exception corrupt) { return new Postcondition(Installation.CORRUPT,null); }
         finally { if(connection!=null) DataSourceUtils.releaseConnection(connection,source); }
     }
+    private static boolean entitlementSuccessor(List<Map<String, Object>> rows) throws Exception {
+        var successor = rows.stream().filter(row -> "17".equals(text(row, "version"))).toList();
+        require(successor.size() == 1);
+        var marker = successor.getFirst();
+        require(EntitlementUseSchemaContract.SCRIPT.equals(text(marker, "script"))
+                && "SQL".equals(text(marker, "type"))
+                && marker.get("checksum") instanceof Number crc
+                && crc.intValue() == EntitlementUseSchemaContract.CHECKSUM
+                && (Boolean.TRUE.equals(marker.get("success"))
+                    || marker.get("success") instanceof Number ok && ok.intValue() == 1));
+        var scripts = Collections.list(TaskStartSchemaExtension.class.getClassLoader()
+                .getResources(EntitlementUseSchemaContract.MIGRATION));
+        require(scripts.size() == 1);
+        try (var input = scripts.getFirst().openStream()) {
+            require(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input.readAllBytes()))
+                    .equals(EntitlementUseSchemaContract.SHA256));
+        }
+        return true;
+    }
+
     public static JsonNode descriptor() throws Exception {
         var loader=TaskStartSchemaExtension.class.getClassLoader();
         var descriptors=Collections.list(loader.getResources("META-INF/shop/beauty-task-start-schema.json"));

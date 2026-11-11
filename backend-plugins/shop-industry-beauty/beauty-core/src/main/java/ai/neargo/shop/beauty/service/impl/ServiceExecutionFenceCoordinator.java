@@ -311,7 +311,8 @@ public final class ServiceExecutionFenceCoordinator {
         if (!installed()) return;
         var current = bindings.selectCurrentForWorkOrder(entity, store, workOrder);
         for (String source :
-                current.stream().map(b -> b.getSourceNo()).distinct().sorted().toList()) {
+                current.stream().filter(b -> "STORE_ORDER".equals(b.getSourceKind()))
+                        .map(b -> b.getSourceNo()).distinct().sorted().toList()) {
             var row = observations.selectCanonicalForUpdate(entity, source);
             require(row != null && store.equals(row.getStoreNo()));
         }

@@ -17,6 +17,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface EntitlementServiceOrderService {
+
+    ServiceOrderSnapshot bindWorkOrderClaim(EntitlementContext context, String entityNo, String storeNo,
+            String serviceOrderNo, ai.neargo.shop.spi.entitlement.ServiceWorkOrderUsePort.Binding claim);
+    ServiceOrderSnapshot createForWorkOrder(EntitlementContext context, String entityNo, String storeNo,
+            ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin origin, String key, boolean monetary);
     ServiceOrderSnapshot createForWorkOrder(EntitlementContext context, String entityNo, String storeNo,
                                             Origin origin, String key);
     String operationNoForKey(EntitlementContext context, String entityNo, String key);

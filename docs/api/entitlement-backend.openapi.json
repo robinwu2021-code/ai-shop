@@ -10330,6 +10330,16 @@
       },
       "WorkOrderIntentRequest_46c927cbd5": {
         "properties": {
+          "billingMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "storeNo": {
             "maxLength": 32,
             "minLength": 0,
@@ -10417,6 +10427,62 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$WorkOrderIntent"
+      },
+      "WorkOrderMoneyPreview_c280ef2bc7": {
+        "properties": {
+          "accountRef": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 0,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customerRef": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 0,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issuerRef": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 0,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "orderRef": {
+            "maxLength": 64,
+            "minLength": 0,
+            "type": "string"
+          },
+          "storeNo": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "orderRef",
+          "storeNo"
+        ],
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$WorkOrderMoneyPreview"
       }
     },
     "securitySchemes": {
@@ -12073,7 +12139,71 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:ent:use')"
+        "x-permission-expression": "@perm.canBiz('pay:ent:use') || @perm.canBiz('pay:sv:consume:create')"
+      }
+    },
+    "/biz/entitlement-uses/work-order-money-previews": {
+      "post": {
+        "operationId": "BizEntitlementUseController_moneyPreview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkOrderMoneyPreview_c280ef2bc7"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ConsumptionPreview_faa0664c0b"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:consume:create')"
       }
     },
     "/biz/entitlement-uses/{operationNo}": {
@@ -12137,7 +12267,7 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:ent:read')"
+        "x-permission-expression": "@perm.canBiz('pay:ent:read') || @perm.canBiz('pay:sv:consume:create')"
       }
     },
     "/biz/entitlement-uses/{operationNo}/cancel": {
@@ -12211,7 +12341,7 @@
         "tags": [
           "biz"
         ],
-        "x-permission-expression": "@perm.canBiz('pay:ent:use')"
+        "x-permission-expression": "@perm.canBiz('pay:ent:use') || @perm.canBiz('pay:sv:consume:create')"
       }
     },
     "/biz/entitlements/{instanceNo}": {

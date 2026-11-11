@@ -417,6 +417,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                                     && task.getBindingRevision()
                                                             == selection.expectedBindingRevision());
                                     firstBinding(task);
+                                    bindingService.requireTaskMutableLocked(entity, store, task.getTaskNo());
                                     selected.add(task);
                                     selectionRefs.put(task.getTaskNo(), task.getTaskNo());
                                 }

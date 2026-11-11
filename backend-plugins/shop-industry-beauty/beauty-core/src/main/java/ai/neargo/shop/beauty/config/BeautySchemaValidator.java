@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.policy.TaskStartSchemaVerifier;
+import ai.neargo.shop.beauty.policy.EntitlementUseSchemaContract;
 
 import ai.neargo.shop.beauty.policy.TaskAcceptanceSchemaVerifier;
 import ai.neargo.shop.beauty.policy.TaskWorkflowSchemaVerifier;
@@ -47,7 +48,8 @@ public final class BeautySchemaValidator {
             "13", "V13__beauty_task_action.sql",
             "14", "V14__beauty_task_acceptance.sql",
             "15", "V15__beauty_task_start.sql",
-            "16", "V16__beauty_task_workflow.sql");
+            "16", "V16__beauty_task_workflow.sql",
+            "17", "V17__beauty_entitlement_use_binding.sql");
     private static final Set<String> EXTENSION_TABLES = Set.of(
             EXTENSION_TABLE, "bty_service_execution_stock_intent", "bty_task_assignment_slot");
     private static final Set<String> DIRECT_COLUMNS = Set.of("direct_plan_no", "direct_plan_revision", "direct_plan_hash");
@@ -88,6 +90,9 @@ public final class BeautySchemaValidator {
     private static final String V9 = "db/industry/beauty/V9__beauty_manual_source_observation.sql";
     private static final String V9_SHA256 =
             "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7";
+
+    private static final String V17 = EntitlementUseSchemaContract.MIGRATION;
+    private static final String V17_SHA256 = EntitlementUseSchemaContract.SHA256;
 
     /** Migration must be explicitly requested by a single deployment executor; validation is read only. */
     public void initialize(DataSource dataSource, String mode) {
@@ -157,6 +162,14 @@ public final class BeautySchemaValidator {
         }
         require(baseSeen.equals(base.keySet()), "Beauty base requires successful V1-V9 history");
         classifyValidation(validation, extensions);
+        var entitlement = extensions.get("17");
+        boolean entitlementInstalled = entitlement != null && "SUCCESS".equals(entitlement.getState().name());
+        if (entitlementInstalled) {
+            require(entitlement.getChecksum() != null && entitlement.getChecksum() == EntitlementUseSchemaContract.CHECKSUM,
+                    "Beauty entitlement migration checksum differs");
+            addEntitlementDomain(expected);
+            validateEntitlementTriggers(source);
+        }
         var installation = new ServiceExecutionSchemaVerifier(source).installation();
         var stockInstallation = new ServiceExecutionStockIntentSchemaVerifier(source).installation();
         var direct = new DirectTaskPlanSchemaVerifier(source).installation();
@@ -171,13 +184,14 @@ public final class BeautySchemaValidator {
         // Each finite successor is fully verified before removing its exact objects from the frozen base comparison.
         validateStructure(source, expected, directInstalled, actionInstalled, acceptanceInstalled, startInstalled);
         validateManualTrigger(source, stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED,
-                directInstalled, actionInstalled, acceptanceInstalled, startInstalled);
+                directInstalled, actionInstalled, acceptanceInstalled, startInstalled, entitlementInstalled);
         if ("migrate".equals(mode)) {
             require(validation.validationSuccessful
                             && installation == ServiceExecutionSchemaVerifier.Installation.INSTALLED
                             && stockInstallation == ServiceExecutionStockIntentSchemaVerifier.Installation.INSTALLED
-                            && directInstalled && actionInstalled && acceptanceInstalled && startInstalled && workflowInstalled,
-                    "Explicit beauty migration requires the full valid V1-V16 sequence");
+                            && directInstalled && actionInstalled && acceptanceInstalled && startInstalled && workflowInstalled
+                            && entitlementInstalled,
+                    "Explicit beauty migration requires the full valid V1-V17 sequence");
         }
         // In validate mode each known optional owner diagnoses its own ABSENT/CORRUPT state.
         // Its damage cannot authorize execution, nor weaken the mandatory V1-V9 base inspection.
@@ -420,7 +434,8 @@ public final class BeautySchemaValidator {
     }
 
     private static void validateManualTrigger(DataSource source, boolean stockInstalled, boolean directInstalled,
-            boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled) {
+            boolean actionInstalled, boolean acceptanceInstalled, boolean startInstalled,
+            boolean entitlementInstalled) {
         String sql = frozenText(V9, V9_SHA256);
         String expected =
                 sql.substring(sql.indexOf("\nBEGIN\n") + 1, sql.lastIndexOf("$$\nDELIMITER"));
@@ -446,6 +461,8 @@ public final class BeautySchemaValidator {
                     if (acceptanceInstalled && Set.of("trg_bty_task_accept_immutable",
                             "trg_bty_task_accept_no_delete").contains(name)) continue;
                     if (startInstalled && Set.of("trg_bty_task_start_immutable","trg_bty_task_start_no_delete","trg_bty_task_flow_immutable","trg_bty_task_flow_no_delete").contains(name)) continue;
+                    if (entitlementInstalled && Set.of("trg_bty_entitlement_original",
+                            "trg_bty_entitlement_no_delete").contains(name)) continue;
                     count++;
                     require(
                             "trg_bty_source_observation_domain_guard".equals(rows.getString(1))
@@ -458,6 +475,78 @@ public final class BeautySchemaValidator {
                 }
             }
             require(count == 1, "Beauty V9 domain trigger missing or unexpected");
+        } catch (SQLException failure) {
+            throw inspectionFailure(failure);
+        }
+    }
+
+    /** The successor changes only this journal family and the two typed source-domain checks. */
+    private static void addEntitlementDomain(Map<String, TableContract> contracts) {
+        String sql = frozenText(V17, V17_SHA256);
+        var prior = contracts.get("bty_service_submission");
+        var columns = new TreeSet<>(prior.columns());
+        var definitions = new TreeMap<>(prior.columnDefinitions());
+        var modifiers = new TreeMap<>(prior.modifiers());
+        var indexes = new TreeMap<>(prior.indexes());
+        var unique = new HashSet<>(prior.uniqueKeys());
+        var fields = Map.of("entitlement_task_no", "varchar(32):NULL:utf8mb4_bin",
+                "entitlement_operation_no", "varchar(64):NULL:utf8mb4_bin",
+                "entitlement_active_task_no", "varchar(32):NULL:utf8mb4_bin",
+                "entitlement_usage_no", "varchar(64):NULL:utf8mb4_bin",
+                "entitlement_receipt_json", "json:NULL:");
+        fields.forEach((name, definition) -> {
+            require(columns.add(name), "Duplicate entitlement journal column");
+            definitions.put(name, definition); modifiers.put(name, ":false");
+        });
+        var keys = Map.of("uk_bty_entitlement_operation", List.of("tenant_no", "entity_no", "entitlement_operation_no"),
+                "uk_bty_entitlement_active_task", List.of("tenant_no", "entity_no", "entitlement_active_task_no"),
+                "uk_bty_entitlement_usage", List.of("tenant_no", "entitlement_usage_no"));
+        keys.forEach((name, key) -> {
+            unique.add(key);
+            indexes.put(name, indexSignature("`" + String.join("`,`", key) + "`", true));
+        });
+        contracts.put("bty_service_submission", new TableContract(columns, unique, definitions,
+                prior.checks(), modifiers, indexes));
+        var checks = Pattern.compile("ADD CONSTRAINT (\\w+) CHECK \\((.*?)\\);", Pattern.DOTALL).matcher(sql);
+        int count = 0;
+        var targets = Map.of("ck_bty_entitlement_journal", "bty_service_submission",
+                "ck_bty_trade_binding_manual_domain", "bty_trade_binding",
+                "ck_bty_source_allocation_guard_manual_domain", "bty_source_allocation_guard");
+        while (checks.find()) {
+            String table = targets.get(checks.group(1));
+            require(table != null, "Unknown entitlement check target");
+            var contract = contracts.get(table);
+            var expected = new TreeMap<>(contract.checks());
+            expected.put(checks.group(1), normalizeCheck(checks.group(2)));
+            contracts.put(table, new TableContract(contract.columns(), contract.uniqueKeys(),
+                    contract.columnDefinitions(), expected, contract.modifiers(), contract.indexes()));
+            count++;
+        }
+        require(count == 3, "Incomplete entitlement journal checks");
+    }
+
+    private static void validateEntitlementTriggers(DataSource source) {
+        String sql = frozenText(V17, V17_SHA256);
+        var expected = Pattern.compile("CREATE TRIGGER (\\w+) BEFORE (UPDATE|DELETE) ON bty_service_submission"
+                + " FOR EACH ROW\\s+(BEGIN.*?END)\\$\\$", Pattern.DOTALL).matcher(sql);
+        int count = 0;
+        try (var connection = source.getConnection();
+                var statement = connection.prepareStatement("SELECT EVENT_MANIPULATION,ACTION_TIMING,"
+                        + "EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.TRIGGERS"
+                        + " WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME=?")) {
+            connection.setReadOnly(true);
+            while (expected.find()) {
+                statement.setString(1, expected.group(1));
+                try (var row = statement.executeQuery()) {
+                    require(row.next() && expected.group(2).equals(row.getString(1))
+                            && "BEFORE".equals(row.getString(2))
+                            && "bty_service_submission".equals(row.getString(3))
+                            && normalizeTrigger(expected.group(3)).equals(normalizeTrigger(row.getString(4)))
+                            && !row.next(), "Entitlement journal trigger differs");
+                }
+                count++;
+            }
+            require(count == 2, "Incomplete entitlement journal trigger contract");
         } catch (SQLException failure) {
             throw inspectionFailure(failure);
         }

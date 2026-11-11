@@ -106,8 +106,8 @@ public final class TaskAcceptanceSchemaVerifier {
                 + "`.bty_flyway_history WHERE type<>'BASELINE'");
         var successor=TaskStartSchemaExtension.inspect(source);
         require(successor.installation()!=TaskStartSchemaExtension.Installation.CORRUPT);
-        require(rows.size()==(successor.installation()==TaskStartSchemaExtension.Installation.INSTALLED?(rows.size()==16?16:15):14)
-                && descriptor.path("history").size()==14);
+        require((successor.installation() == TaskStartSchemaExtension.Installation.INSTALLED || rows.size() == 14)
+                && descriptor.path("history").size() == 14);
         for (int version = 1; version <= 14; version++) {
             String number = Integer.toString(version);
             var expected = descriptor.path("history").get(version - 1);

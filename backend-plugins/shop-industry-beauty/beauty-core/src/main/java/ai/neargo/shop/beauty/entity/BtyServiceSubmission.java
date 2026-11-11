@@ -3,6 +3,7 @@ package ai.neargo.shop.beauty.entity;
 import ai.neargo.shop.common.BaseEntity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -54,4 +55,15 @@ public class BtyServiceSubmission extends BaseEntity {
     private String actionObservationJson;
     /** Finite actual-workflow observation; frozen command is immutable. */
     private String workflowObservationJson;
+    /** Original member-asset allocation, owned by this submission family. */
+    @TableField(select = false)
+    private String entitlementTaskNo;
+    @TableField(select = false)
+    private String entitlementOperationNo;
+    @TableField(select = false)
+    private String entitlementActiveTaskNo;
+    @TableField(select = false)
+    private String entitlementUsageNo;
+    @TableField(select = false)
+    private String entitlementReceiptJson;
 }

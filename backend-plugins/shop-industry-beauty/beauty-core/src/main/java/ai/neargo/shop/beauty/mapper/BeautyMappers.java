@@ -742,6 +742,16 @@ AND p.task_no=t.task_no AND p.deleted=0 AND (p.ended_at IS NULL OR p.ended_at>#{
 
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
+
+        @Update("""
+                UPDATE bty_service_task SET version=version+1,updated_at=#{at},updated_by=#{actor}
+                WHERE tenant_no='MAIN' AND entity_no=#{entity} AND task_no=#{task} AND version=#{version}
+                  AND binding_revision=0 AND status='PENDING' AND started_at IS NULL AND done_qty=0
+                  AND voided_qty=0 AND uom='COUNT' AND deleted=0
+                """)
+        int reserveEntitlementRevision(@Param("entity") String entity, @Param("task") String task,
+                @Param("version") long version, @Param("actor") String actor, @Param("at") LocalDateTime at);
+
         /**
          * Acceptance changes this command generation once, without changing any task execution
          * facts.
@@ -753,6 +763,9 @@ WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo} AND t.task_no=#{taskNo} AND
   AND t.version=#{expectedVersion} AND t.version<9223372036854775807
   AND t.status='PENDING' AND t.started_at IS NULL AND t.qty=1 AND t.uom='COUNT'
   AND t.done_qty=0 AND t.voided_qty=0
+  AND NOT EXISTS (SELECT 1 FROM bty_service_submission eu WHERE eu.tenant_no=t.tenant_no
+    AND eu.entity_no=t.entity_no AND eu.action='ENTITLEMENT_USE' AND eu.status='RESERVED'
+    AND eu.deleted=0 AND JSON_UNQUOTE(JSON_EXTRACT(eu.frozen_command,'$.origin.taskNo'))=t.task_no)
   AND EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=t.tenant_no
     AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no AND w.store_no=#{storeNo}
     AND w.deleted=0 AND w.scope_frozen=0 AND w.status IN ('OPEN','IN_SERVICE'))
@@ -777,6 +790,9 @@ WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo} AND t.task_no=#{taskNo} AND
   AND t.version=#{expectedVersion} AND t.binding_revision=#{bindingRevision}
   AND t.direct_plan_no <=> #{expectedPlanNo} AND t.status='PENDING' AND t.started_at IS NULL
   AND t.done_qty=0 AND t.voided_qty=0 AND t.qty=1 AND t.uom='COUNT' AND t.appointment_item_no IS NULL
+  AND NOT EXISTS (SELECT 1 FROM bty_service_submission eu WHERE eu.tenant_no=t.tenant_no
+    AND eu.entity_no=t.entity_no AND eu.action='ENTITLEMENT_USE' AND eu.status='RESERVED'
+    AND eu.deleted=0 AND JSON_UNQUOTE(JSON_EXTRACT(eu.frozen_command,'$.origin.taskNo'))=t.task_no)
   AND NOT EXISTS (SELECT 1 FROM bty_service_execution_fence f WHERE f.tenant_no=t.tenant_no
     AND f.entity_no=t.entity_no AND f.task_no=t.task_no)
   AND EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
@@ -1067,12 +1083,50 @@ LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
     public record TaskPreparationRef(String taskNo, String operationNo) {}
 
     public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+
+        @Select("SELECT COUNT(*) FROM bty_flyway_history WHERE version='17' AND success=1 AND checksum="
+                + ai.neargo.shop.beauty.policy.EntitlementUseSchemaContract.CHECKSUM)
+        int entitlementInstalled();
+
+        @Select("""
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entity}
+                  AND store_no=#{store} AND action='ENTITLEMENT_USE' AND entitlement_operation_no=#{operation}
+                  AND deleted=0
+                """)
+        BtyServiceSubmission entitlementOriginal(@Param("entity") String entity, @Param("store") String store,
+                @Param("operation") String operation);
+
+        /** SELECT * keeps ordinary readers compatible with V16 while exposing V17 evidence to this family. */
+        @Select("""
+                SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entity}
+                  AND store_no=#{store} AND work_order_no=#{workOrder} AND action='ENTITLEMENT_USE'
+                  AND deleted=0 ORDER BY submission_no
+                """)
+        List<BtyServiceSubmission> entitlementsForWorkOrder(@Param("entity") String entity,
+                @Param("store") String store, @Param("workOrder") String workOrder);
+
+        @Update("""
+                UPDATE bty_service_submission SET status=#{state},entitlement_usage_no=#{usage},
+                  entitlement_receipt_json=#{receipt},
+                  entitlement_active_task_no=CASE WHEN #{state}='RELEASED' THEN NULL ELSE entitlement_task_no END,
+                  version=version+1,updated_at=#{at},updated_by=#{actor}
+                WHERE tenant_no='MAIN' AND entity_no=#{entity} AND store_no=#{store}
+                  AND submission_no=#{claim} AND action='ENTITLEMENT_USE' AND status='RESERVED'
+                  AND version=#{version} AND deleted=0
+                """)
+        int settleEntitlement(@Param("entity") String entity, @Param("store") String store,
+                @Param("claim") String claim, @Param("version") long version, @Param("state") String state,
+                @Param("usage") String usage, @Param("receipt") String receipt, @Param("actor") String actor,
+                @Param("at") LocalDateTime at);
+
         /** Uses only legacy columns so older installations can keep their ordinary writers. */
         @Select(
                 """
 SELECT COUNT(*) FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
-  AND store_no=#{storeNo} AND action='TASK_START' AND deleted=0
-  AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.context.taskNo'))=#{taskNo}
+  AND store_no=#{storeNo} AND deleted=0
+  AND ((action='TASK_START' AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.action.context.taskNo'))=#{taskNo})
+    OR (action='ENTITLEMENT_USE' AND status IN ('RESERVED','BOUND')
+      AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.origin.taskNo'))=#{taskNo}))
 """)
         int protectedTaskStarts(
                 @Param("entityNo") String entityNo,
@@ -1082,7 +1136,8 @@ SELECT COUNT(*) FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no
         @Select(
                 """
 SELECT COUNT(*) FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
-  AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND action='TASK_START' AND deleted=0
+  AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
+  AND (action='TASK_START' OR (action='ENTITLEMENT_USE' AND status='RESERVED'))
 """)
         int protectedStartsForWorkOrder(
                 @Param("entityNo") String entityNo,
@@ -1549,6 +1604,18 @@ ORDER BY b.task_no, b.binding_no
 
     /** 主体内规范来源行仲裁；涉及来源先锁guard，再锁工单与任务。 */
     public interface SourceAllocationGuardMapper extends BaseMapper<BtySourceAllocationGuard> {
+
+        @Update("""
+                UPDATE bty_source_allocation_guard SET allocated_qty=source_qty,version=version+1,
+                  updated_at=#{at},updated_by=#{actor}
+                WHERE tenant_no='MAIN' AND entity_no=#{entity} AND guard_no=#{guard} AND version=#{version}
+                  AND admission_kind='ENTITLEMENT_USE' AND source_kind='SERVICE_USE' AND allocated_qty=0
+                  AND source_qty=#{quantity} AND source_hash=#{hash} AND deleted=0
+                """)
+        int consumeEntitlement(@Param("entity") String entity, @Param("guard") String guard,
+                @Param("version") long version, @Param("quantity") BigDecimal quantity, @Param("hash") String hash,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
+
         @Update(
                 """
 UPDATE bty_source_allocation_guard g SET allocated_qty=allocated_qty+#{incrementQty},

@@ -52,10 +52,11 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P11 | POST | /mp/entitlement-claims | BenefitClaimCommand | ClaimReceipt | 登录本人 | 模板CENTER或活动资格，不任意领付费卡 |
 | P11a | GET | /mp/entitlement-claims/{intentNo} | 无 | ClaimReceipt | 登录本人 | 查询原领取意图及结果，不隐式重新发行 |
 | P12 | POST | /biz/entitlement-uses/preview | UsePreviewCommand | UsePreview | pay:ent:use | 先看后核，检查可用状态 |
-| P12a | POST | /biz/entitlement-uses/work-order-intents | WorkOrderIntentRequest + Idempotency-Key | WorkOrderIntent | pay:ent:use | 美业原工单行来源草稿 |
+| P12a | POST | /biz/entitlement-uses/work-order-intents | WorkOrderIntentRequest + Idempotency-Key | WorkOrderIntent | pay:ent:use 或 pay:sv:consume:create | 美业原工单行来源，按 UNITS/STORED_VALUE 原权限准入 |
+| P12b | POST | /biz/entitlement-uses/work-order-money-previews | WorkOrderMoneyPreview | ConsumptionPreview | pay:sv:consume:create | 原工单来源的储值试算及原钱包选择 |
 | P13 | POST | /biz/entitlement-uses | UseSubmitCommand | OperationView | pay:ent:use | 受控核销，由应用协调源授权，不裸露commit |
-| P14 | GET | /biz/entitlement-uses/{operationNo} | 无 | OperationView | pay:ent:read | 未知状态查原操作，不重新扣 |
-| P14a | POST | /biz/entitlement-uses/{operationNo}/cancel | reason + Idempotency-Key | OperationView | pay:ent:use | 原经办人和门店校验，只取消未完成意图，不是退款 |
+| P14 | GET | /biz/entitlement-uses/{operationNo} | 无 | OperationView | pay:ent:read 或 pay:sv:consume:create | 按资产原权限；未知状态查原操作，不重新扣 |
+| P14a | POST | /biz/entitlement-uses/{operationNo}/cancel | reason + Idempotency-Key | OperationView | pay:ent:use 或 pay:sv:consume:create | 按资产原权限；原经办人和门店校验，只取消未完成意图，不是退款 |
 | P15 | POST | /mp/entitlement-quotes | QuoteRequest | QuoteView | 登录本人 | 可信订单draftRef，只试算 |
 | P16 | POST | /mp/entitlements/{instanceNo}/activation-quotes | 无 | ActivationQuote | 登录本人 | 查询起算效果，不任意提前激活 |
 | P17 | GET | /mp/entitlements/{instanceNo}/allowances | serviceDate? | AllowanceView | 登录本人 | 指定日剩余/冻结，与总次数区分 |

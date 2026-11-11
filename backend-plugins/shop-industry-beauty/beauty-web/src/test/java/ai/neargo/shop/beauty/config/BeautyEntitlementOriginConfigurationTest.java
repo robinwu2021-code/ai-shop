@@ -48,6 +48,12 @@ class BeautyEntitlementOriginConfigurationTest {
         assertEquals(new Origin("WO1", "TASK1", 2, 3, "U1", "SKU1", 2),
                 origin.resolve("E1", "S1", "A1", "WO1", "TASK1"));
         assertThrows(BizException.class, () -> origin.resolve("E1", "S1", "A1", "WO1", "TASK2"));
+        when(order.status()).thenReturn("IN_SERVICE");
+        assertEquals(new Origin("WO1", "TASK1", 2, 3, "U1", "SKU1", 2),
+                origin.resolve("E1", "S1", "A1", "WO1", "TASK1"));
+        when(order.status()).thenReturn("DONE");
+        assertThrows(BizException.class, () -> origin.resolve("E1", "S1", "A1", "WO1", "TASK1"));
+        when(order.status()).thenReturn("OPEN");
 
         when(task.bindingRevision()).thenReturn(1L);
         assertThrows(BizException.class, () -> origin.resolve("E1", "S1", "A1", "WO1", "TASK1"));

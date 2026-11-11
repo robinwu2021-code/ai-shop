@@ -11,6 +11,6 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnBeautyEnabled
 @ConditionalOnBean(ObjectMapper.class)
 @Import({ai.neargo.shop.beauty.port.BeautyStoreRelinkFactsPortImpl.class, BeautyWriteGuardConfiguration.class, BeautyPolicyConfiguration.class,
-        BeautyDefinitionConfiguration.class, BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class})
+        BeautyEntitlementUseConfiguration.class, BeautyDefinitionConfiguration.class, BeautyCatalogConfiguration.class, BeautyAppointmentConfiguration.class})
 public class BeautyBusinessAutoConfiguration {
 }

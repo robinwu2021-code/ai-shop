@@ -39,6 +39,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Fallback;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
@@ -141,6 +142,7 @@ public class BeautyReceptionConfiguration {
     }
 
     @Bean
+    @Fallback // Keep this qualified industry clock from competing with the host clock.
     Clock beautyReceptionClock() {
         return Clock.systemUTC();
     }
