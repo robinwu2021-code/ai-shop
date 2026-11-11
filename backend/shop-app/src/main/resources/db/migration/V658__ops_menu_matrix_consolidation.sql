@@ -215,6 +215,7 @@ FROM sys_role_point a
 WHERE a.point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK' AND a.deleted = 0
   AND NOT EXISTS (SELECT 1 FROM (SELECT role_code, entity_no FROM sys_role_point
                                  WHERE point_code = 'OPS_FINANCE__TAB_REFUND_BACK') f
-                  WHERE f.role_code = a.role_code AND f.entity_no <=> a.entity_no);
+                  WHERE f.role_code = a.role_code
+                    AND (f.entity_no = a.entity_no OR (f.entity_no IS NULL AND a.entity_no IS NULL)));
 DELETE FROM sys_role_point WHERE point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK';
 DELETE FROM sys_function_point WHERE point_code = 'OPS_AFTERSALE__TAB_REFUND_BACK';
