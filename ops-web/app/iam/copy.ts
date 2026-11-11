@@ -185,6 +185,23 @@ const zh = {
   fieldHowItWorks: "生效方式",
   scopeHowHint:
     "列表查询会自动带上这些归属键，mock 与真实后端行为一致。越权拦截以后端为准（矩阵 §2.3）—— 前端只做展示裁剪。",
+
+  // 角色矩阵（V657）
+  matrixToggle: "角色矩阵",
+  matrixNote: "展示服务端功能点配置，不代表账号最终权限；内置权限和员工数据范围由后端计算。AUDITOR 是业务审核员，SUPER_ADMIN 持有全权限。",
+  matrixModule: "功能模块",
+  matrixAllModules: "全部模块",
+  matrixLoadFailed: "授权数据加载失败。",
+  matrixRetry: "重试",
+  matrixLoading: "正在读取授权…",
+  matrixPermission: "功能权限",
+  matrixMenu: "菜单",
+  matrixAction: "操作",
+  matrixEmpty: "所选模块下没有功能点：切回「全部模块」查看完整矩阵。",
+  matrixGranted: "已授权",
+  matrixDenied: "未配置",
+  matrixUnavailable: "不可用",
+  matrixPlanned: "待交付",
 };
 
 const en: typeof zh = {
@@ -361,6 +378,22 @@ const en: typeof zh = {
   fieldHowItWorks: "How it works",
   scopeHowHint:
     "List queries carry these ownership keys automatically, and the mock behaves like the real backend. Authorisation is enforced server-side (matrix §2.3) — the front end only trims what is shown.",
+
+  matrixToggle: "Role matrix",
+  matrixNote: "Configured point grants, not effective account access. Built-in rights and employee scope are enforced by the backend. AUDITOR is a reviewer; SUPER_ADMIN has wildcard access.",
+  matrixModule: "Module",
+  matrixAllModules: "All modules",
+  matrixLoadFailed: "Grants could not be loaded.",
+  matrixRetry: "Retry",
+  matrixLoading: "Loading grants…",
+  matrixPermission: "Permission",
+  matrixMenu: "Menu",
+  matrixAction: "Action",
+  matrixEmpty: "The selected module has no permission points — switch back to All modules to see the full matrix.",
+  matrixGranted: "Granted",
+  matrixDenied: "Unassigned",
+  matrixUnavailable: "Unavailable",
+  matrixPlanned: "Planned",
 };
 
 export const IAM_COPY: PageCopy<typeof zh> = { zh, en };
