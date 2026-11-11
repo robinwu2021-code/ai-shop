@@ -64,7 +64,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    */
   const LOGO_H = 56;
   const COLLAPSE_BTN_H = 40;
-  const ITEM_H = 34;   // 图标 20 + 上下内边距 7×2（rail.tsx 的 py-[7px]）
+  const ITEM_H = 30;   // 图标 20 + 上下内边距 5×2（rail.tsx 的 py-[5px]）
   const ITEM_GAP = 2;
   const NAV_PAD = 8;
   /** 1366×768 的笔记本，去掉浏览器 chrome 后可视高约 620。这是要放得下的那一档。 */
@@ -454,7 +454,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "points"];
+  const BUILT = ["commerce", "dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "points"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);
@@ -813,8 +813,8 @@ describe("路由归属与面包屑", () => {
     });
   });
 
-  it("面包屑 = L1 › 分组 › 子功能", () => {
-    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家与门店", "入驻与资质", "入驻审核"]);
+  it("面包屑 = 一级 › 二级", () => {
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商户中心", "入驻审核"]);
   });
 
   it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {
@@ -839,7 +839,7 @@ describe("路由归属与面包屑", () => {
       const s = NAV.find((x) => x.label === e.label)!;
       expect(s.soon, `${s.key} 整域待建却进了搜索候选`).toBeFalsy();
     }
-    expect(sections.map((e) => e.label)).toContain("商家与门店");
+    expect(sections.map((e) => e.label)).toContain("商户中心");
     expect(entries.find((e) => e.label === "商家档案")?.href).toBe("/merchants?tab=list");
   });
 
