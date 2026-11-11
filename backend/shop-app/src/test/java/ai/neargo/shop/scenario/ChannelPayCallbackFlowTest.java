@@ -103,7 +103,7 @@ class ChannelPayCallbackFlowTest {
     private WebApplicationContext context;
     @MockitoBean
     private PayQueryPort payQuery;
-    @MockitoBean(extraInterfaces={LegacyCouponOrderPricingService.class,LegacyCouponBoundOrderService.class})
+    @MockitoBean(extraInterfaces={LegacyCouponOrderPricingService.class,LegacyCouponBoundOrderService.class, ai.neargo.shop.trade.service.CheckoutOrderWriter.class})
     private OrderService orderService;
     @Autowired
     private ChannelMappers.ChannelMessageMapper messageMapper;

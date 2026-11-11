@@ -242,7 +242,10 @@ public class PointsRefundResourceServiceImpl implements PointsRefundResourceServ
                         && source != null
                         && "COMMITTED".equals(source.get("state"))
                         && Objects.equals(source.get("sub_order_no"), child.getSubOrderNo())
-                        && Objects.equals(source.get("tenant_no"), child.getTenantNo())
+                        // Historical execution rows have a nullable tenant; the funded parent/child join below
+                        // owns that scope. A populated execution tenant must still match exactly.
+                        && (source.get("tenant_no") == null
+                                || Objects.equals(source.get("tenant_no"), child.getTenantNo()))
                         && "LEGACY_FUNDED".equals(child.getAdmissionKind())
                         && sources.fundedSource(
                                         child.getOrderNo(),

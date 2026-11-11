@@ -84,7 +84,7 @@ class CallbackTemplateTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PaymentLedgerService ledger;
     @MockitoBean private PayQueryPort channel;
-    @MockitoBean(extraInterfaces = {LegacyCouponOrderPricingService.class, LegacyCouponBoundOrderService.class})
+    @MockitoBean(extraInterfaces = {LegacyCouponOrderPricingService.class, LegacyCouponBoundOrderService.class, ai.neargo.shop.trade.service.CheckoutOrderWriter.class})
     private OrderService orders;
 
     private String no;

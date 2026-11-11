@@ -35,7 +35,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyList;
 
-/** Exercises the real merchant entry and durable recovery, with synthetic store subjects and a test bank. */
+/** Exercises the real merchant entry and durable recovery, with the seeded merchant/store subjects and a test bank. */
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:refund-entry;"
         + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "shop.refund.closure.enabled=true"})
 @ActiveProfiles("test")
@@ -44,6 +44,7 @@ class AfterSaleRefundExecutionTest {
     @Autowired private RefundExecutionService executions;
     @Autowired private OrderPointsRecoveryService pointsRecovery;
     @Autowired private OrderPointsRefundCoordinator pointsRefundSource;
+    @Autowired private ai.neargo.shop.trade.order.refund.service.PointsRefundResourceService resourceRecovery;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ai.neargo.shop.trade.order.refund.service.RefundCouponScopeService couponScopes;
     @Autowired private org.springframework.transaction.PlatformTransactionManager transactions;
@@ -86,24 +87,25 @@ class AfterSaleRefundExecutionTest {
         var f=fixture();
         if(lifecycleReturn || lifecycleUnshipped) {
             jdbc.update("UPDATE ord_sub_order SET inventory_lifecycle_version=2 WHERE sub_order_no=?",f.sub());
-            jdbc.update("INSERT INTO ord_create_intent(pay_no,user_no,endpoint,request_hash,stock_authority,stock_needs_json,status,next_attempt_at,created_at,updated_at) VALUES(?,'USER','TEST','HASH','PLATFORM','[]','COMMITTED',0,NOW(),NOW())",f.sub());
         }
         if(lifecycleUnshipped) {
             jdbc.update("UPDATE ord_sub_order SET status='WAIT_FULFILL' WHERE sub_order_no=?",f.sub());
             jdbc.update("UPDATE ord_item SET qty=1,price=100 WHERE sub_order_no=?",f.sub());
+            // This points/refund fixture models the stock owner's exact terminal response.
+            org.mockito.Mockito.doNothing().when(stock).releaseAllocated(f.sub(), f.sub());
         }
         freezeEmptyScope(f.sub());
         markPoints(f);
-        var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
+        var route=new PaymentRoute("M0001","ST-M0001","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
                 "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
-        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
+        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","M0001","ST-M0001",
                 "PM:1","SM","TRADE","OUT:"+f.sub(),110);
         var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,earningRuleSnapshot(),"{}",payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
-        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
-                "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
+        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","M0001",
+                "ST-M0001","TYPE","CNY","ONLINE",0,true,true,snapshot);
         doReturn(new OrderPointsBindingService.Binding("B",admission,
                 OrderPointsBindingService.Phase.BOUND,0,"H")).when(pointsBindings).find(f.sub());
         var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as(),"TYPE",1,"HASH",0,0,0,0,
@@ -114,7 +116,7 @@ class AfterSaleRefundExecutionTest {
                 .when(pointsRefunds).authorizeCash(prep.preparationNo(),prep.inputHash(),1);
         doReturn(new PointsRefundPort.RefundOutcome(prep.preparationNo(),"CONFIRMED",0,0,0,0,0,
                 null,false)).when(pointsRefunds).confirm(any());
-        afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
+        afterSales.approve("M0001",f.as(),"approved",null,"CASH");
         // Approval's real after-commit recovery already prepares and dispatches the original cash attempt.
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
                 Long.class, f.as())).isEqualTo(1L);
@@ -130,7 +132,6 @@ class AfterSaleRefundExecutionTest {
         }
         if(stockFailure) {
             jdbc.update("UPDATE ord_after_sale SET type='RETURN_REFUND',return_received_at=1,restock_approved=1 WHERE after_sale_no=?",f.as());
-            jdbc.update("INSERT INTO ord_create_intent(pay_no,user_no,endpoint,request_hash,stock_authority,stock_needs_json,status,next_attempt_at,created_at,updated_at) VALUES(?,'USER','TEST','HASH','PLATFORM','[]','COMMITTED',0,NOW(),NOW())",f.sub());
             org.mockito.Mockito.doThrow(new IllegalStateException("STOCK_RESTORE_FAILED")).when(stock).restore(eq(f.as()),anyList());
             org.mockito.Mockito.doThrow(new IllegalStateException("STOCK_RESTORE_FAILED")).when(stock).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
         }
@@ -179,16 +180,16 @@ class AfterSaleRefundExecutionTest {
         var f=fixture();
         freezeEmptyScope(f.sub());
         markPoints(f);
-        var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
+        var route=new PaymentRoute("M0001","ST-M0001","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
                 "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
-        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
+        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","M0001","ST-M0001",
                 "PM:1","SM","TRADE","OUT:"+f.sub(),110);
         var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,earningRuleSnapshot(),"{}",payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
-        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
-                "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
+        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","M0001",
+                "ST-M0001","TYPE","CNY","ONLINE",0,true,true,snapshot);
         doReturn(new OrderPointsBindingService.Binding("B",admission,
                 OrderPointsBindingService.Phase.BOUND,0,"H")).when(pointsBindings).find(f.sub());
         var prep=new PointsRefundPort.RefundPreparation("ZERO:"+f.as(),"TYPE",1,"HASH",0,0,0,0,
@@ -199,7 +200,10 @@ class AfterSaleRefundExecutionTest {
         doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
                 "CONFIRMED", 0, null, false))
                 .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
-        afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
+        afterSales.approve("M0001",f.as(),"approved",null,"CASH");
+        assertThat(jdbc.queryForObject("SELECT tenant_no FROM ord_points_refund_execution WHERE after_sale_no=?", String.class, f.as()))
+                .isEqualTo("MAIN");
+        jdbc.update("UPDATE ord_points_refund_execution SET tenant_no=NULL WHERE after_sale_no=?", f.as());
         afterSales.resumeRefund(f.as(),"SYSTEM");
         assertThat(jdbc.queryForObject("SELECT closure_version FROM ord_points_refund_execution WHERE after_sale_no=?",Integer.class,f.as())).isEqualTo(2);
         assertThat(status(f.as())).isEqualTo("REFUNDED");
@@ -210,21 +214,25 @@ class AfterSaleRefundExecutionTest {
                 Long.class,f.as())).isZero();
         verify(pointsDelivery).deliver("ORDER:ZERO_CASH:"+f.as(),f.sub());
         verify(channel,never()).refund(any(),anyLong(),anyString(),anyString());
+        jdbc.update("UPDATE ord_points_refund_execution SET tenant_no='OTHER' WHERE after_sale_no=?", f.as());
+        assertThatThrownBy(() -> resourceRecovery.recover(f.as()))
+                .isInstanceOfSatisfying(ai.neargo.shop.common.BizException.class, error ->
+                        assertThat(error.errorCode()).isEqualTo(ai.neargo.shop.common.ErrorCode.CHECKOUT_PAYMENT_CONFLICT));
     }
 
     @Test void failed_source_delivery_retries_original_cash_refund_without_repaying() {
         var f = fixture();
         markPoints(f);
-        var route = new PaymentRoute("MERCHANT", "STORE", "PM-TEST", "TEST", "SM", "PM:1", "DIRECT");
+        var route = new PaymentRoute("M0001", "ST-M0001", "PM-TEST", "TEST", "SM", "PM:1", "DIRECT");
         var proof = new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(), "USER", "CNY", 110, "TEST",
                 "OUT:" + f.sub(), "TRADE", Instant.ofEpochMilli(1000), List.of(new PaymentStore(f.sub(), route)));
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
-        var payment = new PointsRefundPort.PaymentSnapshot("DIRECT", "TEST", "MERCHANT", "STORE",
+        var payment = new PointsRefundPort.PaymentSnapshot("DIRECT", "TEST", "M0001", "ST-M0001",
                 "PM:1", "SM", "TRADE", "OUT:" + f.sub(), 110);
         var snapshot = new OrderPointsBindingService.Snapshot(100, 0, 0, 1, 1, earningRuleSnapshot(), "{}", payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()), 100)));
-        var admission = new OrderPointsBindingService.Admission("REQ", f.sub(), f.sub(), "USER", "MERCHANT",
-                "STORE", "TYPE", "CNY", "ONLINE", 0, true, true, snapshot);
+        var admission = new OrderPointsBindingService.Admission("REQ", f.sub(), f.sub(), "USER", "M0001",
+                "ST-M0001", "TYPE", "CNY", "ONLINE", 0, true, true, snapshot);
         doReturn(new OrderPointsBindingService.Binding("B", admission,
                 OrderPointsBindingService.Phase.BOUND, 0, "H")).when(pointsBindings).find(f.sub());
         var prep = new PointsRefundPort.RefundPreparation("PREP:" + f.as(), "TYPE", 1, "HASH",
@@ -240,7 +248,7 @@ class AfterSaleRefundExecutionTest {
             if (attempts.getAndIncrement() == 0) throw new IllegalStateException("POINTS_EVENT_DELIVERY_FAILED");
             return null;
         }).when(pointsDelivery).deliver("ORDER:REFUND_CONFIRM:" + f.as(), f.sub());
-        afterSales.approve("MERCHANT", f.as(), "approved", null, "CASH");
+        afterSales.approve("M0001", f.as(), "approved", null, "CASH");
         // Approval's real after-commit recovery already prepares and dispatches the original cash attempt.
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
                 Long.class, f.as())).isEqualTo(1L);
@@ -270,7 +278,7 @@ class AfterSaleRefundExecutionTest {
         assertThat(afterSales.stuckRefundNos(System.currentTimeMillis() + 1000, 20))
                 .doesNotContain(f.as());
         assertThat(pointsRefundSource.pending(20)).doesNotContain(f.as());
-        assertThat(pointsRefundSource.manualForStore("STORE", "", 20).rows())
+        assertThat(pointsRefundSource.manualForStore("ST-M0001", "", 20).rows())
                 .extracting(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualRefund::afterSaleNo)
                 .contains(f.as());
         assertThat(pointsRecovery.inspect(f.sub()).differences())
@@ -287,7 +295,7 @@ class AfterSaleRefundExecutionTest {
                 String.class, f.as())).isEqualTo("ABORTED");
         assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
                 String.class, f.as())).isEqualTo("ABORTED");
-        assertThat(pointsRefundSource.manualForStore("STORE", "", 20).rows())
+        assertThat(pointsRefundSource.manualForStore("ST-M0001", "", 20).rows())
                 .extracting(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualRefund::afterSaleNo)
                 .doesNotContain(f.as());
         assertThat(refunded(f.sub())).isZero();
@@ -314,7 +322,7 @@ class AfterSaleRefundExecutionTest {
         assertThat(status(f.as())).isEqualTo("REFUNDING");
         assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
                 String.class, f.as())).isEqualTo("CASH_FAILED_PENDING_OPERATOR");
-        assertThat(pointsRefundSource.manualForStore("STORE", "", 20).rows())
+        assertThat(pointsRefundSource.manualForStore("ST-M0001", "", 20).rows())
                 .extracting(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualRefund::afterSaleNo)
                 .contains(f.as());
         assertThat(pointsRecovery.inspect(f.sub()).differences())
@@ -355,7 +363,7 @@ class AfterSaleRefundExecutionTest {
         verify(pointsRefunds,never()).abort(any());
         verify(pointsRefunds,never()).requestCompensation(any(),anyLong());
         verify(pointsRefunds,never()).confirm(any());
-        assertThat(pointsRefundSource.manualForStore("STORE", "", 20).rows())
+        assertThat(pointsRefundSource.manualForStore("ST-M0001", "", 20).rows())
                 .extracting(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualRefund::afterSaleNo)
                 .doesNotContain(f.as());
     }
@@ -385,16 +393,16 @@ class AfterSaleRefundExecutionTest {
     private Fixture cashFailureFixture(boolean collected, boolean unknown) {
         var f=fixture();
         markPoints(f);
-        var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
+        var route=new PaymentRoute("M0001","ST-M0001","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
                 "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
         doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
-        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
+        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","M0001","ST-M0001",
                 "PM:1","SM","TRADE","OUT:"+f.sub(),110);
         var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,earningRuleSnapshot(),"{}",payment,
                 List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
-        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
-                "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
+        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","M0001",
+                "ST-M0001","TYPE","CNY","ONLINE",0,true,true,snapshot);
         doReturn(new OrderPointsBindingService.Binding("B",admission,
                 OrderPointsBindingService.Phase.BOUND,0,"H")).when(pointsBindings).find(f.sub());
         var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as(),"TYPE",1,"HASH",0,0,0,0,
@@ -406,7 +414,7 @@ class AfterSaleRefundExecutionTest {
         doReturn(unknown ? ai.neargo.shop.pay.channel.PayGateway.Result.retry("uncertain")
                 : ai.neargo.shop.pay.channel.PayGateway.Result.rejected("rejected"))
                 .when(channel).refund(any(),anyLong(),anyString(),anyString());
-        afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
+        afterSales.approve("M0001",f.as(),"approved",null,"CASH");
         // Approval's real after-commit recovery already prepares and dispatches the original cash attempt.
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
                 Long.class, f.as())).isEqualTo(1L);
@@ -441,13 +449,15 @@ class AfterSaleRefundExecutionTest {
         String sub="S"+UUID.randomUUID().toString().replace("-", "");
         jdbc.update("INSERT INTO ord_sub_order(sub_order_no,order_no,user_no,entity_no,store_no,status,fulfillment,"
                 + "pay_amount,goods_amount,freight_amount,created_at,updated_at)"
-                + " VALUES(?,?,'USER','MERCHANT','STORE','FULFILLING','STORE_PICKUP',110,100,10,NOW(),NOW())",sub,sub);
+                + " VALUES(?,?,'USER','M0001','ST-M0001','FULFILLING','STORE_PICKUP',110,100,10,NOW(),NOW())",sub,sub);
         jdbc.update("INSERT INTO ord_item(sub_order_no,order_no,goods_no,sku_no,title,price,qty,amount,"
                 + "paid_share_minor,created_at,updated_at) VALUES(?,?,'G','SKU','ITEM',50,2,100,100,NOW(),NOW())",sub,sub);
         long item=jdbc.queryForObject("SELECT id FROM ord_item WHERE sub_order_no=?",Long.class,sub);
         jdbc.update("INSERT INTO stl_payment(payment_no,direction,order_no,user_no,amount_minor,currency,status,"
                 + "pay_channel,created_at,updated_at) VALUES(?,'PAY',?,'USER',110,'CNY','SUCCESS','TEST',NOW(),NOW())",
                 "ORIG:"+sub,sub);
+        jdbc.update("INSERT INTO ord_create_intent(pay_no,user_no,endpoint,request_hash,stock_authority,stock_needs_json,status,next_attempt_at,created_at,updated_at) "
+                + "VALUES(?,'USER','TEST','HASH','PLATFORM','[]','COMMITTED',0,NOW(),NOW())", sub);
         String as=afterSale(sub,60);
         jdbc.update("UPDATE ord_sub_order SET open_after_sale_no=? WHERE sub_order_no=?",as,sub);
         jdbc.update("INSERT INTO ord_order(order_no,user_no,pay_amount,status,pay_channel,created_at,updated_at)"
@@ -460,20 +470,20 @@ class AfterSaleRefundExecutionTest {
                 "OUT:"+sub,trade,"ORIG:"+sub);
         jdbc.update("INSERT INTO stl_bill(settle_no,sub_order_no,order_no,entity_no,store_no,pay_merchant_no,"
                 + "gross_minor,commission_minor,service_fee_minor,net_minor,status,funds_mode,created_at,updated_at)"
-                + " VALUES(?,?,?,'MERCHANT','STORE','PM-TEST',110,0,0,110,'PENDING','DIRECT',NOW(),NOW())",sub,sub,sub);
+                + " VALUES(?,?,?,'M0001','ST-M0001','PM-TEST',110,0,0,110,'PENDING','DIRECT',NOW(),NOW())",sub,sub,sub);
         return new Fixture(sub,as,item);
     }
     private void markPoints(Fixture f) {
         jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
         jdbc.update("INSERT INTO ord_points_binding(binding_no,request_id,order_no,sub_order_no,"
                         + "store_no,phase,payload_json) VALUES(?,?,?,?,?,'BOUND','{}')",
-                "B:"+f.sub(),"R:"+f.sub(),f.sub(),f.sub(),"STORE");
+                "B:"+f.sub(),"R:"+f.sub(),f.sub(),f.sub(),"ST-M0001");
     }
     private String afterSale(String sub,long amount) {
         String as="A"+UUID.randomUUID().toString().replace("-", "");
         jdbc.update("INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,status,"
                 + "refund_minor,approved_minor,reason,created_at,updated_at)"
-                + " VALUES(?,?,?,'USER','MERCHANT','REFUND_ONLY','APPLIED',?,?,'OTHER',NOW(),NOW())",as,sub,sub,amount,amount);
+                + " VALUES(?,?,?,'USER','M0001','REFUND_ONLY','APPLIED',?,?,'OTHER',NOW(),NOW())",as,sub,sub,amount,amount);
         return as;
     }
     private long refunded(String sub) {

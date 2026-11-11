@@ -46,6 +46,16 @@ class CouponIssueFlowTest {
     private PersonService personService;
 
     private static int seq = 4000;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    private String entity() {
+        String entity = "M-CPN-" + (++seq);
+        jdbc.update("INSERT INTO mch_entity(entity_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES(?,?,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entity, entity);
+        jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES(?,?,?,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", "S-" + entity, entity, entity);
+        return entity;
+    }
 
     private static CouponSaveCmd cash(long face, Integer total, Long budget) {
         return new CouponSaveCmd(null, "满减券" + seq, PmtCoupon.CASH, face, null, null,
@@ -63,7 +73,7 @@ class CouponIssueFlowTest {
      * （这正是发放页要把「不可触达」单列出来的原因：**商家录了号 ≠ 能发东西给他**。）
      */
     private String entityWithMembers(int n) {
-        String e = "M-CPN-" + (++seq);
+        String e = entity();
         for (int i = 0; i < n; i++) {
             String phone = "1390000" + (++seq);
             String userNo = "U-CPN-" + seq;
@@ -71,7 +81,7 @@ class CouponIssueFlowTest {
             personService.bindOnLogin(userNo, phone);
             // 下单入会：状态是 ACTIVE，可触达
             memberService.onOrderPaid("SUB-CPN-" + seq, userNo, personNo, e,
-                    "ST-1", 5_000, System.currentTimeMillis());
+                    "S-" + e, 5_000, System.currentTimeMillis());
         }
         return e;
     }
@@ -85,7 +95,7 @@ class CouponIssueFlowTest {
     @Test
     @DisplayName("★★★ 折扣券不封顶就不许建 —— 敞口随订单金额无限放大，只能在核销那一刻去追")
     void percentCouponMustHaveCap() {
-        String e = "M-CPN-" + (++seq);
+        String e = entity();
         CouponSaveCmd noCap = new CouponSaveCmd(null, "八五折", PmtCoupon.PERCENT, 8_500L,
                 null, null, 0L, null, PmtCoupon.SCOPE_ALL, List.of(), null,
                 PmtCoupon.RELATIVE, null, null, 7,
@@ -98,7 +108,7 @@ class CouponIssueFlowTest {
     @Test
     @DisplayName("★★ 折扣填成百分数（88）当场拒 —— 与万分比差 100 倍，两个数看着都像对的")
     void percentRateMustBeBasisPoints() {
-        String e = "M-CPN-" + (++seq);
+        String e = entity();
         CouponSaveCmd wrong = new CouponSaveCmd(null, "八八折", PmtCoupon.PERCENT, 88L,
                 2_000L, null, 0L, null, PmtCoupon.SCOPE_ALL, List.of(), null,
                 PmtCoupon.RELATIVE, null, null, 7,
@@ -111,7 +121,7 @@ class CouponIssueFlowTest {
     @Test
     @DisplayName("★★★ 预算兜不住发行量 × 单张最大优惠，建券就不许过")
     void budgetMustCoverExposure() {
-        String e = "M-CPN-" + (++seq);
+        String e = entity();
         // 100 张 × 10 元 = 1000 元敞口，预算只给 500 元
         assertThatThrownBy(() -> couponService.save(e, cash(1_000, 100, 50_000L), "OP"))
                 .isInstanceOf(BizException.class)
@@ -121,7 +131,7 @@ class CouponIssueFlowTest {
     @Test
     @DisplayName("★★★ 下单抵扣的券不许按类目限定 —— 算价拿不到商品明细，写着「仅限粮油」买猫粮也能用")
     void checkoutCouponCannotBeCategoryScoped() {
-        String e = "M-CPN-" + (++seq);
+        String e = entity();
         CouponSaveCmd catScoped = new CouponSaveCmd(null, "粮油券", PmtCoupon.CASH, 500L,
                 null, null, 0L, null, PmtCoupon.SCOPE_CATEGORY, List.of("C-001"), "仅限粮油",
                 PmtCoupon.RELATIVE, null, null, 7,

@@ -157,11 +157,11 @@ class BusinessPrintSourceFlowTest {
         var owner=employee(ref,true,id());
         var operation=simulationFacade.create(command,sourceReader==null?owner:sourceReader);
         var budget=new PrintWorkerBudget(20,java.time.Duration.ofSeconds(30),"business-source-test");
-        assertThat(simulations.runNext(budget).succeeded()).isEqualTo(1);
+        assertThat(simulations.runNext(budget).failed()).isZero();
         var view=simulationFacade.get(operation.targetNo(),owner); assertThat(view.status()).isEqualTo("PASSED");
         var export=new ExportCommand(scope,new ExportSource(ExportSourceType.SIMULATION,operation.targetNo(),view.revision()),PdfOutputProfile.ORIGINAL_ROLL);
         var exportOp=exportFacade.create(export,employee(ref,true,id()));
-        assertThat(exports.generateNext(budget).succeeded()).isEqualTo(1);
+        assertThat(exports.generateNext(budget).failed()).isZero();
         assertThat(exportFacade.get(exportOp.targetNo(),owner).status()).isEqualTo("READY");
         assertThatThrownBy(()->exportFacade.get(exportOp.targetNo(),restricted)).isInstanceOf(PrintFailure.class);
         assertThatThrownBy(()->exportFacade.download(exportOp.targetNo(),restricted)).isInstanceOf(PrintFailure.class);

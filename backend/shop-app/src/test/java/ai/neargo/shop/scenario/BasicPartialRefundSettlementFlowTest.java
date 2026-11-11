@@ -97,15 +97,24 @@ class BasicPartialRefundSettlementFlowTest {
                 .isEqualTo(splitDone ? "SPLIT" : original.get("status"));
         assertThat(phase(no)).isEqualTo("CASH");
 
-        // 同一张结算单上的第二笔部分退（另一张售后单）：必须能回退并走到退现金，不能永远卡在回退
-        String second = afterSale + "-2";
-        jdbc.update("update ord_refund_execution set after_sale_no=?,phase='REVERSAL',status='PROCESSING',"
-                + "error_code=null,next_attempt_at=0 where execution_no=?", second, no);
-        refunds.recover(no);
+        // 第一笔真实现金确认释放原售后槽位；第二笔有独立来源和执行，原永久执行不改名。
+        new CashReceiptFixture(context).confirmRefund(afterSale);
+        assertThat(jdbc.queryForObject("select open_after_sale_no from ord_sub_order where sub_order_no=?",
+                String.class, sub)).isNull();
+        String firstPlan = jdbc.queryForObject("select plan_json from ord_refund_execution where execution_no=?",
+                String.class, no);
+        String second = secondPartialSource(sub, afterSale, oneItem);
+        String secondExecution = "RF-" + second;
+        assertThat(secondExecution).isNotEqualTo(no);
+        refunds.recover(secondExecution);
+        assertThat(jdbc.queryForObject("select after_sale_no from ord_refund_execution where execution_no=?",
+                String.class, no)).isEqualTo(afterSale);
+        assertThat(jdbc.queryForObject("select plan_json from ord_refund_execution where execution_no=?",
+                String.class, no)).isEqualTo(firstPlan);
         Map<String, Object> next = journal(second);
         assertThat(next).as("第二笔部分退也落了结算流水").isNotNull();
         assertThat(flag(next.get("final_refund"))).isFalse();
-        assertThat(phase(no)).isEqualTo("CASH");
+        assertThat(phase(secondExecution)).isEqualTo("CASH");
         assertThat(((Number) bill(sub).get("refunded_goods_minor")).longValue()).isEqualTo(2 * oneItem);
     }
 
@@ -155,6 +164,27 @@ class BasicPartialRefundSettlementFlowTest {
         assertThat(phase("RF-" + afterSale)).isEqualTo("REVERSAL");
         assertThat(journal(afterSale)).isNull();
         return afterSale;
+    }
+
+    /** Owner fixture for the source-bound partial entry: real case lines, free slot and production preparation. */
+    private String secondPartialSource(String sub, String first, long amount) {
+        String second=first+"-2";
+        String billStatus=(String)bill(sub).get("status");
+        jdbc.update("update stl_bill set status='SPLITTING' where sub_order_no=?",sub);
+        jdbc.update("insert into ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,status,"
+                + "refund_minor,approved_minor,reason,fulfill_stage,created_at,updated_at)"
+                + " select ?,sub_order_no,order_no,user_no,entity_no,type,'APPLIED',?,?,reason,fulfill_stage,now(),now()"
+                + " from ord_after_sale where after_sale_no=?",second,amount,amount,first);
+        jdbc.update("insert into ord_after_sale_item(after_sale_no,sub_order_no,item_id,qty,refund_minor,created_at,updated_at)"
+                + " select ?,sub_order_no,id,1,?,now(),now() from ord_item where sub_order_no=?",second,amount,sub);
+        assertThat(jdbc.update("update ord_sub_order set open_after_sale_no=? where sub_order_no=?"
+                + " and open_after_sale_no is null",second,sub)).isOne();
+        afterSales.approve(col(sub,"entity_no"),second,"second partial",null,null);
+        assertThat(phase("RF-"+second)).isEqualTo("REVERSAL");
+        jdbc.update("update stl_bill set status=? where sub_order_no=?",billStatus,sub);
+        jdbc.update("update ord_refund_execution set status='PROCESSING',error_code=null,next_attempt_at=0"
+                + " where execution_no=?","RF-"+second);
+        return second;
     }
 
     private void reviseToOneItem(String no, long amount) throws Exception {

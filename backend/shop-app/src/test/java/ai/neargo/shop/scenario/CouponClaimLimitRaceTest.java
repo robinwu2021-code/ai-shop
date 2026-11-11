@@ -41,6 +41,8 @@ class CouponClaimLimitRaceTest {
     @DisplayName("★★★ 新模型：同一人并发领 8 次「限领 1 张」的券，只到手 1 张")
     void concurrentReceiveRespectsPerUserLimit() throws Exception {
         String e = "M-CLR-" + (++seq);
+        jdbc.update("INSERT INTO mch_entity(entity_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES(?,?,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", e, e);
         String couponNo = couponService.save(e, new CouponSaveCmd(null, "限领一张" + seq, PmtCoupon.CASH, 100L,
                 null, null, 0L, null, PmtCoupon.SCOPE_ALL, List.of(), null,
                 PmtCoupon.RELATIVE, null, null, 7,
@@ -60,7 +62,7 @@ class CouponClaimLimitRaceTest {
         long now = System.currentTimeMillis();
         jdbc.update("INSERT INTO mkt_coupon(coupon_no,title,type,face_minor,funder,entity_no,total_count,start_at,"
                 + "end_at,status,per_user_limit,tenant_no,created_at,updated_at) VALUES(?,'限领一张','FULL_CUT',100,"
-                + "'MERCHANT','M1',100,?,?,'ACTIVE',1,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                + "'MERCHANT','M0001',100,?,?,'ACTIVE',1,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
                 couponNo, now - 1000, now + 3_600_000L);
         String user = "U-CLR-" + seq;
         hammer(() -> legacy.grantTo(user, couponNo));

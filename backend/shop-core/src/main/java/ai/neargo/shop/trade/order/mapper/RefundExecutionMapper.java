@@ -63,8 +63,9 @@ public interface RefundExecutionMapper extends BaseMapper<OrdRefundExecution> {
             + " AND state NOT IN ('COMMITTED','ABORTED') AND deleted=0 ORDER BY id FOR UPDATE")
     List<Map<String, Object>> open(String sub);
 
-    @Insert("INSERT INTO ord_points_refund_execution(after_sale_no,sub_order_no,state,input_hash,payload_json)"
-            + " VALUES(#{as},#{sub},'PREPARED',#{hash},#{payload})")
+    @Insert("INSERT INTO ord_points_refund_execution(after_sale_no,sub_order_no,state,input_hash,payload_json,tenant_no)"
+            + " VALUES(#{as},#{sub},'PREPARED',#{hash},#{payload},"
+            + "(SELECT tenant_no FROM ord_sub_order WHERE sub_order_no=#{sub} AND deleted=0))")
     int create(@Param("as") String as, @Param("sub") String sub, @Param("hash") String hash,
                @Param("payload") String payload);
 
