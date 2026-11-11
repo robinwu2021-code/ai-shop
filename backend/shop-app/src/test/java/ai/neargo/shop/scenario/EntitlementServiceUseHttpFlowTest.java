@@ -96,6 +96,18 @@ class EntitlementServiceUseHttpFlowTest {
         assertThat(storedOrigin.path("quantity").asInt()).isEqualTo(1);
         assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, draftKey).path("data"))
                 .isEqualTo(draft);
+        jdbc.update("DELETE FROM ord_ent_service_task_claim WHERE tenant_no='MAIN' AND entity_no=?", entity);
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, draftKey).path("data"))
+                .isEqualTo(draft);
+        assertThat(jdbc.queryForObject("SELECT service_order_no FROM ord_ent_service_task_claim "
+                + "WHERE tenant_no='MAIN' AND entity_no=? AND work_order_no='WO1' AND task_no='TASK1'",
+                String.class, entity)).isEqualTo(draft.path("serviceOrderNo").asString());
+        long draftCount = jdbc.queryForObject("SELECT COUNT(*) FROM ord_ent_service_order WHERE entity_no=?",
+                Long.class, entity);
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, id()).path("code").asInt())
+                .isEqualTo(10409);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_ent_service_order WHERE entity_no=?",
+                Long.class, entity)).isEqualTo(draftCount);
         assertThat(postJson(mvc, intentPath, merchant,
                 Map.of("storeNo", store, "workOrderNo", "WO1", "taskNo", "TASK2"), draftKey)
                 .path("code").asInt()).isEqualTo(10409);
@@ -104,6 +116,19 @@ class EntitlementServiceUseHttpFlowTest {
         assertThat(postJson(mvc, "/biz/entitlement-uses/preview", merchant, Map.of("storeNo", store,
                 "orderRef", draft.path("serviceOrderNo").asString(), "instanceNo", instance), id())
                 .path("code").asInt()).isNotZero();
+        assertThat(postJson(mvc, "/biz/entitlement-uses/" + draft.path("operationNo").asString() + "/cancel",
+                merchant, Map.of("reason", "Release the original unsubmitted intent"), id())
+                .path("data").path("status").asString()).isEqualTo("RELEASED");
+        var replacement = postJson(mvc, intentPath, merchant, workOrderRequest, id());
+        assertThat(replacement.path("code").asInt()).isZero();
+        var replacementDraft = replacement.path("data");
+        assertThat(replacementDraft.path("serviceOrderNo").asString())
+                .isNotEqualTo(draft.path("serviceOrderNo").asString());
+        assertThat(postJson(mvc, intentPath, merchant, workOrderRequest, draftKey)
+                .path("data").path("status").asString()).isEqualTo("RELEASED");
+        assertThat(jdbc.queryForObject("SELECT service_order_no FROM ord_ent_service_task_claim "
+                + "WHERE tenant_no='MAIN' AND entity_no=? AND work_order_no='WO1' AND task_no='TASK1'",
+                String.class, entity)).isEqualTo(replacementDraft.path("serviceOrderNo").asString());
         String kind = locator ? "STORE_EXCHANGE" : "PAID_CARD";
         var rule = new EntitlementDefinition("30 times", kind, "MERCHANT", "CNY", "SERVICE_UNITS",
                 null, null, null, null, null, "COUNT", 30, null,

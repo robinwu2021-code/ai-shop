@@ -13,6 +13,7 @@ import ai.neargo.shop.paybridge.dto.EntitlementServiceViews;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
 import ai.neargo.shop.paybridge.dto.EntitlementServiceViews.Operation;
@@ -72,21 +73,19 @@ public class BizEntitlementUseController {
         String originalKey = "WORK_ORDER:" + hash(key);
         String operation = orders.operationNoForKey(ctx, entity, originalKey);
         var order = orders.findOperation(ctx.tenantNo(), entity, operation);
+        Origin origin;
         if (order == null) {
             var owner = workOrderOrigins.getIfAvailable();
             if (owner == null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
-            var origin = owner.resolve(entity, request.storeNo(), ctx.actorNo(),
+            origin = owner.resolve(entity, request.storeNo(), ctx.actorNo(),
                     request.workOrderNo(), request.taskNo());
-            if (!request.workOrderNo().equals(origin.workOrderNo()) || !request.taskNo().equals(origin.taskNo())) {
-                throw BizException.of(ErrorCode.CONFLICT);
-            }
-            order = orders.createForWorkOrder(ctx, entity, request.storeNo(), origin, originalKey);
         } else {
             order = orders.requireMerchant(ctx, entity, request.storeNo(), order.serviceOrderNo());
+            origin = order.workOrderOrigin();
         }
-        var origin = order.workOrderOrigin();
         if (origin == null || !request.workOrderNo().equals(origin.workOrderNo())
                 || !request.taskNo().equals(origin.taskNo())) throw BizException.of(ErrorCode.CONFLICT);
+        order = orders.createForWorkOrder(ctx, entity, request.storeNo(), origin, originalKey);
         return new WorkOrderIntent(order.operationNo(), order.serviceOrderNo(), origin.workOrderNo(),
                 origin.taskNo(), origin.scopeRevision(), origin.taskRevision(), order.status());
     }

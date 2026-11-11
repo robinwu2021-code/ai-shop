@@ -7412,6 +7412,17 @@ CREATE TABLE IF NOT EXISTS pmt_benefit_intent
     CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'ABORT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'ABORTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
+CREATE TABLE IF NOT EXISTS ord_ent_service_task_claim
+(
+    tenant_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    work_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    task_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    service_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    PRIMARY KEY (tenant_no, entity_no, work_order_no, task_no),
+    CONSTRAINT uk_ent_service_task_order UNIQUE (tenant_no, service_order_no)
+);
+
 CREATE TABLE IF NOT EXISTS ord_ent_service_order
 (
     id BIGINT NOT NULL AUTO_INCREMENT,

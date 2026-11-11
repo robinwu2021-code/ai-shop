@@ -50,6 +50,7 @@ import ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy.FrozenS
 import ai.neargo.shop.trade.entitlement.entity.OrdEntAuthorization;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntServiceOrder;
 import ai.neargo.shop.trade.mapper.EntitlementServiceOrderMapper;
+import ai.neargo.shop.trade.mapper.EntitlementServiceOrderMapper.TaskClaim;
 import ai.neargo.shop.trade.mapper.TradeMappers.EntitlementAuthorizationMapper;
 import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
 import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
@@ -132,8 +133,15 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     public ServiceOrderSnapshot createForWorkOrder(EntitlementContext ctx, String entity, String storeNo,
                                                    Origin origin, String key) {
         var items = List.of(new ServiceOrderCreate.Line(origin.skuNo(), origin.quantity()));
-        return createInternal(ctx, entity, storeNo, items, key,
+        var order = createInternal(ctx, entity, storeNo, items, key,
                 hash(json.writeValueAsString(List.of("WORK_ORDER", origin))), false, origin::userNo, origin);
+        if ("RELEASED".equals(order.status())) return order;
+        var claim = new TaskClaim(ctx.tenantNo(), entity, origin.workOrderNo(), origin.taskNo(),
+                order.serviceOrderNo());
+        orders.insertTaskClaim(claim);
+        orders.replaceReleasedTaskClaim(claim);
+        if (!order.serviceOrderNo().equals(orders.lockTaskClaim(claim))) conflict();
+        return order;
     }
     private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
             List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder) {
