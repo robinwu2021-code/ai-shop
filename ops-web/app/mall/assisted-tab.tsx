@@ -135,7 +135,7 @@ export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSu
             </div>
             <div className="space-y-1 md:col-span-2">
               <Label htmlFor="as-sku" required>{c.fieldSku}</Label>
-              <Select disabled={locked} id="as-sku" disabled={locked} className="w-full" value={sku} onChange={(e) => { setSku(e.target.value); reset(); }}>
+              <Select id="as-sku" disabled={locked} className="w-full" value={sku} onChange={(e) => { setSku(e.target.value); reset(); }}>
                 <option value="">{sellable.length ? c.pickSku : c.noSellable}</option>
                 {sellable.map(({ def, v }) => (
                   <option key={def.skuNo} value={v!.draft!.skuVersionNo}>{def.title} · {v!.draft!.skuVersionNo}</option>
@@ -144,13 +144,13 @@ export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSu
             </div>
             <div className="space-y-1">
               <Label htmlFor="as-qty" required>{c.colQty}</Label>
-              <Input disabled={locked} id="as-qty" disabled={locked} inputMode="numeric" value={qty} onChange={(e) => { setQty(e.target.value); reset(); }} />
+              <Input id="as-qty" disabled={locked} inputMode="numeric" value={qty} onChange={(e) => { setQty(e.target.value); reset(); }} />
             </div>
           </div>
           <Button disabled={locked || !sku || !Number.isInteger(Number(qty)) || Number(qty) < 1 || (canReadSubscription && (!context.data?.currency || context.isFetching))} loading={doQuote.isPending} onClick={() => doQuote.mutate()}>{c.btnQuote}</Button>
           {!!doQuote.error && <Notice tone="danger">{describeError(doQuote.error)}</Notice>}
 
-          {pending&&<Notice tone="warning"><p>{c.reviewUnknown}</p><p>{pending.storeNo} · {pending.quoteNo} · {pending.idempotencyKey}</p><Button disabled={checking||place.isPending} onClick={()=>void lookup()}>{c.reviewLookup}</Button>{absent&&<Button disabled={checking||place.isPending} onClick={()=>place.mutate()}>{c.reviewRetry}</Button>}{lookupError&&<p role="alert">{c.reviewUnknown}</p>}</Notice>}
+          {pending&&<Notice tone="warning"><p>{c.reviewUnknown}</p><p>{pending.storeNo} · {pending.quoteNo} · {pending.idempotencyKey}</p><Button disabled={checking||place.isPending} onClick={()=>void lookup()}>{c.reviewLookup}</Button>{absent&&<Button disabled={checking||place.isPending} onClick={()=>place.mutate(pending?.shippingAddress ?? null)}>{c.reviewRetry}</Button>}{lookupError&&<p role="alert">{c.reviewUnknown}</p>}</Notice>}
           {quote && (
             <div className="space-y-3 rounded-card border border-border p-4">
               <FieldGrid>

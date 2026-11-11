@@ -1,12 +1,12 @@
 # TDD-运营端套餐商城（commerce Task 5）
 
-状态：已实现（mock 验证；真实后端联调属于 Task 7）
+状态：2026-11-11 P01–P07 本地实现与专项验证完成，待部署及目标门店联调
 关联需求：[商城套餐实施计划 Task 5](../superpowers/plans/2026-11-04-commerce-mall-purchase-implementation.md) ·
 [台湾线下购买补充设计](../superpowers/specs/2026-11-04-twd-offline-commerce-amendment.md) ·
 接口真源 [commerce-mall-http.md](../api/commerce-mall-http.md) + `commerce-mall-openapi.json`（task8-v1）
-创建：2026-11-04 · 最后更新：2026-11-04
+创建：2026-11-04 · 最后更新：2026-11-11
 
-档位：1 —— 不改后端接口；动了运营端菜单与权限映射、页面文案、菜单种子迁移（V628）。
+档位：1 —— 本轮增加收款档案管理读模型和订阅摘要字段，保留原支付与冻结订单合同；补齐运营发布、档案恢复、代购入口。
 
 ## §0 对账一 · 需求 → 设计
 
@@ -29,17 +29,31 @@
 **孤立项**：无没落点的 AC。挂不上 AC 的设计 —— `lib/commerce-reason.ts` 与 `providers.tsx` 的全局 toast 翻译，
 理由：后端商城错误 msg 是机器原因码，不翻译等于 AC12 的报错对运营不可读。
 
+| AC14 / P04 | 发布使用目录回读版本，冲突后刷新，跨会话无需手填 | PublishCard 消费 catalogVersion |
+| AC15 / P05 | 停用档案仍可读当前版本并恢复，报价仍只认可用档案 | 管理读模型与原 terms 读口分离 |
+| AC16 / P06 | 展示门店当前方案与币种，筛选经营类型匹配商品 | 订阅只读摘要；沿原 subscription:read 授权 |
+| AC17 / P07 | 硬件代购填写收货地址，同一请求重试保持原地址与幂等键 | AssistedTab 沿现有 ShippingAddress 合同 |
+
 ## §1 现状与影响面
 
 - 相关现有模块：`ops-web` 分层（contracts / https / mocks / mock/db）、`lib/nav.ts`、`lib/perm-map.ts`、`lib/point-codes.ts`。
 - 可直接复用：DataTable / Drawer / ConfigCard / useConfirm / ReadOnlyNotice / StatusBadge / TabHeader。
 - 会被改到的：`http-client.post`（新增 Blob 分支，JSON 路径不变）；全局 mutation 错误 toast（只替换已登记的商城原因码）。
-- 明确不受影响的：旧「增值包授予 / 档位定义」（`/merchants?tab=plans|plan-defs`）原样保留；后端代码零改动。
+- 旧「增值包授予 / 档位定义」沿用原逻辑；本轮后端扩充管理查询和订阅摘要，不改报价、资金或订单冻结规则。
 
 ## §2 方案
 
+### 2026-11-11 增量执行计划
+
+1. 复核 P01–P03 已有目录、权益、SKU 和发布校验，复用有效验证。
+2. P04 移除猜测/手填目录版本，展示服务器 catalogVersion；冲突刷新后由运营重新确认发布。
+3. P05 管理查询返回当前不可用档案及 enabled；支付报价/发指引仍沿原启用约束，原冻结 Terms 不增加可变字段。
+4. P06 订阅读口增加经营类型、当前方案版本、币种、服务器时间摘要，保留现有读权限；无读权限时提示，并仍由正式报价决定资格。
+5. P07 增加硬件地址表单，首次下单冻结地址，重试复用原意图；复用既有履约合同。
+6. 集中执行变更相关 OPS 页面/合同测试、类型检查与后端 MySQL 9 测试，更新清单和真实证据。
+
 ### 契约变更
-- 端点：无新增，消费 task8-v1 的 41 个 `/ops` 操作。
+- 端点：无新增。档案 GET 返回独立 `OfflineCollectionProfile`，包含 `enabled`；PUT 和报价仍沿原 `OfflineCollectionTerms`。订阅读口增加 `businessTypeCode`、`currency`、`currentPlanVersionNo`、`serverNow`，授权不变。
 - 库表 / 迁移：`V628__commerce_mall_ops_menu.sql` —— 7 个 MENU 功能点（`OPS_COMMERCE*`）+ SUPER_ADMIN 授权，可重入。
 - 权限码：无新码；`UI_PERM_MAP` 恒等登记 V625/V627 的 17 个 `commerce:*` 码。
 - i18n：`app/mall/copy.ts`（中英齐平）、`lib/i18n/nav-labels.ts` 8 条导航译文。
@@ -78,9 +92,27 @@
 
 ## §6 偏差与缺口
 
-1. **契约缺口**：发布要 `expectedCatalogVersion`，运营目录接口不回读行业目录版本。首次发布固定 0；再次发布由运营填（本会话发布过会预填），填错会被 VERSION_CONFLICT 拒绝而不会误发布。需后端在 overview 的 BusinessTypeView 补 `catalogVersion`。
+1. **已修复（P04）**：服务器已有 `catalogVersion`，OPS 自动读取并只读展示，缺失时禁发。明确版本冲突刷新并关闭旧确认，下次确认使用最新版本；网络失败保留原确认供原样重试。
 2. **契约缺口**：买家申报不带凭证资产键，也没有「列出某单凭证」接口；运营抽屉只能列本次上传的键 + 按键查看。
-3. **契约缺口**：收款档案 GET 不回读 `enabled`。
+3. **已修复（P05）**：管理 GET 包含停用档案及当前版本/`enabled`，可按原版本恢复；报价和指引继续受原启用约束，冻结条款不增加可变状态。
 4. MALL_UNMATCHED 实收在订单详情里的形态按「paymentAttempts 中 `errorCode=MALL_UNMATCHED`」处理（mock 同此）；真实后端若不同，VoidForm 仍可手工补支付号。需在 Task 7 联调确认。
 5. 未挂 `gated`：商城控制器由 starter 的 `@Bean` 方法装配，`gated-endpoints.test.ts` 只认类注解，登记会被判陈旧。开关关着时页面显示 404 错误态。
-6. 代客下单暂不支持含硬件（需要收货地址表单），页面明确提示。
+6. **已修复（P06–P07）**：有订阅读权时显示门店经营类型、币种和服务器当前方案，筛选匹配 SKU；无读权提示并以正式报价结果为准。硬件代购填写地址后可下单，首次尝试固定地址，重试沿原幂等键。
+7. 真实市场、价格、周期、平台收款主体及档案须部署配置；到账、渠道协议、送件、签约和实物履约仍按目标门店联调验收。
+
+### 2026-11-11 实现与验证（AC14–AC17）
+
+| 范围 | 结果与证据 |
+|---|---|
+| P01–P03 | 复用原目录与三档/SKU 实现；CatalogOverviewTest 1、SkuPublicationTest 14、CatalogPublicationFinalReviewTest 9、CatalogWritePermissionTest 7，共 31 项通过；系统阶段 IndustryPublicationTest 16 项证据继续复用 |
+| P04 | 页面覆盖服务器版本、缺失禁发、冲突刷新；实际 useConfirm/Radix Dialog 验证旧确认关闭、重新确认提交新版本 |
+| P05 | PlatformOfflineCollectionMysqlTest 9 项通过，含停用管理读、租户/币种隔离、原版本恢复与可用 terms 约束；HTTP 和页面准确保留 enabled/版本 |
+| P06 | SubscriptionMysqlTest 10、SourceManagementMysqlTest 2、SubscriptionViewsTest 1 通过；覆盖服务器生效边界、未来/撤销/独立端排除和过滤查询摘要保留 |
+| HTTP | SourceHttpContractTest 1、MallOpenApiResponseTest 1、OfflineHttpContractTest 5，共 7 项通过；9 份真实 MVC 响应树按当前 OpenAPI 3.1 校验通过 |
+| P07 | 页面验证硬件必填与网络失败原意图重试；mock 验证联系信息缺失拒绝、相同请求回放、同键换地址拒绝；复用原后端地址与履约合同 |
+| OPS | 页面 8、HTTP 6、mock 状态机 22、mock 管理投影 3，共 39 项通过；typecheck、变更文件 ESLint 通过；OpenAPI 已重新生成 |
+| 路由与入口 | check-ops-contract、check-ops-orphan --check 通过，既有 8 个接口欠账与 13 个未分类入口未扩大 |
+
+后端本轮共 60 项通过（31 目录 + 21 MySQL 资金/订阅 + 7 MVC + 1 边界），无跳过。原生数据库为 MySQL 9.7.4:3308，各测试仅创建/删除自己的随机库。构建使用本次源文件临时快照，避免共享 target 被并发会话清理。日志位于本机会话 `/tmp/ai-shop-plan-*.log`，临时路径不作为长期交付物。
+
+代码 review 发现的“冲突后弹窗保留旧闭包”已修复并增加真实弹窗交互验证。未提交、未部署；上述专项通过不代表 C/O/A/B 同店全流程或真实渠道验收已完成。
