@@ -1,0 +1,64 @@
+{
+ "https://nearshop.umeshop.ai": {
+  "operatorLogin": true,
+  "loginMethod": "运营本人在浏览器内登录（账号口令与二次验证由本人完成）；回读只用页面现有会话做 GET",
+  "identityReadback": {
+   "role": "SUPER_ADMIN"
+  },
+  "serverMenu": {
+   "menuLeaves": 151,
+   "matchesReleasedNav": true,
+   "rowsSha256": "a45ae58251e2556d2e16bfe9d9ca1760188494e3b429c5c36281bd409b6c12cd",
+   "rowFormat": "functionCode|pointCode|name|groupName|href，排序后换行连接；期望值由发布版 nav.ts 导出并替换为 OPS_PAY_0x 实库编码",
+   "emptyRetiredFunctions": [
+    "OPS_MEMBER",
+    "OPS_POINTS",
+    "OPS_MESSAGE"
+   ]
+  },
+  "renderedNav": {
+   "topLevel": [
+    "工作台",
+    "商户中心",
+    "商品资料",
+    "经营服务",
+    "进销存",
+    "订单履约",
+    "售后治理",
+    "会员营销",
+    "经营财务",
+    "内容客服",
+    "社区网点",
+    "风控",
+    "系统设置"
+   ],
+   "aftersale": [
+    "售后工单",
+    "平台裁决",
+    "售后规则"
+   ],
+   "financeIncludes": [
+    "退款分账",
+    "准入押金"
+   ],
+   "productIncludes": [
+    "限付类目",
+    "门店行业",
+    "行业准入",
+    "经营授权",
+    "范围开关"
+   ],
+   "marketingBreadcrumbForPointsBudget": "会员营销 › 平台预算"
+  },
+  "roleMatrixReads": {
+   "BD": 36,
+   "FINANCE": 39,
+   "AUDITOR": 23
+  },
+  "roleMatrixNote": "FINANCE 比 V657 记录的 40 少 1：即售后重复的退款分账点；财务同名点仍在。BD/AUDITOR 不变",
+  "superAdminHoldsFinanceRefund": true,
+  "aftersaleRefundPointGrantedToAny": false,
+  "functionPointsEndpoint": 252,
+  "notCompared": "functionPointsEndpoint 与 V657 记录的 249 统计口径无法确认一致，不作对比；库层快照已确认只少 1 个点"
+ }
+}

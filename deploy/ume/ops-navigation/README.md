@@ -44,7 +44,7 @@ V658 只调整菜单名称、分组、顺序与归属，并撤掉售后治理下
 - 166 主机 Java 为 1.8，`MenuSnapshot`/`MenuMigration` 在 ai-shop-ops 同一镜像（Java 21）的一次性容器里运行，依赖取自运行 JAR；连库配置由 `ai-shop.env` 就地生成、用后删除。
 - 生产核对：Flyway 仅新增 658（checksum -783404707）；只删售后重复点及其 2 条授权（FINANCE/SUPER_ADMIN 原已持有财务同名点）；其余 282 点权限/门禁不变；151 叶子与前端一致；15 角色、6 成员、每个角色可见菜单与权限码不变；3 个运营自建角色未受影响。
 - 后端两服务 UP，应用启动 Flyway 校验通过；两端静态链接切换；`verify-public.py` 46 项通过，新旧两个域名均返回新构建。
-- 未做：真实账号登录后的菜单/接口回读（需部署工作站的 Ed25519 测试票据）。
+- 登录回读（运营本人浏览器登录，SUPER_ADMIN）：服务端菜单 151 项与发布版逐条一致（行哈希 a45ae582…）；渲染出 13 个一级分区，售后治理无退款分账，经营财务含准入押金；角色功能点 BD 36 / FINANCE 39（少售后重复点）/ AUDITOR 23。证据 `evidence/operator-v658-20261111.json`。UME 的 Ed25519 自动化私钥不在本机（本机那把签出的票据被拒：BAD_SIGNATURE），未用测试票据。
 
 证据：`evidence/deployment-v658-20261111.json`、`production-v658-20261111.json`、`public-v658-20261111.json`。
 回退：`release.py rollback <payload>`（恢复旧 JAR 与两端静态链接；V658 记录与菜单数据保留，需要时用 .61 上的表备份恢复）。

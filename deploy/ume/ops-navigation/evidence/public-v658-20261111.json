@@ -26,5 +26,5 @@
    "支付订单"
   ]
  },
- "notCovered": "真实账号登录后的菜单/接口回读（V657 用部署工作站上的 Ed25519 测试票据完成；本次未取用该私钥）"
+ "authenticatedReadback": "见 operator-v658-20261111.json"
 }
