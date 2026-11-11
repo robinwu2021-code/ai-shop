@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
@@ -60,7 +60,7 @@ export function MobileNav() {
             改它们自己的类会把桌面布局也一起改掉，而那一侧现在是对的。
           */}
           <div className="flex min-h-0 [&>aside]:flex">
-            <Rail />
+            <Suspense fallback={null}><Rail /></Suspense>
             <SecondaryNav />
           </div>
           <Dialog.Close

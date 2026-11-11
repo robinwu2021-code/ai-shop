@@ -7,6 +7,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { RoleMatrix } from "./role-matrix";
 import { MenuOrderTree, ORDER_ROOT, type OrderNode } from "./menu-order-tree";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -615,6 +616,7 @@ function IamInner() {
       {tab === "roles" && (
         <>
           <HelpNote className="mb-3">{c.notice}</HelpNote>
+          <RoleMatrix roles={roles.data ?? []} functions={permFns.data ?? []} loading={roles.isPending || permFns.isPending} error={roles.error ?? permFns.error} />
           {canGrant && (
             <div className="mb-3">
               <Button size="sm" onClick={() => setNewRole({ roleCode: "", name: "", codeTouched: false })}>

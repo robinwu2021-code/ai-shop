@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div data-shell="page" className="flex h-screen overflow-hidden">
       {/* 一整块白底，中间嵌一条灰带：灰色的二级面板自己就是 rail 与 content 的分隔 */}
       <div data-shell="nav" className="flex min-h-0 shrink-0 overflow-hidden">
-        <Rail />
+        <Suspense fallback={null}><Rail /></Suspense>
         {/* SecondaryNav 读 useSearchParams（静态导出要求包 Suspense） */}
         <Suspense fallback={null}>
           <SecondaryNav />
