@@ -22,6 +22,7 @@ import ai.neargo.shop.svc.ExecutionPreparationOriginalBindings;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.Instant;
 import java.util.List;
@@ -106,9 +107,11 @@ class ExecutionPreparationOriginalProtocolTest {
         var call = evidence(reference(H));
         String bytes = json.writeValueAsString(call);
         assertEquals(call, json.readValue(bytes, EvidenceCall.class));
+        var missingVersion = (ObjectNode) json.readTree(bytes);
+        ((ObjectNode) missingVersion.get("binding")).remove("version");
         assertThrows(
                 RuntimeException.class,
-                () -> json.readValue(bytes.replace("\"version\":1,", ""), EvidenceCall.class));
+                () -> json.readValue(json.writeValueAsString(missingVersion), EvidenceCall.class));
         assertThrows(
                 RuntimeException.class,
                 () ->
@@ -155,7 +158,7 @@ class ExecutionPreparationOriginalProtocolTest {
                                 "SERVICE_EXECUTION_ORIGINAL_EVIDENCE_V1",
                                 call.request().reference(),
                                 ExecutionOriginalEvidence.EvidenceOutcome.UNKNOWN,
-                                "ORIGINAL_UNKNOWN",
+                                "SOURCE_UNKNOWN",
                                 null,
                                 Instant.EPOCH,
                                 null)

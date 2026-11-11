@@ -42,18 +42,12 @@
 #
 
 
-biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=43
-biz-role-seed.test.ts::B 端角色种子 ★★★ 预置角色的权限码：代码与种子必须逐条相等 @<=2
-ddl-parser-regression.test.ts::DDL parser handles actual migration syntax preserves comments when a bare MODIFY changes only the column type @<=10
-ddl-parser-regression.test.ts::DDL parser handles actual migration syntax replays bare and explicit ADD without treating constraints or indexes as columns @<=10
-ddl-parser-regression.test.ts::DDL parser handles actual migration syntax retains guarded ADD and later column operations across a table rename @<=10
+biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=42
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=16
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=1
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=44
 enum-alignment.test.ts::枚举对账 KNOWN_SHARED 里不留已经修好的条目（名单本身也会过期） @<=10
 enum-fields.test.ts::枚举对账 · 按字段 ★★ 未判定的取值域列只准变少 —— 新出现的要点名 @<=17
-enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=11
-enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型 @<=1
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★ 迁移里至少有十几张表 —— 抽不到就是正则失效，别让它空跑成绿 @<=10
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ docs/ 里任何一处「N 张 inv_ 表」都必须等于迁移里真实的张数 @<=10
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 《数据库表结构》里写的「N 张表」必须等于迁移里真实的张数 @<=10
@@ -64,9 +58,5 @@ message-placeholder.test.ts::带占位符的错误文案 ★★ 反向：传了�
 ops-data-scope.test.ts::运营端数据域接入 ★★★ G3 已注册表必须真的存在 —— 注册一张不存在的表，那条登记就是一句谎话 @<=11
 ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=4
 retired-state-words.test.ts::退役状态词 ★★ 出现次数只降不升 —— 更正记述要引用它们，新写的活断言会让计数变大 @<=1
-schema-lineage.test.ts::对账血缘 buyer 角色四表指 user_no；confirmation 与迁移 return 保留 tenant @<=10
-schema-lineage.test.ts::对账血缘 python 侧解析出同一套表与列 —— 两种语言的解析器不能分叉 @<=10
-schema-lineage.test.ts::对账血缘 quote_no 未审计来源表拒绝分类和 FK，保留 UK 优先 @<=10
 schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=26
-spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=20
 wire-alignment.test.ts::请求体字段（B 端）：前端发的与后端收的必须一致 两边都定义了 body 的端点，字段名对得上 @<=1

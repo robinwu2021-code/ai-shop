@@ -397,12 +397,14 @@ if [ -d "$ROOT/node_modules" ]; then
   # 存量 0 条，所以不设基线；拿修复前的那份文件回放，报 2 条，正是那两个 Hook。
   # --quiet 只报错误：代码里给别的插件写的 eslint-disable 注释会出「无效」警告，与此无关。
   # 两秒左右。
-  if [ -f "$GATE_WT/ops-web/eslint.config.mjs" ] && [ -x "$ROOT/ops-web/node_modules/.bin/eslint" ]; then
+  OPS_GATE_ESLINT="$ROOT/ops-web/node_modules/.bin/eslint"
+  if [ ! -x "$OPS_GATE_ESLINT" ]; then OPS_GATE_ESLINT="$ROOT/node_modules/.bin/eslint"; fi
+  if [ -f "$GATE_WT/ops-web/eslint.config.mjs" ] && [ -x "$OPS_GATE_ESLINT" ]; then
     # 先删再链：上面的共享守卫跑 vitest 时已在副本里建了 ops-web/node_modules/.vite（真目录），
     # ln -sfn 遇到目录会把链接建进它里面，eslint 就找不到。副本是一次性的，删它不伤人。
     rm -rf "$GATE_WT/ops-web/node_modules"
     ln -s "$ROOT/ops-web/node_modules" "$GATE_WT/ops-web/node_modules"
-    (cd "$GATE_WT/ops-web" && node_modules/.bin/eslint --quiet . 2>&1); rc=$?
+    (cd "$GATE_WT/ops-web" && "$OPS_GATE_ESLINT" --quiet . 2>&1); rc=$?
     # eslint 退出码：1 = 有违规，2 = 自己崩了（配置 / 依赖）。两件事要说成两句话 ——
     # 第一次挂上去时崩了却报「Hook 写错了」，读的人会去翻一段根本没问题的代码。
     if [ "$rc" -ge 2 ]; then

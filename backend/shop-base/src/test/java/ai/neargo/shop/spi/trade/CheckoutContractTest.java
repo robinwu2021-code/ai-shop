@@ -105,6 +105,14 @@ class CheckoutContractTest {
                                 .map(Method::getName)
                                 .toList())
                 .containsExactlyInAnyOrder(
-                        "prepare", "readQuote", "findOperation", "source", "findPayment");
+                        "prepare",
+                        "readQuote",
+                        "findOperation",
+                        "source",
+                        "findPayment",
+                        "prepareBound",
+                        "readQuoteBound",
+                        "findOperationBound",
+                        "sourceBound");
     }
 }
