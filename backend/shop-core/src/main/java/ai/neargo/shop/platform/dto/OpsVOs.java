@@ -1,5 +1,7 @@
 package ai.neargo.shop.platform.dto;
 
+import ai.neargo.shop.spi.user.MerchantAdminPort;
+
 import java.util.List;
 
 /** 平台端对外结构。 */
@@ -106,7 +108,13 @@ public final class OpsVOs {
                                    * <p>C 端拿到它但<b>不渲染</b>：端内出现任何与推荐/奖励相关的展示，
                                    * 都会把「拉人头 + 奖励」这件事搬回小程序里，而那正是要避开的。
                                    */
-                                  String referrerPhone) {
+                                  String referrerPhone,
+                                  String ownerUserNo, String marketCode,
+                                  MerchantAdminPort.InitialStore storeProfile,
+                                  String storeNo) {
+        public MerchantApplyVO(String applyNo, String merchantNo, String name, String subject, String contactName, String contactPhone, String category, String desc, String serviceScope, List<String> communityNos, List<String> licenses, boolean asPickupPoint, String industry, String industryNote, String status, String rejectReason, long createdAt, long auditedAt, List<QualificationItemVO> qualificationItems, boolean onBehalf, long agreedAt, String referrerPhone) {
+            this(applyNo, merchantNo, name, subject, contactName, contactPhone, category, desc, serviceScope, communityNos, licenses, asPickupPoint, industry, industryNote, status, rejectReason, createdAt, auditedAt, qualificationItems, onBehalf, agreedAt, referrerPhone, null, null, null, null);
+        }
     }
 
     /** @param expireAt 有效期截止（毫秒）；<b>null = 长期有效</b> */

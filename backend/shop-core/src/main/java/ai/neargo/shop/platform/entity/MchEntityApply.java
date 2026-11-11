@@ -21,6 +21,10 @@ public class MchEntityApply extends BaseEntity {
 
     /** Selected region for new operator submissions; historical applications remain nullable. */
     private String marketCode;
+    /** Frozen initial store details; historical applications are nullable. */
+    private String storeProfile;
+    /** Default store created by this approved application. */
+    private String storeNo;
 
     public static final String PENDING = "PENDING";
     /** 已受理，客服正在看。<b>不是流程完整性摆设</b> —— 商家提交后一直显示「待审核」

@@ -265,8 +265,49 @@ export interface Violation {
  */
 export type ApplyStatus = "PENDING" | "REVIEWING" | "APPROVED" | "REJECTED";
 
+/** 随申请保存、审核时创建默认门店的资料快照。 */
+export interface InitialStoreProfile {
+  /** 默认门店名 */
+  name: string;
+  /** 完整门店地址 */
+  address: string;
+  /** 系统门店行业 */
+  industryCode: string;
+  /** 系统门店子行业 */
+  subIndustryCode: string;
+  /** 子行业映射的经营类型 */
+  businessTypeCode: string;
+}
+/** 可用于运营代客建店的已启用行业与已发布经营类型。 */
+export interface StoreIndustryChoice {
+  /** 系统门店行业编码 */
+  industryCode: string;
+  /** 子行业编码；行业父项为 null */
+  subIndustryCode: string | null;
+  /** 子行业对应的已发布经营类型编码 */
+  businessTypeCode: string;
+  /** 简体中文名称 */
+  nameZh: string;
+  /** 繁体中文名称 */
+  nameTw?: string | null;
+  /** 英文名称 */
+  nameEn?: string | null;
+  /** 显示顺序 */
+  sort: number;
+  /** 当前是否启用 */
+  enabled: boolean;
+}
+
 /** 入驻申请单（后端 `mch_entity_apply`）。 */
 export interface MerchantApply {
+  /** 实际店主账号 */
+  ownerUserNo?: string | null;
+  /** 申请经营市场 */
+  marketCode?: string | null;
+  /** 审核时使用的原门店资料 */
+  storeProfile?: InitialStoreProfile | null;
+  /** 审核通过后生成的默认门店 */
+  storeNo?: string | null;
   /** 申请单号。审核动作都打在它上面，不是商家号 */
   applyNo: string;
   /** 通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在 */

@@ -77,3 +77,42 @@
 本轮偏差：新增 S05 直接相关的冻结编码生成器回归修复（`--emit-point-codes` 改用原 pointCodeOf 冻结映射）；复合装配开关的反向扫描补数组语法，正向覆盖边界未扩张。独立复核发现迁移编号与另一会话新增 V654 冲突，已将本批未部署迁移改为 V655；并修复 MySQL 大小写不敏感父项查询导致 Java 组树漏子项的问题。未提交或部署。
 
 验证次数、输入校验及异常处理以 [Java 规范 §八](../../.claude/skills/ai-shop-dev-standards/references/java.md#八简洁实现框架校验与增量验证2026-10-30-用户确认)为准。
+
+## §7 C03–C05：普通运营代办建店（2026-11-11 继续）
+
+档位：1。需求依据为运营开店清单C03/C04/C05及本轮用户“继续”。沿用已确认的申请→独立审核→原子激活方案；不在代填时提前创建主体，不借用商户令牌，不新增申请状态机。使用 writing-plans / executing-plans 在当前隔离分支实施，验证次数仍按Java规范§八。
+
+### §0 需求对账
+
+| AC | 行为 | 落点 |
+|---|---|---|
+| C1 | 代填保存门店名称、地址、门店行业/子行业、经营类型及已选市场；台湾联系号仍只记录 | OnBehalfReq/SubmitApplyCommand、申请store_profile JSON；新表单必填，旧合同nullable兼容 |
+| C2 | 只选系统已启用的行业/子行业及其真实映射，停用或错配不能新建门店 | 已有MerchantPort行业事实及共享选择校验；代填可读选择接口不授予目录写权 |
+| C3 | 真实运营审核人初始化STORE_V1/FREE，目标owner保持原已注册账号，市场/币种正确 | ActivateCommand与MerchantPortImpl、HostStoreCreationAuthority、StoreProvisioningService |
+| C4 | 申请、主体、成员、默认店、FREE同事务；失败全部回滚；同申请重复通过不重复创建 | 原申请行锁、状态机及初始化事件；不改已应用SQL或原唯一键 |
+| C5 | 审核页核对owner、市场、门店资料；通过后显示主体号、门店号及有权限时读取实际套餐权益 | MerchantApplyVO、审核响应与ApplyTab |
+| C6 | 保留自审禁止、本人协议、既有门店资料和历史LEGACY边界 | 原submitted_by/agreed_at；普通OPS增店及历史迁移不在本批 |
+
+### §1 范围与选择
+
+采用在原申请增加可空store_profile和store_no，审批时把冻结资料传给原activate。未采用“代填即先建待补证主体”：它改变了原代填业务边界。未增加平行建店服务或模拟商户会话：原MerchantStoreCreation与创建授权可扩展真实OPERATOR。
+
+存量申请没有store_profile时保持读取；新建STORE_V1缺资料仍拒绝，不默认经营类型。已存在默认门店的证照升级不覆盖门店资料，不自动迁移LEGACY。协议仍由本人确认，运营审核不能写入同意事实。
+
+### §2 实施计划
+
+- [x] 申请合同与V658增量：MerchantAdminPort.InitialStore、SubmitApplyCommand、MchEntityApply、OpsVOs；补表单校验及行业只读选项，记录资料并回读。
+- [x] 激活贯通：按原申请行锁审批；传真实审核会话、已注册owner、市场与门店资料；原ensureDefaultStore插入并初始化FREE；返回门店号，重复通过回读原结果。
+- [x] 宿主授权：只允许有merchant:apply:audit的真实OPS主体初始化本次新插入的门店；检查在用员工、目标owner及实际所有者成员行。ACCOUNT路径及创建作用域保留。
+- [x] OPS表单/审核补齐与真实/模拟合同；默认行业选项按已启用父子映射，不把支付行业当门店行业；成功回执保留在抽屉供核对。
+- [x] 批量运行受影响MySQL9原生建店/审批/事务回滚、控制器框架校验及OPS交互；复用有效旧证据，不跑无关全量或强制消融。
+- [x] 一次独立只读分支复核：通配权限、地址255上限、旧默认店补证照3项已修复并覆盖。
+- [ ] 提交合并、部署UME166，再续同店联验。协议、独立审核及真实渠道条件如实记录，不制造法律或银行事实。
+
+### §5 验证计划
+
+CommerceStoreCreationFlowTest扩展真实MySQL9的运营审核创建、账户与运营隔离、错配/停用行业、失败回滚、重复申请激活；OpsMerchantRegionalContactTest覆盖资料框架校验及台湾号码兼容；OPS新增代填行业联动/必填与审批回执测试。本轮有效结果：MySQL9原生CommerceStoreCreationFlowTest 4项通过、0跳过，包含双人审核、通配权限、并发重试唯一STORE_V1/FREE、TW/TWD、失败全回滚、旧LEGACY补证照保留原店；OpsMerchantRegionalContactTest 5项通过（含空地址及256字符拒绝）；OpsStoreIndustryControllerTest 3项通过；StoreProvisioningTest 4项通过。OPS地区/代填7项、审批回执2项通过，类型与ESLint通过，原8项缺口/13项无入口欠账未新增。原生夹具已补齐生产使用的CGLIB事务和乐观锁插件。
+
+现有全量生成门禁仍被已应用V650的H2 JSON_LENGTH转换阻塞；未修改历史SQL或欠账基线。与已部署2ac0d1b基线对比，枚举、数据域、血缘及契约说明失败完全一致（新增字段说明已补齐）；OPS旧行业维护页两项规范失败位于本次未改文件。不得把增量通过写成全量门禁通过。
+
+新增V658保存申请门店快照JSON与结果门店号。共享目录V657属于另一并行任务，未纳入本次发布；其后续未部署迁移需按真实生产history安排编号。协议不阻断原有审核；仍只能由商户本人确认，OPS审核不会写同意事实。

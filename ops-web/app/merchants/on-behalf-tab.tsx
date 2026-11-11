@@ -39,6 +39,14 @@ const PHONE = /^1[3-9]\d{9}$/;
 export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boolean }) {
   const [selectedMarket, setMarket] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
+  const [storeName,setStoreName]=useState("");
+  const [storeAddress,setStoreAddress]=useState("");
+  const [storeIndustry,setStoreIndustry]=useState("");
+  const [storeSubIndustry,setStoreSubIndustry]=useState("");
+  const storeChoices=useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries()});
+  const storeParents=(storeChoices.data??[]).filter(r=>r.enabled && !r.subIndustryCode);
+  const storeChildren=(storeChoices.data??[]).filter(r=>r.enabled && r.subIndustryCode && r.industryCode===storeIndustry);
+  const chosenStore=storeChildren.find(r=>r.subIndustryCode===storeSubIndustry);
   const policies = useQuery({queryKey:["market-phone-policies"],queryFn:()=>api.marketPhonePolicies()});
   const enabledMarkets=(policies.data??[]).filter((x)=>x.marketEnabled);
   const market=enabledMarkets.find((x)=>x.market===selectedMarket)?.market ?? enabledMarkets.find((x)=>x.market==="TW")?.market ?? enabledMarkets[0]?.market ?? "";
@@ -64,6 +72,8 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
   const submit = useMutation({
     mutationFn: () => api.applyOnBehalf({
       market, ownerEmail: phoneOwner?undefined:ownerEmail.trim(),
+      storeProfile:{name:storeName.trim(),address:storeAddress.trim(),industryCode:storeIndustry,
+        subIndustryCode:storeSubIndustry,businessTypeCode:chosenStore!.businessTypeCode},
       phone: policy?.recordOnly ? phone : phone.trim(),
       name: name.trim(),
       subject,
@@ -89,7 +99,7 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
 
   const phoneOk = policy?.recordOnly === true || (market === "CN" ? PHONE.test(phone.trim()) : /^\+?\d{3,20}$/.test(phone.trim()));
   // 执照是这一页与自营那一页的分水岭，所以它进 ready 而不是靠后端回一个 400
-  const ready = !!policy?.marketEnabled && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && name.trim().length > 0 && licenseUrl.trim().length > 0;
+  const ready = !!chosenStore && !!storeName.trim() && !!storeAddress.trim() && !!policy?.marketEnabled && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && name.trim().length > 0 && licenseUrl.trim().length > 0;
 
   return (
     <div className="space-y-4">
@@ -121,6 +131,20 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
             <p className="mt-1 txt-caption text-muted-foreground">{phoneOwner?c.obPhoneHint:c.obRecordPhoneHint}</p>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="ob-store-name">{c.obStoreName}</Label><Input id="ob-store-name" maxLength={64} value={storeName} disabled={!canSubmit} onChange={e=>setStoreName(e.target.value)} />
+            <Label htmlFor="ob-store-address">{c.obStoreAddress}</Label><Input id="ob-store-address" maxLength={255} value={storeAddress} disabled={!canSubmit} onChange={e=>setStoreAddress(e.target.value)} />
+            <Label htmlFor="ob-store-industry">{c.obStoreIndustry}</Label>
+            <Select id="ob-store-industry" value={storeIndustry} disabled={!canSubmit} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}>
+              <option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}</option>)}
+            </Select>
+            <Label htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label>
+            <Select id="ob-store-sub-industry" value={storeSubIndustry} disabled={!canSubmit || !storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}>
+              <option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!}>{r.nameZh}</option>)}
+            </Select>
+            <p className="txt-caption text-muted-foreground">{c.obBusinessType}: {chosenStore?.businessTypeCode??"—"}</p>
+            {storeChoices.error&&<Notice tone="danger">{(storeChoices.error as Error).message}</Notice>}
+          </div>
           <div>
             <Label htmlFor="ob-name">{c.obName}</Label>
             <Input

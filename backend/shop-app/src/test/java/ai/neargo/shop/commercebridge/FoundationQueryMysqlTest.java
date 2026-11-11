@@ -65,7 +65,7 @@ class FoundationQueryMysqlTest {
             f.jdbc.update(
                     "insert into usr_account(user_no,created_at,updated_at) values"
                             + " ('N',now(),now())");
-            var authority = new HostStoreCreationAuthority(f.ds, Map.of("CN", "CNY"));
+            var authority = new HostStoreCreationAuthority(f.ds, Map.of("CN", "CNY"),org.mockito.Mockito.mock(ai.neargo.shop.auth.PermChecker.class));
             var facade =
                     new CommerceStoreCreationConfiguration()
                             .storeProvisioningFacade(

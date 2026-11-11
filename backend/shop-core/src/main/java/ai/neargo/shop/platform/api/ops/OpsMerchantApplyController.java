@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.user.UserProvisionPort;
+import ai.neargo.shop.spi.user.MerchantAdminPort;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -84,7 +85,7 @@ public class OpsMerchantApplyController {
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 // 手填行业传 null：代填的是 BD，他按运营口径直接选了行业码（V360）
                 null,
-                req.qualificationItems(), market), operator);
+                req.qualificationItems(), market, req.storeProfile()), operator);
         /*
          * 审计里写「进队列待审」而不是「已创建」。
          * 代填最容易被误解成「运营把这家店开出来了」—— 而它只是录了一张表，
@@ -122,6 +123,7 @@ public class OpsMerchantApplyController {
             String industry,
             List<OpsService.QualificationItem> qualificationItems,
             @Pattern(regexp="[A-Z]{2}") String market,
-            @Email @Size(max=254) String ownerEmail) {
+            @Email @Size(max=254) String ownerEmail,
+            @Valid MerchantAdminPort.InitialStore storeProfile) {
     }
 }

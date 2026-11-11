@@ -22,10 +22,10 @@ class OpsMerchantRegionalContactTest {
         var mvc=MockMvcBuilders.standaloneSetup(new OpsMerchantApplyController(service,users,mock(AuditLogPort.class),phones)).build();
         try(var security=mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::currentUserNo).thenReturn("OPS");
-            assertEquals(200,mvc.perform(post("/ops/merchants/apply-on-behalf").contentType("application/json").content("{\"market\":\"TW\",\"ownerEmail\":\"owner@example.test\",\"phone\":\"09 1234 5678 / 分机\",\"name\":\"Test\",\"subject\":\"ENTERPRISE\"}")).andReturn().getResponse().getStatus());
+            assertEquals(200,mvc.perform(post("/ops/merchants/apply-on-behalf").contentType("application/json").content("{\"market\":\"TW\",\"ownerEmail\":\"owner@example.test\",\"phone\":\"09 1234 5678 / 分机\",\"name\":\"Test\",\"subject\":\"ENTERPRISE\",\"storeProfile\":{\"name\":\"Taipei Store\",\"address\":\"Taipei address\",\"industryCode\":\"RETAIL\",\"subIndustryCode\":\"SHOP\",\"businessTypeCode\":\"RETAIL\"}}")).andReturn().getResponse().getStatus());
         }
         var captured=ArgumentCaptor.forClass(OpsService.SubmitApplyCommand.class);verify(service).createApplyOnBehalf(captured.capture(),eq("OPS"));
-        assertEquals("OWNER",captured.getValue().userNo());assertEquals("TW",captured.getValue().marketCode());
+        assertEquals("Taipei Store",captured.getValue().storeProfile().name());assertEquals("RETAIL",captured.getValue().storeProfile().businessTypeCode());assertEquals("OWNER",captured.getValue().userNo());assertEquals("TW",captured.getValue().marketCode());
         assertEquals("09 1234 5678 / 分机",captured.getValue().contactPhone());verify(users,never()).ensureUserByPhone(any());
     }
     @Test void legacyMainlandRequestsKeepTheirExistingOwnerResolution() throws Exception {
@@ -39,6 +39,25 @@ class OpsMerchantRegionalContactTest {
         }
         verify(phones).validateContact("CN","13800138000");verify(users).ensureUserByPhone("13800138000");verify(users,never()).registeredUserByEmail(any());
     }
+
+    @Test void storeProfileUsesFrameworkValidationBeforeAnApplicationWrite() throws Exception {
+        var service=mock(OpsService.class);var users=mock(UserProvisionPort.class);var phones=mock(MarketPhonePolicyService.class);
+        var mvc=MockMvcBuilders.standaloneSetup(new OpsMerchantApplyController(service,users,mock(AuditLogPort.class),phones)).build();
+        assertEquals(400,mvc.perform(post("/ops/merchants/apply-on-behalf").contentType("application/json")
+                .content("{\"market\":\"TW\",\"ownerEmail\":\"owner@example.test\",\"name\":\"Entity\",\"subject\":\"ENTERPRISE\",\"storeProfile\":{\"name\":\"Shop\",\"address\":\"\",\"industryCode\":\"RETAIL\",\"subIndustryCode\":\"SHOP\",\"businessTypeCode\":\"RETAIL\"}}"))
+                .andReturn().getResponse().getStatus());
+        verifyNoInteractions(service,users,phones);
+    }
+
+
+    @Test void addressCannotExceedThePersistedStoreColumn() throws Exception {
+        var service=mock(OpsService.class);var users=mock(UserProvisionPort.class);var phones=mock(MarketPhonePolicyService.class);
+        var mvc=MockMvcBuilders.standaloneSetup(new OpsMerchantApplyController(service,users,mock(AuditLogPort.class),phones)).build();
+        String payload="{\"name\":\"Entity\",\"subject\":\"ENTERPRISE\",\"storeProfile\":{\"name\":\"Shop\",\"address\":\""+"a".repeat(256)+"\",\"industryCode\":\"RETAIL\",\"subIndustryCode\":\"SHOP\",\"businessTypeCode\":\"RETAIL\"}}";
+        assertEquals(400,mvc.perform(post("/ops/merchants/apply-on-behalf").contentType("application/json").content(payload)).andReturn().getResponse().getStatus());
+        verifyNoInteractions(service,users,phones);
+    }
+
     @Test void malformedEmailIsRejectedByTheFrameworkBeforeAnyApplicationWrite() throws Exception {
         var service=mock(OpsService.class);var users=mock(UserProvisionPort.class);var phones=mock(MarketPhonePolicyService.class);
         var mvc=MockMvcBuilders.standaloneSetup(new OpsMerchantApplyController(service,users,mock(AuditLogPort.class),phones)).build();

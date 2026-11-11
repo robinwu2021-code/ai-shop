@@ -338,9 +338,97 @@ components:
         - "APPROVED"
         - "REJECTED"
       description: "入驻申请状态。\n\n**它不是商家的状态** —— 申请与主体是两个东西：通过之前商家<b>还不存在</b>。 曾经把审核建模成「商家的一个状态」，于是驳回的申请会在商家表里留下一行 从没开过张的「僵尸商家」，出现在每一处按主体聚合的地方（结算、积分、报表）。"
+    InitialStoreProfile:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "默认门店名"
+        address:
+          type: "string"
+          description: "完整门店地址"
+        industryCode:
+          type: "string"
+          description: "系统门店行业"
+        subIndustryCode:
+          type: "string"
+          description: "系统门店子行业"
+        businessTypeCode:
+          type: "string"
+          description: "子行业映射的经营类型"
+      required:
+        - "name"
+        - "address"
+        - "industryCode"
+        - "subIndustryCode"
+        - "businessTypeCode"
+      additionalProperties: false
+      description: "随申请保存、审核时创建默认门店的资料快照。"
+    StoreIndustryChoice:
+      type: "object"
+      properties:
+        industryCode:
+          type: "string"
+          description: "系统门店行业编码"
+        subIndustryCode:
+          type:
+            - "string"
+            - "null"
+          description: "子行业编码；行业父项为 null"
+        businessTypeCode:
+          type: "string"
+          description: "子行业对应的已发布经营类型编码"
+        nameZh:
+          type: "string"
+          description: "简体中文名称"
+        nameTw:
+          type:
+            - "string"
+            - "null"
+          description: "繁体中文名称"
+        nameEn:
+          type:
+            - "string"
+            - "null"
+          description: "英文名称"
+        sort:
+          type: "number"
+          description: "显示顺序"
+        enabled:
+          type: "boolean"
+          description: "当前是否启用"
+      required:
+        - "industryCode"
+        - "subIndustryCode"
+        - "businessTypeCode"
+        - "nameZh"
+        - "sort"
+        - "enabled"
+      additionalProperties: false
+      description: "可用于运营代客建店的已启用行业与已发布经营类型。"
     MerchantApply:
       type: "object"
       properties:
+        ownerUserNo:
+          type:
+            - "string"
+            - "null"
+          description: "实际店主账号"
+        marketCode:
+          type:
+            - "string"
+            - "null"
+          description: "申请经营市场"
+        storeProfile:
+          anyOf:
+            - "$ref": "#/components/schemas/InitialStoreProfile"
+            - type: "null"
+          description: "审核时使用的原门店资料"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "审核通过后生成的默认门店"
         applyNo:
           type: "string"
           description: "申请单号。审核动作都打在它上面，不是商家号"
@@ -27737,6 +27825,32 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/store-industries":
+    get:
+      operationId: "onBehalfStoreIndustries"
+      summary: "onBehalfStoreIndustries"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/merchant-plan-purchases/{entity}/{order}/cash-receipts":
     get:
       operationId: "entityCashReceipts"
@@ -29309,8 +29423,7 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    type: "object"
-                    nullable: true
+                    "$ref": "#/components/schemas/MerchantApply"
                 required:
                   - "code"
                   - "msg"

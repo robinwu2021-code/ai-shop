@@ -9,6 +9,10 @@ import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.starter.http.MallHttpContextPort;
 import ai.neargo.shop.merchant.service.StoreIndustryAdminService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
+import ai.neargo.shop.auth.PermChecker;
+import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.commercebridge.OpsStoreSetupQuery;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -47,4 +51,28 @@ class OpsStoreIndustryControllerTest {
         assertThat(OpsStoreIndustryController.class.getMethod("list").getAnnotation(PreAuthorize.class).value())
                 .contains("commerce:catalog:read");
     }
+    @Test void submissionChoicesUseExistingCreationOrReviewCapabilityWithoutCatalogAdministration() throws Exception {
+        var service=mock(StoreIndustryAdminService.class);
+        var context=mock(MallHttpContextPort.class);
+        var permissions=mock(PermChecker.class);
+        var setup=mock(OpsStoreSetupQuery.class);
+        var actor=new ActorContext("MAIN", SubjectKind.OPERATOR, "OPS1", "actual-session");
+        var controller=new OpsStoreIndustryController(service, context, mock(AuditLogPort.class));
+        controller.setPermissions(permissions);
+        controller.setSetup(setup);
+        when(permissions.can(Perms.MERCHANT_APPLY_ONBEHALF)).thenReturn(true);
+        when(context.operator(Perms.MERCHANT_APPLY_ONBEHALF)).thenReturn(actor);
+        when(setup.choices(actor)).thenReturn(List.of());
+        assertThat(controller.choices()).isEmpty();
+        verify(context).operator(Perms.MERCHANT_APPLY_ONBEHALF);
+        when(permissions.can(Perms.MERCHANT_APPLY_ONBEHALF)).thenReturn(false);
+        when(context.operator(Perms.MERCHANT_APPLY_AUDIT)).thenReturn(actor);
+        assertThat(controller.choices()).isEmpty();
+        verify(context).operator(Perms.MERCHANT_APPLY_AUDIT);
+        verifyNoInteractions(service);
+        assertThat(OpsStoreIndustryController.class.getMethod("choices").getAnnotation(PreAuthorize.class).value())
+                .contains(Perms.MERCHANT_APPLY_ONBEHALF, Perms.MERCHANT_APPLY_AUDIT)
+                .doesNotContain("commerce:catalog:read");
+    }
+
 }

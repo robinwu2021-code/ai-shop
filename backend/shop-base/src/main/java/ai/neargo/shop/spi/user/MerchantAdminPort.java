@@ -1,5 +1,9 @@
 package ai.neargo.shop.spi.user;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
+
 import java.util.List;
 
 /**
@@ -174,10 +178,26 @@ public interface MerchantAdminPort {
      *                          名称/行业/法律形态被覆盖，两家店变一家，
      *                          <b>全程没有任何报错</b>，商家只看到「审核通过了」。
      */
+    record InitialStore(
+            @NotBlank @Size(max=64) String name,
+            @NotBlank @Size(max=255) String address,
+            @NotBlank @Pattern(regexp="[A-Za-z0-9_.:-]{1,48}") String industryCode,
+            @NotBlank @Pattern(regexp="[A-Za-z0-9_.:-]{1,48}") String subIndustryCode,
+            @NotBlank @Pattern(regexp="[A-Za-z0-9_.:-]{1,32}") String businessTypeCode) {}
+
+    /** Validate current industry selection when recording a new application. */
+    default void validateInitialStore(InitialStore store) { throw new UnsupportedOperationException(); }
+
     record ActivateCommand(String ownerUserNo, String name, String subject,
                            String serviceScope, List<String> communityNos,
                            String settleAccountType, String industry, String description,
-                           String activatedEntityNo) {
+                           String activatedEntityNo, String marketCode, InitialStore store) {
+        public ActivateCommand(String ownerUserNo, String name, String subject, String serviceScope,
+                List<String> communityNos, String settleAccountType, String industry, String description,
+                String activatedEntityNo) {
+            this(ownerUserNo,name,subject,serviceScope,communityNos,settleAccountType,industry,description,
+                    activatedEntityNo,null,null);
+        }
     }
 
     /**

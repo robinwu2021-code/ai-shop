@@ -1,0 +1,41 @@
+{
+  "baseCommit": "2ac0d1b78a284587ca1b99b6d508b18b54378bbd",
+  "scope": "C03-C05 operator initial store creation",
+  "backend": {
+    "CommerceStoreCreationFlowTest": {
+      "passed": 4,
+      "skipped": 0,
+      "database": "MySQL 9 on isolated local schema"
+    },
+    "OpsMerchantRegionalContactTest": 5,
+    "OpsStoreIndustryControllerTest": 3,
+    "StoreProvisioningTest": 4
+  },
+  "opsWeb": {
+    "regionalSubmission": 7,
+    "approvalReceipt": 2,
+    "typecheck": true,
+    "eslint": true
+  },
+  "contracts": {
+    "missingEndpoints": 8,
+    "unclassifiedEndpoints": 13,
+    "newMissingEndpoints": 0
+  },
+  "review": {
+    "independentBranchReview": "completed",
+    "fixed": [
+      "live wildcard permission check",
+      "store address maximum 255",
+      "existing default store certification retains LEGACY and original name/type"
+    ]
+  },
+  "fullGate": {
+    "passed": false,
+    "existingBlocker": "V650 retained H2 DDL JSON_LENGTH conversion unsupported",
+    "comparedToBase": "enum, data scope, schema lineage and specification failures unchanged",
+    "baselineModified": false
+  },
+  "migration": "V658__operator_initial_store_profile.sql",
+  "onlineAcceptance": "pending independent operator review after deployment"
+}

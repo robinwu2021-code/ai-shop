@@ -55,7 +55,7 @@ const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
   OTHER: c.qualOTHER,
 });
 
-export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean }) {
+export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean }) {
   const qc = useQueryClient();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
   const label = useCodeLabel();
@@ -70,6 +70,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
   /** 通过时授予的经营类目码。与通过同一次提交 —— 分两步会留下「批了但没授码」的店 */
   const [grantCodes, setGrantCodes] = useState<string[]>([]);
 
+  const subscription=useQuery({queryKey:["mall-subscription",current?.storeNo],queryFn:()=>api.mallSubscription(current!.storeNo!),enabled:!!current?.storeNo && canReadSubscription});
   const q = { keyword, status, page, size };
   const list = useQuery({ queryKey: ["applies", q], queryFn: () => api.listApplies(q) });
 
@@ -92,9 +93,9 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
   const audit = useMutation({
     mutationFn: (v: { approved: boolean }) =>
       api.auditApply(current!.applyNo, v.approved, reason, scope, communityNos, grantCodes),
-    onSuccess: (_, v) => {
+    onSuccess: (result, v) => {
       invalidate();
-      setCurrent(null);
+      setCurrent(v.approved ? result : null);
       notify.success(v.approved ? c.toastApproved : c.toastRejected);
     },
   });
@@ -202,6 +203,21 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
             <DrawerSection title={c.applySectionInfo}>
               <FieldGrid>
                 <Field label={c.colNo}>{current.applyNo}</Field>
+                <Field label={c.applyOwner}>{current.ownerUserNo??"—"}</Field>
+                <Field label={c.applyMarket}>{current.marketCode??"—"}</Field>
+                {current.storeProfile&&<>
+                  <Field label={c.obStoreName}>{current.storeProfile.name}</Field>
+                  <Field label={c.obStoreAddress}>{current.storeProfile.address}</Field>
+                  <Field label={c.obStoreIndustry}>{current.storeProfile.industryCode} / {current.storeProfile.subIndustryCode}</Field>
+                  <Field label={c.obBusinessType}>{current.storeProfile.businessTypeCode}</Field>
+                </>}
+                {current.storeNo&&<>
+                  <Field label={c.applyStoreResult}>{current.merchantNo} / {current.storeNo}</Field>
+                  {canReadSubscription&&<Field label={c.applyViewSubscription}>
+                    {subscription.error ? (subscription.error as Error).message : subscription.data
+                      ? `${subscription.data.sources?.some(x=>x.permanent && x.planVersionNo===subscription.data!.currentPlanVersionNo) ? c.applyFreePlan : c.applyPaidPlan} · ${subscription.data.currency} · ${subscription.data.businessTypeCode}` : c.applySubscriptionMissing}
+                  </Field>}
+                </>}
                 <Field label={c.applyColSubject}>{label.subject(current.subject)}</Field>
                 <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
                 {/*

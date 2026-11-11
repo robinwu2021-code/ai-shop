@@ -234,7 +234,7 @@ function MerchantsInner() {
             审核走「申请单」模型（已接真后端）；下面的 list tab 仍是商家档案。
             两者不是同一个资源：通过之前商家不存在，所以审核动作打在 applyNo 上。
           */}
-          <ApplyTab c={c} canAudit={canAudit} />
+          <ApplyTab c={c} canAudit={canAudit} canReadSubscription={allow("commerce:subscription:read")} />
         </>
       )}
 

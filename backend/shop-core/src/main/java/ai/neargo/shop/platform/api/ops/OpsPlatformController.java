@@ -288,8 +288,8 @@ public class OpsPlatformController {
 
     @PostMapping("/ops/merchant/apply/{applyNo}/audit")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
-    public void auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
-        opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
+    public MerchantApplyVO auditApply(@PathVariable String applyNo, @RequestBody AuditReq req) {
+        return opsService.auditApply(applyNo, Boolean.TRUE.equals(req.approved()), req.reason(),
                 req.serviceScope(), req.communityNos(), req.grantCodes());
     }
 

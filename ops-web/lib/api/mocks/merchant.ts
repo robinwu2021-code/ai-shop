@@ -1,6 +1,7 @@
 import { ApiError } from "../error";
 // 覆盖范围：商家治理（P-11.1）。写操作真改 db.merchants（重开能读回），状态机在此强制。
 import * as db from "@/lib/mock/db";
+import { storeIndustries, marketPhonePolicies } from "@/lib/mock/db/system";
 import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { MerchantApi } from "../contracts/merchant";
@@ -124,6 +125,8 @@ function findPlan(merchantNo: string) {
 }
 
 export const merchantMock: MerchantApi = {
+  onBehalfStoreIndustries: async () => storeIndustries.filter(r=>r.enabled && storeIndustries.some(p=>p.enabled && p.industryCode===r.industryCode && !p.subIndustryCode))
+      .map(r=>({...r,subIndustryCode:r.subIndustryCode||null})),
   entityCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
   entityCashRefunds: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
   requestEntityCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
@@ -212,8 +215,11 @@ export const merchantMock: MerchantApi = {
    * （`requireLicenseIfNeeded`：只在客户端传了 qualificationItems 时生效）——
    * 不拦的话，开发期永远演不出「代填不放宽证件」这条，而那是这一期的全部要点。
    */
-  applyOnBehalf: async ({ phone, name, subject, qualificationItems }) => {
-    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
+  applyOnBehalf: async (v) => {
+    const {phone,name,subject,qualificationItems,market="CN",ownerEmail,storeProfile}=v;
+    const policy=marketPhonePolicies.find(p=>p.market===market && p.marketEnabled);
+    if (!policy) fail("地区不可用", "Market unavailable");
+    if (!policy!.recordOnly && !/^1[3-9]\d{9}$/.test(phone ?? "")) {
       fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
     }
     if (!name?.trim()) {
@@ -223,10 +229,15 @@ export const merchantMock: MerchantApi = {
         && !qualificationItems.some((it) => it.type === "BUSINESS_LICENSE")) {
       fail("企业主体必须上传营业执照", "Business license is required for enterprises");
     }
-    return wait({
-      applyNo: `A9${String(Math.floor(Math.random() * 900) + 100)}`,
-      ownerUserNo: `U-${phone}`,
-    }, 500);
+    const phoneOwner=market==="CN" && !policy!.recordOnly;
+    if (!phoneOwner && ownerEmail!=="owner@example.test") fail("请选择已注册店主邮箱（mock: owner@example.test）", "Use the registered mock owner: owner@example.test");
+    const ownerUserNo=phoneOwner?`U-${phone}`:"U-OPS-OWNER";
+    const applyNo=`OPS-MOCK-${Date.now()}`;
+    db.applies.unshift({applyNo,ownerUserNo,marketCode:market,storeProfile,name,subject,
+      contactName:v.contactName??"",contactPhone:v.contactPhone??phone,category:v.category??"",desc:v.description??"",
+      serviceScope:v.serviceScope??"COMMUNITY",communityNos:v.communityNos??[],licenses:[],asPickupPoint:!!v.asPickupPoint,
+      industry:v.industry,qualificationItems:qualificationItems?.map(q=>({...q,code:q.code??"",imageUrl:q.imageUrl??"",expireAt:q.expireAt??null})),status:"PENDING",createdAt:Date.now(),onBehalf:true,agreedAt:0});
+    return wait({applyNo,ownerUserNo},500);
   },
 
   createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
@@ -422,6 +433,7 @@ export const merchantMock: MerchantApi = {
 
   auditApply: async (applyNo, approved, reason, serviceScope, communityNos, grantCodes) => {
     const a = findApply(applyNo);
+    if (a.status==="APPROVED" && approved) return wait({...a});
     if (a.status === "APPROVED" || a.status === "REJECTED") {
       fail("这份申请已经审过了", "This application has already been decided");
     }
@@ -442,6 +454,7 @@ export const merchantMock: MerchantApi = {
       }
       a.status = "APPROVED";
       a.merchantNo = `M${applyNo.slice(1)}`;
+      if (a.storeProfile) a.storeNo=`ST-${applyNo}`;
       /*
        * **授码与通过同一步**（批 B2）。分两步做会留下「通过了但一个码都没授」的状态：
        * 商家收到通过通知、进去建品、上架被拒，而错误说的是「你还没有资质授权」。
@@ -458,7 +471,7 @@ export const merchantMock: MerchantApi = {
       a.rejectReason = reason;
     }
     a.auditedAt = Date.now();
-    await wait(undefined);
+    return wait({...a});
   },
 
   /*

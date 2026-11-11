@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1194 个接口**：后端已实现 945（79%）· 前端在调 1028
+**合计 1199 个接口**：后端已实现 950（79%）· 前端在调 1032
 
 ---
 
@@ -1162,7 +1162,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **584** 个接口 ｜ 后端已实现 **443**（76%）｜ 前端在调 **420**
+共 **589** 个接口 ｜ 后端已实现 **448**（76%）｜ 前端在调 **424**
 
 ### aftersale（5）
 
@@ -1559,7 +1559,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（63）
+### merchant（64）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1595,7 +1595,7 @@
 | POST | `/ops/merchant/{entityNo}/nudge` | 主动触达商家（M2） | — | `MerchantNudgeResult` | — | ✅ | ⬜ |
 | POST | `/ops/merchant/{merchantNo}/pay-service/apply` | 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联 | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant/apply/{applyNo}/accept` | 受理：告诉商家「有人在看了」 | — | `object` | — | ✅ | ✅ |
-| POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `MerchantApply` | — | ✅ | ✅ |
 | GET | `/ops/merchant/apply/search` | 入驻申请检索 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchant/chain` | 商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants` | listMerchants | — | `object` | — | ✅ | ✅ |
@@ -1617,6 +1617,7 @@
 | GET | `/ops/merchants/auth-codes` | 授权码目录 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants/mode-risk` | 无照主体 × 自营门店的税务敞口清单 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchants/self-operated` | 建**平台自营商家**（跳过进件与审核） | — | `SelfOperatedResult` | — | ✅ | ✅ |
+| GET | `/ops/merchants/store-industries` | onBehalfStoreIndustries | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/violations` | 违规记录 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/onboarding` | 进件看板 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/onboarding/refresh` | 人工回查：替卡在进件上的商家去通道问一次结果并落库 | — | `object` | — | ✅ | ✅ |
@@ -1832,7 +1833,7 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（36）
+### system（40）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1849,6 +1850,8 @@
 | POST | `/ops/industries/{industry}/enabled` | 停用后入驻表单里不再出现这个行业 | — | `Industry` | — | ✅ | ✅ |
 | POST | `/ops/industries/{industry}/micro-allowed` | 改某通道的小微白名单 | — | `Industry` | — | ✅ | ✅ |
 | POST | `/ops/industries/{industry}/points-forced` | 强制开启积分：商家不可自行关闭 */ | — | `Industry` | — | ✅ | ✅ |
+| GET | `/ops/market-phone-policies` | marketPhonePolicies | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/market-phone-policies/{market}` | saveMarketPhonePolicy | — | `MarketPhonePolicy` | — | ✅ | ⬜ |
 | GET | `/ops/markets` | listMarkets | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/markets/{code}` | 市场与汇率（P-17.1.3） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/media/backfill` | 磁盘对账：把「磁盘上有、库里没有」的文件补录进来 | — | `MediaBackfillResult` | — | ✅ | ✅ |
@@ -1864,6 +1867,8 @@
 | POST | `/ops/rule-texts` | 规则文案（P-17.1.4） | — | `RuleTexts` | — | ✅ | ✅ |
 | GET | `/ops/service-scopes` | listServiceScopes | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/service-scopes/{scope}/enabled` | 开关某一档，返回最新的三档全量 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/store-industries` | 门店行业配置全量，含停用项 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/store-industries` | expectedVersion=null 新建 | — | `StoreIndustry` | — | ✅ | ✅ |
 | GET | `/ops/test-identities` | listTestIdentities | — | `TestIdentityList` | — | ✅ | ✅ |
 | POST | `/ops/test-identities` | 加一条或改备注（按 类型 + 规范化后的值 认） | — | `TestIdentityList` | — | ✅ | ✅ |
 | POST | `/ops/test-identities/{id}/enabled` | setTestIdentityEnabled | — | `TestIdentityList` | — | ✅ | ✅ |

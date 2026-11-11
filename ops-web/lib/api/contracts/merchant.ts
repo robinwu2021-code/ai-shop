@@ -34,6 +34,7 @@ export interface PayServiceApplyResult {
 }
 
 export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"entityCashRefunds"|"requestEntityCashRefund"|"payoutEntityCashRefund"|"recoverEntityCashRefund">, EntityPlanPurchaseApi {
+  onBehalfStoreIndustries(): Promise<import("@/lib/types").StoreIndustryChoice[]>;
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
 
   /**
@@ -100,6 +101,7 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
   applyOnBehalf(v: {
     market?: string;
     ownerEmail?: string;
+    storeProfile?: import("@/lib/types").InitialStoreProfile;
     /** 商户本人手机号。**它决定这张单最终挂给谁** —— 填错就是挂到别人名下 */
     phone: string;
     name: string;
@@ -115,7 +117,7 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
     asPickupPoint?: boolean;
     industry?: string;
     qualificationItems?: {
-      type: string; code?: string; imageUrl?: string;
+      type: import("@/lib/types").QualificationType; code?: string; imageUrl?: string;
       expireAt?: number | null; issuer?: string;
     }[];
   }): Promise<ApplyOnBehalfResult>;
@@ -240,7 +242,7 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
     serviceScope?: string,
     communityNos?: string[],
     grantCodes?: string[],
-  ): Promise<void>;
+  ): Promise<MerchantApply>;
 
   listMerchants(q?: MerchantQ): Promise<Page<Merchant>>;
   getMerchant(merchantNo: string): Promise<Merchant>;

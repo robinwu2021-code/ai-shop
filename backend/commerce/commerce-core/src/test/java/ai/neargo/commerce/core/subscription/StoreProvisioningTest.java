@@ -38,6 +38,13 @@ class StoreProvisioningTest {
     }
 
     @Test
+    void initializationAllowsTypedOperatorButStillRequiresTheHostCreationAuthority() {
+        var cmd=new InitializeStoreCommand(new StoreRef("a","store"),"RETAIL","op");
+        assertDoesNotThrow(()->StoreProvisioningService.checkActor(new ActorContext("a",SubjectKind.OPERATOR,"reviewer","session"),cmd));
+        assertThrows(SecurityException.class,()->StoreProvisioningService.checkActor(new ActorContext("b",SubjectKind.OPERATOR,"reviewer","session"),cmd));
+    }
+
+    @Test
     void initializationRejectsSystemAndCrossTenant() {
         var command = new InitializeStoreCommand(new StoreRef("a", "store"), "RETAIL", "op");
         for (var actor :

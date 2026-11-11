@@ -2,6 +2,7 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  obStoreName:"默认门店名称", obStoreAddress:"门店完整地址", obStoreIndustry:"门店行业", obStoreSubIndustry:"门店子行业", obChooseIndustry:"请选择", obBusinessType:"经营类型", applyOwner:"店主账号", applyMarket:"经营市场", applyStoreResult:"主体与默认门店", applyViewSubscription:"查看门店权益", applySubscriptionMissing:"门店权益尚未返回，请刷新查看", applyFreePlan:"FREE 免费基础方案", applyPaidPlan:"当前付费方案",
   // ── 入驻审核（申请单模型，已接真后端）──
   applyColIndustry: "行业",
   // 商家自己写的那一行（选了「其他」才有）。列头不写「其他」——
@@ -678,6 +679,7 @@ const zh = {
 };
 
 const en: typeof zh = {
+  obStoreName:"Default store name", obStoreAddress:"Full store address", obStoreIndustry:"Store industry", obStoreSubIndustry:"Store subindustry", obChooseIndustry:"Select", obBusinessType:"Business type", applyOwner:"Owner account", applyMarket:"Market", applyStoreResult:"Entity and default store", applyViewSubscription:"View store entitlement", applySubscriptionMissing:"Store entitlement not yet available; refresh to check", applyFreePlan:"FREE base plan", applyPaidPlan:"Current paid plan",
   applyColIndustry: "Industry",
   applyColIndustryNote: "Stated industry",
   applyColSubject: "Legal form",

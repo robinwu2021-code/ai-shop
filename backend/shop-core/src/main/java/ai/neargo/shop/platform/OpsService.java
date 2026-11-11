@@ -1,5 +1,7 @@
 package ai.neargo.shop.platform;
 
+import ai.neargo.shop.spi.user.MerchantAdminPort;
+
 import ai.neargo.shop.platform.dto.OpsVOs.AuditLogVO;
 import ai.neargo.shop.platform.dto.OpsVOs.LoginResultVO;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
@@ -141,7 +143,7 @@ public interface OpsService {
      *                   进去建品、上架被拒，而错误说的是「你还没有资质授权」。
      *                   传空 = 只经营无门槛类目（合法，不是漏填）
      */
-    void auditApply(String applyNo, boolean approved, String reason,
+    MerchantApplyVO auditApply(String applyNo, boolean approved, String reason,
                     String serviceScope, List<String> communityNos,
                     List<String> grantCodes);
 
@@ -295,7 +297,15 @@ public interface OpsService {
                                *
                                * 可空：存量端上还在只传 qualifications。
                                */
-                              List<QualificationItem> qualificationItems, String marketCode) {
+                              List<QualificationItem> qualificationItems, String marketCode,
+                              MerchantAdminPort.InitialStore storeProfile) {
+        public SubmitApplyCommand(String userNo, String name, String subject, String contactName, String contactPhone,
+                String referrerPhone, String category, String description, String serviceScope, List<String> communityNos,
+                List<String> qualifications, boolean asPickupPoint, String industry, String industryNote,
+                List<QualificationItem> qualificationItems, String marketCode) {
+            this(userNo,name,subject,contactName,contactPhone,referrerPhone,category,description,serviceScope,communityNos,
+                    qualifications,asPickupPoint,industry,industryNote,qualificationItems,marketCode,null);
+        }
         public SubmitApplyCommand(String userNo, String name, String subject, String contactName, String contactPhone,
                 String referrerPhone, String category, String description, String serviceScope, List<String> communityNos,
                 List<String> qualifications, boolean asPickupPoint, String industry, String industryNote, List<QualificationItem> qualificationItems) {

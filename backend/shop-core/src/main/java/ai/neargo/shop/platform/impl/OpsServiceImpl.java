@@ -1,5 +1,8 @@
 package ai.neargo.shop.platform.impl;
 
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.platform.MarketPhonePolicyService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
@@ -85,6 +88,10 @@ public class OpsServiceImpl implements OpsService {
     private final AuditLogMapper auditLogMapper;
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
+    private MerchantQueryPort merchantQueries;
+    private MarketPhonePolicyService marketPhones;
+    @Autowired public void setMarketPhones(MarketPhonePolicyService value) { marketPhones=value; }
+    @Autowired public void setMerchantQueries(MerchantQueryPort value) { merchantQueries=value; }
     private final TokenStore tokenStore;
     /** 分池之后踢人必须指明是哪个池，见 TokenStores 的类注释 */
     private final ai.neargo.shop.auth.TokenStores tokenStores;
@@ -385,7 +392,7 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     @Transactional
-    public void auditApply(String applyNo, boolean approved, String reason,
+    public MerchantApplyVO auditApply(String applyNo, boolean approved, String reason,
                            String serviceScope, List<String> communityNos,
                            List<String> grantCodes) {
         if (!approved && (reason == null || reason.isBlank())) {
@@ -410,6 +417,16 @@ public class OpsServiceImpl implements OpsService {
         String auditor = SecurityUtils.currentUserNo();
         if (apply.getSubmittedBy() != null && apply.getSubmittedBy().equals(auditor)) {
             throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+
+        if (approved && MchEntityApply.APPROVED.equals(apply.getStatus())) {
+            boolean sameScope=serviceScope==null || serviceScope.isBlank() || serviceScope.equals(apply.getServiceScope());
+            boolean sameCommunities=communityNos==null || communityNos.isEmpty()
+                    || new java.util.HashSet<>(communityNos).equals(new java.util.HashSet<>(readCommunityNos(apply.getCommunityNos())));
+            boolean sameCodes=grantCodes==null || grantCodes.isEmpty()
+                    || new java.util.HashSet<>(grantCodes).equals(new java.util.HashSet<>(readCategoryCodes(apply.getCategoryCodes())));
+            if (!sameScope || !sameCommunities || !sameCodes) throw BizException.of(ErrorCode.CONFLICT);
+            return toVO(apply);
         }
 
         /*
@@ -437,6 +454,8 @@ public class OpsServiceImpl implements OpsService {
 
         LoginUser operator = SecurityUtils.requireUser();
         if (approved) {
+            if (apply.getStoreProfile()!=null && !marketPhones.policy(apply.getMarketCode()).marketEnabled())
+                throw BizException.of(ErrorCode.BAD_REQUEST);
             // 审核通过才创建商家主体：驳回的申请不该在库里留下一个「僵尸商家」
             /*
              * 建商家 + 配可达范围 + 建分账主体，**三件事在 Port 内部同一个事务**。
@@ -452,7 +471,11 @@ public class OpsServiceImpl implements OpsService {
                     apply.getUserNo(), apply.getName(), apply.getLegalForm(),
                     apply.getServiceScope(), readCommunityNos(apply.getCommunityNos()),
                     null, apply.getIndustry(), apply.getDescription(),
-                    apply.getEntityNo()));
+                    apply.getEntityNo(), apply.getMarketCode(), readStoreProfile(apply.getStoreProfile())));
+            if (apply.getStoreProfile()!=null) {
+                String storeNo=merchantQueries.defaultStoreNo(merchantNo).orElseThrow(()->BizException.of(ErrorCode.CONFLICT));
+                apply.setStoreNo(storeNo);
+            }
             apply.setEntityNo(merchantNo);
 
             /*
@@ -500,6 +523,7 @@ public class OpsServiceImpl implements OpsService {
         // 审核是能改变别人生意的操作 —— 出问题时必须能回答「谁批的」
         audit("MERCHANT_AUDIT", applyNo,
                 (approved ? "通过" : "驳回：" + reason) + "；商家=" + apply.getName());
+        return toVO(apply);
     }
 
     @Override
@@ -573,6 +597,7 @@ public class OpsServiceImpl implements OpsService {
              */
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        if (cmd.storeProfile()!=null) merchantAdminPort.validateInitialStore(cmd.storeProfile());
         return doCreateApply(cmd, submittedBy, merchantAdminPort::pendingLicenseEntityOf);
     }
 
@@ -599,6 +624,7 @@ public class OpsServiceImpl implements OpsService {
 
         MchEntityApply apply = new MchEntityApply();
         apply.setMarketCode(cmd.marketCode());
+        if (cmd.storeProfile()!=null) apply.setStoreProfile(json.writeValueAsString(cmd.storeProfile()));
         apply.setApplyNo(BizKey.next(BizKey.MERCHANT_APPLY));
         apply.setUserNo(cmd.userNo());
         apply.setName(cmd.name());
@@ -739,7 +765,7 @@ public class OpsServiceImpl implements OpsService {
     private MchEntityApply requireApply(String applyNo) {
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
                 applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
-                        .eq(MchEntityApply::getApplyNo, applyNo).last("limit 1")));
+                        .eq(MchEntityApply::getApplyNo, applyNo).last("limit 1 for update")));
         if (apply == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -1525,7 +1551,11 @@ public class OpsServiceImpl implements OpsService {
                 readQualItems(a.getQualificationItems()),
                 notBlank(a.getSubmittedBy()),
                 a.getAgreedAt() == null ? 0L : a.getAgreedAt(),
-                a.getReferrerPhone());
+                a.getReferrerPhone(), a.getUserNo(), a.getMarketCode(), readStoreProfile(a.getStoreProfile()), a.getStoreNo());
+    }
+
+    private MerchantAdminPort.InitialStore readStoreProfile(String value) {
+        return value==null ? null : json.readValue(value,MerchantAdminPort.InitialStore.class);
     }
 
     /** 申请单上的结构化资质 → VO。解析不出来给空 —— 审核页不该被脏数据整页打不开 */

@@ -23,6 +23,9 @@ public class MerchantStoreCreation {
                 String proposedStore);
 
         void forInsertedStore(InitializeStoreCommand command, Runnable initialize);
+        default void forInsertedStore(InitializeStoreCommand command, String targetOwner, Runnable initialize) {
+            forInsertedStore(command, initialize);
+        }
     }
 
     private final boolean enabled;
@@ -78,7 +81,9 @@ public class MerchantStoreCreation {
         row.setBusinessTypeChangedAt(System.currentTimeMillis());
     }
 
-    public void inserted(MchStore row, ActorContext actor) {
+    public void inserted(MchStore row, ActorContext actor) { inserted(row,actor,null); }
+
+    public void inserted(MchStore row, ActorContext actor, String targetOwner) {
         if (!enabled) return;
         var command =
                 new InitializeStoreCommand(
@@ -88,7 +93,7 @@ public class MerchantStoreCreation {
         try {
             session.orElseThrow()
                     .forInsertedStore(
-                            command,
+                            command, targetOwner,
                             () -> provisioning.orElseThrow().initializeFree(actor, command));
         } catch (BusinessTypeUnavailableException unavailable) {
             throw BizException.of(ErrorCode.STORE_BUSINESS_TYPE_REQUIRED);

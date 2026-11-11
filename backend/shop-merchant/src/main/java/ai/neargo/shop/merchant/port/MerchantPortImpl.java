@@ -1379,6 +1379,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return activate(cmd, true);
     }
 
+    @Override public void validateInitialStore(InitialStore store) {
+        var rows=industries();
+        var parent=rows.stream().filter(r->r.industryCode().equals(store.industryCode()) && r.subIndustryCode()==null)
+                .findFirst().orElseThrow(()->BizException.of(ErrorCode.BAD_REQUEST));
+        var child=rows.stream().filter(r->r.industryCode().equals(store.industryCode()) && store.subIndustryCode().equals(r.subIndustryCode()))
+                .findFirst().orElseThrow(()->BizException.of(ErrorCode.BAD_REQUEST));
+        if (!parent.enabled() || !child.enabled() || !child.businessTypeCode().equals(store.businessTypeCode()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    private void ensureApprovedStore(MchEntity entity, ActivateCommand cmd, boolean platformStore,
+            ai.neargo.commerce.api.common.ActorContext actor) {
+        var draft=cmd.store();
+        var existing=defaultStoreOf(entity.getEntityNo(),true);
+        // A licence upgrade preserves the existing default store, including LEGACY and its type.
+        if (existing!=null) return;
+        if (draft==null || platformStore) {
+            ensureDefaultStore(entity.getEntityNo(),cmd.name(),null,null,null,platformStore);
+            return;
+        }
+        validateInitialStore(draft);
+        if (actor==null) actor=commerce.actor(cmd.ownerUserNo());
+        ensureDefaultStore(entity.getEntityNo(),draft.name(),draft.address(),actor,draft.businessTypeCode(),false,
+                store->{store.setIndustryCode(draft.industryCode());store.setSubIndustryCode(draft.subIndustryCode());},cmd.ownerUserNo());
+    }
+
     private String activate(ActivateCommand cmd, boolean platformStore) {
         String ownerUserNo = cmd.ownerUserNo();
         String name = cmd.name();
@@ -1406,6 +1432,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, cmd.activatedEntityNo()).last("limit 1")));
         if (existing != null) {
+            if (cmd.marketCode()!=null && !cmd.marketCode().equals(existing.getMarket()))
+                throw BizException.of(ErrorCode.BAD_REQUEST);
             /*
              * **占位主体的「补证照」升级**，与「重复点通过」的幂等重放共用这一支。
              *
@@ -1431,7 +1459,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             merchantMapper.updateById(existing);
             // 重复点击「通过」是常态：全部按幂等写，不重复插
             ensureOwnerStaff(existing.getEntityNo(), ownerUserNo);
-            ensureDefaultStore(existing.getEntityNo(), name, null, null, null, platformStore);
+            ensureApprovedStore(existing,cmd,platformStore,null);
             ensureFreePlan(existing.getEntityNo());
             syncCommunities(existing.getEntityNo(), cmd.communityNos());
             ensurePayment(existing.getEntityNo(), type, cmd.settleAccountType());
@@ -1442,6 +1470,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return existing.getEntityNo();
         }
 
+        var actor=!platformStore && cmd.store()!=null ? commerce.actor(ownerUserNo) : null;
         requireEntityQuota(ownerUserNo, false);
 
         MchEntity m = new MchEntity();
@@ -1456,6 +1485,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         String canonical = masterDataPort.canonicalSubject(type);
         m.setLegalForm(canonical != null ? canonical : type);
         m.setOwnerUserNo(ownerUserNo);
+        if (cmd.marketCode()!=null) m.setMarket(cmd.marketCode());
         // 新店从中位分起步，不是 0 分 —— 0 分会让新店在任何按评分排的列表里垫底，
         // 而它还没有任何订单可以证明自己（ADR-009 里「平台推荐位」要解决的也是这个问题）
         m.setRating(RATING_INIT);
@@ -1482,7 +1512,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *   分账主体 少了第一笔订单就分不了账（ADR-002）
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
-        ensureDefaultStore(m.getEntityNo(), name, null, null, null, platformStore);
+        ensureApprovedStore(m,cmd,platformStore,actor);
         ensureFreePlan(m.getEntityNo());
         syncCommunities(m.getEntityNo(), cmd.communityNos());
         ensurePayment(m.getEntityNo(), type, cmd.settleAccountType());
@@ -1767,6 +1797,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private void ensureDefaultStore(String merchantNo, String name, String address,
             ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore,
             Consumer<ai.neargo.shop.merchant.entity.MchStore> extras) {
+        ensureDefaultStore(merchantNo,name,address,actor,type,platformStore,extras,null);
+    }
+
+    private void ensureDefaultStore(String merchantNo, String name, String address,
+            ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore,
+            Consumer<ai.neargo.shop.merchant.entity.MchStore> extras, String targetOwner) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 storeMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)));
@@ -1788,7 +1824,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         extras.accept(store);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(store));
         payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
-        if (!platformStore) commerce.inserted(store, actor);
+        if (!platformStore) commerce.inserted(store, actor, targetOwner);
     }
 
     /**

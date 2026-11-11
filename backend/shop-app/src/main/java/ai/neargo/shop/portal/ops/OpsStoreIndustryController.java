@@ -2,6 +2,11 @@ package ai.neargo.shop.portal.ops;
 
 import ai.neargo.commerce.starter.http.MallHttpContextPort;
 import ai.neargo.shop.merchant.service.StoreIndustryAdminService;
+import ai.neargo.shop.commercebridge.OpsStoreSetupQuery;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.auth.PermChecker;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -19,6 +24,18 @@ public class OpsStoreIndustryController {
     private final StoreIndustryAdminService industries;
     private final MallHttpContextPort context;
     private final AuditLogPort audit;
+    private OpsStoreSetupQuery setup;
+    private PermChecker permissions;
+    @Autowired public void setPermissions(PermChecker permissions) { this.permissions=permissions; }
+    @Autowired public void setSetup(OpsStoreSetupQuery setup) { this.setup=setup; }
+
+    @GetMapping("/ops/merchants/store-industries")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "') or @perm.can('" + Perms.MERCHANT_APPLY_AUDIT + "')")
+    public List<MerchantQueryPort.IndustryRow> choices() {
+        String cap=permissions.can(Perms.MERCHANT_APPLY_ONBEHALF)
+                ? Perms.MERCHANT_APPLY_ONBEHALF : Perms.MERCHANT_APPLY_AUDIT;
+        return setup.choices(context.operator(cap));
+    }
 
     public OpsStoreIndustryController(StoreIndustryAdminService industries, MallHttpContextPort context, AuditLogPort audit) {
         this.industries = industries;

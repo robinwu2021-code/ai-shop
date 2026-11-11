@@ -29,7 +29,7 @@ public final class StoreProvisioningService implements StoreProvisioningFacade {
 
     static void checkActor(ActorContext actor, InitializeStoreCommand cmd) {
         if (actor == null
-                || actor.subjectKind() != SubjectKind.ACCOUNT
+                || (actor.subjectKind() != SubjectKind.ACCOUNT && actor.subjectKind() != SubjectKind.OPERATOR)
                 || actor.principalNo() == null
                 || actor.principalNo().isBlank()
                 || actor.accountSessionFingerprint() == null

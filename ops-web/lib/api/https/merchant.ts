@@ -3,6 +3,7 @@ import { client } from "../http-client";
 import type { MerchantApi } from "../contracts/merchant";
 
 export const merchantHttp: MerchantApi = {
+  onBehalfStoreIndustries: () => client.get("/ops/merchants/store-industries"),
   entityCashReceipts: (entity,order) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-receipts`),
   entityCashRefunds: (entity,order) => client.get(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-refunds`),
   requestEntityCashRefund: (entity,order,v) => client.post(`/ops/merchant-plan-purchases/${encodeURIComponent(entity)}/${encodeURIComponent(order)}/cash-refunds`,v),

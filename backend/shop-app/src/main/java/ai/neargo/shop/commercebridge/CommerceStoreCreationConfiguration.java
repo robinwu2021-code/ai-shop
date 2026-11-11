@@ -1,5 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
+import ai.neargo.shop.auth.PermChecker;
+
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.api.subscription.StoreProvisioningFacade;
 import ai.neargo.commerce.core.access.EndScheduleService;
@@ -26,13 +28,13 @@ import javax.sql.DataSource;
 class CommerceStoreCreationConfiguration {
     @Bean
     @DependsOn("commerceMigrationInitializer")
-    HostStoreCreationAuthority hostStoreCreationAuthority(DataSource ds, MarketPort markets) {
+    HostStoreCreationAuthority hostStoreCreationAuthority(DataSource ds, MarketPort markets, PermChecker permissions) {
         // Market currency is immutable in the host contract. Resolve it before any store
         // transaction.
         var currencies =
                 markets.all().stream()
                         .collect(Collectors.toMap(MarketBrief::market, MarketBrief::currency));
-        return new HostStoreCreationAuthority(ds, currencies);
+        return new HostStoreCreationAuthority(ds, currencies, permissions);
     }
 
     @Bean
