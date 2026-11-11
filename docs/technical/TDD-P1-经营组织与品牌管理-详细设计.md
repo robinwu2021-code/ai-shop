@@ -462,3 +462,12 @@ ActorContext从认证生成；ManagementContext/EntityContext/StoreExecutionCont
 - MG09 `GET /biz/management/spaces/{managementNo}/recipients?cursor=&size=20`：需要空间进入、资源读及授权管理权。只列本人所有主体或有效可转授权资源对应主体的有效成员，返回actorNo/displayName。签名游标绑定操作者、空间及可控主体集合，不返回手机号。
 - 撤销后恢复授权必须传expectedRevision及reactivate=true；页面查询目标成员的全部分页授权，避免只从首屏判断。
 - 审批时重新检查得到的impact写回check_snapshot；BLOCKED重载保留同一阻断原因。品牌状态修改后重新读取detail以保留服务端actions。
+
+
+## 166 法人绑定及独立 App 消费对齐（2026-11-11）
+
+本批保留现有品牌编辑回执，补充已经实现的法人候选、法人绑定及结果回读，以及品牌普通营销上下文/命令/结果的公开消费契约。实现为 BizBrandController、BrandServiceImpl、BizBrandMarketingController；主体绑定必须 ACTIVE、授权有效、品牌原先未绑定，expectedRevision 与幂等键在事务内检查。普通营销继续使用按动作的 payload 校验与服务端动作授权，不将草稿准入等同于发布准入。
+
+独立 ai-shop-bapp 的 http_chain_repository.dart 已调用上述七路由；独立 App 工作区并不随本后端发布提交。精确端点、参数、鉴权和响应见 [公开契约](../api/brand-management-bapp.openapi.json)，消费位置及状态见 [跨仓消费登记](../api/backend-ui-delivery-brand-management-bapp.json)。legacy stage 字段为检查器兼容，consumerStatus=DELIVERED 记录真实已有客户端实现，不增加孤儿接口历史基线。
+
+验证：166 正式运营审核激活原主体后，商户候选、绑定命令及原命令回读成功，品牌营销 context 可读；结果见 [166 验收](../handoff/tw166-chain-release-2026-11-11/acceptance-166.json)。本次只补契约登记，未修改已验证的接口实现。

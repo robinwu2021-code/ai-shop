@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "Legacy checker cross-repository registration only: these seven routes are already implemented in the independent ai-shop-bapp chain repository. The Vue b-app is not their consumer. This backend release does not claim to publish the independent app working tree.",
+  "consumerRepository": "ai-shop-bapp",
+  "consumerStatus": "DELIVERED",
+  "consumerEvidence": [
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:123",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:133",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:332",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:355",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:377",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:426",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:958",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:959",
+    "apps/merchant_app/lib/features/chain/data/http_chain_repository.dart:1091"
+  ],
+  "plan": "docs/technical/TDD-P1-经营组织与品牌管理-详细设计.md",
+  "contract": "docs/api/brand-management-bapp.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/commands"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/legal-entity-candidates"
+    },
+    {
+      "app": "b-app",
+      "method": "PUT",
+      "path": "/biz/management/brands/{brandNo}/legal-entity"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/legal-entity/commands"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/marketing/context"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/marketing/commands"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/brands/{brandNo}/marketing/commands"
+    }
+  ]
+}

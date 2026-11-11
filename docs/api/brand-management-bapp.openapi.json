@@ -1,0 +1,647 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Independent merchant app chain legal binding and marketing command contract",
+    "version": "2026-11-11",
+    "description": "Existing authenticated 166 routes consumed by ai-shop-bapp. Scoped validation and transaction rules remain authoritative."
+  },
+  "paths": {
+    "/biz/management/brands/{brandNo}/commands": {
+      "get": {
+        "operationId": "brandEditCommandResult",
+        "description": "Read the original brand edit result under current space and brand authority.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          },
+          {
+            "name": "operationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Original Idempotency-Key for this actor and command, for outcome recovery."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BrandSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/brands/{brandNo}/legal-entity-candidates": {
+      "get": {
+        "operationId": "brandLegalEntityCandidates",
+        "description": "Active owned or explicitly authorized legal entities only; candidates are revalidated during binding.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LegalEntityCandidate"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/brands/{brandNo}/legal-entity": {
+      "put": {
+        "operationId": "bindBrandLegalEntity",
+        "description": "Bind an unbound brand to an ACTIVE authorized entity. Uses current brand revision and transactional authority checks; does not move stores.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Stable command key. Reuse the exact body on retry; different body conflicts."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BrandSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegalEntityBinding"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/brands/{brandNo}/legal-entity/commands": {
+      "get": {
+        "operationId": "brandLegalEntityCommandResult",
+        "description": "Read the original legal binding command snapshot; missing result is business 10404.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          },
+          {
+            "name": "operationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Original Idempotency-Key for this actor and command, for outcome recovery."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BrandSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/brands/{brandNo}/marketing/context": {
+      "get": {
+        "operationId": "brandMarketingContext",
+        "description": "Requires an active bound legal entity and current management authority. Returns allowed actions and readable collections; UI must follow these server results.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          },
+          {
+            "name": "managementNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Current authorized management space; must match the brand."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarketingContext"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/management/brands/{brandNo}/marketing/commands": {
+      "get": {
+        "operationId": "brandMarketingCommandResult",
+        "description": "Read the original marketing command outcome; current actor, space and brand authority are checked.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          },
+          {
+            "name": "managementNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Current authorized management space; must match the brand."
+          },
+          {
+            "name": "operationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Original Idempotency-Key for this actor and command, for outcome recovery."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Action-specific immutable command result. Request action defines the result fields."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "executeBrandMarketingCommand",
+        "description": "Execute a permitted ordinary marketing action. Payload validation is action-specific; expectedRevision and idempotency key fence replay. This contract does not enable activity publication in 166.",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "description": "Brand visible to the authenticated management actor."
+          },
+          {
+            "name": "managementNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Current authorized management space; must match the brand."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Stable command key. Reuse the exact body on retry; different body conflicts."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope. HTTP success requires code=0; business failures carry nonzero code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Action-specific immutable command result."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingCommand"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "LegalEntityCandidate": {
+        "type": "object",
+        "required": [
+          "entityNo",
+          "name"
+        ],
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "LegalEntityBinding": {
+        "type": "object",
+        "required": [
+          "entityNo",
+          "expectedRevision"
+        ],
+        "properties": {
+          "entityNo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "BrandSnapshot": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Canonical brand snapshot including current authorization-derived actions. Other persisted brand metadata may also be returned.",
+        "properties": {
+          "brandNo": {
+            "type": "string"
+          },
+          "managementNo": {
+            "type": "string"
+          },
+          "legalEntityNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MarketingContext": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "brandNo": {
+            "type": "string"
+          },
+          "managementNo": {
+            "type": "string"
+          },
+          "legalEntityNo": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "currencyScale": {
+            "type": "integer"
+          },
+          "marketZone": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "readable": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "costEntities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "audiences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "supportedActivityTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supportedCouponTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MarketingCommand": {
+        "type": "object",
+        "required": [
+          "action",
+          "expectedRevision",
+          "payload"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "saveActivity",
+              "publishActivity",
+              "pauseActivity",
+              "saveCoupon",
+              "publishCoupon",
+              "pauseCoupon",
+              "previewAudience",
+              "issueCoupon",
+              "saveRule",
+              "publishRule",
+              "generateStatement",
+              "confirmStatement",
+              "voidStatement"
+            ]
+          },
+          "expectedRevision": {
+            "type": "string",
+            "pattern": "^[0-9]{1,18}$"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Validated per action using BrandOrderActivityInput, BrandMarketingCommandInputs or BrandCouponModels. The independent app sends the matching action payload; unknown or invalid fields are subject to the host action validator."
+          }
+        }
+      }
+    }
+  }
+}
