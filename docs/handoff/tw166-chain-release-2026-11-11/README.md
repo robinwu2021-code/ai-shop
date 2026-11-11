@@ -7,7 +7,7 @@
 
 ## 166 verification
 
-- Application source commit `58ced2010`, running API and OPS JAR SHA-256 `a6ebbaaed9e4eabef30decda32b40d3bcbd1e927b46178986dade4760ba85d6c`. Both health checks returned UP. The release lock was released.
+- Initial chain release source commit `58ced2010`, API and OPS JAR SHA-256 `a6ebbaaed9e4eabef30decda32b40d3bcbd1e927b46178986dade4760ba85d6c`. This was superseded by the scoped draft release recorded below.
 - 25 focused tests passed, including three native MySQL legal binding tests and the account-route and marketing HTTP contract checks. The 166 schema backup rehearsal applied V651 and V652. Both applied successfully in 166 with V649/V650 retained. The rehearsal schema and temporary migration identity were removed.
 - API response from the authorized test merchant for `BR261110Z2FRZ2DHE5/legal-entity-candidates` returned an empty array. The brand is active and unbound. Marketing context with `MGS26111035M1KP1S2T` returned business code 10409. Store `ST2611100C2XNFCXRS` remains bound under `BRC20261111000001` and its entity `M261106BF7GK8052W` remains PENDING_LICENSE.
 - Inserted the canonical AP023 version 1 draft template from V483 under audit marker TW166-DRAFT-FIXTURE. The FOOD preset endpoint returned AP023/v1 with enabled=false and available=false. The scoped TWD draft attempt returned 10404. Scope validation requires the store's entity to be ACTIVE. Draft authoring also has a deployment opt-in. Publication was outside this acceptance.
@@ -17,3 +17,10 @@
 ## Scoped draft candidate
 
 The draft path now supports a deployment scope configured under `shop.promotion.draft-scope`. For this acceptance configure tenant-no MAIN, entity-no M261106BF7GK8052W, store-no ST2611100C2XNFCXRS, template-code AP023 and currency TWD. The existing merchant permission, active entity check and selected store ownership validation run before draft admission. The existing global activity flag remains required for publishing and status changes. Default configuration keeps the scoped path closed. This candidate awaits formal activation of the test entity for 166 acceptance.
+
+## Scoped draft deployment and remaining acceptance
+
+- Deployed application source `78efc45ce` to both 166 API and OPS. Both running JARs verified SHA-256 `7ece70f156aecc37e130a45f571931c523a215417d45969ea91f8558bb4df63a`; both health checks returned UP. Verified the exact scope above on both services, preserved their shared upload mount, and released the deployment lock. Rollback backups are under `/data0/app/ai-shop/releases/tw166-draft-scope-78efc45ce`.
+- After deployment, merchant AP023 preset readback still reports disabled/unavailable. The draft request returns 10404 while the original entity remains PENDING_LICENSE. Legal entity candidates remain empty, and brand marketing context returns 10409. Draft creation, legal binding and FOOD purchase acceptance are still incomplete.
+- The original store onboarding application is `MA261111RE680NW3YB`; formal operator review is the next dependency. Existing automation subjects have only payment permissions. The user confirmed `neara@neargo.ai` does not require second factor; an existing password configuration or authenticated operator session is still needed to exercise its formal authorization. No password reset, direct SQL role grant or direct entity activation was performed.
+- After review: confirm the original entity is ACTIVE, bind the legal entity through the candidate/command APIs, create and read back an AP023 DRAFT, then configure the FOOD test SKU through authorized operator APIs and verify synthetic collection, fulfillment and entitlement readback. Activity publication and real transfers remain outside this acceptance.
