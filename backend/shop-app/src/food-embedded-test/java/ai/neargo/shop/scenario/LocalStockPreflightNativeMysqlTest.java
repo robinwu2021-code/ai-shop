@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import static ai.neargo.shop.spi.product.LocalStockControlPort.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.Mockito.mock;
 
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.food.entity.FnbStockBalance;
@@ -19,6 +20,7 @@ import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
 import ai.neargo.shop.product.port.FoodLocalStockFactsPortImpl;
 import ai.neargo.shop.product.port.PlatformLocalStockFactsPortImpl;
 import ai.neargo.shop.product.service.LocalStockControlService;
+import ai.neargo.shop.product.service.StockReplenishmentAdmissionService;
 import ai.neargo.shop.product.service.StoreStockReader;
 import ai.neargo.shop.product.service.impl.LocalStockControlServiceImpl;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;
@@ -162,6 +164,10 @@ class LocalStockPreflightNativeMysqlTest {
             return new FoodLocalStockPortImpl(i,b,null,null,null,null,JsonMapper.builder().build(),tx,null);
         }
         @Bean LocalStockFactsPort foodFacts(ObjectProvider<FoodLocalStockPort> food) { return new FoodLocalStockFactsPortImpl(food); }
-        @Bean LocalStockControlService service(List<LocalStockFactsPort> sources) { return new LocalStockControlServiceImpl(sources); }
+        // LOCAL-only scenarios: replenishment intake is never consulted, so an inert seam is enough.
+        @Bean LocalStockControlService service(List<LocalStockFactsPort> sources) {
+            return new LocalStockControlServiceImpl(sources,
+                    mock(StockReplenishmentAdmissionService.class));
+        }
     }
 }
