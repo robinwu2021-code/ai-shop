@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1198 个接口**：后端已实现 949（79%）· 前端在调 1031
+**合计 1201 个接口**：后端已实现 951（79%）· 前端在调 1033
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **477** 个接口 ｜ 后端已实现 **371**（78%）｜ 前端在调 **475**
+共 **478** 个接口 ｜ 后端已实现 **372**（78%）｜ 前端在调 **476**
 
 ### activities（4）
 
@@ -730,7 +730,7 @@
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags/batch` | 批量打/去一个标签（confirm=false 只试算） | — | `BatchTagResult` | 🔒 | ✅ | ✅ |
 
-### merchant（12）
+### merchant（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -740,6 +740,7 @@
 | GET | `/biz/merchant/debt` | 我的欠款与流水 | — | `MyDebt` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/display-name` | 改用户名 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/pay-channel` | 本店能开的收款通道（含没开的） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/merchant/pay-service` | 支付服务资料审核状态（属主） | — | `PayServiceStatus` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/payment` | 收款进件状态 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment` | 补交资料并提交进件 | `SubmitPaymentReq` | `PaymentApplyment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment/{payChannel}/refresh` | 回查进件结果 | — | `PaymentApplyment` | 🔒 | ✅ | ✅ |
@@ -1162,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **588** 个接口 ｜ 后端已实现 **447**（76%）｜ 前端在调 **423**
+共 **590** 个接口 ｜ 后端已实现 **448**（76%）｜ 前端在调 **424**
 
 ### aftersale（5）
 
@@ -1476,7 +1477,7 @@
 | POST | `/ops/perm/roles/{roleCode}/points` | 改角色的功能点 | — | `RoleDef` | — | ✅ | ✅ |
 | POST | `/ops/perm/roles/{roleCode}/rename` | 改角色展示名 | — | `RoleDef` | — | ✅ | ✅ |
 | GET | `/ops/staffs` | listStaffs | — | `object` | — | ✅ | ⬜ |
-| POST | `/ops/staffs` | 新建员工 | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/staffs` | 新建员工 | — | `CreatedStaff` | — | ✅ | ⬜ |
 | POST | `/ops/staffs/{no}/enabled` | 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
@@ -1559,7 +1560,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（63）
+### merchant（65）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1593,9 +1594,10 @@
 | PUT | `/ops/merchant-plans/{merchantNo}/quota` | 单商家额度覆盖 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | GET | `/ops/merchant-plans/upgrade-signals` | 升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchant/{entityNo}/nudge` | 主动触达商家（M2） | — | `MerchantNudgeResult` | — | ✅ | ⬜ |
+| GET | `/ops/merchant/{merchantNo}/pay-service` | payServiceStatus | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant/{merchantNo}/pay-service/apply` | 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联 | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant/apply/{applyNo}/accept` | 受理：告诉商家「有人在看了」 | — | `object` | — | ✅ | ✅ |
-| POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `MerchantApply` | — | ✅ | ✅ |
 | GET | `/ops/merchant/apply/search` | 入驻申请检索 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchant/chain` | 商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants` | listMerchants | — | `object` | — | ✅ | ✅ |
@@ -1617,6 +1619,7 @@
 | GET | `/ops/merchants/auth-codes` | 授权码目录 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants/mode-risk` | 无照主体 × 自营门店的税务敞口清单 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchants/self-operated` | 建**平台自营商家**（跳过进件与审核） | — | `SelfOperatedResult` | — | ✅ | ✅ |
+| GET | `/ops/merchants/store-industries` | onBehalfStoreIndustries | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/violations` | 违规记录 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/onboarding` | 进件看板 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/onboarding/refresh` | 人工回查：替卡在进件上的商家去通道问一次结果并落库 | — | `object` | — | ✅ | ✅ |

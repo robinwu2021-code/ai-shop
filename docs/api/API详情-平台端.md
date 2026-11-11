@@ -1260,9 +1260,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -1288,9 +1288,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -1317,9 +1317,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -6192,7 +6192,13 @@ _无字段_
 
 **出参**（`data`）
 
-类型：`object`
+类型：[`CreatedStaff`](#createdstaff)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `staff` | [`Staff`](#staff) | 是 | 新建的员工资料 |
+| `initialPassword` | `string,null` | 是 | response 模式的一次性密码；mail 模式为 null |
+| `deliveredTo` | `string,null` | 是 | mail 模式的掩码收件邮箱；response 模式为 null，不表示已送达收件箱 |
 
 
 #### POST `/ops/staffs/{no}/enabled`
@@ -6216,7 +6222,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -6248,7 +6254,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -6280,7 +6286,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -6312,7 +6318,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -8504,6 +8510,23 @@ _无字段_
 | `noRecipient` | `boolean` | 是 | 这家店一个能收消息的人都没有 —— 该做的是去给这家店配人 |
 
 
+#### GET `/ops/merchant/{merchantNo}/pay-service`
+
+payServiceStatus
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/merchant/{merchantNo}/pay-service/apply`
 
 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联
@@ -8552,7 +8575,37 @@ _无字段_
 
 **出参**（`data`）
 
-类型：`object`
+类型：[`MerchantApply`](#merchantapply)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ownerUserNo` | `string,null` | 否 | 实际店主账号 |
+| `marketCode` | `string,null` | 否 | 申请经营市场 |
+| `storeProfile` | [`InitialStoreProfile`](#initialstoreprofile) \| `null` | 否 | 审核时使用的原门店资料 |
+| `storeNo` | `string,null` | 否 | 审核通过后生成的默认门店 |
+| `applyNo` | `string` | 是 | 申请单号。审核动作都打在它上面，不是商家号 |
+| `merchantNo` | `string` | 否 | 通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在 |
+| `name` | `string` | 是 | 拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
+| `subject` | `string` | 是 | 法律形态 NATURAL_PERSON / INDIVIDUAL / ENTERPRISE |
+| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人 |
+| `contactPhone` | `string` | 是 | 联系方式；仅记录地区不建立手机号登录身份，店主归属沿已注册账号。 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号（V353，选填）。**奖励靠它人工发** —— 小程序里不能出现「邀请商家入驻得 X 元」（拉人头 + 奖励会被判平台型经营）， 所以规则只在官网与企微里，运营在这一栏看到号之后自己去发券 （TDD-C 端裂变与商家招募 §8.3）。 可选：绝大多数申请没有推荐人，那时这一栏整个不渲染。 |
+| `category` | `string` | 是 | 主营类目。**商家自己的说法**（「食品」），不是权威码 |
+| `categoryCodes` | `string`\[\] | 否 | 审核通过时授予的经营类目码 —— **平台的裁定**，与 `category` 并存。 <p>两者分开是为了留痕：追溯时要的恰恰是这两者的差 （「他说卖食品，我们批的是预包装食品」）。 |
+| `desc` | `string` | 是 | 店铺简介。通过后会写进主体档案，C 端门店页读的就是它 |
+| `industry` | `string` | 否 | 行业。**决定这家店能不能以小微进件** —— 审核页要看得到它， 否则运营批了一个行业不允许小微的小微商家，通道那边才会拒。 |
+| `industryNote` | `string` | 否 | 商家**自己写的**行业（V360）。只在 `industry === "OTHER"` 时非空。 审核台必须显示它：意向表收这一句的全部目的就是知道 「他想做的是平台还接不了的哪一类」。不展示等于收了没收。 |
+| `serviceScope` | `string` | 否 | 期望服务范围。**商家可以留空，但通过时必须确定** —— 空的后果是商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 覆盖的小区。scope=COMMUNITY 时**空 = 通过之后对谁都不可见** |
+| `licenses` | `string`\[\] | 否 | 已传的资质图。个体户/企业必传，自然人免 —— 缺它正是驳回的主因 |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质（V79）。**审核台看的是这一份** —— 上面的 licenses 只有图片 URL，审核员看不出「这是执照还是食品证」「什么时候过期」。 而通过之后转存进 mch_qualification 的正是它。 |
+| `asPickupPoint` | `boolean` | 是 | 是否愿意承接自提点（ADR-005）。**只是意愿，不代表点已建立** |
+| `status` | [`ApplyStatus`](#applystatus) | 是 | 审核状态 |
+| `rejectReason` | `string` | 否 | 驳回原因。**驳回必写** —— 不写对方只能猜着改 |
+| `createdAt` | `number` | 是 | 提交时间 |
+| `auditedAt` | `number` | 否 | 审核完成时间。待审期间为空 |
+| `onBehalf` | `boolean` | 否 | <b>这张单是运营代填的</b>（三期）。审核台要看到它 —— 资料不是商户自己录的，核验那一步该更仔细。 <p>⚠️ 看到这个标记<b>不等于你审得动</b>：后端还拦「代填的人审自己填的那一张」 （403）。BD 同时持有审核码与代填码，光靠角色配置挡不住，所以分离钉在数据上。 |
+| `agreedAt` | `number` | 否 | 商户本人同意《商家服务协议》的时刻（毫秒）；<b>0 / 空 = 尚未同意</b>。 <p>代填的单子这一栏一律为空 —— 运营不能替商户勾，等他首次登录自己补。 <b>存量单子同样是空的</b>（协议勾选此前从没落过库），所以「空」不等于 「他拒绝了」，也不等于「这是代填单」：要分开看  {@link  onBehalf } 。 |
 
 
 #### GET `/ops/merchant/apply/search`
@@ -9089,6 +9142,19 @@ _无字段_
 | `selfOperated` | `boolean` | 是 | 回读值，应为 true。它是**免证件与运营建店的唯一判据** —— `fundsMode` 认不出平台自己（归集同时盖着代销）， `businessMode` 也认不出（门店级，且建表默认值就是自营）。 |
 | `reachableCommunities` | `number` | 是 | **这家店现在对多少个小区可见。** 不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。 |
 | `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
+
+
+#### GET `/ops/merchants/store-industries`
+
+onBehalfStoreIndustries
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/merchants/violations`
@@ -13190,12 +13256,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `market` | `string` | 是 | — |
-| `callingPrefix` | `string,null` | 是 | — |
-| `recordOnly` | `boolean` | 是 | — |
-| `smsVerificationEnabled` | `boolean` | 是 | — |
-| `smsChannelReady` | `boolean` | 是 | — |
-| `marketEnabled` | `boolean` | 是 | — |
+| `market` | `string` | 是 | 经营市场码 |
+| `callingPrefix` | `string,null` | 是 | 国际电话区号；未配置时为 null |
+| `recordOnly` | `boolean` | 是 | 是否只记录号码，不验证短信 |
+| `smsVerificationEnabled` | `boolean` | 是 | 是否开放短信验证码验证 |
+| `smsChannelReady` | `boolean` | 是 | 当前部署是否已配置可用短信通道，只读 |
+| `marketEnabled` | `boolean` | 是 | 当前经营市场是否开放，只读 |
 
 
 #### GET `/ops/markets`
@@ -13490,15 +13556,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `industryCode` | `string` | 是 | — |
-| `subIndustryCode` | `string` | 是 | — |
-| `businessTypeCode` | `string` | 是 | — |
-| `nameZh` | `string` | 是 | — |
-| `nameTw` | `string` | 是 | — |
-| `nameEn` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
-| `version` | `number` | 是 | — |
+| `industryCode` | `string` | 是 | 行业码 |
+| `subIndustryCode` | `string` | 是 | 子业态码，与行业码共同标识一条配置 |
+| `businessTypeCode` | `string` | 是 | 对应的门店经营类型码 |
+| `nameZh` | `string` | 是 | 简体中文名称 |
+| `nameTw` | `string` | 是 | 繁体中文名称 |
+| `nameEn` | `string,null` | 否 | 英文名称；未配置时为空 |
+| `sort` | `number` | 是 | 展示顺序，数值越小越靠前 |
+| `enabled` | `boolean` | 是 | 是否允许建店时选择此项 |
+| `version` | `number` | 是 | 当前配置版本，修改时带回 expectedVersion |
 
 
 #### GET `/ops/test-identities`
@@ -14461,6 +14527,16 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 | `communityNo` | `string` | 是 | — |
 | `name` | `string` | 是 | — |
 
+### CreatedStaff
+
+新建员工回执；密码交付方式由服务端配置决定。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `staff` | [`Staff`](#staff) | 是 | 新建的员工资料 |
+| `initialPassword` | `string,null` | 是 | response 模式的一次性密码；mail 模式为 null |
+| `deliveredTo` | `string,null` | 是 | mail 模式的掩码收件邮箱；response 模式为 null，不表示已送达收件箱 |
+
 ### DashboardKpi
 
 KPI 卡（金额为最小货币单位整数）。
@@ -15190,6 +15266,18 @@ Reward rule history includes imported legacy revisions.
 | `alipayMicroAllowed` | `boolean` | 是 | 支付宝是否允许 |
 | `pointsForced` | `boolean` | 是 | 是否**强制开启积分**（商家不可自行关闭）。 它是 `mch_entity.points_forced` 的来源 —— 高毛利行业平台会要求让利。 |
 | `remark` | `string` | 否 | 备注：为什么这么配。改白名单是会被商家追问的操作 |
+
+### InitialStoreProfile
+
+随申请保存、审核时创建默认门店的资料快照。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 默认门店名 |
+| `address` | `string` | 是 | 完整门店地址 |
+| `industryCode` | `string` | 是 | 系统门店行业 |
+| `subIndustryCode` | `string` | 是 | 系统门店子行业 |
+| `businessTypeCode` | `string` | 是 | 子行业映射的经营类型 |
 
 ### InvBalanceRow
 
@@ -16358,9 +16446,9 @@ SKU 版本行；PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -16386,12 +16474,12 @@ Region-specific contact recording. SMS can open only after the deployment declar
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `market` | `string` | 是 | — |
-| `callingPrefix` | `string,null` | 是 | — |
-| `recordOnly` | `boolean` | 是 | — |
-| `smsVerificationEnabled` | `boolean` | 是 | — |
-| `smsChannelReady` | `boolean` | 是 | — |
-| `marketEnabled` | `boolean` | 是 | — |
+| `market` | `string` | 是 | 经营市场码 |
+| `callingPrefix` | `string,null` | 是 | 国际电话区号；未配置时为 null |
+| `recordOnly` | `boolean` | 是 | 是否只记录号码，不验证短信 |
+| `smsVerificationEnabled` | `boolean` | 是 | 是否开放短信验证码验证 |
+| `smsChannelReady` | `boolean` | 是 | 当前部署是否已配置可用短信通道，只读 |
+| `marketEnabled` | `boolean` | 是 | 当前经营市场是否开放，只读 |
 
 ### Material
 
@@ -16639,6 +16727,10 @@ Region-specific contact recording. SMS can open only after the deployment declar
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `ownerUserNo` | `string,null` | 否 | 实际店主账号 |
+| `marketCode` | `string,null` | 否 | 申请经营市场 |
+| `storeProfile` | [`InitialStoreProfile`](#initialstoreprofile) \| `null` | 否 | 审核时使用的原门店资料 |
+| `storeNo` | `string,null` | 否 | 审核通过后生成的默认门店 |
 | `applyNo` | `string` | 是 | 申请单号。审核动作都打在它上面，不是商家号 |
 | `merchantNo` | `string` | 否 | 通过后生成的主体号。**未通过时为空** —— 商家在通过之前根本不存在 |
 | `name` | `string` | 是 | 拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
@@ -19321,7 +19413,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -19434,17 +19526,19 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 ### StoreIndustry
 
+可供建店选择的行业、子业态与经营类型映射
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `industryCode` | `string` | 是 | — |
-| `subIndustryCode` | `string` | 是 | — |
-| `businessTypeCode` | `string` | 是 | — |
-| `nameZh` | `string` | 是 | — |
-| `nameTw` | `string` | 是 | — |
-| `nameEn` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
-| `version` | `number` | 是 | — |
+| `industryCode` | `string` | 是 | 行业码 |
+| `subIndustryCode` | `string` | 是 | 子业态码，与行业码共同标识一条配置 |
+| `businessTypeCode` | `string` | 是 | 对应的门店经营类型码 |
+| `nameZh` | `string` | 是 | 简体中文名称 |
+| `nameTw` | `string` | 是 | 繁体中文名称 |
+| `nameEn` | `string,null` | 否 | 英文名称；未配置时为空 |
+| `sort` | `number` | 是 | 展示顺序，数值越小越靠前 |
+| `enabled` | `boolean` | 是 | 是否允许建店时选择此项 |
+| `version` | `number` | 是 | 当前配置版本，修改时带回 expectedVersion |
 
 ### StoreMode
 
@@ -19641,10 +19735,10 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `at` | `string,null` | 是 | — |
-| `method` | `string` | 是 | — |
-| `path` | `string` | 是 | — |
-| `outcome` | `string` | 是 | — |
+| `at` | `string,null` | 是 | 请求时间原文；带偏移或 Z 为 UTC，无时区为设备本地时间，缺失为 null |
+| `method` | `string` | 是 | HTTP 请求方法 |
+| `path` | `string` | 是 | 已脱敏的请求路径，不含查询参数 |
+| `outcome` | `string` | 是 | 请求结果摘要（HTTP 状态或网络错误） |
 
 ### TicketSource
 
