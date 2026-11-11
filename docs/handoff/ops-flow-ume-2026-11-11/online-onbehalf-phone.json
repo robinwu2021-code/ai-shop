@@ -1,0 +1,7 @@
+{
+  "stage": "C02",
+  "test": "Taiwan phone through real operator endpoint",
+  "http": 200,
+  "code": 10400,
+  "message": "手机号格式不对，应为 11 位大陆手机号"
+}

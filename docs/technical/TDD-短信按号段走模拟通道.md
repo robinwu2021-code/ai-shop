@@ -1,6 +1,6 @@
 # TDD-短信按号段走模拟通道
 
-状态：**2026-11-11 地区策略修订中；旧模拟通道仅在地区准入开启后适用**
+状态：**2026-11-11 地区策略已部署 UME166；旧模拟通道仅在地区准入开启后适用**
 历史状态：**已实现**（2026-11-05；本地提交，未推送）
 关联需求：`ai-shop-bapp` · `PRD-台湾一期注册开店Plan套餐商城与支付开通-V3.md` §3.1（「台湾短信尚未具备正式能力时……不能把模拟短信显示为真实可用」）；
 用户 2026-11-05 指示：大陆短信用已实现的真实通道，台湾 / 阿联酋用 mock。
@@ -76,4 +76,4 @@
 
 本地增量验证：MarketPhonePolicyServiceTest 5、OpsMerchantRegionalContactTest 3、RegionalSmsAdmissionTest 1、SmsMockPrefixTest 3、EmailOtpAuthTest 18、ProfileAndPasswordTest 9、BackendI18nParityTest 6，共45项通过，0失败/错误/跳过。运营端地区表单6项（含大陆号码空格与仅大陆启用回归）、原系统维护/HTTP7项通过，typecheck及变更文件ESLint通过。新策略先于预设码、模拟前缀和测试身份检查，旧mock测试仅说明已准入地区的分流机制仍可用。
 
-UME166发布及线上验证进行中；现有S/P发布基线为1e9975ee，不因本地用例通过声明地区增量已上线。
+UME166地区增量e02cee3f已上线，V656先演练再生产执行。配置保存/回读、未接通短信拒绝启用、发码/验码10515通过；真实代填MA261111YV74FRPTR6联系方式原样、TW地区落库，自审10403，协议未代签。完整新店同店闭环未完成，详见[线上记录](../handoff/ops-flow-ume-2026-11-11/README.md)。

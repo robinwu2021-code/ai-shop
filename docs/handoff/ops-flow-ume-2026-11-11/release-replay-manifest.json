@@ -1,0 +1,12 @@
+{
+  "target": "UME166",
+  "sourceCommit": "cf8729644001de3319ffc1494f9d7eaf384e824f",
+  "frontendSourceCommit": "e02cee3f1221993821f2f0bfe6cf437d17698e05",
+  "expectedRuntimeSha256": "ead26efb96c27b89a91ea426180aa995dfe602eb241b499389eeacb846bc4dac",
+  "jarSha256": "fbd45493fd5c86d3a72b425d2a3a32217cb61e2cbf0d533896c2655678217b0c",
+  "remoteStage": "/data0/app/ai-shop/releases/opsflow-replay-cd2c829f",
+  "rid": "opsflow-replay-cd2c829f",
+  "tests": 25,
+  "migration": null,
+  "frontendChanged": false
+}

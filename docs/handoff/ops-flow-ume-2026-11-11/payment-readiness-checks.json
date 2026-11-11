@@ -1,0 +1,60 @@
+[
+  {
+    "path": "/pay-ops/v2/merchants/PM13A13B737D7C4A57/workspace",
+    "http": 200,
+    "code": 0,
+    "fields": [
+      "merchant",
+      "sections"
+    ]
+  },
+  {
+    "path": "/pay-ops/v2/channel-accounts?merchantNo=PM13A13B737D7C4A57&size=100",
+    "http": 200,
+    "code": 0,
+    "fields": [
+      "records",
+      "total",
+      "page",
+      "size"
+    ]
+  },
+  {
+    "path": "/pay-ops/v2/stores/ST261106T585CY14HG/bindings?size=100",
+    "http": 200,
+    "code": 0,
+    "fields": [
+      "records",
+      "total",
+      "page",
+      "size"
+    ]
+  },
+  {
+    "path": "/pay-ops/v2/onboardings/OB7C0C9747674E48F8/draft/readiness",
+    "http": 200,
+    "code": 0,
+    "fields": [
+      "receiptStage",
+      "candidateStage",
+      "payMerchantNo",
+      "accountStatus",
+      "verificationStatus",
+      "credentialStatus",
+      "openProductCount",
+      "storeReadinessEvaluated",
+      "channelReady"
+    ],
+    "readiness": {
+      "receiptStage": "NOT_RECEIVED",
+      "candidateStage": null,
+      "payMerchantNo": null,
+      "accountStatus": "NOT_CREATED",
+      "verificationStatus": "PENDING",
+      "credentialStatus": "NONE",
+      "openProductCount": 0,
+      "storeReadinessEvaluated": false,
+      "channelReady": false
+    }
+  }
+]

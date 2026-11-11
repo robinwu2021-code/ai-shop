@@ -122,6 +122,8 @@
 
 线上 B01 实测：首次创建订单成功，原幂等键重放却返回 ORDER_CLAIM_INCOMPLETE。事件认领按门店买方与运营发起人摘要隔离，JDBC 回查误把摘要当作 buyer_user_no 查询。修复为从冻结 Quote 传入实际门店买方，并同时匹配原 initiatedBy；ACCOUNT 查询、幂等事件认领、事务锁序与落单字段不变，无数据库迁移。
 
-验证：原生 MySQL9 新增 STORE 原键重放/另一运营隔离，连同原同键并发与事件重复回放专项3项通过；CommerceQuoteTest 原专项通过。线上原订单 e0e0b04fa70c4b549b2e5c297f7c73e3 保留，待发布后以原报价/原键回查，禁止新建替代订单。当前仅测试报价、待付款单与作废；不伪造银行实收。
+验证：原生 MySQL9 新增 STORE 原键重放/另一运营隔离，连同原同键并发与事件重复回放专项3项通过；CommerceQuoteTest 原专项通过。线上原订单 e0e0b04fa70c4b549b2e5c297f7c73e3 保留，已在后端cf872964部署后使用原报价/原键成功回查原单，未新建替代订单。当前仅测试报价、待付款单与作废；不伪造银行实收。
 
 边界：原有 mall_order 唯一键仍是 tenant_no/buyer_user_no/idempotency_key。不同运营对同店使用相同键的双创建不属于本次修复，也未宣称支持；本次不改唯一键、历史订单或资金事实。专项合计25项（22项报价回归＋3项原生MySQL并发/回放）通过。
+
+线上结果：原单付款指引回读一致；明确未发生银行转账，经RECONCILIATION测试资料正式作废，订单和支付轴CLOSED，付款尝试FAILED且paidAt=null，原FREE版本未变。API/OPS均UP，部署锁已释放；独立PAY/inventory未重启。完整新店同店购买与真实实收仍未完成。
