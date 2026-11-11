@@ -2,7 +2,7 @@
 import { client } from "../http-client";
 import type { IamApi } from "../contracts/iam";
 import type { Staff } from "@/lib/types";
-import { toBackendRole, toOpsRole } from "./dashboard";
+import { toBackendRole } from "./dashboard";
 
 /**
  * 后端 `StaffVO` 的原样形状。**与 ops-web 的 `Staff` 不同形**：
@@ -38,14 +38,15 @@ interface StaffPage {
  *
  * 此前这里写 `role: toOpsRole(s.roles?.[0])` —— 后端给数组、前端只认第一个，
  * 于是「这个人有两个角色」这件事在页面上根本表达不出来。
- * 角色码仍要翻译：BD / GOODS_OPS / SUPPORT 是历史遗留的三个异名同义。
+ * 保留服务端角色码：自定义角色也是合法角色，不能套用登录主角色的 ANALYST 回退。
+ * 角色定义与多选编辑都使用这些原始编码；历史别名仅在显示和筛选时匹配。
  */
 function toStaff(s: BackendStaff): Staff {
   return {
     staffNo: s.staffNo,
     username: s.username,
     name: s.realName ?? "",
-    roles: (s.roles ?? []).map((r) => toOpsRole(r) as string),
+    roles: [...(s.roles ?? [])],
     merchantNo: s.merchantNo || undefined,
     communityNo: s.communityNo || undefined,
     pickupNo: s.pickupNo || undefined,
@@ -74,9 +75,9 @@ export const iamHttp: IamApi = {
   setStaffSecondFactorExempt: async (no, exempt, reason) =>
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/second-factor-exempt`, { exempt, reason })),
   createStaff: async (username, realName, roles) => {
-    const r = await client.post<{ staff: BackendStaff; initialPassword: string }>(
+    const r = await client.post<{ staff: BackendStaff; initialPassword: string | null; deliveredTo: string | null }>(
       "/ops/staffs", { username, realName, roles });
-    return { staff: toStaff(r.staff), initialPassword: r.initialPassword };
+    return { staff: toStaff(r.staff), initialPassword: r.initialPassword, deliveredTo: r.deliveredTo };
   },
   setStaffRoles: async (no, roles) =>
     toStaff(await client.post<BackendStaff>(`/ops/staffs/${no}/roles`, { roles })),

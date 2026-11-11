@@ -1476,7 +1476,7 @@
 | POST | `/ops/perm/roles/{roleCode}/points` | 改角色的功能点 | — | `RoleDef` | — | ✅ | ✅ |
 | POST | `/ops/perm/roles/{roleCode}/rename` | 改角色展示名 | — | `RoleDef` | — | ✅ | ✅ |
 | GET | `/ops/staffs` | listStaffs | — | `object` | — | ✅ | ⬜ |
-| POST | `/ops/staffs` | 新建员工 | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/staffs` | 新建员工 | — | `CreatedStaff` | — | ✅ | ⬜ |
 | POST | `/ops/staffs/{no}/enabled` | 停用/启用（软删除语义，不删账号 —— 审计要能追溯到人） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |

@@ -1,5 +1,5 @@
 // 覆盖范围：员工账号、角色与 RBAC、数据域授权、操作审计（P-1.1）。
-import type { AuditLog, MenuFunction, Page, RoleDef, Staff } from "@/lib/types";
+import type { AuditLog, CreatedStaff, MenuFunction, Page, RoleDef, Staff } from "@/lib/types";
 import type { Role } from "@/lib/auth";
 import type { AuditQ, StaffQ } from "../query";
 
@@ -13,12 +13,12 @@ export interface IamApi {
    */
   setStaffSecondFactorExempt(staffNo: string, exempt: boolean, reason: string): Promise<Staff>;
   /**
-   * 新建员工。**返回的初始密码只出现这一次** —— 关掉抽屉就再也取不到。
+   * 新建员工。邮件模式返回掩码收件邮箱，响应模式返回一次性初始密码。
    *
    * 密码由后端生成而不是界面传：收明文的问题不是加密与否，
    * 是谁都能在 devtools 里看到刚给同事设的密码，且它会顺着请求体进日志。
    */
-  createStaff(username: string, realName: string, roles: string[]): Promise<{ staff: Staff; initialPassword: string }>;
+  createStaff(username: string, realName: string, roles: string[]): Promise<CreatedStaff>;
   /**
    * 改角色（**多角色**）。权限取并集。
    *

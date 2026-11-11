@@ -6192,7 +6192,13 @@ _无字段_
 
 **出参**（`data`）
 
-类型：`object`
+类型：[`CreatedStaff`](#createdstaff)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `staff` | [`Staff`](#staff) | 是 | 新建的员工资料 |
+| `initialPassword` | `string,null` | 是 | response 模式的一次性密码；mail 模式为 null |
+| `deliveredTo` | `string,null` | 是 | mail 模式的掩码收件邮箱；response 模式为 null，不表示已送达收件箱 |
 
 
 #### POST `/ops/staffs/{no}/enabled`
@@ -6216,7 +6222,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -6248,7 +6254,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -6280,7 +6286,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -6312,7 +6318,7 @@ _无字段_
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |
@@ -14504,6 +14510,16 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 | `communityNo` | `string` | 是 | — |
 | `name` | `string` | 是 | — |
 
+### CreatedStaff
+
+新建员工回执；密码交付方式由服务端配置决定。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `staff` | [`Staff`](#staff) | 是 | 新建的员工资料 |
+| `initialPassword` | `string,null` | 是 | response 模式的一次性密码；mail 模式为 null |
+| `deliveredTo` | `string,null` | 是 | mail 模式的掩码收件邮箱；response 模式为 null，不表示已送达收件箱 |
+
 ### DashboardKpi
 
 KPI 卡（金额为最小货币单位整数）。
@@ -19380,7 +19396,7 @@ REJECTED 不是终态：商家改完可以重新提审。
 | `staffNo` | `string` | 是 | 员工单号 |
 | `username` | `string` | 是 | 登录名 |
 | `name` | `string` | 是 | 姓名 |
-| `roles` | `string`\[\] | 是 | 角色（**可多个**）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
+| `roles` | `string`\[\] | 是 | 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。 <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色 （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集）， 是写接口把它压成了单值。 |
 | `merchantNo` | `string` | 否 | 数据域（P-1.1.3）。只对**受限角色**有意义： 社区运营 → communityNo、商家运营 → merchantNo。 给全量角色（超管等）配数据域是配置错误 —— 会让人以为它被限制了，实际没有。 |
 | `communityNo` | `string` | 否 | 社区运营的社区数据域 |
 | `pickupNo` | `string` | 否 | 自提点数据域 |

@@ -14,7 +14,7 @@ export interface Staff {
   /** 姓名 */
   name: string;
   /**
-   * 角色（**可多个**）。权限码取所有角色的并集。
+   * 服务端原始角色码（**可多个**，含自定义角色）。权限码取所有角色的并集。
    *
    * <p>2026-08-12 从单值 `role` 换成数组：库早就支持多角色
    * （`sys_role_member` 唯一键含 role_code、`Perms.of` 取并集），
@@ -47,6 +47,16 @@ export interface Staff {
   lastLoginAt?: string;
   /** 建档时间 */
   createdAt: string;
+}
+
+/** 新建员工回执；密码交付方式由服务端配置决定。 */
+export interface CreatedStaff {
+  /** 新建的员工资料 */
+  staff: Staff;
+  /** response 模式的一次性密码；mail 模式为 null */
+  initialPassword: string | null;
+  /** mail 模式的掩码收件邮箱；response 模式为 null，不表示已送达收件箱 */
+  deliveredTo: string | null;
 }
 
 /**

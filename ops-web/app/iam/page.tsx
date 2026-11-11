@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { MenuOrderTree, ORDER_ROOT, type OrderNode } from "./menu-order-tree";
 import { api } from "@/lib/api";
+import { toBackendRole } from "@/lib/api/https/dashboard";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { fill, useCopy } from "@/lib/use-copy";
@@ -45,6 +46,7 @@ type Copy = (typeof IAM_COPY)["zh"];
 const TAB_KEYS = ["staffs", "roles", "menu", "audit"] as const;
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
+const isScopedRole = (code: string) => SCOPED_ROLES.some((role) => toBackendRole(role) === toBackendRole(code));
 
 const ENABLED_OPTIONS = (c: Copy) => [{ value: "1", label: c.enabledOn }, { value: "0", label: c.enabledOff }];
 const CRITICAL_OPTIONS = (c: Copy) => [{ value: "1", label: c.filterCriticalOnly }];
@@ -156,6 +158,11 @@ function IamInner() {
   // 第一版漏了这个，staffs tab 下点「编辑」，角色多选区一个按钮都没有，
   // 页面看着正常（没有报错），只是选项集合是空的。
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.listRoles(), enabled: tab === "roles" || tab === "staffs" });
+  const lookupRoleDef = (code: string) => roles.data?.find((r) => toBackendRole(r.roleCode) === toBackendRole(code));
+  const displayRole = (code: string) => {
+    const builtin = ROLES.find((role) => toBackendRole(role) === toBackendRole(code));
+    return builtin ? roleLabel(builtin) : lookupRoleDef(code)?.name ?? code;
+  };
   // 功能点全集。**不按人切片** —— 配角色时要看到全部，包括自己没有的
   const permFns = useQuery({ queryKey: ["perm-functions"], queryFn: () => api.listPermFunctions(), enabled: tab === "roles" || tab === "menu" });
   const rolePts = useQuery({
@@ -204,7 +211,7 @@ function IamInner() {
         || (scopeForm.communityNo || "") !== (s.communityNo ?? "")
         || (scopeForm.pickupNo || "") !== (s.pickupNo ?? "");
       // 只在受限角色下提交 scope —— 全量角色配 scope 后端直接拒
-      if (scopeChanged && rolesForm.some((r) => SCOPED_ROLES.includes(r as Role))) {
+      if (scopeChanged && rolesForm.some(isScopedRole)) {
         await api.setStaffScope(s.staffNo, scopeForm);
       }
     },
@@ -215,8 +222,11 @@ function IamInner() {
     onSuccess: (r) => {
       invalidate();
       setNewStaff(null);
-      // **先展示密码再关抽屉** —— 它只出现这一次
-      setCreatedPassword({ username: r.staff.username, password: r.initialPassword });
+      if (r.initialPassword) {
+        setCreatedPassword({ username: r.staff.username, password: r.initialPassword });
+      } else {
+        notify.success(r.deliveredTo ? fill(c.toastStaffMailQueued, { email: r.deliveredTo }) : c.toastStaffCreated);
+      }
     },
   });
   const renameRoleMut = useMutation({
@@ -408,7 +418,7 @@ function IamInner() {
       cell: (s) => (
         <span className="flex flex-wrap gap-1">
           {s.roles.length
-            ? s.roles.map((r) => <Badge key={r} tone={r === "SUPER_ADMIN" ? "danger" : "muted"}>{roleLabel(r as Role)}</Badge>)
+            ? s.roles.map((r) => <Badge key={r} tone={r === "SUPER_ADMIN" ? "danger" : "muted"}>{displayRole(r)}</Badge>)
             : <span className="text-[var(--warning)]">{c.roleNone}</span>}
         </span>
       ),
@@ -420,7 +430,7 @@ function IamInner() {
         // **持有任一受限角色就受限** —— 只要有一个身份受限，数据域就该生效。
         // 反过来（全部受限才算）会让「社区运营 + 某个全量角色」的人
         // 悄悄拿到全量数据，而界面上那一栏还写着社区号
-        if (!s.roles.some((r) => SCOPED_ROLES.includes(r as Role))) {
+        if (!s.roles.some(isScopedRole)) {
           return <span className="text-muted-foreground">{c.scopeAll}</span>;
         }
         const parts = [
@@ -850,7 +860,7 @@ function IamInner() {
               )}
             </Field>
 
-            {rolesForm.some((r) => SCOPED_ROLES.includes(r as Role)) ? (
+            {rolesForm.some(isScopedRole) ? (
               <>
                 <Notice>{c.scopeNotice}</Notice>
                 <div className="space-y-1">

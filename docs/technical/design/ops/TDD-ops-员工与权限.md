@@ -104,3 +104,37 @@ mock 阶段任何一次误操作都能把自己锁在外面。所以：
 
 ---
 确认记录：2026-08-06 用户「继续」授权按矩阵推进；本批已实现
+
+
+## 7. 2026-11-11 IAM 展示与密码交付对齐
+
+本节状态：已实现，定向验证结果见 §7.5。前文保留 2026-08-06 历史实现边界；当前读写路径以本节及代码为准。
+
+### 7.0 需求 → 设计
+
+依据：需求矩阵 P-1.1 的员工账号与角色维护，以及后端 `OpsService.CreatedStaffVO` 的既有 mail/response 合同；本批为档位 1 的端上契约纠正。
+
+| AC | 展示要求 | 落点 |
+|---|---|---|
+| R1 | 自定义角色显示真实 RoleDef 名称；缺少定义时显示原始码，不能冒充分析员 | IAM 读模型原样保存 roles；页面匹配实际角色定义 |
+| R2 | 多角色编辑保留原始角色码，既有岗位别名、国际化及数据域判定保持一致 | 页面显示和受限岗位使用既有双向角色映射匹配；编辑直接使用原始数组 |
+| R3 | response 模式仅在响应确有非空密码时显示一次性密码 | `CreatedStaff.initialPassword: string | null` 与成功回调 |
+| R4 | mail 模式显示掩码收件邮箱及发送已提交提示，不显示空密码、不声称已送达收件箱 | `CreatedStaff.deliveredTo: string | null` 与通知文案 |
+
+### 7.1 端上契约
+
+`Staff.roles` 继续为服务端原始 `string[]`，不扩充登录 `Role` 联合类型。`createStaff` 返回具名 `CreatedStaff`，对齐既有 `CreatedStaffVO`：mail 模式 `initialPassword=null`、`deliveredTo` 为掩码邮箱；response 模式返回一次性密码、`deliveredTo=null`。中英文新增 `toastStaffCreated`、`toastStaffMailQueued`；创建说明同步两种交付方式。无服务端接口、权限、授权或交付配置变更。
+
+### 7.2 实现清单
+
+| 文件 | 变化 |
+|---|---|
+| `ops-web/app/iam/page.tsx`、`copy.ts` | 真实角色显示、原始多选与岗位别名匹配；按真实回执分支展示密码或通知 |
+| `ops-web/lib/types/iam.ts`、`api/contracts/iam.ts` | 原始角色说明与具名、可空的创建回执 |
+| `ops-web/lib/api/https/iam.ts`、`api/mocks/iam.ts` | 保留原始角色；读出 deliveredTo；mock 保留明确 response 模式 |
+| `ops-web/lib/iam-role-display-page.test.ts` | 真实 HTTP 归一化路径到页面展示、编辑及两种交付模式 |
+| `docs/api/openapi-ops.yaml`、`API详情-平台端.md` | 从纠正后的契约重新生成的运营端投影 |
+
+### 7.5 验证
+
+`iam-role-display-page.test.ts` 三项回归分别覆盖 R1/R2、R3、R4；联合既有登录映射、免二次验证和 IAM mock 用例运行，本批四个文件共 25 项通过、0 失败/跳过（`iam-role-display-final-tests.log`）；`tsc --noEmit` 退出 0。运营端 OpenAPI 生成 589 个端点、583 个模型；API 详情字段说明覆盖 6100/6100（100%），只产生运营端两份投影差异。不执行真实账号创建、邮件发送或权限变更。

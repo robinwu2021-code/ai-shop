@@ -80,7 +80,7 @@ export const iamMock: IamApi = {
      * 「关掉抽屉就再也取不到」这条交互在 mock 下走不通，
      * 而那正是这个抽屉最需要试对的一处。
      */
-    return wait({ staff, initialPassword: "MockPwd" + (1000 + db.staffs.length) }, 400);
+    return wait({ staff, initialPassword: "MockPwd" + (1000 + db.staffs.length), deliveredTo: null }, 400);
   },
 
   setStaffRoles: async (staffNo, roles) => {
