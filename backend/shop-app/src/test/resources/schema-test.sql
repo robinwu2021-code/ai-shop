@@ -27,6 +27,9 @@
 CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";
 
 
+CREATE ALIAS IF NOT EXISTS H2_JSON_LENGTH FOR "ai.neargo.shop.support.H2JsonFunctions.length";
+
+
 -- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql | trg_ccf_mkt_campaign_insert,trg_ccf_mkt_campaign_update,trg_ccf_mkt_campaign_delete,trg_ccf_pmt_activity_insert,trg_ccf_pmt_activity_update,trg_ccf_pmt_activity_delete,trg_ccf_pmt_activity_version_insert,trg_ccf_pmt_activity_version_update,trg_ccf_pmt_activity_version_delete,trg_ccf_pmt_activity_goods_insert,trg_ccf_pmt_activity_goods_update,trg_ccf_pmt_activity_goods_delete,trg_ccf_pmt_activity_rule_insert,trg_ccf_pmt_activity_rule_update,trg_ccf_pmt_activity_rule_delete,trg_ccf_pmt_enrollment_insert,trg_ccf_pmt_enrollment_update,trg_ccf_pmt_enrollment_delete,trg_ccf_pmt_enrollment_goods_insert,trg_ccf_pmt_enrollment_goods_update,trg_ccf_pmt_enrollment_goods_delete
 
 -- Native capability absent: backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
@@ -12788,7 +12791,7 @@ CREATE TABLE IF NOT EXISTS mbr_brand_audience_snapshot
     PRIMARY KEY(id),
     CONSTRAINT uk_brand_audience_snapshot UNIQUE (tenant_no,snapshot_no),
     CONSTRAINT ck_brand_audience_counts CHECK(planned_count>=0 AND pre_skipped_count>=0 AND pre_skipped_count<=planned_count
- AND planned_count>=pre_skipped_counton))
+ AND planned_count=pre_skipped_count+H2_JSON_LENGTH(recipients_json))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_brand_coupon_source

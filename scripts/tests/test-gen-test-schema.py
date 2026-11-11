@@ -240,19 +240,18 @@ class SessionSafeH2ConstraintTest(unittest.TestCase):
 
 
 class JsonLengthCheckTest(unittest.TestCase):
-    """V652 ck_brand_audience_counts: H2 has no JSON_LENGTH, so keep the strongest equivalent it can check."""
+    """V652 ck_brand_audience_counts: keep the exact equality through the H2_JSON_LENGTH alias (not a weaker bound)."""
 
-    def test_count_equals_base_plus_json_length_becomes_lower_bound(self):
+    def test_count_equals_base_plus_json_length_keeps_equality(self):
         col = ("    CONSTRAINT ck_brand_audience_counts CHECK(planned_count>=0 AND pre_skipped_count>=0 "
                "AND pre_skipped_count<=planned_count\n AND planned_count=pre_skipped_count+JSON_LENGTH(recipients_json))")
         out = generator._h2_type(col)
-        self.assertNotIn('JSON_LENGTH', out)
-        self.assertIn('AND planned_count>=pre_skipped_count', out)
+        self.assertIn('planned_count=pre_skipped_count+H2_JSON_LENGTH(recipients_json))', out)
         self.assertIn('pre_skipped_count<=planned_count', out)
+        self.assertEqual(out.count('('), out.count(')'))
 
-    def test_other_json_length_shapes_still_fail_loudly(self):
-        for col in ("    CONSTRAINT c CHECK(JSON_LENGTH(items)>0)",
-                    "    CONSTRAINT c CHECK(n=JSON_LENGTH(items))",
+    def test_unsupported_json_shapes_still_fail_loudly(self):
+        for col in ("    CONSTRAINT c CHECK(JSON_LENGTH(items,'$.a')>0)",
                     "    CONSTRAINT c CHECK(n=m+JSON_EXTRACT(items,'$.a'))"):
             with self.assertRaises(ValueError, msg=col):
                 generator._h2_type(col)
@@ -263,8 +262,8 @@ class JsonLengthCheckTest(unittest.TestCase):
         snapshot = [t for t in tables if 'audience' in t]
         self.assertTrue(snapshot)
         ddl = '\n'.join(tables[snapshot[0]])
-        self.assertNotIn('JSON_LENGTH', ddl)
-        self.assertIn('planned_count>=pre_skipped_count', ddl)
+        self.assertIn('planned_count=pre_skipped_count+H2_JSON_LENGTH(recipients_json)', ddl)
+        self.assertEqual(ddl.count('('), ddl.count(')'))
 
 
 class MultiTableDeleteTest(unittest.TestCase):
@@ -304,7 +303,7 @@ class JsonBackfillUpdateTest(unittest.TestCase):
         tables, order, seeds, renames, altered = {}, [], [], {}, set()
         generator.replay("CREATE TABLE t (id BIGINT, j JSON);\nINSERT INTO t VALUES (1, '{}');",
                          tables, order, seeds, renames, altered)
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(ValueError):
             generator.replay("UPDATE t SET j=JSON_SET(j,'$.a',1);", tables, order, seeds, renames, altered)
 
 

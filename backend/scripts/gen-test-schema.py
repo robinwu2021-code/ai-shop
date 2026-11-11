@@ -194,12 +194,6 @@ def _h2_type(col: str) -> str:
         if comparison is not None:
             replacements.append((match.start(), match.end() + comparison.end(),
                                  f"({match.group(1)} IS JSON OBJECT)"))
-    # V652 ck_brand_audience_counts: `total = base + JSON_LENGTH(array)`. H2 cannot measure a JSON array,
-    # so keep the strongest constraint it can check (JSON_LENGTH >= 0 ⇒ total >= base). Only this exact
-    # conjunct shape is rewritten; any other JSON_LENGTH use still fails below.
-    json_length = r"\bAND\s+" + simple + r"\s*=\s*" + simple + r"\s*\+\s*JSON_LENGTH\(\s*" + simple + r"\s*\)"
-    for match in re.finditer(json_length, mask, re.I):
-        replacements.append((match.start(), match.end(), f"AND {match.group(1)}>={match.group(2)}"))
     for first, last, replacement in sorted(replacements, reverse=True):
         col = col[:first] + replacement + col[last:]
     if re.search(r"\bJSON_[A-Za-z_]+\s*\(", _sql_code_mask(col), re.I):
