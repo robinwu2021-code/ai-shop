@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.product.service.MerchantGoodsService;
+import ai.neargo.shop.merchant.service.SelfOperatedService;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ class FulfillmentDomainFlowTest {
     @Autowired
     private MerchantGoodsService goodsService;
 
+    @Autowired
+    private SelfOperatedService selfOperated;
+
     @Test
     @DisplayName("★ 取值域是单一来源：订单侧常量与 base 取值域一致")
     void singleSourceOfTruth() {
@@ -48,7 +52,12 @@ class FulfillmentDomainFlowTest {
                 .as("没有「平台仓发货」—— 平台无仓、不碰货，只对接第三方物流")
                 .containsExactlyInAnyOrder(Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP,
                         Fulfillments.MERCHANT_DELIVERY, Fulfillments.EXPRESS,
-                        Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT, Fulfillments.DINE_IN);
+                        Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT, Fulfillments.DINE_IN,
+                        Fulfillments.CHANNEL_DELIVERY);
+        assertThat(Fulfillments.isValid(Fulfillments.CHANNEL_DELIVERY))
+                .as("渠道配送仅由原渠道受理，不是公开商品可选履约方式")
+                .isFalse();
+        assertThat(Fulfillments.PHYSICAL).doesNotContain(Fulfillments.CHANNEL_DELIVERY);
         assertThat(Fulfillments.PHYSICAL)
                 .as("服务类不进实物集合 —— 默认值用的是它，一件大米不该声称支持上门预约")
                 .doesNotContain(Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT, Fulfillments.DINE_IN);
@@ -66,7 +75,8 @@ class FulfillmentDomainFlowTest {
     @Test
     @DisplayName("★ 新建商品默认实物类全支持 —— 由商家收窄；服务类要显式选")
     void newGoodsDefaultsToAll() {
-        var vo = goodsService.save("MFUL1", saveCmd(null, null));
+        String merchant = merchant(1);
+        var vo = goodsService.save(merchant, saveCmd(null, null));
 
         assertThat(vo.fulfillments())
                 .as("默认放宽、由商家收窄，是唯一不会凭空拦单的方向")
@@ -79,9 +89,10 @@ class FulfillmentDomainFlowTest {
     @Test
     @DisplayName("★ 商家可以收窄到只支持自提")
     void merchantCanNarrow() {
-        var created = goodsService.save("MFUL2", saveCmd(null, null));
+        String merchant = merchant(2);
+        var created = goodsService.save(merchant, saveCmd(null, null));
 
-        var vo = goodsService.save("MFUL2",
+        var vo = goodsService.save(merchant,
                 saveCmd(created.goodsNo(), List.of(Fulfillments.STORE_PICKUP)));
 
         assertThat(vo.fulfillments()).containsExactly(Fulfillments.STORE_PICKUP);
@@ -90,9 +101,10 @@ class FulfillmentDomainFlowTest {
     @Test
     @DisplayName("★★ 空数组要拒 —— 一种都不支持的商品谁也买不了，且看起来与正常商品无异")
     void emptyListRejected() {
-        var created = goodsService.save("MFUL3", saveCmd(null, null));
+        String merchant = merchant(3);
+        var created = goodsService.save(merchant, saveCmd(null, null));
 
-        assertThatThrownBy(() -> goodsService.save("MFUL3", saveCmd(created.goodsNo(), List.of())))
+        assertThatThrownBy(() -> goodsService.save(merchant, saveCmd(created.goodsNo(), List.of())))
                 .as("不传（null）才是「不改」；传空数组是另一件事")
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
     }
@@ -100,20 +112,22 @@ class FulfillmentDomainFlowTest {
     @Test
     @DisplayName("★ 取值域外的值直接拒 —— 自由 JSON 正是这次要消灭的东西")
     void unknownValueRejected() {
-        var created = goodsService.save("MFUL4", saveCmd(null, null));
+        String merchant = merchant(4);
+        var created = goodsService.save(merchant, saveCmd(null, null));
 
         assertThatThrownBy(() ->
-                goodsService.save("MFUL4", saveCmd(created.goodsNo(), List.of("DRONE"))))
+                goodsService.save(merchant, saveCmd(created.goodsNo(), List.of("DRONE"))))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
     }
 
     @Test
     @DisplayName("★ 不传 fulfillments = 不改，不会把已有取值清掉")
     void nullMeansUnchanged() {
-        var created = goodsService.save("MFUL5", saveCmd(null, List.of(Fulfillments.EXPRESS)));
+        String merchant = merchant(5);
+        var created = goodsService.save(merchant, saveCmd(null, List.of(Fulfillments.EXPRESS)));
         assertThat(created.fulfillments()).containsExactly(Fulfillments.EXPRESS);
 
-        var again = goodsService.save("MFUL5", saveCmd(created.goodsNo(), null));
+        var again = goodsService.save(merchant, saveCmd(created.goodsNo(), null));
 
         assertThatCode(() -> assertThat(again.fulfillments()).containsExactly(Fulfillments.EXPRESS))
                 .doesNotThrowAnyException();
@@ -174,10 +188,21 @@ class FulfillmentDomainFlowTest {
     @Test
     @DisplayName("★ 商品可以声明支持到店核销 —— 此前这个值根本不在取值域里")
     void goodsCanDeclareStoreVerify() {
-        var vo = goodsService.save("MFUL6",
+        String merchant = merchant(6);
+        var vo = goodsService.save(merchant,
                 saveCmd(null, List.of(Fulfillments.STORE_VERIFY)));
 
         assertThat(vo.fulfillments()).containsExactly(Fulfillments.STORE_VERIFY);
+    }
+
+    private String merchant(int fixtureNo) {
+        // Dedicated owner numbers keep this fixture independent of login and ownership scenarios.
+        var created = selfOperated.create(new SelfOperatedService.CreateCommand(
+                "1595709" + String.format("%04d", fixtureNo), "履约取值域测试-" + fixtureNo,
+                List.of("C0001"), "RETAIL", null), "OPS-FULFILLMENT-TEST");
+        assertThat(created.ownerUserNo()).isNotBlank();
+        assertThat(created.storeNo()).isNotBlank();
+        return created.merchantNo();
     }
 
     private MerchantGoodsService.SaveCommand saveCmd(String goodsNo, List<String> fulfillments) {

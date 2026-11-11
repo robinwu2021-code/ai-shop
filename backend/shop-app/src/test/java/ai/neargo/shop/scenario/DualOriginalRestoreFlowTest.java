@@ -51,7 +51,11 @@ class DualOriginalRestoreFlowTest {
             mode("ON");
             Fixture f = fixture();
             stock.lock(f.ref(), f.items());
-            consumer.consume(event(f.ref(), InvMirrorEvent.RESERVE));
+            SysOutbox reserved = event(f.ref(), InvMirrorEvent.RESERVE);
+            var originalItem = json.readTree(reserved.getPayload()).path("items").get(0);
+            assertThat(originalItem.path("skuNo").asString()).isEqualTo(f.sku());
+            assertThat(originalItem.path("fulfillmentRef").asString()).isEqualTo(f.fulfillment());
+            consumer.consume(reserved);
             stock.confirm(f.ref());
             consumer.consume(event(f.ref(), InvMirrorEvent.COMMIT));
             assertThat(onHand(f)).isEqualTo(7);
@@ -145,6 +149,10 @@ class DualOriginalRestoreFlowTest {
     private void mode(String value) { jdbc.update("update prd_goods set inv_mode=? where goods_no='G0002'", value); }
     private record Fixture(String ref, String sku, String owner, String item) {
         String purpose() { return "RF-" + ref; }
-        List<StockPort.SkuQty> items() { return List.of(new StockPort.SkuQty(sku, 3)); }
+        String fulfillment() { return "SUB-" + ref; }
+        // Freeze the actual child original on reservation; restore must not infer today's SKU mapping.
+        List<StockPort.SkuQty> items() {
+            return List.of(new StockPort.SkuQty(sku, 3, null, fulfillment(), 1));
+        }
     }
 }
