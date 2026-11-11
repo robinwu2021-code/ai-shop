@@ -394,6 +394,22 @@ const OVERLAY: Record<string, Record<string, string>> = {
   审计: { en: "Audit" },
   外观与语言: { en: "Appearance & language" },
   运行配置: { en: "Runtime config" },
+  // 2026-11-11 菜单权限矩阵-优化版：合并分区后的分组与新短名
+  "入驻": { en: "Onboarding" },
+  "档案": { en: "Profiles" },
+  "信用": { en: "Credit" },
+  "诊断": { en: "Diagnostics" },
+  "展示获客": { en: "Storefront & reach" },
+  "基础资料": { en: "Master data" },
+  "限付类目": { en: "Pay-restricted categories" },
+  "服务分类": { en: "Service categories" },
+  "拼团": { en: "Group buying" },
+  "增长": { en: "Growth" },
+  "积分": { en: "Points" },
+  "评价": { en: "Reviews" },
+  "内容客服": { en: "Support" },
+  "费率对账": { en: "Rates & reconciliation" },
+  "保证金": { en: "Deposits" },
   "其他积分任务（旧版）": { en: "Other points tasks (legacy)" },
 };
 

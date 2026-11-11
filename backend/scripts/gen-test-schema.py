@@ -194,6 +194,12 @@ def _h2_type(col: str) -> str:
         if comparison is not None:
             replacements.append((match.start(), match.end() + comparison.end(),
                                  f"({match.group(1)} IS JSON OBJECT)"))
+    # V652 ck_brand_audience_counts: `total = base + JSON_LENGTH(array)`. H2 cannot measure a JSON array,
+    # so keep the strongest constraint it can check (JSON_LENGTH >= 0 ⇒ total >= base). Only this exact
+    # conjunct shape is rewritten; any other JSON_LENGTH use still fails below.
+    json_length = r"\bAND\s+" + simple + r"\s*=\s*" + simple + r"\s*\+\s*JSON_LENGTH\(\s*" + simple + r"\s*\)"
+    for match in re.finditer(json_length, mask, re.I):
+        replacements.append((match.start(), match.end(), f"AND {match.group(1)}>={match.group(2)}"))
     for first, last, replacement in sorted(replacements, reverse=True):
         col = col[:first] + replacement + col[last:]
     if re.search(r"\bJSON_[A-Za-z_]+\s*\(", _sql_code_mask(col), re.I):
@@ -782,6 +788,38 @@ def split_statements(sql):
     return parts
 
 
+# ── 改种子授权的已知语句（按归一化文本的 sha256 精确匹配）──────────────────────
+#
+# V655 把三张经营范围菜单的授权从「旧菜单码」迁到「真实端点读码」：先给持旧码的角色补
+# ACT__SYSTEM_PARAM_READ，再撤掉不持有新读码的角色的菜单授权，最后按新读码补授权。
+# 它读的 sys_role_point / sys_function_point 在 H2 里**就是种子**，跳过它的后果是
+# H2 上技术运维仍持行业菜单、超管缺 ACT__SYSTEM_PARAM_READ —— OpsPermConfigFlowTest 两条红。
+#
+# 两条 INSERT IGNORE … SELECT … JOIN 原样重放（H2 MODE=MySQL 认得）；
+# MySQL 多表 DELETE H2 不认，换成语义相同的单表 DELETE … NOT EXISTS。
+# 原文一改哈希就对不上 → 落回下面的通用分支：多表 DELETE 直接红，不会被悄悄跳过。
+_V655_MENUS = "('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')"
+_KNOWN_GRANT_REWRITES = {
+    "8234041f857112d4a49132bb8ab81f6fa7843ab8c7ed118ff16a042112409cee": None,
+    "6236ba57bd94ce09487e63e2ac96fbb84640e3370ad6554da71eab4883a0188f": f"""DELETE FROM sys_role_point WHERE point_code IN {_V655_MENUS}
+  AND role_code<>'SUPER_ADMIN'
+  AND NOT EXISTS (SELECT 1 FROM sys_role_point g JOIN sys_function_point p ON p.point_code=g.point_code
+                  WHERE p.point_code NOT IN {_V655_MENUS}
+                    AND g.role_code=sys_role_point.role_code AND g.end_code=sys_role_point.end_code
+                    AND p.perm_code=CASE WHEN sys_role_point.point_code='OPS_SYSTEM__TAB_AUTHCODE'
+                                         THEN 'product:category:read' ELSE 'system:industry:read' END)""",
+    "a3809a114f6736c13163f91d9a8cfdf84680fe03b3ae11afa7026f5b8458c65c": None,
+}
+
+
+def _known_grant_rewrite(stmt):
+    """None = 不认识；否则返回要作为种子重放的语句（值为 None 表示原样重放）。"""
+    key = hashlib.sha256(re.sub(r"\s+", " ", stmt.strip()).encode()).hexdigest()
+    if key not in _KNOWN_GRANT_REWRITES:
+        return None
+    return _KNOWN_GRANT_REWRITES[key] or stmt
+
+
 def replay(sql, tables, order, seeds, renames, altered):
     sql = offline_receipt_drop(sql, tables)
     replay_statements(sql_statements(sql), tables, order, seeds, renames, altered)
@@ -813,7 +851,12 @@ def replay_statements(statements, tables, order, seeds, renames, altered):
             continue
         stmt = _h2_constant_json_append(stmt)
         low = stmt.lower()
-        if low.startswith("create table"):
+        known = _known_grant_rewrite(stmt)
+        if known is not None:
+            seeds.append((None, [], known))
+        elif re.match(r"delete\s+\w+\s+from\b", low):
+            raise SystemExit("✗ MySQL 多表 DELETE H2 重放不了；改的若是种子，请在 _KNOWN_GRANT_REWRITES 登记等价写法：\n  " + stmt[:200])
+        elif low.startswith("create table"):
             create_table(stmt, tables, order)
         elif low.startswith("alter table"):
             alter_table(stmt, tables, order, renames, altered)

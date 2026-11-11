@@ -710,7 +710,7 @@ describe("路由归属与面包屑", () => {
   });
 
   describe("tab 判权（visibleTabKeys）", () => {
-    const KEYS = ["audit", "list", "categories", "admission", "verify", "credit", "ban"];
+    const KEYS = ["audit", "onboarding", "list", "categories", "verify", "credit", "ban"];
 
     it("★★★ 与菜单同一口径 —— 服务端菜单里没有的 tab 也看不到", () => {
       // 只授权了两条：tab 也只该剩这两条
@@ -905,7 +905,14 @@ it("已解锁的 ?tab= 叶子，页面必须真的认这个 tab —— 否则点
   expect(offenders, `要么把叶子标 soon，要么在页面里加上这个 tab：\n${offenders.join("\n")}`).toEqual([]);
 });
 
-it("keeps both finance and the points workspace assigned to the finance section", () => {
+it("keeps finance, merged marketing and merged support sections owning their routes", () => {
   expect(findActiveSection("/finance")?.key).toBe("finance");
-  expect(findActiveSection("/points")?.key).toBe("points");
+  // 2026-11-11 会员管理、积分运营并入会员营销；消息客服并入内容客服
+  expect(findActiveSection("/points")?.key).toBe("marketing");
+  expect(findActiveSection("/points/budget")?.key).toBe("marketing");
+  expect(findActiveSection("/members")?.key).toBe("marketing");
+  expect(findActiveSection("/messages")?.key).toBe("review");
+  expect(findActiveSection("/messages", ["*"], undefined, NAV, "broadcast")?.key).toBe("marketing");
+  expect(findActiveSection("/merchants", ["*"], undefined, NAV, "admission")?.key).toBe("finance");
+  expect(findActiveSection("/system", ["*"], undefined, NAV, "industry")?.key).toBe("product");
 });

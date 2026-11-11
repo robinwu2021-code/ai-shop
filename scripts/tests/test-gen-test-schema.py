@@ -239,5 +239,74 @@ class SessionSafeH2ConstraintTest(unittest.TestCase):
         self.assertEqual(once, generator._h2_type(once))
 
 
+class JsonLengthCheckTest(unittest.TestCase):
+    """V652 ck_brand_audience_counts: H2 has no JSON_LENGTH, so keep the strongest equivalent it can check."""
+
+    def test_count_equals_base_plus_json_length_becomes_lower_bound(self):
+        col = ("    CONSTRAINT ck_brand_audience_counts CHECK(planned_count>=0 AND pre_skipped_count>=0 "
+               "AND pre_skipped_count<=planned_count\n AND planned_count=pre_skipped_count+JSON_LENGTH(recipients_json))")
+        out = generator._h2_type(col)
+        self.assertNotIn('JSON_LENGTH', out)
+        self.assertIn('AND planned_count>=pre_skipped_count', out)
+        self.assertIn('pre_skipped_count<=planned_count', out)
+
+    def test_other_json_length_shapes_still_fail_loudly(self):
+        for col in ("    CONSTRAINT c CHECK(JSON_LENGTH(items)>0)",
+                    "    CONSTRAINT c CHECK(n=JSON_LENGTH(items))",
+                    "    CONSTRAINT c CHECK(n=m+JSON_EXTRACT(items,'$.a'))"):
+            with self.assertRaises(ValueError, msg=col):
+                generator._h2_type(col)
+
+    def test_real_v652_replays(self):
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        generator.replay((MIGRATIONS / 'V652__brand_promotion.sql').read_text(), tables, order, seeds, renames, altered)
+        snapshot = [t for t in tables if 'audience' in t]
+        self.assertTrue(snapshot)
+        ddl = '\n'.join(tables[snapshot[0]])
+        self.assertNotIn('JSON_LENGTH', ddl)
+        self.assertIn('planned_count>=pre_skipped_count', ddl)
+
+
+class MultiTableDeleteTest(unittest.TestCase):
+    def test_real_v655_grant_migration_replays_with_h2_delete(self):
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        sql = (MIGRATIONS / 'V655__ops_store_industry_maintenance.sql').read_text()
+        generator.replay(sql, tables, order, seeds, renames, altered)
+        replayed = [seed[2] for seed in seeds]
+        self.assertFalse(any('DELETE menu_grant' in stmt for stmt in replayed))
+        deletes = [stmt for stmt in replayed if stmt.startswith('DELETE FROM sys_role_point')]
+        self.assertEqual(1, len(deletes))
+        self.assertIn("role_code<>'SUPER_ADMIN'", deletes[0])
+        self.assertIn('NOT EXISTS', deletes[0])
+        grants = [stmt for stmt in replayed if stmt.startswith('INSERT IGNORE INTO sys_role_point')]
+        self.assertEqual(2, len(grants))
+        # 顺序与迁移一致：补 param:read → 撤菜单授权 → 按新读码补授权
+        order_of = [replayed.index(grants[0]), replayed.index(deletes[0]), replayed.index(grants[1])]
+        self.assertEqual(sorted(order_of), order_of)
+
+    def test_unregistered_multi_table_delete_fails_loudly(self):
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        with self.assertRaises(SystemExit):
+            generator.replay("DELETE g FROM sys_role_point g JOIN sys_function_point p ON p.point_code=g.point_code;",
+                             tables, order, seeds, renames, altered)
+
+
+class JsonBackfillUpdateTest(unittest.TestCase):
+    def test_real_v650_json_backfill_on_unseeded_table_is_skipped(self):
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        generator.replay("CREATE TABLE mch_plan_purchase (id BIGINT, buyer_no VARCHAR(32), snapshot_json JSON);",
+                         tables, order, seeds, renames, altered)
+        generator.replay((MIGRATIONS / 'V650__entity_plan_purchase_creator.sql').read_text(),
+                         tables, order, seeds, renames, altered)
+        self.assertFalse(any('JSON_SET' in str(seed) for seed in seeds))
+
+    def test_json_update_on_seeded_table_fails_loudly(self):
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        generator.replay("CREATE TABLE t (id BIGINT, j JSON);\nINSERT INTO t VALUES (1, '{}');",
+                         tables, order, seeds, renames, altered)
+        with self.assertRaises(SystemExit):
+            generator.replay("UPDATE t SET j=JSON_SET(j,'$.a',1);", tables, order, seeds, renames, altered)
+
+
 if __name__ == '__main__':
     unittest.main()

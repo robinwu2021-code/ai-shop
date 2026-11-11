@@ -60,5 +60,47 @@ class RollbackTests(unittest.TestCase):
             self.assertEqual(current.resolve(), (root / 'old').resolve())
 
 
+class MigrationArtifactTests(unittest.TestCase):
+    MANIFEST = {'releaseId': 'ops-nav-v658-20261111',
+                'migration': {'file': 'V658__ops_menu_matrix_consolidation.sql', 'version': '658', 'expectedMenuMatches': 151}}
+
+    def test_manifest_migration_is_validated(self):
+        self.assertEqual(release.migration_of(self.MANIFEST)['version'], '658')
+        for bad in ({**self.MANIFEST, 'releaseId': 'ops-nav-v657-x'},
+                    {**self.MANIFEST, 'releaseId': 'ops-nav-v658/../x'},
+                    {**self.MANIFEST, 'migration': {**self.MANIFEST['migration'], 'file': '../V658__x.sql'}},
+                    {**self.MANIFEST, 'migration': {**self.MANIFEST['migration'], 'file': 'V659__x.sql'}}):
+            with self.assertRaises(AssertionError):
+                release.migration_of(bad)
+
+    def test_next_jar_adds_only_the_declared_migration_and_keeps_old_bytes(self):
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with zipfile.ZipFile(root / 'before.jar', 'w') as jar:
+                jar.writestr('BOOT-INF/classes/db/migration/V657__ops_compact_navigation.sql', b'-- v657')
+                jar.writestr('BOOT-INF/lib/a.jar', b'\x00\x01')
+            entry = release.build_next_jar(root / 'before.jar', root / 'next.jar',
+                                           'V658__ops_menu_matrix_consolidation.sql', b'-- v658')
+            self.assertEqual(entry, 'BOOT-INF/classes/db/migration/V658__ops_menu_matrix_consolidation.sql')
+            with zipfile.ZipFile(root / 'next.jar') as jar:
+                self.assertEqual(jar.read(entry), b'-- v658')
+                self.assertEqual(jar.read('BOOT-INF/lib/a.jar'), b'\x00\x01')
+            with self.assertRaises(AssertionError):   # 已存在的迁移不能被覆盖
+                release.build_next_jar(root / 'next.jar', root / 'again.jar',
+                                       'V658__ops_menu_matrix_consolidation.sql', b'-- other')
+
+    def test_backend_proof_must_match_manifest(self):
+        proof = {'flyway': {'version': '658', 'success': 1, 'checksum': -783404707},
+                 'checks': {'menuMappings': {'matched': 151, 'allMatched': True}}, 'problems': []}
+        manifest = {**self.MANIFEST, 'flywayChecksum': -783404707}
+        release.check_proof(proof, manifest)
+        for broken in ({**proof, 'problems': ['x']},
+                       {**proof, 'flyway': {**proof['flyway'], 'checksum': 1}},
+                       {**proof, 'checks': {'menuMappings': {'matched': 150, 'allMatched': False}}}):
+            with self.assertRaises(AssertionError):
+                release.check_proof(broken, manifest)
+
+
 if __name__ == '__main__':
     unittest.main()

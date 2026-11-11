@@ -123,7 +123,7 @@ class CommerceStoreCreationFlowTest {
                 jdbc.execute(matcher.group());
             }
             jdbc.execute("ALTER TABLE mch_entity_apply DROP store_profile,DROP store_no");
-            new ResourceDatabasePopulator(new ClassPathResource("db/migration/V658__operator_initial_store_profile.sql")).execute(ds);
+            new ResourceDatabasePopulator(new ClassPathResource("db/migration/V662__operator_initial_store_profile.sql")).execute(ds);
             jdbc.execute(
                     "ALTER TABLE mch_store DROP business_type_code,DROP commerce_model,DROP"
                             + " business_type_changed_at");

@@ -3,24 +3,26 @@ import { findActiveSection, NAV } from "./nav";
 import { normalizeLegacyPointsMenu, pointsLegacyRedirect, pointsLegacyServerMenuHref } from "./points-ops-routes";
 
 describe("Points Operations first-group navigation", () => {
-  it("owns the overview and first configuration pages under a separate top-level section", () => {
-    const points = NAV.find((section) => section.key === "points");
+  it("keeps the five points pages together as the 积分 group of 会员营销 (2026-11-11 merge)", () => {
+    const marketing = NAV.find((section) => section.key === "marketing");
 
-    expect(points?.href).toBe("/points/types");
-    expect(points?.modules).toEqual(["finance"]);
-    expect(points?.children?.map((leaf) => leaf.href)).toEqual([
+    expect(NAV.find((section) => section.key === "points")).toBeUndefined();
+    expect(marketing?.modules).toContain("finance");
+    expect(marketing?.children?.filter((leaf) => leaf.group === "积分").map((leaf) => leaf.href)).toEqual([
       "/points/types",
       "/points/earning-rules",
       "/points/budget",
       "/points/accounts",
       "/points/transactions",
     ]);
+    // Points stay gated by the finance read code: merging menus must not widen who sees them.
+    for (const leaf of marketing?.children ?? []) if (leaf.href.startsWith("/points")) expect(leaf.perm).toBe("finance:settle:read");
     expect(NAV.find((section) => section.key === "finance")?.match ?? []).not.toContain("/points");
   });
 
   it.each(["/points", "/points/types", "/points/budget", "/points/accounts", "/points/transactions"])(
-    "selects the Points Operations section for %s",
-    (href) => expect(findActiveSection(href)?.key).toBe("points"),
+    "selects 会员营销 for %s",
+    (href) => expect(findActiveSection(href)?.key).toBe("marketing"),
   );
 
   it.each([

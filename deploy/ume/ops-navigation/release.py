@@ -1,8 +1,10 @@
-"""Run as root on 166. Publish only V657 and the two static OPS sites.
-Payload: manifest.json, V657.sql, ai-shop-web.tar.gz, pay-web.tar.gz.
+"""Run as root on 166. Publish one declared menu migration and the two static OPS sites.
+Payload: manifest.json, <manifest.migration.file>, ai-shop-web.tar.gz, pay-web.tar.gz.
+The migration (V657 first, V658 next) is declared in the manifest, never inferred from the payload.
 Database migration is performed separately and verified before switching.
 """
 import hashlib
+import re
 import json
 import os
 import shutil
@@ -68,8 +70,47 @@ def restore_backend(jar, backup, content_changed):
         raise RuntimeError('Rollback needs attention: ' + ','.join(errors))
 
 
+MIGRATION_DIR = 'BOOT-INF/classes/db/migration/'
+
+
+def migration_of(manifest):
+    """The single migration this release adds; its version must match the release id."""
+    migration = manifest['migration']
+    file_name, version = migration['file'], migration['version']
+    assert re.fullmatch(r'V(\d+)__[A-Za-z0-9_]+\.sql', file_name) and file_name.startswith('V' + version + '__'), file_name
+    rid = manifest['releaseId']
+    assert rid.startswith('ops-nav-v' + version + '-') and '/' not in rid and '..' not in rid, rid
+    assert int(migration['expectedMenuMatches']) > 0
+    return migration
+
+
+def build_next_jar(before, after, file_name, data):
+    """Copy every existing entry byte for byte and add exactly one new migration entry."""
+    entry = MIGRATION_DIR + file_name
+    with zipfile.ZipFile(before) as source, zipfile.ZipFile(after, 'w') as target:
+        assert entry not in source.namelist(), 'Migration already in jar: ' + entry
+        for info in source.infolist():
+            target.writestr(info, source.read(info.filename))
+        target.writestr(entry, data, compress_type=zipfile.ZIP_DEFLATED)
+    with zipfile.ZipFile(before) as old, zipfile.ZipFile(after) as new:
+        assert set(new.namelist()) - set(old.namelist()) == {entry}
+        for name in old.namelist():
+            assert old.read(name) == new.read(name), 'Existing jar entry changed: ' + name
+    return entry
+
+
+def check_proof(proof, manifest):
+    """Production verification must cover exactly the declared migration before services restart."""
+    migration = migration_of(manifest)
+    assert not proof.get('problems'), proof.get('problems')
+    assert proof['flyway']['version'] == migration['version'] and int(proof['flyway']['success']) == 1
+    assert int(proof['flyway']['checksum']) == int(manifest['flywayChecksum'])
+    mappings = proof['checks']['menuMappings']
+    assert mappings['allMatched'] and mappings['matched'] == int(migration['expectedMenuMatches'])
+
+
 def link(path, target):
-    temporary = path.with_name(path.name + '.v657-next')
+    temporary = path.with_name(path.name + '.ops-nav-next')
     if temporary.is_symlink():
         temporary.unlink()
     temporary.symlink_to(target)
@@ -95,7 +136,7 @@ def main():
     payload = Path(payload_dir)
     manifest = json.loads((payload / 'manifest.json').read_text())
     rid = manifest['releaseId']
-    assert rid.startswith('ops-nav-v657-') and '/' not in rid
+    migration = migration_of(manifest)
     base = Path('/data0/app/ai-shop')
     release = base / 'releases' / rid
     lock = base / '.deploy.lock'
@@ -126,16 +167,8 @@ def main():
             shutil.copyfile(jar, release / 'before.jar')
             for file_name, expected in manifest['payloadSha256'].items():
                 assert sha(payload / file_name) == expected, file_name
-            entry = 'BOOT-INF/classes/db/migration/V657__ops_compact_navigation.sql'
-            with zipfile.ZipFile(release / 'before.jar') as source, zipfile.ZipFile(release / 'next.jar', 'w') as target:
-                assert entry not in source.namelist()
-                for info in source.infolist():
-                    target.writestr(info, source.read(info.filename))
-                target.writestr(entry, (payload / 'V657.sql').read_bytes(), compress_type=zipfile.ZIP_DEFLATED)
-            with zipfile.ZipFile(release / 'before.jar') as old, zipfile.ZipFile(release / 'next.jar') as new:
-                assert set(new.namelist()) - set(old.namelist()) == {entry}
-                for name in old.namelist():
-                    assert old.read(name) == new.read(name), 'Existing jar entry changed: ' + name
+            build_next_jar(release / 'before.jar', release / 'next.jar', migration['file'],
+                           (payload / migration['file']).read_bytes())
             for archive, directory in [('ai-shop-web.tar.gz', 'ai-shop-web'), ('pay-web.tar.gz', 'pay-web')]:
                 target = release / directory
                 target.mkdir()
@@ -168,9 +201,7 @@ def main():
     state = json.loads((release / 'private-state.json').read_text())
     if mode == 'backend':
         proof = json.loads((payload / 'production-result.json').read_text())
-        assert proof['flyway']['version'] == '657' and proof['flyway']['success'] == 1
-        assert proof['checks']['menuMappings']['matched'] == 152
-        assert proof['flyway']['checksum'] == manifest['flywayChecksum']
+        check_proof(proof, manifest)
         for name in names:
             assert inspect(name)['Id'] == state['containers'][name]['Id']
         assert sha(jar) == manifest['baseJarSha256']
