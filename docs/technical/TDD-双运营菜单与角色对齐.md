@@ -121,4 +121,4 @@ P2：支付未接通的资金结算页按真实后端逐项上线，不能扩大
 - 浏览器（mock，超管）：13 个一级；`/points/budget`→会员营销、`/merchants?tab=admission`→经营财务、`/system?tab=industry`→商品资料、`/messages`→内容客服、`/messages?tab=broadcast`→会员营销、售后治理不再有退款分账。
 - near-pay：`npm run check` 320 通过 / 1 跳过；live 构建仍只导出 7 个业务路由。
 - V658 隔离库演练（2026-11-11，MySQL 9.7.4 + Flyway 11.14.1，迁移账号 root）：本机从 V1 建到 V657 的独立库 `ai_shop_v658_rehearsal`，插入一个合成自建角色（entity_no 为 NULL/非 NULL 各一条只挂售后退款分账的授权）后执行 V658。结果：Flyway 仅新增 658 一条且成功，旧历史不变；只删 `OPS_AFTERSALE__TAB_REFUND_BACK` 一个功能点，其余 250 点身份/权限/门禁/就绪不变；151 个菜单叶子与 nav.ts 逐点一致（含 OPS_PAY_01..08 别名）；三个并入的一级清空并停用；每个角色（×entity_no）的可见菜单与后端权限码集合不变；合成角色两条授权均并入财务点；手工重放 V658 快照不变。证据：`deploy/ume/ops-navigation/evidence/rehearsal-v658-20261111.json`。
-- **仍未做**：演练数据来自本机迁移重建，不是 166 实库副本（166 有 15 角色/582 授权，本机 13/545）；发布前按 §7.2 仍需用 166 只读副本复核授权快照。`schema-test.sql` 已随生成器修复重新生成（含 V657/V658）。
+- 2026-11-11 已发布 166：生产库 V657→V658 成功，核对与演练一致（只删售后重复点及其 2 条授权，151 叶子一致，角色可见性与权限码不变）；两端前端已切换，公网 46 项检查通过。详见 `deploy/ume/ops-navigation/README.md` §V658 发布。真实账号登录后的回读未做。

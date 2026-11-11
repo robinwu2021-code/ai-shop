@@ -1,0 +1,71 @@
+{
+ "releaseId": "ops-nav-v658-20261111",
+ "migration": {
+  "file": "V658__ops_menu_matrix_consolidation.sql",
+  "version": "658",
+  "expectedMenuMatches": 151
+ },
+ "sourceCommits": {
+  "ai-shop": "80e30f117",
+  "near-pay": "833cdc2f13660ed499a65b951c4c79ae669b6c31"
+ },
+ "baseJarSha256": "505b0451bbb84b83c2810ccd9990727dc65abc768c4330b738e7557d0a77801a",
+ "nextJarSha256": "6770b6280bd76ec0bbac18ca256b9dc311623f500a3fb9318ba322bc41b7ec25",
+ "flywayChecksum": -783404707,
+ "containerIds": {
+  "ai-shop-api": "e56d7e82b4b40acaaa537f8467008300fcc53b222b1b11f5f0220adbf3e00c0b",
+  "ai-shop-ops": "1c7cf73747f7b4c72fe9f2fa2d0e6f10cc9b538f60926d9fde7e840d81f71958",
+  "nearpay-prod": "cbffe9076ee34a9216d51ca3d6d299aa343a7cb9d4d78324ae0ab4fd15d13cf8",
+  "inventory-test": "39a53a0a9c011ae622e5554cf01e266e4a0c7cbeab1d9fd552d5f93158c2dbb2"
+ },
+ "payloadSha256": {
+  "MenuMigration.class": "b67f5ecbaa21dc2d8d864f8c6efc4d5cf0c6238413bf5576d07dc2eb6e526f6d",
+  "MenuSnapshot.class": "46bce421b98291f3709c614a9eaa968ab9a1320d8fa5a7ff17ab24ca4fe417fa",
+  "V657__ops_compact_navigation.sql": "cd09fed93d3e5ebee34fcb2b91d294421550660923abc6ce6a81aa023eed66df",
+  "V658__ops_menu_matrix_consolidation.sql": "d758eec29dd3f3c47e74f37d18c9159c98a6d430c81304389ebd88413276025c",
+  "ai-shop-web.tar.gz": "9735c22d9410f0220e5862ce552f3d39eb38762abc7ec7677505429f0485f67e",
+  "expected-menu.json": "0eef429093bd0c8257b8b35b2ed350c2e9e697f13f835bfc4d4527ee3864fb32",
+  "pay-web.tar.gz": "df2b404541717e514075432d91e240cc7d40c1da47df99bef1cd3fcbebb979c7",
+  "release.py": "bae5fecdd0d6975686436695e713e6466e377f65304c35b64dd6be6372f03e89",
+  "verify_menu_migration.py": "be46f1ef6f65e482fea5ceb5349a83985ac042345a13b5d4e6d05b895e5294b5"
+ },
+ "phases": {
+  "prepare": {
+   "prepared": true,
+   "oldEntriesUnchanged": true
+  },
+  "backend": {
+   "backend": "UP"
+  },
+  "frontend": {
+   "staticSitesSwitched": true
+  },
+  "finish": {
+   "healthy": true,
+   "containerConfigurationPreserved": true,
+   "paymentInventoryUnchanged": true,
+   "lockReleased": true
+  }
+ },
+ "databaseBackup": {
+  "host": "192.168.3.61 (mysql9, root-only dir)",
+  "tables": [
+   "sys_function",
+   "sys_function_point",
+   "sys_role",
+   "sys_role_point",
+   "sys_role_member",
+   "flyway_schema_history"
+  ],
+  "gtidPurged": "OFF",
+  "sha256": "c30f16326105880a30eb6e5e4dfedd4fdc21ffb8fa128746b2a5e3fd0ae21798"
+ },
+ "staticLinks": {
+  "ai-shop": "/data/www/ops-navigation-releases/ops-nav-v658-20261111/ai-shop-web",
+  "pay": "/data/www/ops-navigation-releases/ops-nav-v658-20261111/pay-web/oms"
+ },
+ "liveBuildIds": {
+  "ai-shop /ops-shop": "DM-8UKVj-zfpIiCJBa5uI",
+  "near-pay /oms": "EaZI3pqANV_G9wvv3TR6M"
+ }
+}
