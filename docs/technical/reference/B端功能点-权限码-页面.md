@@ -292,6 +292,7 @@
 | 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
 | 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
 | 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
+| 支付服务资料审核状态（属主） | GET | `/biz/merchant/pay-service` | `mPayServiceStatus` | payment |
 | 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
 | 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
 | 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
@@ -323,7 +324,6 @@
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
 | —（b-app 未接） | — | `/biz/merchant/pay-service/apply` | — | — |
 | —（b-app 未接） | — | `/biz/merchant/onboarding` | — | — |
-| —（b-app 未接） | — | `/biz/merchant/pay-service` | — | — |
 | —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims` | — | — |
 | —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/by-request/{}` | — | — |
 | —（b-app 未接） | — | `/biz/pay/v2/channel-account-claims/{}` | — | — |
@@ -950,7 +950,6 @@
 | `/biz/inventory/items/{}/valuation` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
 | `/biz/merchant/onboarding` | `biz:finance` | 老板 |
-| `/biz/merchant/pay-service` | `biz:finance` | 老板 |
 | `/biz/merchant/pay-service/apply` | `biz:finance` | 老板 |
 | `/biz/order/{}/full` | `biz:order:view` | 老板、店长、店员、配送员、客服 |
 | `/biz/pay/app-grant` | `undefined` | 老板 |

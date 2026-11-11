@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 602,
+        "b-app": 604,
         "c-app": 105
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 146,
+        "b-app": 147,
         "c-app": 36
       }
     },
@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 377,
+        "b-app": 378,
         "c-app": 98
       }
     },
@@ -827,7 +827,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 343,
+        "b-app": 344,
         "c-app": 93
       }
     },
@@ -903,7 +903,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 80,
+        "b-app": 81,
         "c-app": 16
       }
     },
@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 169,
+        "b-app": 170,
         "c-app": 30
       }
     },
@@ -1907,7 +1907,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 125,
+        "b-app": 126,
         "c-app": 3
       }
     },
@@ -1923,7 +1923,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 31,
+        "b-app": 32,
         "c-app": 0
       }
     }
@@ -2187,7 +2187,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 96,
+        "b-app": 97,
         "c-app": 42,
         "lib": 1
       },
@@ -2382,7 +2382,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 126,
+        "b-app": 131,
         "c-app": 3,
         "lib": 0
       },
@@ -4735,11 +4735,12 @@
       "key": "b-app/payment",
       "file": "b-app/src/pages/payment/index.vue",
       "components": [
+        "sh-empty",
         "sh-kv",
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 47,
+      "libClassHits": 56,
       "localSelectors": 18,
       "localCssLines": 63,
       "rolled": []

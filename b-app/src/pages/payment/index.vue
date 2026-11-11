@@ -9,12 +9,13 @@ const merchant = useMerchantStore();
 // 它与入驻审核是两条独立的链路：入驻过了店就能开、货能上架，
 // 但通道没批就收不了钱。此前 B 端完全看不到这个状态 ——
 // 商家开完店、上完架，第一笔订单才发现收不了款，而那时只能打电话给运营。
-import { computed, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { pickImages } from "@shared/ports/media";
 import type { PaymentApplyment, Store } from "@shared/types";
+import type { PayServiceStatus } from "@/api/pay";
 
 const { t } = useI18n();
 
@@ -87,9 +88,58 @@ const entityNo = ref("");
 onLoad((q) => {
   entityNo.value = q?.entityNo ?? "";
 });
-onShow(load);
+onShow(() => {
+  shown = true;
+  void load();
+  void loadPayService();
+});
 
-/** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
+// 此 GET 按当前门店解析主体且要求真实属主；财务成员权限本身不代表属主。
+const payService = ref<PayServiceStatus | null>(null);
+const payServiceState = ref<"hidden" | "loading" | "ready" | "error">("hidden");
+const payServiceKey = ref("");
+const currentScopeKey = computed(() => JSON.stringify([merchant.storeNo, entityNo.value]));
+const showPayService = computed(() => payServiceKey.value === currentScopeKey.value && payServiceState.value !== "hidden");
+let serviceRequest = 0;
+let shown = false;
+watch(currentScopeKey, () => { if (shown) void loadPayService(); }, { flush: "sync" });
+onUnmounted(() => { serviceRequest++; });
+
+async function loadPayService() {
+  const request = ++serviceRequest;
+  const key = currentScopeKey.value;
+  const storeNo = merchant.storeNo;
+  const requestedEntity = entityNo.value;
+  const isCurrent = () => request === serviceRequest && key === currentScopeKey.value;
+  payServiceKey.value = key;
+  payService.value = null;
+  payServiceState.value = "hidden";
+  if (!storeNo || !merchant.can("biz:finance")) return;
+  payServiceState.value = "loading";
+  try {
+    const scope = await api.mBizScope();
+    if (!isCurrent()) return;
+    if (!scope.owner || scope.currentStoreNo !== storeNo
+      || (requestedEntity && requestedEntity !== scope.merchantNo)
+      || !scope.perms.some((p) => p === "*" || p === "biz:finance")) {
+      payServiceState.value = "hidden";
+      return;
+    }
+    const result = await api.mPayServiceStatus();
+    if (!isCurrent()) return;
+    payService.value = result;
+    payServiceState.value = "ready";
+  } catch {
+    if (isCurrent()) payServiceState.value = "error";
+  }
+}
+
+function serviceStatusLabel(status: string): string {
+  return ["NONE", "PENDING", "NEED_MORE", "REJECTED", "APPROVED"].includes(status)
+    ? t(`payment.service.status.${status}`) : status;
+}
+
+/** 通道资料没取到，与「确定为空」不同；不遮住独立的支付服务资料审核卡。 */
 const failed = ref(false);
 
 async function load() {
@@ -216,15 +266,31 @@ async function refresh() {
 </script>
 
 <template>
-  <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')"
-    :failed="failed"
-    @retry="load"
-  >
+  <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')">
     <view class="head">
       <text class="txt-display">{{ $t("payment.title") }}</text>
       <text class="sh-muted sh-mt-xs blk">{{ $t("payment.hint") }}</text>
     </view>
 
+    <view v-if="showPayService" class="sh-card pay-service">
+      <text class="txt-title">{{ $t("payment.service.title") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("payment.service.hint") }}</text>
+      <text v-if="payServiceState === 'loading'" class="sh-muted blk">{{ $t("payment.service.loading") }}</text>
+      <text v-else-if="payServiceState === 'error'" class="sh-hint blk">{{ $t("payment.service.failed") }}</text>
+      <template v-else-if="payService">
+        <sh-kv :label="$t('payment.service.result')"><text>{{ serviceStatusLabel(payService.status) }}</text></sh-kv>
+        <sh-kv v-if="payService.merchantRef" :label="$t('payment.service.merchantRef')"><text>{{ payService.merchantRef }}</text></sh-kv>
+        <sh-kv v-if="payService.linkStatus" :label="$t('payment.service.linkStatus')"><text>{{ payService.linkStatus }}</text></sh-kv>
+        <sh-kv v-if="payService.profileStatus" :label="$t('payment.service.profileStatus')"><text>{{ payService.profileStatus }}</text></sh-kv>
+        <sh-kv v-if="payService.reviewReason" :label="$t('payment.service.reviewReason')"><text>{{ payService.reviewReason }}</text></sh-kv>
+      </template>
+      <view v-if="payServiceState !== 'loading'" class="sh-btn sh-btn--muted sh-mt-sm" @tap="loadPayService">
+        {{ $t(payServiceState === 'error' ? 'payment.service.retry' : 'payment.service.refresh') }}
+      </view>
+    </view>
+
+    <sh-empty v-if="failed" failed @retry="load"></sh-empty>
+    <template v-else>
     <view
       v-for="p in list"
       :key="p.payChannel"
@@ -370,6 +436,7 @@ async function refresh() {
       </view>
       <view class="sh-btn sh-btn--soft refresh" @tap="refresh">{{ $t("payment.refresh") }}</view>
     </view>
+    </template>
   </sh-scaffold>
 </template>
 

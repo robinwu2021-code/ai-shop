@@ -4,6 +4,7 @@ import type { PayApi } from "./pay";
 import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery } from "./requests";
 
 export const payHttp: PayApi = {
+  mPayServiceStatus: () => http.get(E.mPayServiceStatus.path),
   mPayCollect: (v) => http.post(E.mPayCollect.path, v),
   mPayRefunds: () => http.get(E.mPayRefunds.path),
   mPayRefund: (v) => http.post(E.mPayRefund.path, v),

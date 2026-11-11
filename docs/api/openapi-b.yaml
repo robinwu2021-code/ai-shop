@@ -15404,6 +15404,40 @@ components:
         - "minor"
       additionalProperties: false
       description: "金额：币种 + 最小单位整数字符串"
+    PayServiceStatus:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "NONE / PENDING / NEED_MORE / REJECTED / APPROVED，原样转发 PaySourceLinkApi.Status"
+        merchantRef:
+          type:
+            - "string"
+            - "null"
+          description: "支付平台商户引用，尚未建立时为空"
+        linkStatus:
+          type:
+            - "string"
+            - "null"
+          description: "来源关联状态，尚未建立时为空"
+        profileStatus:
+          type:
+            - "string"
+            - "null"
+          description: "商户资料状态，尚无资料时为空"
+        reviewReason:
+          type:
+            - "string"
+            - "null"
+          description: "补充资料或驳回原因，支付平台未提供时为空"
+      required:
+        - "status"
+        - "merchantRef"
+        - "linkStatus"
+        - "profileStatus"
+        - "reviewReason"
+      additionalProperties: false
+      description: "near-pay 来源主体的资料审核结果；不代表门店可收款。"
     PayCollectResult:
       type: "object"
       properties:
@@ -30528,6 +30562,34 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Statement"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/merchant/pay-service":
+    get:
+      operationId: "mPayServiceStatus"
+      summary: "支付服务资料审核状态（属主）"
+      tags:
+        - "merchant"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayServiceStatus"
                 required:
                   - "code"
                   - "msg"

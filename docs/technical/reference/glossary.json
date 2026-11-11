@@ -17966,6 +17966,102 @@
           "ar": "لم يذكر مزود الدفع سبب الرفض. تواصل مع المنصة قبل إعادة التقديم."
         },
         {
+          "key": "payment.service.failed",
+          "zh-CN": "暂时无法查询资料审核状态，请重试。",
+          "en": "Profile review status is unavailable. Please retry.",
+          "ar": "تعذر التحقق من حالة مراجعة البيانات. يرجى إعادة المحاولة."
+        },
+        {
+          "key": "payment.service.hint",
+          "zh-CN": "资料审核通过不等于当前门店已开通收款；收款能力以下方通道状态为准。",
+          "en": "Profile approval does not mean this store can receive payments. Check the channel status below for payment availability.",
+          "ar": "اعتماد البيانات لا يعني أن هذا المتجر يستطيع تحصيل المدفوعات. راجع حالة القناة أدناه لمعرفة إمكانية التحصيل."
+        },
+        {
+          "key": "payment.service.linkStatus",
+          "zh-CN": "主体关联状态",
+          "en": "Entity link status",
+          "ar": "حالة ربط الكيان"
+        },
+        {
+          "key": "payment.service.loading",
+          "zh-CN": "正在查询资料审核状态…",
+          "en": "Checking profile review status…",
+          "ar": "جارٍ التحقق من حالة مراجعة البيانات…"
+        },
+        {
+          "key": "payment.service.merchantRef",
+          "zh-CN": "支付平台商户引用",
+          "en": "Payment platform merchant reference",
+          "ar": "مرجع التاجر في منصة الدفع"
+        },
+        {
+          "key": "payment.service.profileStatus",
+          "zh-CN": "资料状态",
+          "en": "Profile status",
+          "ar": "حالة البيانات"
+        },
+        {
+          "key": "payment.service.refresh",
+          "zh-CN": "刷新资料审核状态",
+          "en": "Refresh profile review status",
+          "ar": "تحديث حالة مراجعة البيانات"
+        },
+        {
+          "key": "payment.service.result",
+          "zh-CN": "审核结果",
+          "en": "Review result",
+          "ar": "نتيجة المراجعة"
+        },
+        {
+          "key": "payment.service.retry",
+          "zh-CN": "重试查询",
+          "en": "Retry status check",
+          "ar": "إعادة التحقق"
+        },
+        {
+          "key": "payment.service.reviewReason",
+          "zh-CN": "审核意见",
+          "en": "Review comments",
+          "ar": "ملاحظات المراجعة"
+        },
+        {
+          "key": "payment.service.status.APPROVED",
+          "zh-CN": "资料审核通过",
+          "en": "Profile approved",
+          "ar": "اعتُمدت البيانات"
+        },
+        {
+          "key": "payment.service.status.NEED_MORE",
+          "zh-CN": "待补充资料",
+          "en": "More information required",
+          "ar": "مطلوب استكمال البيانات"
+        },
+        {
+          "key": "payment.service.status.NONE",
+          "zh-CN": "尚未申请",
+          "en": "Not applied",
+          "ar": "لم يُقدّم طلب"
+        },
+        {
+          "key": "payment.service.status.PENDING",
+          "zh-CN": "资料审核中",
+          "en": "Profile under review",
+          "ar": "البيانات قيد المراجعة"
+        },
+        {
+          "key": "payment.service.status.REJECTED",
+          "zh-CN": "资料审核未通过",
+          "en": "Profile rejected",
+          "ar": "رُفضت البيانات"
+        },
+        {
+          "key": "payment.service.title",
+          "zh-CN": "支付服务资料审核",
+          "en": "Payment service profile review",
+          "ar": "مراجعة بيانات خدمة الدفع"
+        },
+        {
           "key": "payment.settleAccount",
           "zh-CN": "结算账户",
           "en": "Settlement account",

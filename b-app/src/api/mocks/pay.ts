@@ -22,6 +22,9 @@ const offlineKeys = new Map<string, OfflineRecord>();
 const nowIso = () => new Date().toISOString();
 
 export const payMock: PayApi = {
+  async mPayServiceStatus() {
+    return { status: "NONE", merchantRef: null, linkStatus: null, profileStatus: null, reviewReason: null };
+  },
   async mPayCollect(v) {
     const token = rnd(43);
     return { payOrderNo: "PYO" + Date.now(), token, expireAt: Date.now() + (v.expireMinutes ?? 15) * 60_000,

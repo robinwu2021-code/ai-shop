@@ -6489,6 +6489,25 @@ _无字段_
 类型：[`PaymentApplyment`](#paymentapplyment)\[\]
 
 
+#### GET `/biz/merchant/pay-service`
+
+支付服务资料审核状态（属主）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayServiceStatus`](#payservicestatus)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | NONE / PENDING / NEED_MORE / REJECTED / APPROVED，原样转发 PaySourceLinkApi.Status |
+| `merchantRef` | `string,null` | 是 | 支付平台商户引用，尚未建立时为空 |
+| `linkStatus` | `string,null` | 是 | 来源关联状态，尚未建立时为空 |
+| `profileStatus` | `string,null` | 是 | 商户资料状态，尚无资料时为空 |
+| `reviewReason` | `string,null` | 是 | 补充资料或驳回原因，支付平台未提供时为空 |
+
+
 #### GET `/biz/merchant/payment`
 
 收款进件状态　🔒
@@ -15825,6 +15844,18 @@ Processing state of the order points refund projection.
 | `requestedBy` | `string,null` | 是 | 发起的商家账号 |
 | `createdAt` | `number,null` | 是 | 发起时间（UTC 毫秒） |
 | `succeededAt` | `number,null` | 是 | 退成时间（UTC 毫秒）；未退成为空 |
+
+### PayServiceStatus
+
+near-pay 来源主体的资料审核结果；不代表门店可收款。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | NONE / PENDING / NEED_MORE / REJECTED / APPROVED，原样转发 PaySourceLinkApi.Status |
+| `merchantRef` | `string,null` | 是 | 支付平台商户引用，尚未建立时为空 |
+| `linkStatus` | `string,null` | 是 | 来源关联状态，尚未建立时为空 |
+| `profileStatus` | `string,null` | 是 | 商户资料状态，尚无资料时为空 |
+| `reviewReason` | `string,null` | 是 | 补充资料或驳回原因，支付平台未提供时为空 |
 
 ### PayStatementItem
 

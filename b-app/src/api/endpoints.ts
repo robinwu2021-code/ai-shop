@@ -372,6 +372,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStatement: { method: "GET", path: "/biz/settle/statement", auth: true, summary: "对账单" },
 
   // 商家端支付（/biz/payment，经业务服务 —— 开发计划 M5a.5；原直连支付的 /biz/pay 过渡后删。TDD-支付服务-I5接入层 S8）：代客收款、退款、本店收款流水、收款码、授权第三方
+  mPayServiceStatus: { method: "GET", path: "/biz/merchant/pay-service", auth: true, summary: "支付服务资料审核状态（属主）" },
   mPayCollect: { method: "POST", path: "/biz/payment/collection", auth: true, summary: "代客收款（动态码）" },
   mPayRefunds: { method: "GET", path: "/biz/payment/refund", auth: true, summary: "本店最近退款" },
   mPayRefund: { method: "POST", path: "/biz/payment/refund", auth: true, summary: "发起原路退款" },

@@ -1,6 +1,20 @@
 // 商家端支付（/biz/pay，TDD-支付服务-I5接入层 S8）。金额一律最小单位；币种由服务端给。
 import type { OfflineRecordCreateReq, OfflineRecordListQuery, OfflineRecordSummaryQuery } from "./requests";
 
+/** near-pay 来源主体的资料审核结果；不代表门店可收款。 */
+export interface PayServiceStatus {
+  /** NONE / PENDING / NEED_MORE / REJECTED / APPROVED，原样转发 PaySourceLinkApi.Status */
+  status: string;
+  /** 支付平台商户引用，尚未建立时为空 */
+  merchantRef: string | null;
+  /** 来源关联状态，尚未建立时为空 */
+  linkStatus: string | null;
+  /** 商户资料状态，尚无资料时为空 */
+  profileStatus: string | null;
+  /** 补充资料或驳回原因，支付平台未提供时为空 */
+  reviewReason: string | null;
+}
+
 /** 流水行：收款 / 退款 */
 export type PayStatementKind = "PAYMENT" | "REFUND";
 /** 收款码：门店码 / 桌台码 */
@@ -202,6 +216,8 @@ export interface OfflineRecordSummary {
 }
 
 export interface PayApi {
+  /** 当前所选门店所属主体的支付服务资料审核状态，仅属主可查 */
+  mPayServiceStatus(): Promise<PayServiceStatus>;
   mPayCollect(v: { amountMinor: number; subject?: string; expireMinutes?: number }): Promise<PayCollectResult>;
   mPayRefunds(): Promise<PayRefundItem[]>;
   /** outRefundNo：端上防连点时同一次操作带同一个 */
