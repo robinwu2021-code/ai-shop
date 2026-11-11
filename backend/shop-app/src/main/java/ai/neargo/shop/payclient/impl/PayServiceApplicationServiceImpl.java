@@ -28,17 +28,18 @@ public final class PayServiceApplicationServiceImpl implements PayServiceApplica
             StoreSyncProperties props,ObjectProvider<PaySourceLinkApi> links,ObjectMapper json) {
         this.submissions=submissions;this.stores=stores;this.props=props;this.links=links;this.json=json;
     }
-    @Override public PaySourceLinkApi.Result apply(String entityNo,PayServiceApplyRequests.Form form,String realm,String actorNo) {
+    @Override public PaySourceLinkApi.Result apply(String entityNo,PayServiceApplyRequests.ApplyReq form,String realm,String actorNo) {
         if(TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("pay service submission requires no ambient transaction");
         var api=links.getIfAvailable();
         if(api==null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         var entity=stores.entity(entityNo).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
-        var normalized=PayServiceApplyRequests.build(entity,List.of(),form,realm,actorNo,props).profile();
+        var profileForm=form.profile();
+        var normalized=PayServiceApplyRequests.build(entity,List.of(),profileForm,realm,actorNo,props).profile();
         String hash=IdempotencyScope.requestHash("PAY_SERVICE_APPLICATION_V1",entityNo,realm,actorNo,json.writeValueAsString(normalized));
         var original=submissions.freeze(entityNo,props.caller(),props.sourceScope(),form.requestNo(),realm,actorNo,hash,revision->{
             var current=stores.entity(entityNo).orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
-            var body=PayServiceApplyRequests.build(current,stores.storesOfEntity(entityNo),form,realm,actorNo,props);
+            var body=PayServiceApplyRequests.build(current,stores.storesOfEntity(entityNo),profileForm,realm,actorNo,props);
             return json.writeValueAsString(new PaySourceLinkApi.Apply("ais-pay-"+entityNo+"-"+revision,
                     body.sourceScope(),body.sourceEntityRef(),revision,body.entityName(),body.stores(),body.actorRef(),
                     body.capabilityType(),revision,body.profile()));

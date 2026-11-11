@@ -90,8 +90,13 @@ it("keeps the profile card visible when channel loading fails and retries channe
   expect(page.find(".ch").exists()).toBe(false);
   const failure = page.get(".empty");
   expect(failure.text()).toContain(zh.common.loadFailed);
-  calls.channels.mockResolvedValue([{ payChannel: "WECHAT", channelName: "微信支付", canReceiveMoney: true, applyStatus: "ACTIVE" }]);
+  let finishRetry!: (channels: unknown[]) => void;
+  calls.channels.mockImplementationOnce(() => new Promise((resolve) => { finishRetry = resolve; }));
   await failure.get(".sh-btn").trigger("tap"); await flushPromises();
+  expect(page.find(".empty").exists()).toBe(false);
+  expect(page.get(".pay-service").text()).toContain(zh.payment.service.status.APPROVED);
+  finishRetry([{ payChannel: "WECHAT", channelName: "微信支付", canReceiveMoney: true, applyStatus: "ACTIVE" }]);
+  await flushPromises();
   expect(page.find(".empty").exists()).toBe(false);
   expect(page.get(".ch").text()).toContain("微信支付");
   expect(page.get(".pay-service").text()).toContain(zh.payment.service.status.APPROVED);

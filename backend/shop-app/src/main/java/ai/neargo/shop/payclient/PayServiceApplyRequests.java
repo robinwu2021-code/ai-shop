@@ -25,15 +25,18 @@ public final class PayServiceApplyRequests {
 
     public static final String PERM = "merchant:merchant:pay-apply";
 
-    /** 运营在界面上填的主体资料 */
-    public record Form(@NotBlank @Size(max = 128) String legalName,
+    /** 既有 B 端五字段合同与纯组装输入；保留其原有兼容行为。 */
+    public record Form(String legalName, String registrationNo, String representativeName, String contactPhone,
+                       String registeredAddress) {}
+
+    /** 运营持久申请：明确携带原请求键，与旧 B 客户端合同分别校验。 */
+    public record ApplyReq(@NotBlank @Size(max = 128) String legalName,
                        @NotBlank @Size(max = 64) String registrationNo,
                        @Size(max = 64) String representativeName, @Size(max = 32) String contactPhone,
                        @Size(max = 256) String registeredAddress,
                        @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{1,64}") String requestNo) {
-        /** Historical pure builders remain source-compatible; actual submissions require an explicit stable key. */
-        public Form(String legalName,String registrationNo,String representativeName,String contactPhone,String registeredAddress) {
-            this(legalName,registrationNo,representativeName,contactPhone,registeredAddress,null);
+        public Form profile() {
+            return new Form(legalName, registrationNo, representativeName, contactPhone, registeredAddress);
         }
     }
 
@@ -56,8 +59,8 @@ public final class PayServiceApplyRequests {
         if (form == null || blank(form.legalName()) || blank(form.registrationNo()) || blank(operatorNo)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        String legalName = form.legalName().trim();
-        String registrationNo = form.registrationNo().trim();
+        String legalName = cut(form.legalName(), 128);
+        String registrationNo = cut(form.registrationNo(), 64);
         long revision = Math.max(1, entity.revision());
         List<PaySourceLinkApi.StoreInput> storeInputs = stores.stream().filter(s -> !s.deleted()).map(s -> {
             Map<String, Object> r = NearPayStoreProfile.request(s, props);
@@ -66,8 +69,8 @@ public final class PayServiceApplyRequests {
         }).toList();
         if (storeInputs.size() > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
         PaySourceLinkApi.Profile profile = new PaySourceLinkApi.Profile("FIAT", legalName, registrationNo,
-                trimOrNull(form.registeredAddress()), trimOrNull(form.representativeName()),
-                trimOrNull(form.contactPhone()), null, List.of());
+                trimOrNull(form.registeredAddress(), 256), trimOrNull(form.representativeName(), 64),
+                trimOrNull(form.contactPhone(), 32), null, List.of());
         String event = "ais-apply-" + entity.entityNo() + "-" + revision + "-" + digest(profile).substring(0, 8);
         return new PaySourceLinkApi.Apply(event, props.sourceScope(), entity.entityNo(), revision,
                 blank(entity.name()) ? legalName : entity.name(), storeInputs,
@@ -88,7 +91,12 @@ public final class PayServiceApplyRequests {
 
     private static boolean blank(String s) { return s == null || s.isBlank(); }
 
-    private static String trimOrNull(String s) {
-        return blank(s) ? null : s.trim();
+    private static String cut(String s, int max) {
+        String t = s.trim();
+        return t.length() <= max ? t : t.substring(0, max);
+    }
+
+    private static String trimOrNull(String s, int max) {
+        return blank(s) ? null : cut(s, max);
     }
 }

@@ -211,21 +211,38 @@ class MirrorMultiOwnerTest {
             InvOutboundOrder order, InvOutboundLine posted) {}
 
     private static FrozenOriginal original(String suffix, String sku, int quantity, long cost, long id) {
-        var head = new InvReservation();
-        head.setReservationId("R_" + suffix); head.setOwnerId("OWN_" + suffix);
-        head.setExternalRef("P1"); head.setStatus("COMMITTED"); head.setLifecycleVersion(1);
-        head.setOutboundNo("OUT_" + suffix); head.setSourceManifestHash("a".repeat(64));
-        var line = new InvReservationLine();
-        line.setId(id); line.setReservationId(head.getReservationId()); line.setOwnerId(head.getOwnerId());
-        line.setItemId("IT_" + suffix); line.setLocationId("FROZEN_LOC_" + suffix);
-        line.setSourceSkuNo(sku); line.setQty(quantity);
-        var order = new InvOutboundOrder();
-        order.setOutboundNo(head.getOutboundNo()); order.setOwnerId(head.getOwnerId());
-        order.setLocationId(line.getLocationId()); order.setPurpose("SALE"); order.setStatus("POSTED");
-        order.setSourceRef("P1"); order.setReservationId(head.getReservationId());
-        var posted = new InvOutboundLine();
-        posted.setOutboundNo(order.getOutboundNo()); posted.setOwnerId(head.getOwnerId());
-        posted.setItemId(line.getItemId()); posted.setQty(quantity); posted.setUnitCostMinor(cost);
+        // These are immutable read-side facts returned by mapper doubles; the real inventory
+        // original-source validator and restore service below still prove and consume them.
+        var head = mock(InvReservation.class);
+        when(head.getReservationId()).thenReturn("R_" + suffix);
+        when(head.getOwnerId()).thenReturn("OWN_" + suffix);
+        when(head.getExternalRef()).thenReturn("P1");
+        when(head.getStatus()).thenReturn("COMMITTED");
+        when(head.getLifecycleVersion()).thenReturn(1);
+        when(head.getOutboundNo()).thenReturn("OUT_" + suffix);
+        when(head.getSourceManifestHash()).thenReturn("a".repeat(64));
+        var line = mock(InvReservationLine.class);
+        when(line.getId()).thenReturn(id);
+        when(line.getReservationId()).thenReturn("R_" + suffix);
+        when(line.getOwnerId()).thenReturn("OWN_" + suffix);
+        when(line.getItemId()).thenReturn("IT_" + suffix);
+        when(line.getLocationId()).thenReturn("FROZEN_LOC_" + suffix);
+        when(line.getSourceSkuNo()).thenReturn(sku);
+        when(line.getQty()).thenReturn(quantity);
+        var order = mock(InvOutboundOrder.class);
+        when(order.getOutboundNo()).thenReturn("OUT_" + suffix);
+        when(order.getOwnerId()).thenReturn("OWN_" + suffix);
+        when(order.getLocationId()).thenReturn("FROZEN_LOC_" + suffix);
+        when(order.getPurpose()).thenReturn("SALE");
+        when(order.getStatus()).thenReturn("POSTED");
+        when(order.getSourceRef()).thenReturn("P1");
+        when(order.getReservationId()).thenReturn("R_" + suffix);
+        var posted = mock(InvOutboundLine.class);
+        when(posted.getOutboundNo()).thenReturn("OUT_" + suffix);
+        when(posted.getOwnerId()).thenReturn("OWN_" + suffix);
+        when(posted.getItemId()).thenReturn("IT_" + suffix);
+        when(posted.getQty()).thenReturn(quantity);
+        when(posted.getUnitCostMinor()).thenReturn(cost);
         return new FrozenOriginal(head, line, order, posted);
     }
 }

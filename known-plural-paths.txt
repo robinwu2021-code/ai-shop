@@ -66,7 +66,6 @@
 /ops/banned-word/{id}/remove  banned-word
 /ops/merchant/{entityNo}/nudge  merchant
 /ops/merchant/{entityNo}/stock-doubt  merchant
-/ops/merchant/{merchantNo}/pay-service/apply  merchant
 /ops/product/{goodsNo}/chain  product
 /biz/member-segments/{segmentNo}  member-segments
 /biz/member-segments/{segmentNo}/remove  member-segments

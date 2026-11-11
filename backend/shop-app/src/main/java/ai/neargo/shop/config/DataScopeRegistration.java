@@ -31,6 +31,9 @@ public class DataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
 
+        // 支付资料原申请归属主体；actor_no是带realm的操作人，不能作为SELF归属。
+        registry.register("mch_pay_service_application", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("mch_plan_purchase", Map.of(ScopeDim.SELF,"buyer_no",ScopeDim.MERCHANT,"entity_no"));
 
         registry.register("ord_industry_order_source", Map.of(

@@ -496,7 +496,7 @@ export const NAME_COLLISIONS = {
   "account_no": "mch_payout_account为银行出款账户；sv_account为储值账户。",
   "version_no": "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
   "resource_no": "共用人员或物理资源在mch_resource；幂等结果与对账差异按各自资源类型解释，不可仅按同名字段关联。；统一扩展：幂等结果和对账差异按对应资源类型解释，不是同一实体。",
-  "actor_no": "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
+  "actor_no": "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。mch_pay_service_application按actor_realm区分OPERATOR/MERCHANT，不是任何账号族的通用外键。",
   "decision_no": "Core订单源决定与旧券迁移永久源决定分别发号。",
   "reservation_no": "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
   "source_decision_no": "Core订单源决定或迁移源决定，由source协议与purpose限定。",
@@ -515,7 +515,7 @@ export const NAME_COLLISIONS = {
   "issue_no": "同 user_coupon_no：mkt_coupon_issue 与 pmt_coupon_issue 各自建了唯一键，是两族。\n  pmt_user_coupon 里的 issue_no 指的是 pmt_coupon_issue —— 同族内是外键，跨族不是。",
   "tax_no": "**它根本不是编号，是纳税人识别号这个业务值**（ord_invoice_request 开票抬头填的、stl_settle_invoice 结算发票上印的）。两张表都没给它建唯一键。\n  同一个纳税人识别号本来就该在多张表里重复出现，按它 join 得到的是笛卡尔积。",
   "receiver_no": "notify_message 与 notify_push_token 都是「收件人编号」，但**都是多态的**：\n  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，STAFF 时是 mch_staff.staff_no（两族编号，取值空间不重叠但也不保证）。\n  所以它不是任何一张表的外键，按名字 join 会把店员的设备连到买家身上：**推送发错人**，而且不报错。要连必须带上 receiver_type 一起连。",
-  "request_no": "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；ord_invoice_request 是开票申请单号。**三族**，互不相干。\n  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。 主体购买request_no按typed创建者限定，门店认领request_no按原老板限定，均为各自原命令幂等号，不与其他请求族按同号关联。",
+  "request_no": "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；ord_invoice_request 是开票申请单号。这些编号族互不相干。\n  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。 主体购买request_no按typed创建者限定，门店认领request_no按原老板限定，均为各自原命令幂等号，不与其他请求族按同号关联。mch_pay_service_application按tenant_no/source_caller/source_scope限定支付资料原申请键，摘要另绑定主体及typed操作人，不与来源事件号或其他请求族关联。",
   "invoice_no": "**三个方向的票，这是最危险的一组同名**：\n  stl_purchase_invoice 是**进项**（供应商开给平台，决定平台能不能列支成本）；\n  ord_invoice_request 是**销项·对消费者**（平台开给买家，ADR-017 §3.4 条件 2，决定归集资金模式成不成立）；\n  stl_settle_invoice 是**销项·对商家**（平台开给商家的结算凭证，P-12.2.4）。\n  义务人、方向、法律后果各不相同 —— 按名字 join 出来的「发票」会把进项当销项，而三边都有值、都不报错。",
   "express_no": "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
   "apply_no": "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n  两者都是「某人申请某事」，但申请的对象完全不同 —— 按名字 join 会把入驻单连到社区提报上。",
@@ -918,7 +918,8 @@ export const COLLISION_MEMBERS = {
     "ord_checkout_confirmation",
     "ord_checkout_payment_request",
     "stl_payment_operation",
-    "ord_manual_service_admission"
+    "ord_manual_service_admission",
+    "mch_pay_service_application"
   ],
   "decision_no": [
     "ord_ent_source_decision",
@@ -1063,7 +1064,8 @@ export const COLLISION_MEMBERS = {
     "prn_request",
     "prn_batch",
     "mch_store_entity_claim",
-    "mch_plan_purchase"
+    "mch_plan_purchase",
+    "mch_pay_service_application"
   ],
   "invoice_no": [
     "stl_purchase_invoice",

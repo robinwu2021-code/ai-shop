@@ -111,6 +111,22 @@ describe("端点路径：资源段的单复数按域一致", () => {
 
 
 describe("已发布资源命名空间边界", () => {
+  it("支付服务的回查复用已发布单数商家路径，不能扩成其他 OPS 单数资源", () => {
+    for (const path of [
+      "/ops/merchant/{merchantNo}/pay-service",
+      "/ops/merchant/{merchantNo}/pay-service/apply",
+      "/ops/merchant/:entityNo/pay-service",
+      "/ops/merchant/{merchantNo}/pay-service/requests/{requestNo}",
+    ]) expect(resourcePluralityOffenders(path), path).toEqual([]);
+    for (const path of [
+      "/ops/merchant/{merchantNo}",
+      "/ops/merchant/{merchantNo}/pay-service-extra",
+      "/ops/merchant/{merchantNo}/another-service",
+    ]) expect(resourcePluralityOffenders(path), path).toContain("merchant");
+    expect(resourcePluralityOffenders("/ops/merchant/{merchantNo}/pay-service/request/{requestNo}"))
+      .toEqual(["request"]);
+  });
+
   it("保持管理和门店集合的复数，同时保留传统域的单数", () => {
     for (const path of [
       "/biz/management/spaces/{space}/grants/{grant}",

@@ -16,11 +16,15 @@ const looksPlural = segment => /^[a-z][a-z-]*s$/.test(segment)
 export function resourcePluralityOffenders(path) {
   const segments = path.split("/");
   const plural = usesPluralCollections(path);
+  // The published payment-service action already owns this singular merchant namespace.
+  // Its status resource shares that owner; child collections still follow the OPS rule.
+  const merchantPayService = /^\/ops\/merchant\/(?:\{[^}]+\}|:[^/]+)\/pay-service(?:\/|$)/.test(path);
   // Here {channel} selects a fulfillment setting; it is not a resource identifier.
   const settingDimension = (segment, next) => /^\/biz\/stores\//.test(path)
     && segment === "fulfillment" && /^(?:\{channel\}|:channel)$/.test(next);
   return segments.filter((segment, index) => segment && !isId(segment)
     && !uncountable.has(segment) && !settingDimension(segment, segments[index + 1] ?? "")
+    && !(merchantPayService && index === 2 && segment === "merchant")
     && isId(segments[index + 1] ?? "")
     && looksPlural(segment) !== plural);
 }

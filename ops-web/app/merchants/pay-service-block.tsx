@@ -87,8 +87,8 @@ function PaymentDetails({ merchantNo, merchantName, c }: { merchantNo: string; m
           {status.data.profileStatus && <p>{c.payServiceProfileStatus}：{status.data.profileStatus}</p>}
           {status.data.reviewReason && <p>{c.payServiceReviewReason}：{status.data.reviewReason}</p>}
           <p className="text-muted-foreground">{c.payServiceCollectionHelp}</p>
-          {status.data.merchantOpsUrl && <p><a className="underline" href={status.data.merchantOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceMerchantOps}</a></p>}
-          {status.data.onboardingOpsUrl && <p><a className="underline" href={status.data.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceOnboardingOps}</a></p>}
+          {status.data.merchantOpsUrl && <p><a className="focus-ring underline" href={status.data.merchantOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceMerchantOps}</a></p>}
+          {status.data.onboardingOpsUrl && <p><a className="focus-ring underline" href={status.data.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.payServiceOnboardingOps}</a></p>}
           {!status.data.merchantOpsUrl && !status.data.onboardingOpsUrl && <p className="text-muted-foreground">{c.payServiceNoOpsLink}</p>}
         </>}
       </div>

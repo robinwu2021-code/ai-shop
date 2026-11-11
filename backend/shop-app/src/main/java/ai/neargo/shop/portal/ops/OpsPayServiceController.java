@@ -88,7 +88,7 @@ public class OpsPayServiceController {
 
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_PAY_APPLY + "')")
     @PostMapping("/ops/merchant/{entityNo}/pay-service/apply")
-    public PaySourceLinkApi.Result apply(@PathVariable String entityNo, @Valid @RequestBody PayServiceApplyRequests.Form form) {
+    public PaySourceLinkApi.Result apply(@PathVariable String entityNo, @Valid @RequestBody PayServiceApplyRequests.ApplyReq form) {
         PaySourceLinkApi api = sourceLinks.getIfAvailable();
         if (api == null) throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
         return applications.apply(entityNo,form,"OPERATOR",SecurityUtils.currentUserNoOrNull());

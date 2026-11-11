@@ -76,8 +76,8 @@ class PayServiceApplicationServiceTest {
         return new PayServiceApplicationServiceImpl(new PayServiceApplicationStore(source,new DataSourceTransactionManager(source)),
                 new StoreSnapshotReader(source),PayServiceApplyRequestsTest.PROPS,factory.getBeanProvider(PaySourceLinkApi.class),JsonMapper.builder().build());
     }
-    private PayServiceApplyRequests.Form form(String phone,String key) {
-        return new PayServiceApplyRequests.Form("TESTONLY company","TESTONLY",null,phone,null,key);
+    private PayServiceApplyRequests.ApplyReq form(String phone,String key) {
+        return new PayServiceApplyRequests.ApplyReq("TESTONLY company","TESTONLY",null,phone,null,key);
     }
     private void apply(String phone,String key) { service.apply("M1",form(phone,key),"OPERATOR","OPS1"); }
 
@@ -93,7 +93,7 @@ class PayServiceApplicationServiceTest {
     }
     @Test void correctedRegistrationAdvancesTheRealSourceEntityAndProfileVersionsTogether() {
         apply("A","first");
-        service.apply("M1",new PayServiceApplyRequests.Form("TESTONLY company","TESTONLY-corrected",null,"A",null,"correction"),"OPERATOR","OPS1");
+        service.apply("M1",new PayServiceApplyRequests.ApplyReq("TESTONLY company","TESTONLY-corrected",null,"A",null,"correction"),"OPERATOR","OPS1");
         assertThat(sent.getLast().entityRevision()).isGreaterThan(sent.getFirst().entityRevision());
         assertThat(sent.getLast().profileRevision()).isEqualTo(sent.getLast().entityRevision());
     }

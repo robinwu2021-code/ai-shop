@@ -52,8 +52,6 @@ inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★ 迁移里至少有
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ docs/ 里任何一处「N 张 inv_ 表」都必须等于迁移里真实的张数 @<=10
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 《数据库表结构》里写的「N 张表」必须等于迁移里真实的张数 @<=10
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 文档正文里逐张列出的表 = 迁移里的表（多一张少一张都算） @<=10
-inventory-write-ownership.test.ts::进销存表的写权 ★★ shop-inventory 之外不许 new 进销存的实体 @<=66
-inventory-write-ownership.test.ts::进销存表的写权 ★★★ shop-inventory 之外的 SQL 注解里不许出现 inv_ 表的写语句 @<=34
 message-placeholder.test.ts::带占位符的错误文案 ★★ 反向：传了参数的码，文案里必须有 {0} —— 没有的话参数被静默吞掉，用户只看到泛话 @<=7
 ops-data-scope.test.ts::运营端数据域接入 ★★★ G3 已注册表必须真的存在 —— 注册一张不存在的表，那条登记就是一句谎话 @<=11
 ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=4

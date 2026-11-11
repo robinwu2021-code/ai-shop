@@ -50,13 +50,20 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0
+    },
+    "MirrorMultiOwnerTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
     }
   },
   "executionNotes": [
     "First focused batch: 56 tests, 55 passed; one new native assertion expected an incorrect Spring exception subtype. The actual MySQL JSON constraint rejected the write correctly.",
     "After asserting the actual constraint rejection, the complete source owner/native pair was rerun: 12/12 passed. Remaining 44 results are reused.",
     "B apply delegation/validation changes were removed after confirming the deployed Flutter source still sends the legacy five-field form. Existing B behavior remains; current normal full gate is still required.",
-    "After checking actual production DML privileges, removed extra runtime trigger metadata scanning; the 12-case source/native batch was rerun with a restricted DML account case."
+    "After checking actual production DML privileges, removed extra runtime trigger metadata scanning; the 12-case source/native batch was rerun with a restricted DML account case.",
+    "Latest Java contract/fixture batch: 23/23 passed after separating validated OPS ApplyReq from the unchanged legacy B Form. Other 35 focused results are reused; normal gate remains mandatory."
   ],
   "frontend": {
     "opsReact": {
@@ -70,6 +77,11 @@
       "tests": 7,
       "failures": 0,
       "commit": "0da979792"
+    },
+    "bizPaymentProfile": {
+      "tests": 12,
+      "failures": 0,
+      "coverage": "Actual failed-channel retry hides old error during pending and preserves independent source review card"
     }
   },
   "ddl": {
@@ -93,5 +105,27 @@
     "finding": "P2: cached APPROVED remained visible when a new profile was submitted and the next GET failed",
     "resolution": "reset source review query after every submission outcome; hide prior query data on read failure; new real component regression passed",
     "remainingP1P2": "none in reviewed changes"
+  },
+  "sharedGuardRepairs": {
+    "opsFocusAndLoading": {
+      "tests": 75,
+      "failures": 0
+    },
+    "inventoryWriterOwner": {
+      "tests": 5,
+      "failures": 0,
+      "change": "Recognize actual moved inventory domain/svc owner modules; mapper-return fixture uses read-only source facts; remove two fixed 66/34 debt registrations"
+    },
+    "beanValidation": {
+      "tests": 3,
+      "failures": 0
+    },
+    "pathDataScopeAndLineage": {
+      "tests": 100,
+      "passed": 99,
+      "knownFailure": 1,
+      "debtCount": 26,
+      "change": "Existing published payment namespace; actual MERCHANT/entity_no scope; source request and typed actor key classification; existing lineage debt unchanged"
+    }
   }
 }

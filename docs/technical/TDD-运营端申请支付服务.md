@@ -34,7 +34,7 @@ near-pay 的平台商户由来源系统「申请支付服务」时建立：`POST
 |---|---|
 | `shop-merchant/.../paysync/StoreSnapshotReader.java` | 新增 `entity(entityNo)` 与 `storesOfEntity(entityNo)` |
 | `shop-app/.../payclient/PaySourceLinkApi.java` | near-pay `source-links/apply` 的 HTTP 接口 |
-| `shop-app/.../payclient/PayServiceApplyRequests.java` | 组装请求（纯函数，可测） |
+| `shop-app/.../payclient/PayServiceApplyRequests.java` | 组装请求（纯函数，可测）；OPS ApplyReq 独立校验，B 五字段 Form 保持兼容 |
 | `shop-app/.../payclient/PayServiceApplicationService.java`、`impl/PayServiceApplicationServiceImpl.java` | 组合真实快照、按原键恢复、事务外提交 |
 | `shop-merchant/.../paysync/PayServiceApplicationStore.java`、`V660__merchant_pay_service_application.sql` | 锁内分配修订、永久保存完整来源请求 |
 | `shop-app/.../portal/ops/OpsPayServiceController.java` | 运营端点 |

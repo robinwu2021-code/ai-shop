@@ -102,7 +102,7 @@ class PayServiceApplicationNativeMysqlTest {
                 JsonMapper.builder().build());
     }
     private PaySourceLinkApi.Result apply(String phone,String key) {
-        return service.apply("M1",new PayServiceApplyRequests.Form("TESTONLY entity","TESTONLY",null,phone,null,key),"OPERATOR","OPS1");
+        return service.apply("M1",new PayServiceApplyRequests.ApplyReq("TESTONLY entity","TESTONLY",null,phone,null,key),"OPERATOR","OPS1");
     }
 
     @Test void uncertainResponseReplaysTheImmutableOriginalAfterRestartAndSnapshotChange() {

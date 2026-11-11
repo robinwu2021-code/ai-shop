@@ -292,7 +292,7 @@ async function refresh() {
       </view>
     </view>
 
-    <sh-empty v-if="failed" failed @retry="load"></sh-empty>
+    <sh-empty v-if="failed" :pending="loading" failed @retry="load"></sh-empty>
     <template v-else>
     <view
       v-for="p in list"

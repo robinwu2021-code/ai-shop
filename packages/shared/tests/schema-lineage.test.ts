@@ -194,6 +194,15 @@ describe("对账血缘", () => {
     ).toEqual([]);
   });
 
+  it("支付资料原申请键和typed操作人保持各自命名域，不伪造跨族外键", () => {
+    for (const column of ["request_no", "actor_no"]) {
+      expect(COLLISION_MEMBERS[column]).toContain("mch_pay_service_application");
+      expect(resolveReference(tables, "mch_pay_service_application", column)).toBeNull();
+    }
+    expect(NAME_COLLISIONS.request_no).toContain("source_caller/source_scope");
+    expect(NAME_COLLISIONS.actor_no).toContain("actor_realm");
+  });
+
   it("登记的归属真实存在 —— 指向不存在的表或列即失效", () => {
     if (!schema.size) return;
     const broken = Object.entries(KEY_OWNERS)
@@ -453,7 +462,7 @@ describe("对账血缘", () => {
   it.each(["unit_no", "action_no", "source_line_no", "source_operation_no", "declaration_no",
     "receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no",
     "snapshot_no", "legal_entity_no", "occupation_no", "start_command_no", "logical_demand_no",
-    "issuer_entity_no", "rule_version_no", "expense_entity_no", "buyer_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
+    "issuer_entity_no", "rule_version_no", "expense_entity_no", "buyer_no", "request_no", "actor_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
     const extended = new Map(tables);
     extended.set("unreviewed_table", { cols: [{ name: col }, { name: "tenant_no" }], uniques: new Set() });
     expect(resolveReference(extended, "unreviewed_table", col)).toBeNull();

@@ -34,7 +34,7 @@ class OpsPayServiceControllerTest {
         var none = new org.springframework.beans.factory.support.StaticListableBeanFactory()
                 .getBeanProvider(PaySourceLinkApi.class);
         var c = new OpsPayServiceController(reader, mock(StoreSyncProperties.class), none, mock(PayServiceApplicationService.class), "");
-        assertThatThrownBy(() -> c.apply("M1", new PayServiceApplyRequests.Form("x", "1", null, null, null)))
+        assertThatThrownBy(() -> c.apply("M1", new PayServiceApplyRequests.ApplyReq("x", "1", null, null, null, null)))
                 .isInstanceOfSatisfying(BizException.class,
                         e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
         org.mockito.Mockito.verifyNoInteractions(reader);
@@ -75,7 +75,7 @@ class OpsPayServiceControllerTest {
                 e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
         org.mockito.Mockito.verifyNoInteractions(api);
         assertThat(OpsPayServiceController.class.getMethod("status", String.class).getAnnotation(PreAuthorize.class).value())
-                .isEqualTo(OpsPayServiceController.class.getMethod("apply", String.class, PayServiceApplyRequests.Form.class).getAnnotation(PreAuthorize.class).value());
+                .isEqualTo(OpsPayServiceController.class.getMethod("apply", String.class, PayServiceApplyRequests.ApplyReq.class).getAnnotation(PreAuthorize.class).value());
     }
 
     @Test void configuredOpsBaseNeverAcceptsCredentialsOrQueryStrings() {
