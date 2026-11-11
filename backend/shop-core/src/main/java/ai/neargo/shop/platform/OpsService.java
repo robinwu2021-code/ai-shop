@@ -295,7 +295,13 @@ public interface OpsService {
                                *
                                * 可空：存量端上还在只传 qualifications。
                                */
-                              List<QualificationItem> qualificationItems) {
+                              List<QualificationItem> qualificationItems, String marketCode) {
+        public SubmitApplyCommand(String userNo, String name, String subject, String contactName, String contactPhone,
+                String referrerPhone, String category, String description, String serviceScope, List<String> communityNos,
+                List<String> qualifications, boolean asPickupPoint, String industry, String industryNote, List<QualificationItem> qualificationItems) {
+            this(userNo,name,subject,contactName,contactPhone,referrerPhone,category,description,serviceScope,communityNos,
+                    qualifications,asPickupPoint,industry,industryNote,qualificationItems,null);
+        }
     }
 
     /**

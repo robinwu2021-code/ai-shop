@@ -369,6 +369,18 @@ public final class JdbcMallRepository implements MallRepository {
         return findOrder(tenant, "o.buyer_user_no=? AND o.idempotency_key=?", buyer, key);
     }
 
+    @Override
+    public Optional<Order> byIdempotency(Quote quote, String key) {
+        if (!"STORE".equals(quote.purchase().buyerKind()))
+            return byIdempotency(quote.store().tenantNo(), quote.buyerNo(), key);
+        return findOrder(quote.store().tenantNo(),
+                "o.buyer_user_no=? AND o.idempotency_key=?"
+                        + " AND JSON_UNQUOTE(JSON_EXTRACT(q.line_snapshot,'$.purchase.buyerKind'))='STORE'"
+                        + " AND JSON_UNQUOTE(JSON_EXTRACT(q.line_snapshot,'$.purchase.initiatedBy'))=?",
+                quote.buyerNo(), key, quote.purchase().initiatedBy());
+    }
+
+
     public void consumeQuote(String tenant, String quoteNo, String actor, long at) {
         guard(tenant);
         int updated =

@@ -1,0 +1,105 @@
+{
+  "version": "sha=e02cee3f1221993821f2f0bfe6cf437d17698e05\nbuilt=2026-11-11 11:27:24 +0800\napp=ops-web\nmock=0\n",
+  "assets": [
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/03j490mw5uwu0.css",
+      "http": 200,
+      "contentType": "text/css"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0aewebm9xaiin.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0aiox0393kn3b.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0ccxbr98hkiik.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0cz1d0mv5g_q7.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0f_8yvvihz4gw.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0if-vqkhyn-zc.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0mhe4troep0we.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/0wf2rmyoojkx7.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/145_l6mnkoovh.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/14ifmv-_xthx7.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/16ei1pvzoaazv.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/1ae8656yqmr40.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/1pq-tbmkfqa45.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/21awjh8pymiv4.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/287ypekscy3vk.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/2dzdjncyquuhk.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/3_hbd6uv7ra03.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/3fwqujn9ugjcx.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "url": "https://twpay.umeshop.ai/ops-shop/_next/static/chunks/turbopack-1llzyky970gtz.js",
+      "http": 200,
+      "contentType": "application/javascript"
+    }
+  ]
+}

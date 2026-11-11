@@ -60,6 +60,11 @@ final class PlatformOfflineLedger {
         return jdbc.query("SELECT p.instructions_json FROM pay_platform_collection_profile p JOIN pay_platform_collection_head h ON h.tenant_no=p.tenant_no AND h.profile_no=p.profile_no AND h.current_version=p.profile_version WHERE h.tenant_no=? AND h.profile_no=? AND h.enabled=1",
                 (r,n)->json.readValue(r.getString(1),OfflineInstructions.class),tenant,profile).stream().filter(p->p.currency().equals(currency)).findFirst();
     }
+    Optional<OfflineProfileView> profile(String tenant, String profile, String currency) {
+        return jdbc.query("SELECT p.instructions_json,h.enabled FROM pay_platform_collection_profile p JOIN pay_platform_collection_head h ON h.tenant_no=p.tenant_no AND h.profile_no=p.profile_no AND h.current_version=p.profile_version WHERE h.tenant_no=? AND h.profile_no=?",
+                (r,n)->new OfflineProfileView(json.readValue(r.getString(1),OfflineInstructions.class),r.getBoolean(2)),tenant,profile)
+                .stream().filter(p->p.instructions().currency().equals(currency)).findFirst();
+    }
     /**
      * The order froze one immutable profile version at quote time. Issue exactly that version while
      * the profile stays enabled; a later reconfiguration only affects new quotes.

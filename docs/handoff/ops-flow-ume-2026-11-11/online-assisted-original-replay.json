@@ -1,0 +1,44 @@
+{
+  "http": 200,
+  "body": {
+    "code": 0,
+    "msg": "success",
+    "data": {
+      "orderNo": "e0e0b04fa70c4b549b2e5c297f7c73e3",
+      "store": {
+        "tenantNo": "MAIN",
+        "storeNo": "ST261106T585CY14HG"
+      },
+      "status": "AWAITING_PAYMENT",
+      "payable": {
+        "currency": "TWD",
+        "minor": "1300"
+      },
+      "components": [
+        {
+          "componentNo": "785d61c2d5aa48769abc590b68e79d0e",
+          "kind": "PLAN",
+          "listAmount": {
+            "currency": "TWD",
+            "minor": "1300"
+          },
+          "dealAmount": {
+            "currency": "TWD",
+            "minor": "1300"
+          },
+          "creditAmount": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "cashAmount": {
+            "currency": "TWD",
+            "minor": "1300"
+          },
+          "cycleDays": 30,
+          "quantity": 1
+        }
+      ],
+      "createdAt": "2026-11-11T03:37:17.383Z"
+    }
+  }
+}

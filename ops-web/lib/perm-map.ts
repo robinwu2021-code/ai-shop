@@ -153,6 +153,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "store:qrcode:export": "store:page:audit",
   "system:theme:update": "system:theme:update",
   "system:param:read": "system:param:read",
+  "system:industry:read": "system:industry:read",
+  "system:industry:update": "system:industry:update",
   // env:switch 映到它（见下），而映射目标自己也要登记 —— 守卫会检查这一点
   "system:param:update": "system:param:update",
   /*

@@ -474,6 +474,12 @@ public class BizMerchantController {
         String sub = req.subIndustryCode();
         String type = req.businessTypeCode();
         if (industry == null && sub == null) return;
+        // 已登记的停用项不能被旧的一对一兼容或子行业 OTHER 分支重新放行。
+        var configuredParent = industryRow(industries, industry, null);
+        var configuredSub = sub == null ? null : industryRow(industries, industry, sub);
+        if (configuredParent != null && !configuredParent.enabled()
+                || configuredSub != null && !configuredSub.enabled())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         boolean ok;
         if (BizFoundationController.OTHER.equals(industry)) {
             ok = BizFoundationController.OTHER.equals(sub)

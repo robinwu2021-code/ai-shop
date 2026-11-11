@@ -1,6 +1,7 @@
 package ai.neargo.shop.user.service.impl;
 
 import ai.neargo.shop.spi.notify.SmsPort;
+import ai.neargo.shop.platform.MarketPhonePolicyService;
 import ai.neargo.shop.common.ratelimit.OtpSendGuard;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.MpSessionService;
@@ -109,6 +110,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final OtpSendGuard sendGuard;
     private final SmsPort smsPort;
+    private final MarketPhonePolicyService phonePolicies;
     private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
     /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
     private final ai.neargo.shop.user.service.PersonService personService;
@@ -132,7 +134,9 @@ public class AuthServiceImpl implements AuthService {
                                    "${shop.auth.otp.fixed:}") String fixedOtp,
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
                            OtpTestPhoneService testPhoneService,
-                           ai.neargo.shop.user.service.EmailOtpService emailOtpService) {
+                           ai.neargo.shop.user.service.EmailOtpService emailOtpService,
+                           MarketPhonePolicyService phonePolicies) {
+        this.phonePolicies = phonePolicies;
         this.wxPhonePort = wxPhonePort;
         this.mpSessions = mpSessions;
         this.userMapper = userMapper;
@@ -170,6 +174,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void sendOtp(String phone, String senderKey) {
+        phonePolicies.requireSmsEnabled(phone);
         /*
          * **闸在生成码之前**：放在之后的话，被拒的那次仍然会把上一条有效码冲掉 ——
          * 用户手里那条还没用的码突然失效，而他看到的是「操作太频繁」，
@@ -799,6 +804,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void verifyOtp(String phone, String code) {
+        phonePolicies.requireSmsEnabled(phone);
         if (testIdentities != null && testIdentities.acceptsCode(
                 ai.neargo.shop.user.service.TestIdentityService.PHONE, phone, code)) {
             return;

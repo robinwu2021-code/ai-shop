@@ -1,0 +1,23 @@
+{
+  "storeNo": "ST261106T585CY14HG",
+  "quoteNo": "34185dc10509458abf2fb2759816dde8",
+  "orderNo": "e0e0b04fa70c4b549b2e5c297f7c73e3",
+  "idempotentPlaceReturnedSameOrder": true,
+  "instructionsReadbackEqual": true,
+  "profileNo": "UME-TW-BANK",
+  "profileVersion": 2,
+  "voidActionStatus": "APPLIED",
+  "currentPlanUnchanged": true,
+  "realTransfer": false,
+  "paymentConfirmed": false,
+  "evidencePurpose": "RECONCILIATION, explicitly synthetic/no transfer",
+  "orderStatus": "CLOSED",
+  "paymentStatus": "CLOSED",
+  "paymentAttemptCount": 1,
+  "paymentAttempts": [
+    {
+      "status": "FAILED",
+      "paidAt": null
+    }
+  ]
+}

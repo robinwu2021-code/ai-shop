@@ -2,6 +2,31 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  siHelp: "门店行业用于建店分类，子行业映射商城经营类型；支付行业与小微白名单单独维护。停用只影响新的选择，不修改存量门店。",
+  siNewIndustry: "新增行业",
+  siNewSub: "新增子行业",
+  siIndustry: "行业编码",
+  siSub: "子行业编码",
+  siType: "经营类型",
+  siZh: "简体名称",
+  siTw: "繁体名称",
+  siEn: "英文名称",
+  siSort: "排序",
+  siEnabled: "启用",
+  siDisabled: "停用",
+  siReason: "变更原因",
+  siEdit: "编辑",
+  siSave: "保存",
+  siSaved: "门店行业已保存",
+  siEmpty: "暂无门店行业配置",
+  siParent: "父行业",
+  siChoose: "请选择",
+  siRetry: "重试",
+  siTypesError: "经营类型加载失败，请重试后再保存",
+  siUnpublished: "未发布",
+  siParentOff: "父行业已停用",
+  siVersion: "版本",
+  siNoTypes: "请先在套餐管理建立经营类型；发布方案后才会出现在建店选项中。",
 
   // ── 存储空间治理（TDD-图片存储与空间回收）──
   stNotice: "扫描每晚跑一次，它只算「谁还被引用着」，「一个文件都不删」。删除一律要在这里勾选、确认之后才发起。\n\n「可回收理由」不是推断出来的：扫描遇到还在被引用的图时会记下它挂在哪，所以一旦失去引用，这一列就能说出它原来是谁的。",
@@ -128,7 +153,7 @@ const zh = {
   scLastOneNote: "至少要留一档 —— 全关等于所有商家都保存不了门店，而他们看到的只是「当前不支持这个经营范围」，会以为是自己选错了。",
   scSaved: "已保存",
 
-  indNotice: "小微白名单按行业给。改这里会直接改变商家能选哪种主体 —— 判错的后果不是显示错误，是他进件被通道拒，而那时店已经开完了。",
+  indNotice: "本页维护现有微信/支付宝小微规则；其他市场和通道以支付平台对应渠道规则为准。小微白名单按行业给。改这里会直接改变商家能选哪种主体 —— 判错的后果不是显示错误，是他进件被通道拒，而那时店已经开完了。",
   indEmpty: "行业表是空的，商家入驻时的行业选择会是一张空表。这是初始化数据，为空说明迁移没跑到，不要在这里补。",
   indColCode: "行业码",
   indColName: "名称",
@@ -164,6 +189,10 @@ const zh = {
 
   toastSkinSaved: "已下发外观配置",
   toastTextsSaved: "规则文案已保存",
+  phonePolicyTitle: "地区手机号与短信策略",
+  phonePolicyNotice: "台湾默认仅记录手机号，不校验号码、不以号码建立登录身份。短信通道接入并配置就绪后才可开放验证。",
+  phonePolicyRegion: "地区", phoneRecordOnly: "手机号仅作记录（不做格式校验）", phoneSmsEnabled: "开放短信验证码",
+  phoneSmsUnavailable: "该地区短信通道尚未开放；保持关闭，使用邮箱登录。", phonePolicyReason: "变更原因", phonePolicySaved: "已保存地区手机号策略",
   toastMarketSaved: "已保存市场配置",
   toastFlagSaved: "已保存开关",
 
@@ -287,6 +316,31 @@ const zh = {
 };
 
 const en: typeof zh = {
+  siHelp: "Store industries classify new stores and map subindustries to mall business types. Payment industries are managed separately. Disabling only affects new selections.",
+  siNewIndustry: "New industry",
+  siNewSub: "New subindustry",
+  siIndustry: "Industry code",
+  siSub: "Subindustry code",
+  siType: "Business type",
+  siZh: "Simplified Chinese name",
+  siTw: "Traditional Chinese name",
+  siEn: "English name",
+  siSort: "Sort order",
+  siEnabled: "Enabled",
+  siDisabled: "Disabled",
+  siReason: "Reason for change",
+  siEdit: "Edit",
+  siSave: "Save",
+  siSaved: "Store industry saved",
+  siEmpty: "No store industry configuration",
+  siParent: "Parent industry",
+  siChoose: "Select",
+  siRetry: "Retry",
+  siTypesError: "Business types failed to load. Retry before saving.",
+  siUnpublished: "Unpublished",
+  siParentOff: "Parent industry is disabled",
+  siVersion: "Version",
+  siNoTypes: "Create a business type in plan management first. Store options appear after its plans are published.",
   stNotice: "The scan runs nightly. It only works out what is still referenced — 「it deletes nothing」. Deletion always starts here, from an explicit selection and confirmation.\n\nThe reclaim reason is recorded, not inferred: when the scan meets an image that is still in use it notes where it hangs, so once that reference disappears this column can still say what it used to belong to.",
   stAbnormal: "More than half of all images are marked reclaimable — most likely a column holding image URLs was never registered, which would misjudge images that are still in use. Bulk reclaim is disabled until this is understood.",
   stCardTotal: "Total",
@@ -412,7 +466,7 @@ const en: typeof zh = {
   scLastOneNote: "At least one must stay open \u2014 closing them all means no merchant can save a shop, and all they see is \u201cthat service scope is not available\u201d, which reads as their own mistake.",
   scSaved: "Saved",
 
-  indNotice: "The micro-merchant allowlist is granted per industry. Changing it changes which legal form a merchant may pick — get it wrong and the channel rejects their onboarding, by which time the shop is already open.",
+  indNotice: "This page manages the existing WeChat/Alipay micro-merchant rules. Other markets and channels use their payment-platform rules. The micro-merchant allowlist is granted per industry. Changing it changes which legal form a merchant may pick — get it wrong and the channel rejects their onboarding, by which time the shop is already open.",
   indEmpty: "The industry table is empty, so merchants get an empty picker at onboarding. This is seed data — an empty table means the migration never ran; do not fill it in here.",
   indColCode: "Code",
   indColName: "Name",
@@ -448,6 +502,10 @@ const en: typeof zh = {
 
   toastSkinSaved: "Appearance settings pushed",
   toastTextsSaved: "Policy copy saved",
+  phonePolicyTitle: "Regional phone and SMS policy",
+  phonePolicyNotice: "Taiwan records contact numbers without format validation or phone login identity. SMS verification can open after a channel is connected and configured.",
+  phonePolicyRegion: "Region", phoneRecordOnly: "Record contact phone only (no format validation)", phoneSmsEnabled: "Enable SMS verification",
+  phoneSmsUnavailable: "SMS is not available in this region. Keep it off and use email sign-in.", phonePolicyReason: "Reason", phonePolicySaved: "Regional phone policy saved",
   toastMarketSaved: "Market settings saved",
   toastFlagSaved: "Flag saved",
 

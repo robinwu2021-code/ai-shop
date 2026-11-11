@@ -11,7 +11,7 @@ import type {
   MallApproveRequest, MallBusinessEndView, MallBusinessTypeDraft, MallBusinessTypeView, MallCatalogOverview,
   MallCategoryDraft, MallCategoryUpdate, MallCategoryView,
   MallDeploymentOption, MallDraftSaveResult, MallEndRequest, MallEvidencePurpose, MallGrantRequest,
-  MallIndustryPublish, MallOfflineActionView, MallOfflineClaimView, MallOfflineCollectionTerms,
+  MallIndustryPublish, MallOfflineActionView, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineCollectionProfile,
   MallOfflineConfirmRequest, MallOfflineEvidenceTicket, MallOfflineEvidenceUploaded, MallOfflineInstructionsView,
   MallOfflinePayoutRequest, MallOfflinePendingClaim, MallOfflineProfileCommand, MallOfflineSignedRead,
   MallOfflineVoidRequest, MallOrderDetailView, MallOrderSummary, MallOrderView, MallPlaceRequest, MallPlanDefinitionView,
@@ -93,7 +93,7 @@ export interface CommerceApi extends Pick<CashRefundApi, "mallCashReceipts"|"mal
 
   // ── 线下银行转账（Task8）──
   /** 收款档案（按币种）；从未配置返回 null */
-  offlineProfile(currency: string): Promise<MallOfflineCollectionTerms | null>;
+  offlineProfile(currency: string): Promise<MallOfflineCollectionProfile | null>;
   /** 配置收款档案：每次修改生成新版本，已发出的指引按原版本 */
   configureOfflineProfile(v: MallOfflineProfileCommand): Promise<MallOfflineCollectionTerms>;
   /** 待审申报队列 */

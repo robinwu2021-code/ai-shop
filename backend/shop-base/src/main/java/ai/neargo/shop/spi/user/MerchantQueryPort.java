@@ -410,7 +410,11 @@ public interface MerchantQueryPort {
      * @param businessTypeCode 对应经营类型：子行业决定建店的经营类型；不影响方案
      */
     record IndustryRow(String industryCode, String subIndustryCode, String businessTypeCode,
-                       String nameZh, String nameTw, String nameEn, int sort) {
+                       String nameZh, String nameTw, String nameEn, int sort, boolean enabled) {
+        public IndustryRow(String industryCode, String subIndustryCode, String businessTypeCode,
+                           String nameZh, String nameTw, String nameEn, int sort) {
+            this(industryCode, subIndustryCode, businessTypeCode, nameZh, nameTw, nameEn, sort, true);
+        }
         /** 繁体（zh-TW / zh-HK / zh-MO / Hant）取繁体名，英文取英文名，其余与缺省都取简体 */
         public String displayName(java.util.Locale locale) {
             if (locale != null && "zh".equals(locale.getLanguage())
@@ -425,7 +429,7 @@ public interface MerchantQueryPort {
         }
     }
 
-    /** 启用的行业与子行业，按行业、子行业排序；未接入时为空（store-setup 回落一对一默认映射） */
+    /** 行业与子行业配置全量（含停用），按行业、子行业排序；只有未配置时为空，不能把全部停用误作未配置 */
     default List<IndustryRow> industries() {
         return List.of();
     }

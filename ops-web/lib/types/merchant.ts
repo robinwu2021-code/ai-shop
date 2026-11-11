@@ -278,7 +278,7 @@ export interface MerchantApply {
   subject: string;
   /** 联系人姓名。审核要打电话找人 */
   contactName: string;
-  /** 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** */
+  /** 联系方式；仅记录地区不建立手机号登录身份，店主归属沿已注册账号。 */
   contactPhone: string;
   /**
    * 推荐人手机号（V353，选填）。**奖励靠它人工发** ——

@@ -341,4 +341,28 @@ class BizStoreSetupTest {
         assertEquals(java.util.Arrays.asList(null, null),
                 BizMerchantController.storedIndustry(pick(null, null, null), ROWS));
     }
+    @Test void allDisabledConfigurationDoesNotRestoreDefaultIndustries() {
+        var disabled = ROWS.stream().map(r -> new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(
+                r.industryCode(), r.subIndustryCode(), r.businessTypeCode(), r.nameZh(), r.nameTw(), r.nameEn(), r.sort(), false)).toList();
+        var setup = BizFoundationController.storeSetup(markets(true).find("TW").orElseThrow(),
+                FOOD_AND_RETAIL, null, null, disabled, Locale.TRADITIONAL_CHINESE);
+        assertTrue(setup.markets().getFirst().industries().isEmpty());
+        assertThrows(BizException.class, () -> BizMerchantController.resolveMarket("TW", markets(true),
+                req("TW", "RETAIL", "RETAIL"), null, disabled));
+    }
+
+    @Test void disabledChildIsHiddenAndRejectedWithoutChangingOtherChildren() {
+        var rows = ROWS.stream().map(r -> new ai.neargo.shop.spi.user.MerchantQueryPort.IndustryRow(
+                r.industryCode(), r.subIndustryCode(), r.businessTypeCode(), r.nameZh(), r.nameTw(), r.nameEn(), r.sort(),
+                !"FOOD_CAFE".equals(r.subIndustryCode()))).toList();
+        var setup = BizFoundationController.storeSetup(markets(true).find("TW").orElseThrow(),
+                FOOD_AND_RETAIL, null, null, rows, Locale.TRADITIONAL_CHINESE);
+        var food = setup.markets().getFirst().industries().stream().filter(r -> r.industryCode().equals("FOOD")).findFirst().orElseThrow();
+        assertEquals(List.of("FOOD_BREAKFAST"), food.subIndustries().stream().map(BizFoundationController.StoreSetupSubIndustry::subIndustryCode).toList());
+        assertThrows(BizException.class, () -> BizMerchantController.resolveMarket("TW", markets(true),
+                new BizMerchantController.QuickStartReq("店", "地址", "FOOD", "TW", "FOOD", "FOOD_CAFE"), null, rows));
+        assertEquals("TW", BizMerchantController.resolveMarket("TW", markets(true),
+                new BizMerchantController.QuickStartReq("店", "地址", "FOOD", "TW", "FOOD", "FOOD_BREAKFAST"), null, rows));
+    }
+
 }

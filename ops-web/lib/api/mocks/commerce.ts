@@ -12,7 +12,7 @@ const clone = <T>(v: T): T => structuredClone(v);
 function catalog(): MallCatalogOverview {
   const s = m.mall.s;
   return clone({
-    businessTypes: Object.values(s.types).map((t) => ({ draft: t.draft, version: t.version })),
+    businessTypes: Object.values(s.types).map((t) => ({ draft: t.draft, version: t.version, catalogVersion: t.catalogVersion })),
     businessEnds: Object.values(s.ends).map((e) => ({ draft: e.draft, version: e.version })),
     planDefinitions: Object.values(s.planDefs),
     planVersions: Object.values(s.planVersions),
@@ -40,8 +40,16 @@ function detail(o: m.MallOrderRow): MallOrderDetailView {
 
 function sub(storeNo: string, s: ReturnType<typeof m.subscriptionOf>, entitlementCode?: string): MallSubscriptionView {
   const keep = (code?: string) => !entitlementCode || code === entitlementCode;
+  // All seed stores belong to RETAIL/TWD. Derive the current bound Plan from seed sources,
+  // rather than treating the newest FREE catalog version as an existing store's subscription.
+  const now = Date.now();
+  const activeSourceNos = new Set(s.segments.filter((x) => Date.parse(x.startsAt!) <= now && (!x.endsAt || now < Date.parse(x.endsAt))).map((x) => x.sourceNo));
+  const current = s.sources.find((x) => x.planVersionNo && !x.permanent && x.lifecycle !== "REVOKED" && activeSourceNos.has(x.sourceNo))
+    ?? s.sources.find((x) => x.planVersionNo && x.permanent && x.lifecycle !== "REVOKED");
   return clone({
     store: { tenantNo: "MAIN", storeNo }, entitlementVersion: s.entitlementVersion,
+    businessTypeCode: "RETAIL", currency: current?.valuationBasis?.currency ?? "TWD", serverNow: now,
+    currentPlanVersionNo: current?.planVersionNo ?? m.mall.s.planDefs["RETAIL:FREE"]?.currentVersionNo ?? undefined,
     sources: s.sources.filter((x) => keep(x.entitlementCode)), segments: s.segments.filter((x) => keep(x.entitlementCode)),
   });
 }
@@ -106,7 +114,10 @@ export const commerceMock: CommerceApi = {
   grantMallEnd: async (storeNo, v) => wait(sub(storeNo, m.grant(storeNo, v)), 400),
   revokeMallSource: async (storeNo, no, v) => wait(sub(storeNo, m.revoke(storeNo, no, v)), 400),
 
-  offlineProfile: async (currency) => wait(clone(m.profileOf(currency))),
+  offlineProfile: async (currency) => {
+    const p = m.mall.s.profiles[currency];
+    return wait(p ? clone({ ...p.terms, enabled: p.enabled }) : null);
+  },
   configureOfflineProfile: async (v) => wait(clone(m.configureProfile(v)), 350),
   offlinePendingClaims: async (q) => wait(clone(m.pendingClaims(q ?? {}))),
   offlineAssistedQuote: async (storeNo, v) => wait(clone(m.assistedQuote(storeNo, v)), 350),

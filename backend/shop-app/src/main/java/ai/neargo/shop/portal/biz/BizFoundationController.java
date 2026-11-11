@@ -139,11 +139,11 @@ public class BizFoundationController {
         var published = new java.util.LinkedHashMap<String, BusinessType>();
         types.forEach(t -> published.put(t.businessTypeCode(), t));
         var out = new java.util.ArrayList<StoreSetupIndustry>();
-        rows.stream().filter(r -> r.subIndustryCode() == null)
+        rows.stream().filter(r -> r.enabled() && r.subIndustryCode() == null)
                 .sorted(java.util.Comparator.comparingInt(MerchantQueryPort.IndustryRow::sort))
                 .forEach(industry -> {
                     var subs = rows.stream()
-                            .filter(r -> industry.industryCode().equals(r.industryCode())
+                            .filter(r -> r.enabled() && industry.industryCode().equals(r.industryCode())
                                     && r.subIndustryCode() != null && published.containsKey(r.businessTypeCode()))
                             .sorted(java.util.Comparator.comparingInt(MerchantQueryPort.IndustryRow::sort))
                             .map(r -> {

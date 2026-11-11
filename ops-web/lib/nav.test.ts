@@ -92,6 +92,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    * （少一条菜单，人只会以为自己没权限，不会报障）。
    */
   const ADDED_SINCE_MERGE = new Set<string>([
+    "/system?tab=storeIndustry", // Store industry maintenance, existing commerce catalog authority.
     "/printing", // Newly delivered, permission and runtime gated printing operations.
     /*
      * 支付运营端四页（2026-10-26，TDD-支付服务-I5接入层 S9）。挂在「结算与资金」下的「支付运营」分组：
@@ -207,6 +208,10 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
         "/points?tab=settlements": "/points/transactions",
       };
       const was = new Set((baseline[role] ?? []).map((href) => moved[href] ?? href));
+      // S04/S05 修正历史菜单错权：端点一直使用行业/类目读码；仅调整这三个入口的可见性。
+      if (role === "TECH_OPS") for (const href of ["/system?tab=authCode", "/system?tab=industry", "/system?tab=scope"]) was.delete(href);
+      if (role === "PRODUCT_OPS") was.add("/system?tab=authCode");
+      if (role === "COMMUNITY_OPS") for (const href of ["/system?tab=industry", "/system?tab=scope"]) was.add(href);
       const lost = [...was].filter((h) => !now.has(h));
       const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
       if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);

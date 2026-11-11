@@ -1,5 +1,7 @@
 package ai.neargo.shop.user.service;
 
+import ai.neargo.shop.platform.MarketPhonePolicyService;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -87,7 +89,7 @@ class EmailOtpAuthTest {
         });
         auth = new AuthServiceImpl(users, identities, mock(WxPhonePort.class), mock(MpSessionService.class),
                 tokens, store, guard, mock(SmsPort.class), mock(WxAuthPort.class), hasher, limiter,
-                mock(PersonService.class), "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email);
+                mock(PersonService.class), "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(MarketPhonePolicyService.class));
     }
 
     @Test

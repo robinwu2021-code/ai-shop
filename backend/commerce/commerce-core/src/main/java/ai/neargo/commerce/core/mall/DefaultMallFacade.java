@@ -410,8 +410,7 @@ public final class DefaultMallFacade implements MallFacade {
         var catalog = catalogs.load(actor.tenantNo(), CatalogLockMode.SHARED);
         if (!freshClaim) {
             var existing =
-                    repo.byIdempotency(
-                                    actor.tenantNo(), idempotencyOwner(q), command.idempotencyKey())
+                    repo.byIdempotency(q, command.idempotencyKey())
                             .orElseThrow(() -> fail("ORDER_CLAIM_INCOMPLETE"));
             if (!hash.equals(existing.requestHash())) throw fail("IDEMPOTENCY_CONFLICT");
             return existing.view();

@@ -6,7 +6,7 @@ import { client } from "../http-client";
 import type { CommerceApi } from "../contracts/commerce";
 import type {
   MallBusinessEndView, MallBusinessTypeView, MallCatalogOverview, MallCategoryView, MallDeploymentOption, MallDraftSaveResult,
-  MallOfflineActionView, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineEvidenceTicket,
+  MallOfflineActionView, MallOfflineClaimView, MallOfflineCollectionTerms, MallOfflineCollectionProfile, MallOfflineEvidenceTicket,
   MallOfflineEvidenceUploaded, MallOfflineInstructionsView, MallOfflinePendingClaim, MallOfflineSignedRead,
   MallOrderDetailView, MallOrderSummary, MallOrderView, MallPlanDefinitionView, MallProductView, MallPublicationResult,
   MallQuoteView, MallRefundReviewQuoteView, MallRefundView, MallSkuVersionView, MallSubscriptionView,
@@ -66,7 +66,7 @@ export const commerceHttp: CommerceApi = {
     client.post<MallSubscriptionView>(`/ops/stores/${seg(storeNo)}/subscription/sources/${seg(sourceNo)}/revoke`, v),
 
   // ── 线下银行转账 ──
-  offlineProfile: (currency) => client.get<MallOfflineCollectionTerms | null>("/ops/biz-mall/offline/profile", { currency }),
+  offlineProfile: (currency) => client.get<MallOfflineCollectionProfile | null>("/ops/biz-mall/offline/profile", { currency }),
   configureOfflineProfile: (v) => client.put<MallOfflineCollectionTerms>("/ops/biz-mall/offline/profile", v),
   offlinePendingClaims: (q) => client.get<MallOfflinePendingClaim[]>("/ops/biz-mall/offline/claims", q),
   offlineAssistedQuote: (storeNo, v) => client.post<MallQuoteView>("/ops/biz-mall/offline/quotes", v, { storeNo }),

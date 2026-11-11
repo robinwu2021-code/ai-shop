@@ -358,7 +358,7 @@ components:
           description: "联系人姓名。审核要打电话找人"
         contactPhone:
           type: "string"
-          description: "联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号**"
+          description: "联系方式；仅记录地区不建立手机号登录身份，店主归属沿已注册账号。"
         referrerPhone:
           type: "string"
           description: "推荐人手机号（V353，选填）。**奖励靠它人工发** —— 小程序里不能出现「邀请商家入驻得 X 元」（拉人头 + 奖励会被判平台型经营）， 所以规则只在官网与企微里，运营在这一栏看到号之后自己去发券 （TDD-C 端裂变与商家招募 §8.3）。\n\n可选：绝大多数申请没有推荐人，那时这一栏整个不渲染。"
@@ -12041,6 +12041,77 @@ components:
         - "enabled"
       additionalProperties: false
       description: "市场与货币（P-17.1.3）。"
+    StoreIndustry:
+      type: "object"
+      properties:
+        industryCode:
+          type: "string"
+        subIndustryCode:
+          type: "string"
+        businessTypeCode:
+          type: "string"
+        nameZh:
+          type: "string"
+        nameTw:
+          type: "string"
+        nameEn:
+          type:
+            - "string"
+            - "null"
+        sort:
+          type: "number"
+        enabled:
+          type: "boolean"
+        version:
+          type: "number"
+      required:
+        - "industryCode"
+        - "subIndustryCode"
+        - "businessTypeCode"
+        - "nameZh"
+        - "nameTw"
+        - "sort"
+        - "enabled"
+        - "version"
+      additionalProperties: false
+    SaveStoreIndustry:
+      type: "object"
+      properties:
+        industryCode:
+          type: "string"
+        subIndustryCode:
+          type: "string"
+        businessTypeCode:
+          type: "string"
+        nameZh:
+          type: "string"
+        nameTw:
+          type: "string"
+        nameEn:
+          type:
+            - "string"
+            - "null"
+        sort:
+          type: "number"
+        enabled:
+          type: "boolean"
+        expectedVersion:
+          type:
+            - "number"
+            - "null"
+        reason:
+          type: "string"
+      required:
+        - "businessTypeCode"
+        - "enabled"
+        - "expectedVersion"
+        - "industryCode"
+        - "nameTw"
+        - "nameZh"
+        - "reason"
+        - "sort"
+        - "subIndustryCode"
+      additionalProperties: false
     RuleTexts:
       type: "object"
       properties:
@@ -12645,6 +12716,46 @@ components:
         - "expectedRevision"
       additionalProperties: false
       description: "保存一行策略"
+    MarketPhonePolicy:
+      type: "object"
+      properties:
+        market:
+          type: "string"
+        callingPrefix:
+          type:
+            - "string"
+            - "null"
+        recordOnly:
+          type: "boolean"
+        smsVerificationEnabled:
+          type: "boolean"
+        smsChannelReady:
+          type: "boolean"
+        marketEnabled:
+          type: "boolean"
+      required:
+        - "market"
+        - "callingPrefix"
+        - "recordOnly"
+        - "smsVerificationEnabled"
+        - "smsChannelReady"
+        - "marketEnabled"
+      additionalProperties: false
+      description: "Region-specific contact recording. SMS can open only after the deployment declares a ready channel."
+    SaveMarketPhonePolicy:
+      type: "object"
+      properties:
+        recordOnly:
+          type: "boolean"
+        smsVerificationEnabled:
+          type: "boolean"
+        reason:
+          type: "string"
+      required:
+        - "recordOnly"
+        - "smsVerificationEnabled"
+        - "reason"
+      additionalProperties: false
     JobStatus:
       type: "string"
       enum:
@@ -12914,6 +13025,9 @@ components:
     MallBusinessTypeView:
       type: "object"
       properties:
+        catalogVersion:
+          type: "number"
+          description: "当前已发布目录版本；0 为尚未发布。"
         draft:
           "$ref": "#/components/schemas/MallBusinessTypeDraft"
           description: "当前草稿"
@@ -14433,6 +14547,15 @@ components:
     MallSubscriptionView:
       type: "object"
       properties:
+        businessTypeCode:
+          type: "string"
+        currency:
+          type: "string"
+        currentPlanVersionNo:
+          type: "string"
+        serverNow:
+          type: "number"
+          description: "服务器评估当前方案的时间（毫秒）"
         store:
           "$ref": "#/components/schemas/MallStoreRef"
           description: "门店"
@@ -14491,6 +14614,47 @@ components:
         - "expectedVersion"
       additionalProperties: false
       description: "撤销零金额来源"
+    MallOfflineCollectionProfile:
+      type: "object"
+      properties:
+        profileNo:
+          type: "string"
+          description: "档案号"
+        profileVersion:
+          type: "number"
+          description: "档案版本"
+        platformMerchantNo:
+          type: "string"
+          description: "平台收款主体"
+        currency:
+          type: "string"
+          description: "币种"
+        receivingAccountKey:
+          type: "string"
+          description: "收款账户指纹（后端哈希，不是账号本身）"
+        paymentWindowVersion:
+          type: "string"
+          description: "付款窗口版本"
+        paymentWindowMs:
+          type: "number"
+          description: "付款窗口（毫秒）"
+        instructions:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cstring%3E"
+          description: "指引内容（bankCode / bankAccount / accountName）"
+        enabled:
+          type: "boolean"
+      required:
+        - "currency"
+        - "enabled"
+        - "instructions"
+        - "paymentWindowMs"
+        - "paymentWindowVersion"
+        - "platformMerchantNo"
+        - "profileNo"
+        - "profileVersion"
+        - "receivingAccountKey"
+      additionalProperties: false
+      description: "管理查询包含停用档案；报价仍只使用可用档案。"
     MallOfflineCollectionTerms:
       type: "object"
       properties:
@@ -35518,6 +35682,72 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/market-phone-policies":
+    get:
+      operationId: "marketPhonePolicies"
+      summary: "marketPhonePolicies"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MarketPhonePolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/market-phone-policies/{market}":
+    post:
+      operationId: "saveMarketPhonePolicy"
+      summary: "saveMarketPhonePolicy"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MarketPhonePolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "market"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/app-versions":
     get:
       operationId: "listAppVersions"
@@ -35856,6 +36086,65 @@ paths:
           required: true
           schema:
             type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/store-industries":
+    get:
+      operationId: "listStoreIndustries"
+      summary: "门店行业配置全量，含停用项"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/StoreIndustry"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "saveStoreIndustry"
+      summary: "expectedVersion=null 新建"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StoreIndustry"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody:
         required: true
         content:

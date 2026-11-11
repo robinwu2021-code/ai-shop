@@ -1,5 +1,7 @@
+import { marketPhonePolicies } from "@/lib/mock/db/system";
 // 覆盖范围：系统配置（P-17.1）。
 import * as db from "@/lib/mock/db";
+import { mall } from "@/lib/mock/db/commerce";
 import { C_END_THEMES } from "@/lib/stores/theme";
 import { BASE_CURRENCY } from "@/lib/types";
 import type { SystemApi } from "../contracts/system";
@@ -33,6 +35,32 @@ function normIdentity(type: string, value: string): string | null {
 }
 
 export const systemMock: SystemApi = {
+  marketPhonePolicies: async () => wait(structuredClone(marketPhonePolicies)),
+  saveMarketPhonePolicy: async (market, v) => {
+    const row=marketPhonePolicies.find((x)=>x.market===market);
+    if (!row) return notFound("市场", "Market", market);
+    if(v.smsVerificationEnabled && !row.smsChannelReady) return fail("该地区短信通道尚未开放", "SMS verification is not available in this region");
+    Object.assign(row,{recordOnly:v.recordOnly,smsVerificationEnabled:v.smsVerificationEnabled});
+    return wait(structuredClone(row));
+  },
+  listStoreIndustries: async () => wait(db.storeIndustries.map((r) => ({ ...r }))),
+  saveStoreIndustry: async (v) => {
+    const sub = v.subIndustryCode || "";
+    const parent = db.storeIndustries.find((r) => r.industryCode.toLowerCase() === v.industryCode.toLowerCase() && !r.subIndustryCode);
+    const industry = parent?.industryCode ?? v.industryCode;
+    const row = db.storeIndustries.find((r) => r.industryCode.toLowerCase() === industry.toLowerCase() && r.subIndustryCode.toLowerCase() === sub.toLowerCase());
+    if ((row && v.expectedVersion !== row.version) || (!row && v.expectedVersion !== null)) fail("配置版本冲突，请刷新后再编辑", "Version conflict — refresh before editing");
+    if (sub && !parent) fail("父行业不存在", "Parent industry not found");
+    if (!/^[A-Za-z0-9_.:-]{1,32}$/.test(v.industryCode) || !/^[A-Za-z0-9_.:-]{0,48}$/.test(sub)
+        || !v.businessTypeCode || !v.nameZh.trim() || v.nameZh.length > 32 || !v.nameTw.trim() || v.nameTw.length > 32
+        || (v.nameEn?.length ?? 0) > 64 || !v.reason.trim() || !Number.isInteger(v.sort) || v.sort < 0) fail("请检查行业资料", "Check industry fields");
+    if (!mall.s.types[v.businessTypeCode]) fail("经营类型不存在", "Business type not found");
+    const { expectedVersion, reason: _reason, ...fields } = v;
+    const next = { ...fields, industryCode: row?.industryCode ?? industry, subIndustryCode: row?.subIndustryCode ?? sub, version: expectedVersion === null ? 0 : expectedVersion + 1 };
+    if (row) Object.assign(row, next); else db.storeIndustries.push(next);
+    return wait({ ...next });
+  },
+
   // ── App 版本策略 ── 与后端同一组护栏（版本前缀、min ≤ latest、两家商店、zh-Hant 必填、revision）
   listAppVersions: async () => wait(db.appVersions.map((r) => ({ ...r, notes: { ...r.notes } }))),
 

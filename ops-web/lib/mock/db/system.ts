@@ -12,6 +12,11 @@ export const appearance: AppearanceConfig = {
   updatedBy: "admin",
 };
 
+export const storeIndustries: import("@/lib/types").StoreIndustry[] = [
+  { industryCode: "RETAIL", subIndustryCode: "", businessTypeCode: "RETAIL", nameZh: "零售", nameTw: "零售", nameEn: "Retail", sort: 10, enabled: true, version: 0 },
+  { industryCode: "RETAIL", subIndustryCode: "RETAIL_CVS", businessTypeCode: "RETAIL", nameZh: "便利店", nameTw: "便利商店", nameEn: "Convenience", sort: 10, enabled: true, version: 0 },
+];
+
 export const markets: MarketConfig[] = [
   { code: "CN", name: "中国", currency: "CNY", timezone: "Asia/Shanghai", rate: 1, enabled: true },
   { code: "SG", name: "新加坡", currency: "SGD", timezone: "Asia/Singapore", rate: 5.32, enabled: true },
@@ -97,4 +102,9 @@ export const appVersions: AppVersionPolicy[] = [
     updatedBy: "admin", updatedAt: Date.parse("2026-11-08T09:00:00Z"), revision: 1 },
   { appCode: "MERCHANT", platform: "IOS", latest: "", minSupported: "", notes: {}, storeUrl: null,
     updatedBy: null, updatedAt: null, revision: 0 },
+];
+
+export const marketPhonePolicies: import("@/lib/types").MarketPhonePolicy[] = [
+  { market: "CN", callingPrefix: "+86", recordOnly: false, smsVerificationEnabled: true, smsChannelReady: true, marketEnabled: true },
+  { market: "TW", callingPrefix: "+886", recordOnly: true, smsVerificationEnabled: false, smsChannelReady: false, marketEnabled: true },
 ];

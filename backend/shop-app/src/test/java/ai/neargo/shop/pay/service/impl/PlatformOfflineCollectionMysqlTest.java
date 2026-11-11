@@ -11,6 +11,28 @@ import java.util.regex.Pattern;
 
 class PlatformOfflineCollectionMysqlTest {
     @Test
+    void disabledProfileRemainsManageableWithItsCurrentVersionButCannotBeUsedForNewQuotes() throws Exception {
+        try (var f = new Fixture()) {
+            var initial = f.profile(1, "TWD");
+            f.base.service.configureOffline(new PlatformCollectionService.OfflineProfile(
+                    "MAIN", "profile", 1, "platform-mch", "TWD", "BANK", "12345", "Platform", "w1", 86400000,
+                    false, "ops", "pause"));
+            var disabled = f.base.service.offlineProfile("MAIN", "profile", "TWD").orElseThrow();
+            assertFalse(disabled.enabled());
+            assertEquals(2, disabled.instructions().version());
+            assertTrue(f.base.service.offlineInstructions("MAIN", "profile", "TWD").isEmpty());
+            assertTrue(f.base.service.offlineProfile("OTHER", "profile", "TWD").isEmpty());
+            assertTrue(f.base.service.offlineProfile("MAIN", "profile", "CNY").isEmpty());
+            f.base.service.configureOffline(new PlatformCollectionService.OfflineProfile(
+                    "MAIN", "profile", disabled.instructions().version(), "platform-mch", "TWD", "BANK", "12345", "Platform", "w1", 86400000,
+                    true, "ops", "resume"));
+            assertEquals(3, f.base.service.offlineInstructions("MAIN", "profile", "TWD").orElseThrow().version());
+            assertEquals(1, initial.version());
+            assertTrue(f.base.service.offlineProfile("MAIN", "profile", "TWD").orElseThrow().enabled());
+        }
+    }
+
+    @Test
     void offlineEntryPointsRejectMissingInputWithoutWritingMoney() throws Exception {
         try(var f=new PlatformCollectionMysqlTest.Fixture()) {
             assertThrows(IllegalArgumentException.class,()->f.service.configureOffline(null));

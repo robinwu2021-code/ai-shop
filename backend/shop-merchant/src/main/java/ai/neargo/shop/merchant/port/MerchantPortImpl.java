@@ -1213,15 +1213,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         }
         return DataScopeContext.executeWithoutScope(() -> industryMapper.selectList(
                         Wrappers.<ai.neargo.shop.merchant.entity.SysStoreIndustry>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.SysStoreIndustry::getEnabled, 1)
-                                .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getIndustryCode)
+                                        .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getIndustryCode)
                                 .orderByAsc(ai.neargo.shop.merchant.entity.SysStoreIndustry::getSort)))
                 .stream()
                 .map(r -> new IndustryRow(r.getIndustryCode(),
                         r.getSubIndustryCode() == null || r.getSubIndustryCode().isEmpty() ? null
                                 : r.getSubIndustryCode(),
                         r.getBusinessTypeCode(), r.getNameZh(), r.getNameTw(), r.getNameEn(),
-                        r.getSort() == null ? 0 : r.getSort()))
+                        r.getSort() == null ? 0 : r.getSort(), Integer.valueOf(1).equals(r.getEnabled())))
                 .toList();
     }
 

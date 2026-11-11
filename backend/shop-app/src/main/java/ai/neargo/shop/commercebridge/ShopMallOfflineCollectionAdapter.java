@@ -103,6 +103,12 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
     }
 
     @Override
+    public Optional<ai.neargo.commerce.api.offline.OfflineCollectionProfile> profile(String tenant, String profile, String currency) {
+        return collection.offlineProfile(tenant, profile, currency)
+                .map(p -> new ai.neargo.commerce.api.offline.OfflineCollectionProfile(terms(p.instructions()), p.enabled()));
+    }
+
+    @Override
     public ManualResult confirm(ManualPayment c) {
         if (c == null || c.actualAmount() == null || c.actualPaidAt() == null || c.confirmedAt() == null)
             throw new IllegalArgumentException("OFFLINE_PROOF_REQUIRED");

@@ -19,6 +19,9 @@ import java.util.Set;
 @TableName("mch_entity_apply")
 public class MchEntityApply extends BaseEntity {
 
+    /** Selected region for new operator submissions; historical applications remain nullable. */
+    private String marketCode;
+
     public static final String PENDING = "PENDING";
     /** 已受理，客服正在看。<b>不是流程完整性摆设</b> —— 商家提交后一直显示「待审核」
      *  不知道有没有人在看；客服接手时点一下，那边就有反馈。 */

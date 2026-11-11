@@ -83,6 +83,13 @@ class SourceManagementMysqlTest {
                     MallException.class,
                     () -> service.grant(MallOrderConcurrencyMysqlTest.BUYER, grant));
             var view = service.grant(f.c.ops, grant);
+            assertEquals("RETAIL", view.businessTypeCode());
+            assertEquals("CNY", view.currency());
+            assertNotNull(view.currentPlanVersionNo());
+            assertEquals(2000, view.serverNow());
+            var filtered = service.subscription(f.c.ops, new SubscriptionQuery(STORE, Optional.of("END:POS")));
+            assertEquals(view.currentPlanVersionNo(), filtered.currentPlanVersionNo());
+            assertEquals(view.currency(), filtered.currency());
             assertNotNull(view);
             assertEquals(view, service.grant(f.c.ops, grant));
             assertThrows(

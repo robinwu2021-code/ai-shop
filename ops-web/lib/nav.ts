@@ -554,7 +554,7 @@ export const NAV: NavSection[] = [
 
   // ── P-1 账号与权限 ──────────────────────────────────────────────────────
   {
-    key: "iam", label: "平台管理", icon: "UserCog", modules: ["iam", "system", "ops"], href: "/iam",
+    key: "iam", label: "平台管理", icon: "UserCog", modules: ["iam", "system", "ops", "commerce", "product"], href: "/iam",
     match: ["/iam", "/jobs", "/system", "/printing"],
     children: [
       // 数据域授权（1.1.3）是员工行上的动作，二次校验（1.1.5）是动作上的一层 ——
@@ -616,9 +616,10 @@ export const NAV: NavSection[] = [
       // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
       // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。
       // 用写码的话，有权查看配置但无权改的人在菜单里根本找不到这一页。
-      { href: "/system?tab=industry", label: "行业与小微白名单", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=authCode", label: "经营授权码", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=scope", label: "经营范围开关", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=storeIndustry", label: "门店行业与子行业", perm: "commerce:catalog:read", group: "经营范围", matrix: "P-17.1", ready: true, gated: "commerce.catalog.enabled" },
+      { href: "/system?tab=industry", label: "行业与小微白名单", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=authCode", label: "经营授权码", perm: "product:category:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=scope", label: "经营范围开关", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
 
     ],
   },

@@ -38,6 +38,23 @@ export interface MarketConfig {
   enabled: boolean;
 }
 
+export interface StoreIndustry {
+  industryCode: string;
+  subIndustryCode: string;
+  businessTypeCode: string;
+  nameZh: string;
+  nameTw: string;
+  nameEn?: string | null;
+  sort: number;
+  enabled: boolean;
+  version: number;
+}
+
+export interface SaveStoreIndustry extends Omit<StoreIndustry, "version"> {
+  expectedVersion: number | null;
+  reason: string;
+}
+
 export const BASE_CURRENCY = "CNY";
 
 /** 规则文案（P-17.1.4）。这三条是 C 端要展示给用户看的，不能为空。 */
@@ -383,3 +400,14 @@ export interface SaveAppVersionPolicy {
   storeUrl: string | null;
   expectedRevision: number;
 }
+
+/** Region-specific contact recording. SMS can open only after the deployment declares a ready channel. */
+export interface MarketPhonePolicy {
+  market: string;
+  callingPrefix: string | null;
+  recordOnly: boolean;
+  smsVerificationEnabled: boolean;
+  smsChannelReady: boolean;
+  marketEnabled: boolean;
+}
+export interface SaveMarketPhonePolicy { recordOnly: boolean; smsVerificationEnabled: boolean; reason: string }

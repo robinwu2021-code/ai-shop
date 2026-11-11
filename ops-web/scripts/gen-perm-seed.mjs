@@ -457,7 +457,7 @@ if (args.includes('--emit-point-codes')) {
     for (const l of s2.leaves) {
       // href 唯一 → 只按 href 做键，这样 section 合并/改名都不影响它
       const key = seen[l.href] > 1 ? `${fc}\t${l.href}` : l.href;
-      lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(derivePointCode(fc, l.href))},`);
+      lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(pointCodeOf(fc, l.href))},`);
     }
   }
   lines.push('};');

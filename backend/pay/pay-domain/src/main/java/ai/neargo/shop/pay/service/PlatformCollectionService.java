@@ -38,6 +38,9 @@ public interface PlatformCollectionService {
         /** Sorted for byte-stable JSON across instances (Map.copyOf order is salted per JVM). */
         public OfflineInstructions { instructions = Collections.unmodifiableMap(new TreeMap<>(instructions)); }
     }
+    record OfflineProfileView(OfflineInstructions instructions, boolean enabled) {}
+    /** Administrative read includes disabled profiles; collection eligibility uses offlineInstructions. */
+    default Optional<OfflineProfileView> offlineProfile(String tenant, String profile, String currency) { return Optional.empty(); }
     /** Precision is assigned by this trusted manual rail, never supplied by the HTTP caller. */
     record OfflineProof(Key key, String operatorNo, String actualReceiver, long actualMinor, String currency,
             long actualPaidAt, String bankReference, String evidenceReference, String mode, long confirmedAt) {}

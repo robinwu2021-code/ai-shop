@@ -263,11 +263,11 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
             throw fail(reason==null || reason.isBlank() || reason.length()>64?"OFFLINE_PROFILE_INVALID":reason);
         }
     }
-    public Optional<OfflineCollectionTerms> profile(ActorContext actor,String currency) {
+    public Optional<OfflineCollectionProfile> profile(ActorContext actor,String currency) {
         uow.requireOutsideTransaction();
         tenantOperator(actor,"commerce:collection:profile:read");
         if(profileNo==null || currency==null || !currency.matches("[A-Z]{3}"))throw fail("INVALID_REQUEST");
-        return collection.terms(actor.tenantNo(),profileNo,currency);
+        return collection.profile(actor.tenantNo(),profileNo,currency);
     }
 
     public RefundView confirmRefundPayout(ActorContext actor,RefundPayoutCommand c) {

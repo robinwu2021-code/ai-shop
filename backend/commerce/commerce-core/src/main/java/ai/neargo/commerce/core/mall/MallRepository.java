@@ -50,6 +50,12 @@ public interface MallRepository {
      */
     Optional<Order> byIdempotency(String tenant, String buyer, String key);
 
+    /** STORE purchase keys belong to the quoted operator, while the persisted buyer is the store. */
+    default Optional<Order> byIdempotency(Quote quote, String key) {
+        return byIdempotency(quote.store().tenantNo(), DefaultMallFacade.idempotencyOwner(quote), key);
+    }
+
+
     /**
      * Consumes only mutable status/audit metadata; quote pricing/valuation snapshots stay frozen.
      */
