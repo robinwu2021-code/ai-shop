@@ -60,7 +60,7 @@ class EntitlementBatchHttpFlowTest {
     private String id() { return UUID.randomUUID().toString(); }
     @Test void createFreezesRealAudienceAndDurableDispatchRecoversWithoutRepeatingIssuance() throws Exception {
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        String phone = "126" + String.format("%08d",
+        String phone = "186" + String.format("%08d",
                 Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         String buyer = TestLogin.consumer(mvc, json, otp, phone);
         String user = tokens.of(Realm.CONSUMER).get(buyer).orElseThrow().user().userNo();

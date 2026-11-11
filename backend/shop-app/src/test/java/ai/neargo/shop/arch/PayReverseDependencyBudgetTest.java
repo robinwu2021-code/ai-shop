@@ -57,23 +57,40 @@ class PayReverseDependencyBudgetTest {
         return m;
     }
 
+    private record PaySource(String code, java.util.Set<String> capabilities) { }
+    private static java.util.List<PaySource> paySources;
+
+    /** Parse each production source once; the guard still scans standalone pay-svc sources, not app classpath. */
+    private static java.util.List<PaySource> paySources() throws IOException {
+        if (paySources != null) return paySources;
+        Map<String, java.util.Set<String>> values = new LinkedHashMap<>();
+        try (var files = Files.walk(SPI)) {
+            for (var file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                values.putAll(PayReverseDependencySourceAnalysis.nestedValueTypes(Files.readString(file)));
+            }
+        }
+        var sources = new java.util.ArrayList<PaySource>();
+        try (var files = Files.walk(PAY_ROOT)) {
+            for (var file : files.filter(p -> p.toString().endsWith(".java"))
+                    .filter(p -> p.toString().contains("/src/main/java/"))
+                    .filter(p -> !p.toString().contains("/target/")).toList()) {
+                sources.add(new PaySource(codeOf(file),
+                        PayReverseDependencySourceAnalysis.capabilities(Files.readString(file), values)));
+            }
+        }
+        return paySources = java.util.List.copyOf(sources);
+    }
+
     private static Map<String, Integer> actual(Map<String, Integer> ports) throws IOException {
         Map<String, Integer> counts = new LinkedHashMap<>();
         ports.keySet().forEach(p -> counts.put(p, 0));
-        try (Stream<Path> files = Files.walk(PAY_ROOT)) {
-            for (Path f : files.filter(p -> p.toString().endsWith(".java"))
-                    .filter(p -> !p.toString().contains("/target/"))
-                    .filter(p -> !p.toString().contains("/src/test/"))
-                    .toList()) {
-                String code = codeOf(f);
-                for (String port : counts.keySet()) {
-                    var m = Pattern.compile("\\b" + port + "\\b").matcher(code);
-                    int n = 0;
-                    while (m.find()) {
-                        n++;
-                    }
-                    counts.merge(port, n, Integer::sum);
-                }
+        for (var source : paySources()) {
+            for (String port : counts.keySet()) {
+                if (!source.capabilities().contains(port)) continue;
+                var matches = Pattern.compile("\\b" + port + "\\b").matcher(source.code());
+                int count = 0;
+                while (matches.find()) count++;
+                counts.merge(port, count, Integer::sum);
             }
         }
         return counts;
@@ -199,6 +216,40 @@ class PayReverseDependencyBudgetTest {
             }
         });
         return referenced;
+    }
+
+    @Test
+    void nestedValueRecordsDoNotInventReverseCapabilitiesButRootUsageStillCounts() throws IOException {
+        var values = PayReverseDependencySourceAnalysis.nestedValueTypes("""
+                interface OwnerPort {
+                    record Request(String id) { }
+                    record Reply(boolean valid) { }
+                    interface NestedCapability { void mutate(); }
+                    Reply execute(Request request);
+                }
+                """);
+        assertThat(values.get("OwnerPort")).containsExactlyInAnyOrder("Request", "Reply");
+        assertThat(PayReverseDependencySourceAnalysis.capabilities("""
+                import domain.OwnerPort.Request;
+                class Values {
+                    domain.OwnerPort.Reply reply;
+                    Request request;
+                    Class<?> type = domain.OwnerPort.Request.class;
+                    String text = "OwnerPort.class";
+                    // OwnerPort capability;
+                }
+                """, values)).isEmpty();
+        for (String source : java.util.List.of(
+                "class Consumer { OwnerPort owner; }",
+                "class Consumer { Consumer(domain.OwnerPort owner) { } }",
+                "class Consumer { Class<?> port = domain.OwnerPort.class; }",
+                "class Consumer { Object value = OwnerPort.CONSTANT; }",
+                "class Consumer { void call() { OwnerPort.execute(null); } }",
+                "import static domain.OwnerPort.CONSTANT; class Consumer { Object value = CONSTANT; }",
+                "class Consumer { OwnerPort.NestedCapability capability; }")) {
+            assertThat(PayReverseDependencySourceAnalysis.capabilities(source, values))
+                    .as(source).containsExactly("OwnerPort");
+        }
     }
 
     @Test

@@ -31,6 +31,7 @@ import tools.jackson.databind.ObjectMapper;
             "commerce.access.active-key-id=test",
             "commerce.access.keys.test=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             "spring.autoconfigure.exclude=ai.neargo.commerce.starter.CommercePersistenceAutoConfiguration,"
+                + "ai.neargo.commerce.starter.CommerceStoreRelinkAutoConfiguration,"
                 + "ai.neargo.common.security.SecurityAutoConfiguration,ai.neargo.common.security.SessionStoreAutoConfiguration,"
                 + "ai.neargo.common.data.DataAutoConfiguration",
             "spring.datasource.url=jdbc:h2:mem:chain_admission;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
@@ -39,6 +40,7 @@ import tools.jackson.databind.ObjectMapper;
 class ChainManagementAdmissionFlowTest {
 
     @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
+    // Native store relinking requires the real migration owner and is outside this H2 UOW fixture.
     static class TestPersistence {
         @org.springframework.context.annotation.Bean
         ai.neargo.commerce.core.spi.CommerceUnitOfWork uow(

@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       没有这一条，投递器重启一次就能把正常用户送进黑名单</li>
  * </ol>
  *
- * <p>手机号段 {@code 126005xxxxx}（商户）/ {@code 130005xxxxx}（买家），尾号 1xxxx 段归本类。
+ * <p>手机号段 {@code 186005xxxxx}（商户）/ {@code 130005xxxxx}（买家），尾号 1xxxx 段归本类。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -88,7 +88,7 @@ class OpsRiskFlowTest {
     @DisplayName("★ 真实下单命中刷单阈值 → 裁决 → 拉黑 → 申诉解禁：每一步都对被拉的人生效")
     void fakeOrderToBlacklistJourney() throws Exception {
         String ops = opsLogin();
-        String biz = merchant("12600510001", "风控·刷单识别店");
+        String biz = merchant("18600510001", "风控·刷单识别店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
 

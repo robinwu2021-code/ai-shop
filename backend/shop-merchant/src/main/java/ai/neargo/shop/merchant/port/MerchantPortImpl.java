@@ -26,11 +26,16 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.reach.ConsumerProfile;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 
 import java.util.Objects;
 import java.util.Optional;
+import javax.sql.DataSource;
 
 /**
  * 商家域对外的两个 Port：查询（{@link MerchantQueryPort}）与开通（{@link MerchantAdminPort}）。
@@ -104,6 +109,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     /** 可见范围判定的唯一入口（ADR-034）。正向命中走索引点查、反向展开走内存，同一条 ReachRule.decide */
     private final ai.neargo.shop.merchant.reach.ReachMatcher reachMatcher;
     private final ai.neargo.shop.geo.ReachGeoProps geoProps;
+    /** Native fixtures default to MySQL; Spring selects the actual primary database's current-read lock. */
+    private String defaultStoreCurrentLock = " FOR SHARE";
 
 
     public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
@@ -162,6 +169,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.merchantPaymentMapper = merchantPaymentMapper;
         this.merchantMapper = merchantMapper;
         this.merchantStoreService = merchantStoreService;
+    }
+
+    @Autowired
+    public void setDefaultStoreReadDataSource(@Qualifier("dataSource") DataSource dataSource) {
+        defaultStoreCurrentLock = new JdbcTemplate(dataSource).execute((ConnectionCallback<String>) connection ->
+                "H2".equals(connection.getMetaData().getDatabaseProductName()) ? " FOR UPDATE" : " FOR SHARE");
     }
 
     @Override
@@ -1618,7 +1631,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
-                        .last(current ? "limit 1 for share" : "limit 1")));
+                        .last(current ? "limit 1" + defaultStoreCurrentLock : "limit 1")));
     }
 
     @Override

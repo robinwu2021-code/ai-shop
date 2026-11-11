@@ -12,15 +12,19 @@ import ai.neargo.commerce.persistence.*;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.member.dto.MemberVOs.MemberStatsVO;
 import ai.neargo.shop.member.service.MemberService;
+import ai.neargo.shop.member.service.MemberAudienceService;
+import ai.neargo.shop.member.service.MemberSegmentService;
 import ai.neargo.shop.merchant.dto.MerchantAccountVO;
 import ai.neargo.shop.merchant.service.*;
 import ai.neargo.shop.product.service.MerchantGoodsService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.web.servlet.*;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
@@ -93,9 +97,8 @@ class CommerceMerchantScopeFlowTest {
             int rejection = enabled ? 403 : 503;
             assertAll(
                     () ->
-                            mvc.perform(pickup(bearer, "mixed-point"))
-                                    .andExpect(status().is(rejection)),
-                    () -> mvc.perform(stats).andExpect(status().is(rejection)),
+                            assertMemberDenied(mvc, pickup(bearer, "mixed-point"), enabled),
+                    () -> assertMemberDenied(mvc, stats, enabled),
                     () -> mvc.perform(preview).andExpect(status().is(rejection)),
                     () ->
                             mvc.perform(
@@ -104,9 +107,14 @@ class CommerceMerchantScopeFlowTest {
                                                     .header("X-Store-No", "S"))
                                     .andExpect(status().is(rejection)),
                     () -> assertEquals(0, pickupCount(f)),
-                    () -> verifyNoInteractions(merchant, members, goods));
-            // Once the scope is resolved, changing/deactivating the member row cannot make the
-            // handler's already-selected entity safe for legacy fallthrough.
+                    () -> {
+                        // Registered pickup handlers perform their own target authorization.
+                        if (enabled) verify(merchant).storeNos("M");
+                        verifyNoMoreInteractions(merchant);
+                        verifyNoInteractions(members, goods);
+                    });
+            // Unregistered handlers still cannot fall through after their selected member row
+            // changes. Registered pickup handlers instead authorize their actual target above.
             var user = LoginUser.merchantByUser("U", "merchant");
             var scope = web.getBean(BizIdentityResolver.class).resolveStrict(user, "L");
             assertEquals("M", scope.merchantNo());
@@ -114,7 +122,7 @@ class CommerceMerchantScopeFlowTest {
             f.jdbc.update("UPDATE mch_store SET status='SUSPENDED' WHERE store_no='S'");
             var req =
                     new org.springframework.mock.web.MockHttpServletRequest(
-                            "POST", "/biz/pickup-points");
+                            "POST", "/biz/not-registered");
             req.addHeader("X-Store-No", "L");
             for (String model : List.of("STORE_V1", "UNKNOWN", "legacy")) {
                 f.jdbc.update("UPDATE mch_store SET commerce_model=? WHERE store_no='S'", model);
@@ -180,8 +188,8 @@ class CommerceMerchantScopeFlowTest {
                                     .andExpect(jsonPath("$.code").value(forbidden)),
                     () -> mvc.perform(preview).andExpect(status().isOk()),
                     () -> {
-                        // For unregistered handlers the other column can now reach a new-model
-                        // merchant, even though the authenticated USR is purely a legacy owner.
+                        // Registered entity reads use the signed subject namespace. A colliding
+                        // account in another namespace must neither expose OTHER nor block M.
                         f.jdbc.update(
                                 "UPDATE mch_store SET"
                                     + " commerce_model='STORE_V1',business_type_code='RETAIL' WHERE"
@@ -189,10 +197,13 @@ class CommerceMerchantScopeFlowTest {
                         int denial = enabled ? 403 : 503;
                         assertAll(
                                 () ->
-                                        mvc.perform(other)
-                                                .andExpect(status().is(denial))
-                                                .andExpect(jsonPath("$.entity").doesNotExist()),
-                                () -> mvc.perform(own).andExpect(status().is(denial)),
+                                        assertMemberDenied(mvc, other, enabled),
+                                () -> {
+                                    if (enabled) mvc.perform(own)
+                                            .andExpect(status().isOk())
+                                            .andExpect(jsonPath("$.entity.entityNo").value("M"));
+                                    else mvc.perform(own).andExpect(status().is(denial));
+                                },
                                 () -> mvc.perform(preview).andExpect(status().is(denial)),
                                 () ->
                                         mvc.perform(
@@ -221,6 +232,98 @@ class CommerceMerchantScopeFlowTest {
                                                 .andExpect(status().is(denial)));
                     });
         }
+    }
+
+    @Test
+    void mixedMemberQueriesRequireTargetCustomerPermissionAndCheckEntityAggregates()
+            throws Exception {
+        try (var f = new AccessMysqlFixture();
+                var web = new AnnotationConfigWebApplicationContext()) {
+            f.jdbc.update("UPDATE mch_store SET commerce_model='LEGACY'");
+            f.jdbc.update("INSERT INTO mch_store(entity_no,store_no,created_at,updated_at)"
+                    + " VALUES ('M','L',NOW(),NOW())");
+            f.jdbc.update("UPDATE mch_account SET is_owner=0 WHERE mch_account_no='MA'");
+            f.jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,created_at,updated_at)"
+                    + " VALUES ('MA','L','CUSTOMER_L',NOW(),NOW())");
+            f.jdbc.update("INSERT INTO mch_role(entity_no,role_code,name,perms,created_at,updated_at)"
+                    + " VALUES ('M','CUSTOMER_L','customer','[\"biz:customer\"]',NOW(),NOW()),"
+                    + " ('M','REGISTER_S','register','[\"biz:store\"]',NOW(),NOW())");
+            var mvc = CommerceAccessSecurityFlowTest.merchantMvc(f, web, true);
+            var token = bearer(f);
+            var members = web.getBean(MemberService.class);
+            when(members.stats("M", "S")).thenReturn(new MemberStatsVO(7, 0, 0, 0, 0, 0, 0, null));
+            when(members.stats("M", null)).thenReturn(new MemberStatsVO(9, 0, 0, 0, 0, 0, 0, null));
+            // Whole-LEGACY entity queries retain their original aggregate and store filters.
+            mvc.perform(memberStats(token, "S")).andExpect(jsonPath("$.newCount").value(7));
+            mvc.perform(memberStats(token, null)).andExpect(jsonPath("$.newCount").value(9));
+            clearInvocations(members);
+            f.jdbc.update("UPDATE mch_store SET commerce_model='STORE_V1' WHERE store_no='S'");
+            assertMemberDenied(mvc, memberStats(token, "S"), true);
+            assertMemberDenied(mvc, memberStats(token, null), true);
+            assertMemberDenied(mvc, memberRead(token, "/biz/members").param("storeNo", "S"), true);
+            assertMemberDenied(mvc, memberRead(token, "/biz/members"), true);
+            // Body query entry points normalize storeNo to scopeStoreNo; authorize that target.
+            for (String path : List.of("/biz/members/tags/batch", "/biz/member-segments",
+                    "/biz/member-segments/preview")) {
+                for (String scope : List.of("\"S\"", "null")) {
+                    assertMemberDenied(mvc, post(path).header("Authorization", token)
+                            .header("X-Store-No", "L").contentType("application/json")
+                            .content("{\"name\":\"segment\",\"tagNo\":\"T\",\"scopeStoreNo\":" + scope
+                                    + ",\"rule\":{\"storeNo\":\"L\"}}"), true);
+                }
+            }
+            verifyNoInteractions(members, web.getBean(MemberAudienceService.class),
+                    web.getBean(MemberSegmentService.class));
+            // A real membership in S is insufficient when only L grants CUSTOMER.
+            f.jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,created_at,updated_at)"
+                    + " VALUES ('MA','S','REGISTER_S',NOW(),NOW())");
+            assertMemberDenied(mvc, memberStats(token, "S"), true);
+            assertMemberDenied(mvc, memberStats(token, null), true);
+            verifyNoInteractions(members);
+            f.jdbc.update("UPDATE mch_role SET perms='[\"biz:customer\"]' WHERE role_code='REGISTER_S'");
+            mvc.perform(memberStats(token, "S")).andExpect(jsonPath("$.newCount").value(7));
+            mvc.perform(memberStats(token, null)).andExpect(jsonPath("$.newCount").value(9));
+            // Owner access retains the entity aggregate even without a staff CUSTOMER grant in S.
+            f.jdbc.update("UPDATE mch_role SET perms='[]' WHERE role_code='REGISTER_S'");
+            f.jdbc.update("UPDATE mch_account SET is_owner=1 WHERE mch_account_no='MA'");
+            mvc.perform(memberStats(token, null)).andExpect(jsonPath("$.newCount").value(9));
+            clearInvocations(members);
+            // Neither a target outside this entity nor unrecognized model metadata proves LEGACY.
+            f.jdbc.update("INSERT INTO mch_entity(entity_no,name,created_at,updated_at)"
+                    + " VALUES ('OTHER','other',NOW(),NOW())");
+            f.jdbc.update("INSERT INTO mch_store(entity_no,store_no,commerce_model,created_at,updated_at)"
+                    + " VALUES ('OTHER','N','STORE_V1',NOW(),NOW())");
+            mvc.perform(memberStats(token, "N")).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.newCount").doesNotExist());
+            f.jdbc.update("UPDATE mch_store SET commerce_model='UNKNOWN' WHERE store_no='S'");
+            for (String target : Arrays.asList("S", null)) {
+                mvc.perform(memberStats(token, target)).andExpect(status().isServiceUnavailable())
+                        .andExpect(jsonPath("$.newCount").doesNotExist());
+            }
+            verifyNoInteractions(members);
+        }
+    }
+
+    private static MockHttpServletRequestBuilder memberRead(
+            String token, String path) {
+        return get(path).header("Authorization", token).header("X-Store-No", "L");
+    }
+
+    private static RequestBuilder memberStats(String token, String storeNo) {
+        var request = memberRead(token, "/biz/members/stats");
+        return storeNo == null ? request : request.param("storeNo", storeNo);
+    }
+
+    private static void assertMemberDenied(MockMvc mvc, RequestBuilder request, boolean enabled)
+            throws Exception {
+        var result = mvc.perform(request);
+        if (enabled) result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10403));
+        else result.andExpect(status().isServiceUnavailable());
+        result.andExpect(jsonPath("$.newCount").doesNotExist())
+                .andExpect(jsonPath("$.entity").doesNotExist())
+                .andExpect(jsonPath("$.items").doesNotExist())
+                .andExpect(jsonPath("$.status").doesNotExist());
     }
 
     private static int pickupCount(AccessMysqlFixture f) {

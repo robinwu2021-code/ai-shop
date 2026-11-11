@@ -2318,7 +2318,7 @@ BAPI012～016落在共用shop-merchant；美业继续引用人员/任职/岗位/
 | 原子变更证据 | 既有mch_schedule_change_log严格记录reason/actor/前后资源修订；ScheduleChanged复用平台发布器。无真实消费者归档仅显式开关；不新增表/独立流水/旧slot改写 |
 | 独立事实运输 | shop-base MerchantFactsInternalApi；平台portal/internal.InternalMerchantFactsController；beauty-channel的三Remote*Port及BeautyMerchantClientConfiguration，独立server导入；原Personnel/Resource/ScheduleWindowsPort是唯一权威 |
 | 凭证、范围与错误 | MerchantFactsControllerTest含真实GlobalExceptionHandler，三种拥有方歧义明确HTTP409；MerchantFactsTransportTest真实TCP；ScheduleControllerTest真实安全过滤器；ScheduleInputTest及有效期守卫消融 |
-| 实际构件部署 | scripts/verify-beauty-bm02-deployment.mjs复用BM01框架并扩展lib/beauty-bm02-runtime.mjs；外部测试驱动fixtures/BeautyMerchantFactsProbe.java以实际提取server类路径启动原应用，不新增生产探针入口或提供方替身 |
+| 实际构件部署 | scripts/verify-beauty-bm02-deployment.mjs复用BM01框架并扩展lib/beauty-bm02-runtime.mjs；外部测试驱动`backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/server/fixture/BeautyMerchantFactsProbe.java`纳入beauty-server测试编译，以实际提取server类路径启动原应用，不新增生产探针入口或提供方替身 |
 
 人员revision和资源revision不同：既有人员建档生成STAFF时资源初始revision=0，人员为1；周规则写入必须从资源目录/班表响应读取实际resourceRevision，不凭人员revision猜测。
 

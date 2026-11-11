@@ -4,10 +4,14 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.invbridge.port.DualWriteStockPort;
 import ai.neargo.shop.product.port.StockPortImpl;
+import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.spi.product.InvManagedPort;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ReservationMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +23,7 @@ class OriginalRestoreWiringTest {
                 .withPropertyValues("shop.inventory.stock-authority=DUAL")
                 .withUserConfiguration(OriginalMirrorRestore.class, DualWriteStockPort.class)
                 .withBean(StockPortImpl.class, () -> mock(StockPortImpl.class))
+                .withBean(ExecutionStockRetentionGuard.class, () -> mock(ExecutionStockRetentionGuard.class))
                 .withBean(ai.neargo.shop.product.service.OriginalStockRestoreService.class,
                         () -> mock(ai.neargo.shop.product.service.OriginalStockRestoreService.class))
                 .withBean(OutboxEventBus.class, () -> mock(OutboxEventBus.class))
@@ -41,6 +46,10 @@ class OriginalRestoreWiringTest {
     void enabledInventoryWiresDualRestorationWithTheOriginalAdapter() {
         runner().withPropertyValues("shop.inventory.enabled=true")
                 .withBean(OriginalInventoryRestoreAdapter.class, () -> mock(OriginalInventoryRestoreAdapter.class))
+                .withBean(ReservationMapper.class, () -> mock(ReservationMapper.class))
+                .withBean("invTransactionManager", PlatformTransactionManager.class,
+                        () -> mock(PlatformTransactionManager.class))
+                .withBean(AfterSaleMapper.class, () -> mock(AfterSaleMapper.class))
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(StockPort.class)).isInstanceOf(DualWriteStockPort.class);

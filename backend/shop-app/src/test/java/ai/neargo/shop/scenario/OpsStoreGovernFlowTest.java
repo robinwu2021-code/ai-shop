@@ -60,7 +60,7 @@ class OpsStoreGovernFlowTest {
     @Test
     @DisplayName("★ 门店档案：按主体列门店（含停用的）· 详情 · 经营数据")
     void storeDirectory() throws Exception {
-        String biz = merchant("12600270001", "门店档案·总店");
+        String biz = merchant("18600270001", "门店档案·总店");
         String merchantNo = merchantNoOf(biz);
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
         TestPlan.grantPro(planMapper, merchantNo);
@@ -145,7 +145,7 @@ class OpsStoreGovernFlowTest {
     @Test
     @DisplayName("★★ 门店按社区筛：命中的能筛出来；没人覆盖的社区必须是空列表，不是全平台")
     void storeSearchByCommunity() throws Exception {
-        String biz = merchant("12600270021", "社区筛测试·总店");
+        String biz = merchant("18600270021", "社区筛测试·总店");
         String merchantNo = merchantNoOf(biz);
         String ops = opsLogin();
 
@@ -190,7 +190,7 @@ class OpsStoreGovernFlowTest {
     @Test
     @DisplayName("★ 强制下架 = 撤销过审：C 端买不到、B 端看到原因、改后重新提审")
     void forceOffGoods() throws Exception {
-        String biz = merchant("12600270010", "强制下架店");
+        String biz = merchant("18600270010", "强制下架店");
         String goodsNo = listedGoods(biz, 10);
         String skuNo = firstSku(goodsNo);
         String ops = opsLogin();
@@ -238,7 +238,7 @@ class OpsStoreGovernFlowTest {
     @Test
     @DisplayName("★ 门店强制下线：C 端已停业、商家不能自救、解除后原样恢复")
     void storeOfflineAndRestore() throws Exception {
-        String biz = merchant("12600270020", "强制下线店");
+        String biz = merchant("18600270020", "强制下线店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 10);
         String skuNo = firstSku(goodsNo);
@@ -300,7 +300,7 @@ class OpsStoreGovernFlowTest {
     @Test
     @DisplayName("★ 解除只恢复平台压下去的 —— 处置期间商家自己下架的不跟着回架")
     void restoreDoesNotResurrectMerchantOwnChoices() throws Exception {
-        String biz = merchant("12600270030", "自主下架不被复活");
+        String biz = merchant("18600270030", "自主下架不被复活");
         String merchantNo = merchantNoOf(biz);
         String storeNo = defaultStoreNo(biz);
         String keepOff = listedGoods(biz, 5);
@@ -333,7 +333,7 @@ class OpsStoreGovernFlowTest {
     @Test
     @DisplayName("解除只对 SUSPENDED 有意义 —— 对正常门店 restore 被拒")
     void restoreRequiresSuspended() throws Exception {
-        String biz = merchant("12600270040", "无处置可解除");
+        String biz = merchant("18600270040", "无处置可解除");
         String storeNo = defaultStoreNo(biz);
         String body = mvc().perform(post("/ops/stores/" + storeNo + "/restore")
                         .header("Authorization", "Bearer " + opsLogin()))

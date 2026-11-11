@@ -113,7 +113,7 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("★ 支付成功 → 事件投递 → 用户收到交易消息")
     void payProducesTradeMessage() throws Exception {
-        String token = login("12700127001");
+        String token = login("18700127001");
         buyAndPay(token, "m8-pay");
 
         dispatcher.dispatchPending();
@@ -131,9 +131,9 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("★ 核销完成 → 用户收到「已取货」消息")
     void pickupProducesMessage() throws Exception {
-        String token = login("12700127002");
+        String token = login("18700127002");
         buyAndPay(token, "m8-pickup");
-        String biz = loginAsOwnerOf("M0001", "12700127003");
+        String biz = loginAsOwnerOf("M0001", "18700127003");
 
         // 先登记到货 —— 核销要求货已经在点上（NOT_ARRIVED），这也是店员真实走的两步
         mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + biz)
@@ -153,7 +153,7 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("★ 事件重投不产生重复消息（用户不该收到两条「支付成功」）")
     void redeliveryDoesNotDuplicateMessages() throws Exception {
-        String token = login("12700127004");
+        String token = login("18700127004");
         buyAndPay(token, "m8-dup");
 
         dispatcher.dispatchPending();
@@ -168,7 +168,7 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("投递失败的事件保留在待发送队列，不会被标记为已发送")
     void failedDeliveryStaysPending() throws Exception {
-        String token = login("12700127005");
+        String token = login("18700127005");
         String orderNo = buyAndPay(token, "m8-fail");
         var event = outbox.selectOne(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getAggregateId, orderNo)
@@ -213,7 +213,7 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("标记已读 / 全部已读")
     void markRead() throws Exception {
-        String token = login("12700127010");
+        String token = login("18700127010");
         buyAndPay(token, "m8-read");
         dispatcher.dispatchPending();
 
@@ -236,23 +236,23 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("消息按用户隔离（别人的通知看不到）")
     void messagesAreScopedToUser() throws Exception {
-        String a = login("12700127011");
+        String a = login("18700127011");
         buyAndPay(a, "m8-scope");
         dispatcher.dispatchPending();
 
-        String b = login("12700127012");
+        String b = login("18700127012");
         assertThat(messages(b)).isEmpty();
     }
 
     @Test
     @DisplayName("别人的消息标不了已读")
     void cannotReadOthersMessage() throws Exception {
-        String a = login("12700127013");
+        String a = login("18700127013");
         buyAndPay(a, "m8-others");
         dispatcher.dispatchPending();
         String messageNo = messages(a).get(0).get("messageNo").asString();
 
-        String b = login("12700127014");
+        String b = login("18700127014");
         mvc().perform(post("/mp/message/" + messageNo + "/read").header("Authorization", "Bearer " + b))
                 .andExpect(jsonPath("$.code").value(10404));
     }
@@ -260,7 +260,7 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("订阅消息授权：同意与**拒绝都要记**（不记会反复弹窗骚扰）")
     void subscribeRecordsBothAcceptAndReject() throws Exception {
-        String token = login("12700127015");
+        String token = login("18700127015");
         mvc().perform(get("/mp/stored-value/notification-capability")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -290,7 +290,7 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("提交工单 → 我的工单列表 → 详情")
     void ticketFlow() throws Exception {
-        String token = login("12700127020");
+        String token = login("18700127020");
         String body = mvc().perform(post("/mp/ticket").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"subject\":\"取货码用不了\",\"content\":\"扫码提示已核销\"}"))
@@ -308,14 +308,14 @@ class M8MessageFlowTest {
     @Test
     @DisplayName("别人的工单看不到（工单里有订单信息）")
     void cannotReadOthersTicket() throws Exception {
-        String a = login("12700127021");
+        String a = login("18700127021");
         String body = mvc().perform(post("/mp/ticket").header("Authorization", "Bearer " + a)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"subject\":\"问题\",\"content\":\"内容\"}"))
                 .andReturn().getResponse().getContentAsString();
         String ticketNo = json.readTree(body).get("data").get("ticketNo").asString();
 
-        String b = login("12700127022");
+        String b = login("18700127022");
         mvc().perform(get("/mp/ticket/" + ticketNo).header("Authorization", "Bearer " + b))
                 .andExpect(jsonPath("$.code").value(10404));
     }

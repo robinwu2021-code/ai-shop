@@ -35,6 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
+import javax.sql.DataSource;
 
 class CommerceStoreCreationFlowTest {
     @Test
@@ -96,6 +97,7 @@ class CommerceStoreCreationFlowTest {
             var ds =
                     new DriverManagerDataSource(
                             url.replace("/?", "/" + name + "?"), user, password);
+            context.registerBean("dataSource", DataSource.class, () -> ds);
             var jdbc = new JdbcTemplate(ds);
             var schema =
                     new ClassPathResource("schema-test.sql")

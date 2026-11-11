@@ -363,8 +363,10 @@ public class CouponServiceImpl implements CouponService {
         if (!isNew && c == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        if (!isNew) if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
-        sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
+        if (!isNew) {
+            if (c.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", c.getEntityNo());
+            sourceFence.requireWritable(c.getTenantNo(), SourceSystem.MKT_LEGACY, c.getCouponNo(), false);
+        }
         if (cmd.title() == null || cmd.title().isBlank()
                 || cmd.totalCount() == null || cmd.endAt() == null || cmd.startAt() == null
                 || cmd.endAt() <= cmd.startAt()) {

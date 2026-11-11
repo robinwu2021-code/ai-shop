@@ -71,9 +71,11 @@ class BizPayFlowTest {
                                 + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\",\"communityNos\":[\"CM001\"]}"))
                 .andReturn().getResponse().getContentAsString();
         String applyNo = json.readTree(body).get("data").get("applyNo").asString();
-        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+        var audit = mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
                 .header("Authorization", "Bearer " + TestLogin.admin(mvc(), json))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andReturn().getResponse();
+        assertThat(code(audit)).as("入驻审核应成功后再建立门店夹具").isZero();
         String token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
         String storeNo = null;
         for (JsonNode s : data(call(token, null, get("/biz/store/list")))) {

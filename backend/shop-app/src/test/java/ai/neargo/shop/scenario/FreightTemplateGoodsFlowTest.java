@@ -46,17 +46,17 @@ class FreightTemplateGoodsFlowTest {
     @DisplayName("★★★ 商品指定模板优先于门店；模板被归档后回落门店（默认 ¥8），不是 0 元")
     void goodsTemplateWinsAndArchivedFallsBack() throws Exception {
         String tpl = template("FT-GOODS-3", 300);
-        String biz = merchant("12600350010", "商品级模板店");
+        String biz = merchant("18600350010", "商品级模板店");
         String goodsNo = onSaleGoods(biz, "指定了运费模板的面粉");
         save(biz, goodsNo, "\"freightTemplateNo\":\"" + tpl + "\"");
 
-        assertThat(previewFreight("12600350011", goodsNo))
+        assertThat(previewFreight("18600350011", goodsNo))
                 .as("商品指定了首重 ¥3 的模板 —— 按门店（默认 ¥8）算就是没读到商品那一层")
                 .isEqualTo(300L);
 
         jdbc.update("update ful_freight_template set archived_at=? where template_no=?",
                 System.currentTimeMillis(), tpl);
-        assertThat(previewFreight("12600350012", goodsNo))
+        assertThat(previewFreight("18600350012", goodsNo))
                 .as("指定的模板归档了：回落门店模板（默认 ¥8），不能变成 0 元")
                 .isEqualTo(800L);
     }
@@ -65,7 +65,7 @@ class FreightTemplateGoodsFlowTest {
     @DisplayName("★★ B 端：能从平台模板里选、能清回「跟随门店」；不在用的模板号拒")
     void merchantSetsAndClears() throws Exception {
         String tpl = template("FT-GOODS-5", 500);
-        String biz = merchant("12600350020", "设模板店");
+        String biz = merchant("18600350020", "设模板店");
         String goodsNo = onSaleGoods(biz, "设模板的货");
 
         JsonNode list = data(mvc().perform(get("/biz/freight-template/list")

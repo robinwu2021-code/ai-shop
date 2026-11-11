@@ -61,7 +61,7 @@ class MerchantApplyOpsAlertFlowTest {
                 .eq(ai.neargo.shop.platform.entity.SysOpsStaff::getStatus, "ACTIVE")).size();
         assertThat(activeOps).as("种子里得有在用的运营账号，否则这条测的是空集").isGreaterThan(0);
 
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600160001");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "18600160001");
         String applyNo = submit(user, "意向通知测试店A", "13900000011", "CM-AL-A");
 
         List<MsgMessage> msgs = inboxOf(applyNo);
@@ -78,7 +78,7 @@ class MerchantApplyOpsAlertFlowTest {
                 .as("测试里本来就不该配 webhook；配了的话这条测的就不是「没配」那一半")
                 .isFalse();
 
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600160002");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "18600160002");
         String applyNo = submit(user, "意向通知测试店B", "13900000012", "CM-AL-B");
 
         assertThat(inboxOf(applyNo)).as("企微没配，站内这条不能跟着丢").isNotEmpty();
@@ -87,7 +87,7 @@ class MerchantApplyOpsAlertFlowTest {
     @Test
     @DisplayName("★★ 同一份意向不会在同一个人那里堆两条 —— dedupKey 是单号")
     void sameApplyDoesNotStackTwice() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600160003");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "18600160003");
         String applyNo = submit(user, "意向通知测试店C", "13900000013", "CM-AL-C");
 
         List<MsgMessage> msgs = inboxOf(applyNo);

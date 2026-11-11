@@ -66,7 +66,7 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 一个账号两张执照：带上另一家店的 X-Store-No，主体跟着换")
     void storeHeaderSwitchesEntity() throws Exception {
-        String phone = "12600170001";
+        String phone = "18600170001";
         String token = merchant(phone, "老王杂货铺");
         String firstEntity = merchantNoOf(token, null);
         String firstStore = defaultStoreNo(token);
@@ -96,10 +96,10 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 越权：拿别人家真实存在的门店号伪造请求头，只能回落到自己的主体")
     void foreignStoreHeaderCannotCrossEntities() throws Exception {
-        String mine = merchant("12600170010", "我的店");
+        String mine = merchant("18600170010", "我的店");
         String myEntity = merchantNoOf(mine, null);
 
-        String others = merchant("12600170011", "别人的店");
+        String others = merchant("18600170011", "别人的店");
         String othersStore = defaultStoreNo(others);
         String othersEntity = merchantNoOf(others, null);
         assertThat(othersEntity).isNotEqualTo(myEntity);
@@ -126,7 +126,7 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★ 门店号查无此店（端上缓存了个旧的）→ 静默回落默认主体，不报错")
     void unknownStoreHeaderFallsBackSilently() throws Exception {
-        String token = merchant("12600170020", "缓存了旧门店号的店");
+        String token = merchant("18600170020", "缓存了旧门店号的店");
         String entity = merchantNoOf(token, null);
 
         /*
@@ -142,7 +142,7 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 门店切换器一次给出两张证照下的店，且按证照分组")
     void myStoresSpansAllEntities() throws Exception {
-        String phone = "12600170030";
+        String phone = "18600170030";
         String token = merchant(phone, "分组·第一张");
         String firstEntity = merchantNoOf(token, null);
         String secondEntity = quickStart(token, "分组·第二张");
@@ -176,14 +176,14 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 店员的门店切换器只给他被授权的那几家，且他看不到证照管理")
     void staffSeesOnlyGrantedStores() throws Exception {
-        String boss = merchant("12600170040", "有两家店的老板");
+        String boss = merchant("18600170040", "有两家店的老板");
         String merchantNo = merchantNoOf(boss, null);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         String secondStore = createStore(boss, "只授权这一家");
         String defaultStore = defaultStoreNo(boss);
 
         // 招一个店员，只授权他进第二家店
-        String staffPhone = "12600170042";
+        String staffPhone = "18600170042";
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + boss)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -222,9 +222,9 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 越权：拿别人的证照号问详情，403 而不是 404 —— 它存在，只是不属于你")
     void entityDetailRefusesForeignEntities() throws Exception {
-        String mine = merchant("12600170050", "详情·我的");
+        String mine = merchant("18600170050", "详情·我的");
         String myEntity = merchantNoOf(mine, null);
-        String others = merchant("12600170051", "详情·别人的");
+        String others = merchant("18600170051", "详情·别人的");
         String othersEntity = merchantNoOf(others, null);
 
         assertThat(okData(mine, "/biz/entity/" + myEntity).get("entity").get("entityNo").asString())
@@ -248,7 +248,7 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 老板在证照管理页直接给另一张证照传执照 —— 不用先切到那张证照下的店")
     void entityNoParamTargetsAnotherOwnedEntity() throws Exception {
-        String phone = "12600170060";
+        String phone = "18600170060";
         String token = merchant(phone, "两张证照·第一张");
         String first = merchantNoOf(token, null);
         String second = quickStart(token, "两张证照·第二张");
@@ -279,9 +279,9 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 越权：传别人的 entityNo → 403，而不是静默落到自己的证照上")
     void entityNoParamRefusesForeignEntity() throws Exception {
-        String mine = merchant("12600170070", "参数·我的");
+        String mine = merchant("18600170070", "参数·我的");
         String myEntity = merchantNoOf(mine, null);
-        String others = merchant("12600170071", "参数·别人的");
+        String others = merchant("18600170071", "参数·别人的");
         String othersEntity = merchantNoOf(others, null);
 
         /*
@@ -309,9 +309,9 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 越权：带别人家资质的 qualNo 去「更新」→ NOT_FOUND，别人的证一个字都不能变")
     void qualNoOfAnotherEntityIsNotFound() throws Exception {
-        String others = merchant("12600170090", "资质·别人的");
+        String others = merchant("18600170090", "资质·别人的");
         String othersQual = saveQualAs(others, null, "别人的执照");
-        String mine = merchant("12600170091", "资质·我的");
+        String mine = merchant("18600170091", "资质·我的");
 
         String body = mvc().perform(post("/biz/qualifications/save").header("Authorization", "Bearer " + mine)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -328,7 +328,7 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 平台撤销的资质，商家重存不能把它「复活」成 VALID")
     void merchantResaveDoesNotResurrectRevokedQualification() throws Exception {
-        String mine = merchant("12600170092", "资质·被撤销");
+        String mine = merchant("18600170092", "资质·被撤销");
         String qualNo = saveQualAs(mine, null, "被撤销的执照");
         mvc().perform(post("/ops/qualifications/" + qualNo + "/revoke")
                         .header("Authorization", "Bearer " + opsLogin()))
@@ -361,7 +361,7 @@ class MultiEntityIdentityFlowTest {
     @Test
     @DisplayName("★★ 建店时挂到另一张证照下 —— 撞的是那张证照的额度，不是当前这张的")
     void createStoreCanTargetAnotherOwnedEntity() throws Exception {
-        String phone = "12600170080";
+        String phone = "18600170080";
         String token = merchant(phone, "建店·第一张");
         String first = merchantNoOf(token, null);
         String second = quickStart(token, "建店·第二张");

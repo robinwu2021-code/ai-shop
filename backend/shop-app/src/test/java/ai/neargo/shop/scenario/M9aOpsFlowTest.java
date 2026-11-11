@@ -54,7 +54,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ C 端 token 打 /ops/** 一律 401（池前缀不符，不用查库就能判）")
     void consumerTokenCannotAccessOps() throws Exception {
-        String consumerToken = login("12600126001");
+        String consumerToken = login("18600126001");
         mvc().perform(get("/ops/staffs").header("Authorization", "Bearer " + consumerToken))
                 .andExpect(status().isUnauthorized());
         mvc().perform(get("/ops/order").header("Authorization", "Bearer " + consumerToken))
@@ -164,7 +164,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 审核通过后商家在 C 端真的可见（不只是接口 200）")
     void approvedMerchantIsVisibleToBuyers() throws Exception {
-        String user = login("12600126031");
+        String user = login("18600126031");
         // 专属社区号：CM001 被十几个测试类共用，全量跑时它里面的商家早就超过一页
         String applyNo = applyMerchant(user, "李婶菜摊", "CM-M9A-VISIBLE");
         String bd = opsLogin("bd", "bd123");
@@ -188,7 +188,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("同一个人不能同时有两份进行中的申请")
     void duplicateApplyRejected() throws Exception {
-        String user = login("12600126032");
+        String user = login("18600126032");
         applyMerchant(user, "重复提交测试店");
 
         // 表单页重复点击是常态。真正兜底的是库上的唯一键，这里验的是它确实生效
@@ -204,7 +204,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 商家没填服务范围时，运营在通过时补上 —— 此前没有任何地方能填")
     void opsFillsServiceScopeAtAudit() throws Exception {
-        String user = login("12600126097");
+        String user = login("18600126097");
         String bd = opsLogin("bd", "bd123");
 
         // 商家申请时不填服务范围（ADR-009 允许留空）
@@ -239,7 +239,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("申请检索能翻历史 —— 「当初是谁批的」不该只能去查审计日志")
     void applySearchCoversHistory() throws Exception {
-        String user = login("12600126096");
+        String user = login("18600126096");
         String bd = opsLogin("bd", "bd123");
         String applyNo = applyMerchant(user, "历史检索测试店");
         approve(bd, applyNo);
@@ -258,7 +258,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 第二张执照不会覆盖第一个主体 —— 幂等按申请单，不按人")
     void secondLicenseCreatesSecondEntity() throws Exception {
-        String user = login("12600126099");
+        String user = login("18600126099");
         String bd = opsLogin("bd", "bd123");
 
         String first = applyMerchant(user, "老王粮油（个体户）");
@@ -290,7 +290,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("重复点「通过」仍然幂等 —— 不会建出第二个主体")
     void repeatedApproveIsIdempotent() throws Exception {
-        String user = login("12600126098");
+        String user = login("18600126098");
         String bd = opsLogin("bd", "bd123");
         String applyNo = applyMerchant(user, "重复通过测试店");
         approve(bd, applyNo);
@@ -324,7 +324,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("我的申请进度可查 —— 此前提交完就断了")
     void myApplyIsQueryable() throws Exception {
-        String user = login("12600126033");
+        String user = login("18600126033");
         applyMerchant(user, "进度查询测试店");
 
         mvc().perform(get("/mp/merchant/apply").header("Authorization", "Bearer " + user))
@@ -339,7 +339,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 入驻审核：通过后商家才 ACTIVE，才能上架与收款")
     void merchantApprovalActivatesMerchant() throws Exception {
-        String user = login("12600126010");
+        String user = login("18600126010");
         String applyNo = applyMerchant(user, "王姐水果店");
 
         String bd = opsLogin("bd", "bd123");
@@ -356,7 +356,7 @@ class M9aOpsFlowTest {
 
         // 审核通过 → 申请人获得商家身份（/biz 可用）
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126010");
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126010");
         mvc().perform(get("/biz/context").header("Authorization", "Bearer " + refreshed))
                 .andExpect(jsonPath("$.data.merchantNo").isNotEmpty());
     }
@@ -364,7 +364,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("驳回必须写理由（不写理由的驳回等于让对方猜）")
     void rejectRequiresReason() throws Exception {
-        String user = login("12600126011");
+        String user = login("18600126011");
         String applyNo = applyMerchant(user, "李哥杂货");
         String bd = opsLogin("bd", "bd123");
 
@@ -384,7 +384,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 高危操作留痕：审核动作写进审计日志，能追到人")
     void auditLogRecordsWho() throws Exception {
-        String user = login("12600126012");
+        String user = login("18600126012");
         String applyNo = applyMerchant(user, "赵姐粮油");
         String bd = opsLogin("bd", "bd123");
 
@@ -413,7 +413,7 @@ class M9aOpsFlowTest {
 
         // 先造一件真的待审商品：种子商品都是已过审的，不造的话队列恒为 0，
         // 这条用例会变成「0 == 0」——又是一条恒真的断言
-        String merchantToken = merchantWithGoods("12600126095", "待审队列测试店", "待审辣椒酱");
+        String merchantToken = merchantWithGoods("18600126095", "待审队列测试店", "待审辣椒酱");
         assertThat(merchantToken).isNotBlank();
 
         /*
@@ -494,7 +494,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("平台可检索全量订单（客服处理工单要用）")
     void opsCanSearchAllOrders() throws Exception {
-        String buyer = login("12600126020");
+        String buyer = login("18600126020");
         buyAndPay(buyer, "m9-order");
 
         String support = opsLogin("support", "support123");
@@ -518,7 +518,7 @@ class M9aOpsFlowTest {
     @DisplayName("★ B 端入驻闭环：未申请 → 提交 → 受理 → 驳回 → 补料重提 → 通过")
     void bizOnboardingFullLoop() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126040");
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126040");
         String bd = opsLogin("bd", "bd123");
 
         // ① 没申请过 —— 是 NONE，不是 404。让前端 catch 一个正常状态迟早出错
@@ -574,7 +574,7 @@ class M9aOpsFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
 
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126040");
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126040");
         mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + refreshed))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.merchantNo").isNotEmpty())
@@ -586,7 +586,7 @@ class M9aOpsFlowTest {
     @DisplayName("入驻接口对「还不是商家的人」必须开放 —— 否则被驳回的人永远看不到原因")
     void applicantWithoutMerchantIsNotForbidden() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126041");
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126041");
         // 同一个 token 打真正的经营接口应当 403，打入驻接口应当 200 —— 这正是差别所在
         mvc().perform(get("/biz/context").header("Authorization", "Bearer " + user))
                 .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
@@ -599,7 +599,7 @@ class M9aOpsFlowTest {
     @DisplayName("没申请过时草稿返回空，不是 404（「没申请过」是正常状态）")
     void draftIsEmptyNotFound() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126042");
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126042");
         mvc().perform(get("/biz/merchant/apply").header("Authorization", "Bearer " + user))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
@@ -611,14 +611,14 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ B 端登录一次拿到 token + 档案（分两次请求会先闪一屏错的）")
     void bizLoginReturnsProfileInOneShot() throws Exception {
-        login("12600126043");   // 先建号
+        login("18600126043");   // 先建号
         mvc().perform(post("/mp/user/otp/send")
                 .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"12600126043\"}"));
-        String code = otpStore.peek("12600126043").orElseThrow();
+                .content("{\"phone\":\"18600126043\"}"));
+        String code = otpStore.peek("18600126043").orElseThrow();
         String body = mvc().perform(post("/biz/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"12600126043\","
+                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"18600126043\","
                                 + "\"credential\":\"" + code + "\",\"agreed\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").isNotEmpty())
@@ -631,7 +631,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 店铺设置不能把「仅本社区」的覆盖清空（清空 = 对谁都不可见，且无报错）")
     void storeCannotClearCommunityCoverage() throws Exception {
-        String token = approvedMerchantToken("12600126044", "孙记粮油");
+        String token = approvedMerchantToken("18600126044", "孙记粮油");
 
         // 入驻时配了 CM001，读回来必须在 —— 否则下面那条断言等于没测
         mvc().perform(get("/biz/store").header("Authorization", "Bearer " + token))
@@ -656,7 +656,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("店铺资料存得下也读得回，地址同步到 C 端商家详情")
     void storeProfileRoundTrips() throws Exception {
-        String token = approvedMerchantToken("12600126045", "钱婶早点");
+        String token = approvedMerchantToken("18600126045", "钱婶早点");
 
         mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -670,7 +670,7 @@ class M9aOpsFlowTest {
                 .andExpect(jsonPath("$.data.featured[1]").value("G002"));
 
         // 从没保存过的店读到的是空表单而不是 404
-        String other = approvedMerchantToken("12600126046", "吴叔修车");
+        String other = approvedMerchantToken("18600126046", "吴叔修车");
         mvc().perform(get("/biz/store").header("Authorization", "Bearer " + other))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.announcement").value(""))
@@ -681,7 +681,7 @@ class M9aOpsFlowTest {
     @DisplayName("社区列表不依赖定位（商家选的是经营半径，不是他此刻站在哪儿）")
     void bizCommunitiesNeedNoLocation() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126047");
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126047");
         mvc().perform(get("/biz/communities").header("Authorization", "Bearer " + user))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)));
@@ -699,7 +699,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 线上业态不能选小微，提交即被拒（不是等到进件才撞墙）")
     void onlineIndustryCannotUseMicroSubject() throws Exception {
-        String user = login("12600126050");
+        String user = login("18600126050");
         mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(applyBodyWith("直播小店", "PERSONAL", "ONLINE")))
@@ -716,7 +716,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("白名单内的行业可以选小微")
     void whitelistedIndustryAllowsMicro() throws Exception {
-        String user = login("12600126051");
+        String user = login("18600126051");
         mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(applyBodyWith("楼下小卖部", "PERSONAL", "RETAIL")))
@@ -726,7 +726,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 行业与店铺简介要落到商家主体 —— 只存在申请单上等于填了就丢")
     void industryAndDescriptionReachMerchant() throws Exception {
-        String user = login("12600126052");
+        String user = login("18600126052");
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(applyBodyWith("陈姐家常菜", "INDIVIDUAL_BIZ", "CATERING")))
@@ -741,7 +741,7 @@ class M9aOpsFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
 
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126052");
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126052");
         mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + refreshed))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 // ★ 这两项此前通过审核就消失了：行业是进件主体的判据，简介是 C 端门店页的内容
@@ -802,7 +802,7 @@ class M9aOpsFlowTest {
     void legacySubjectMapsToCanonical() throws Exception {
         // 存量数据里存的是 PERSONAL，而行业白名单这条规则是按「小微」定义的。
         // 翻译错一次，商家就是进件被拒 —— 所以这条链路要有断言
-        String user = login("12600126053");
+        String user = login("18600126053");
         mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(applyBodyWith("线上小店", "PERSONAL", "ONLINE")))
@@ -821,7 +821,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 店铺设置改地址后，C 端商家详情立刻是新地址（不再有第二份数据）")
     void storeAddressHasSingleSource() throws Exception {
-        String token = approvedMerchantToken("12600126060", "地址一致性店");
+        String token = approvedMerchantToken("18600126060", "地址一致性店");
         String merchantNo = json.readTree(mvc().perform(get("/biz/merchant/profile")
                         .header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString())
@@ -853,7 +853,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ 员工用自己的手机号登录，不需要 C 端账号")
     void staffLogsInWithoutConsumerAccount() throws Exception {
-        String merchantNo = approvedMerchantNo("12600126060", "员工测试店");
+        String merchantNo = approvedMerchantNo("18600126060", "员工测试店");
 
         // 一个**从没注册过 C 端账号**的手机号，直接建成员工
         String staffPhone = "13100999001";
@@ -1034,7 +1034,7 @@ class M9aOpsFlowTest {
          * B 端 SELF 维度会 fail-closed，实测撤掉 executeWithoutScope 照样绿 ——
          * DataScopeRegistration 登记的 114 张表里没有 usr_ 族。那个 bypass 已删。
          */
-        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126301");
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126301");
         String bd = opsLogin("bd", "bd123");
         mvc().perform(post("/biz/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1046,7 +1046,7 @@ class M9aOpsFlowTest {
                         .content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        String owner = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126301");
+        String owner = TestLogin.merchantOwner(mvc(), json, otpStore, "18600126301");
         String body = mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + owner))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andReturn().getResponse().getContentAsString();
@@ -1093,7 +1093,7 @@ class M9aOpsFlowTest {
          * 它要是没落库，症状是：官网宣传了奖励、商家也填了推荐人，
          * 而运营在审核页上看不到任何人 —— 奖发不出去，且没有任何地方会报错。
          */
-        String user = login("12600126211");
+        String user = login("18600126211");
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"推荐人测试店\",\"subject\":\"PERSONAL\","
@@ -1120,7 +1120,7 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★★ 不填推荐人是常态 —— 绝大多数申请没有，那一列留 null 不是缺陷")
     void applyWithoutReferrerIsFine() throws Exception {
-        String user = login("12600126212");
+        String user = login("18600126212");
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"无推荐人测试店\",\"subject\":\"PERSONAL\","

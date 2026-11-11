@@ -1,6 +1,7 @@
 package ai.neargo.shop.portal.internal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -13,11 +14,13 @@ import ai.neargo.shop.spi.trade.ExecutionEvidenceLookup;
 import ai.neargo.shop.spi.trade.ExecutionOriginalEvidence;
 import ai.neargo.shop.spi.trade.ExecutionPreparationOriginalProtocol.EvidenceBinding;
 import ai.neargo.shop.spi.trade.ExecutionPreparationOriginalProtocol.EvidenceCall;
+import ai.neargo.shop.spi.trade.ExecutionPreparationOriginalProtocol.EvidenceReply;
 import ai.neargo.shop.spi.trade.ExecutionReference;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionBinding;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionLookup;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionScope;
 import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
+import ai.neargo.shop.svc.ExecutionPreparationOriginalBindings;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -149,13 +152,17 @@ class InternalServiceExecutionPreparationControllerTest {
                                             "SERVICE_EXECUTION_ORIGINAL_EVIDENCE_V1",
                                             ref,
                                             ExecutionOriginalEvidence.EvidenceOutcome.UNKNOWN,
-                                            "UNKNOWN",
+                                            "SOURCE_UNKNOWN",
                                             null,
                                             Instant.EPOCH,
                                             null)
                                     .signed();
                         });
-        assertEquals(200, controller.queryOriginalEvidence(call, "secret").getStatusCode().value());
+        var response = controller.queryOriginalEvidence(call, "secret");
+        assertEquals(200, response.getStatusCode().value());
+        var reply = assertInstanceOf(EvidenceReply.class, response.getBody());
+        new ExecutionPreparationOriginalBindings("secret").require(call, reply);
+        assertEquals("SOURCE_UNKNOWN", reply.result().reason());
         assertSame(before, SecurityContextHolder.getContext());
     }
 }

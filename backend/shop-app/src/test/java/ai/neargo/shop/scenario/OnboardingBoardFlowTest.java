@@ -48,7 +48,7 @@ class OnboardingBoardFlowTest {
     @DisplayName("★ 激活后进件占位（WECHAT/APPLYING）出现在进件看板，且按状态筛得动")
     void onboardingPlaceholderShowsOnBoard() throws Exception {
         String name = "进件看板测试店A";
-        approveMerchant("12600127001", name, "CM-ONB-A");
+        approveMerchant("18600127001", name, "CM-ONB-A");
         String admin = opsLogin("admin", "admin123");
 
         // 看板是分页包（裸数组会被前端当成空页）
@@ -93,7 +93,7 @@ class OnboardingBoardFlowTest {
     @DisplayName("★ 商家列表 status 支持逗号分隔多态 —— 单值 eq 会把 CSV 静默匹配成零行")
     void merchantListAcceptsCsvStatus() throws Exception {
         String name = "CSV状态筛测试店";
-        approveMerchant("12600127002", name, "CM-ONB-CSV");
+        approveMerchant("18600127002", name, "CM-ONB-CSV");
         String admin = opsLogin("admin", "admin123");
 
         // 修复前：status=ACTIVE,SUSPENDED 会 eq("ACTIVE,SUSPENDED") → 空列表，运营以为没商家
@@ -122,7 +122,7 @@ class OnboardingBoardFlowTest {
     @DisplayName("★ 归档后默认列表看不到，showArchived=true 才翻得到，且带得回归档时间")
     void archivedMerchantLeavesDefaultList() throws Exception {
         String name = "归档测试店";
-        approveMerchant("12600127003", name, "CM-ONB-ARCH");
+        approveMerchant("18600127003", name, "CM-ONB-ARCH");
         String admin = opsLogin("admin", "admin123");
         String merchantNo = merchantNoOf(admin, name);
 

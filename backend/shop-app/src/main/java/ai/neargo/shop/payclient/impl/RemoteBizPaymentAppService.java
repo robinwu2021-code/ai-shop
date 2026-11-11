@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentP
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
 import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
+import ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -89,8 +90,10 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
     }
 
     @Override
-    public ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts receipts(String storeNo, String bizNo) {
-        return unwrap(() -> pay.receipts(storeNo, operator(), bizNo));
+    public BizReceipts receipts(String storeNo, String bizNo) {
+        BizReceipts result = unwrap(() -> pay.receipts(storeNo, operator(), bizNo));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo + "/" + bizNo, "业务单收款记录");
+        return result;
     }
 
     @Override
@@ -136,7 +139,9 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
 
     @Override
     public PaymentPage paymentOrders(String storeNo, PaymentQuery query) {
-        return unwrap(() -> pay.paymentOrders(storeNo, new PaymentSearchReq(operator(), query)));
+        PaymentPage result = unwrap(() -> pay.paymentOrders(storeNo, new PaymentSearchReq(operator(), query)));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款列表");
+        return result;
     }
 
     @Override
@@ -148,12 +153,16 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
 
     @Override
     public Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix) {
-        return unwrap(() -> pay.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix));
+        Lookup result = unwrap(() -> pay.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款查找");
+        return result;
     }
 
     @Override
     public CollectStatus collectStatus(String storeNo) {
-        return unwrap(() -> pay.collectStatus(storeNo, operator()));
+        CollectStatus result = unwrap(() -> pay.collectStatus(storeNo, operator()));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款能力");
+        return result;
     }
 
     @Override
@@ -172,7 +181,9 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
 
     @Override
     public LinkPage paymentLinks(String storeNo, String status, String cursor, Integer size) {
-        return unwrap(() -> pay.paymentLinks(storeNo, operator(), status, cursor, size));
+        LinkPage result = unwrap(() -> pay.paymentLinks(storeNo, operator(), status, cursor, size));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "付款链接记录");
+        return result;
     }
 
     @Override

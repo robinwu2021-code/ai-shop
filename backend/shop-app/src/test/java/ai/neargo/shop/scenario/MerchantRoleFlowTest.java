@@ -56,7 +56,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("perms 数组里夹 null 要拒成 400 —— 此前 Set.copyOf 直接 NPE 变 500")
     void nullPermIsBadRequestNot500() throws Exception {
-        String owner = merchant("12700270002", "空码测试店");
+        String owner = merchant("18700270002", "空码测试店");
         /*
          * JSON 里 ["a", null] 是合法数组，而 Set.copyOf 见到 null 元素直接 NPE。
          * 这个端点的注释自己写着「端点是公开的，绕过界面直接发请求是最容易想到的事」——
@@ -71,7 +71,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★★ 自定义角色不得包含 biz:store:admin —— 放开自定义时唯一不能放开的那条")
     void cannotGrantStoreAdminViaCustomRole() throws Exception {
-        String owner = merchant("12700270001", "提权测试店");
+        String owner = merchant("18700270001", "提权测试店");
 
         mvc().perform(post("/biz/roles").header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -99,7 +99,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★ 预置角色改不动、删不掉 —— 要改先复制一份")
     void builtinRolesAreReadOnly() throws Exception {
-        String owner = merchant("12700270002", "预置只读店");
+        String owner = merchant("18700270002", "预置只读店");
 
         mvc().perform(post("/biz/role/MANAGER").header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -113,14 +113,14 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★ 还有人在用的角色删不掉 —— 删了那些人的权限凭空消失且没有解释")
     void cannotDeleteRoleInUse() throws Exception {
-        String owner = merchant("12700270003", "占用角色店");
+        String owner = merchant("18700270003", "占用角色店");
         String store = firstStore(owner);
         String roleCode = createRole(owner, "夜班店长", "\"biz:order:view\",\"biz:ship\"");
 
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12700270013\"}"))
+                        .content("{\"loginPhone\":\"18700270013\"}"))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
         mvc().perform(post("/biz/staff/" + staffNo + "/store")
@@ -139,7 +139,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★★ 自定义角色真的能判权，且**改完下一个请求就生效**")
     void customRoleTakesEffectImmediately() throws Exception {
-        String owner = merchant("12700270004", "自定义生效店");
+        String owner = merchant("18700270004", "自定义生效店");
         String store = firstStore(owner);
         // 先只给「看订单」
         String roleCode = createRole(owner, "夜班", "\"biz:order:view\"");
@@ -147,7 +147,7 @@ class MerchantRoleFlowTest {
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12700270014\"}"))
+                        .content("{\"loginPhone\":\"18700270014\"}"))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
         mvc().perform(post("/biz/staff/" + staffNo + "/store")
@@ -155,7 +155,7 @@ class MerchantRoleFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"storeNo\":\"" + store + "\",\"role\":\"" + roleCode + "\"}"));
 
-        String staff = staffLogin("12700270014");
+        String staff = staffLogin("18700270014");
         // 有 order:view → 通
         mvc().perform(get("/biz/order").header("Authorization", "Bearer " + staff))
                 .andExpect(jsonPath("$.code").value(0));
@@ -182,7 +182,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★ 角色定义的变更也要留痕 —— 它比给某个人授权影响更大")
     void roleChangesAreAudited() throws Exception {
-        String owner = merchant("12700270005", "角色留痕店");
+        String owner = merchant("18700270005", "角色留痕店");
         String roleCode = createRole(owner, "对账员", "\"biz:finance\"");
         mvc().perform(post("/biz/role/" + roleCode).header("Authorization", "Bearer " + owner)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -199,7 +199,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★ 角色列表带中文说明与「几个人在用」—— 勾权限码时不能让老板盲选")
     void listCarriesLabelsAndUsage() throws Exception {
-        String owner = merchant("12700270006", "角色列表店");
+        String owner = merchant("18700270006", "角色列表店");
         String body = mvc().perform(get("/biz/roles").header("Authorization", "Bearer " + owner))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
@@ -212,7 +212,7 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★ 可勾权限点由后端给全 —— 端上拿预置角色并集会漏掉 biz:finance")
     void assignablePermsComeFromBackend() throws Exception {
-        String owner = merchant("12700270007", "可勾清单店");
+        String owner = merchant("18700270007", "可勾清单店");
         String body = mvc().perform(get("/biz/role-perms").header("Authorization", "Bearer " + owner))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
@@ -242,15 +242,19 @@ class MerchantRoleFlowTest {
                 // 商家端支付（TDD-支付服务-I5接入层 S8）：默认只有属主有，老板给收银员建角色时勾这几项
                 "mch:pay:collect","mch:pay:refund","mch:pay:statement","mch:pay:app-grant","mch:pay:qr",
                 // App 外收款记录（TDD-商户App外部记账）：记一笔 / 更正与作废
-                "mch:pay:offline:record","mch:pay:offline:manage"));
+                "mch:pay:offline:record","mch:pay:offline:manage",
+                "mch:pay:order:view","pay:cash:receive","trade:checkout:prepare","trade:manual-service:confirm",
+                "biz:booking:view","biz:booking:manage",
+                "biz:service:task:self","biz:service:task:view","biz:service:task:coordinate",
+                "biz:service:task:approve","biz:service:task:close"));
     }
 
     @Test
     @DisplayName("★ 审计里写角色的中文名 —— 自定义角色的码是 R-… 一串，写进日志没人读得懂")
     void auditSpellsRoleName() throws Exception {
-        String owner = merchant("12700270008", "审计中文店");
+        String owner = merchant("18700270008", "审计中文店");
         String roleCode = createRole(owner, "夜班店长", "\"biz:order:view\"");
-        String phone = "12700270081";
+        String phone = "18700270081";
         mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + owner)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"loginPhone\":\"" + phone + "\",\"displayName\":\"小夜\"}"));
@@ -276,12 +280,12 @@ class MerchantRoleFlowTest {
     @Test
     @DisplayName("★★★ /biz/context 要下发自定义角色的权限 —— 否则后端放行、界面什么都不显示")
     void contextCarriesCustomRolePerms() throws Exception {
-        String owner = merchant("12700270009", "作用域下发店");
+        String owner = merchant("18700270009", "作用域下发店");
         String store = firstStore(owner);
         // 预置角色里**没有**这个组合：营销 + 看订单
         String roleCode = createRole(owner, "夜班店员", "\"biz:campaign\",\"biz:order:view\"");
 
-        String phone = "12700270091";
+        String phone = "18700270091";
         mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + owner)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"loginPhone\":\"" + phone + "\"}"));

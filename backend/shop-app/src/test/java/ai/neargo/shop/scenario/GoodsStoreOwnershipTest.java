@@ -58,7 +58,7 @@ class GoodsStoreOwnershipTest {
     @Test
     @DisplayName("★ 在分店下建的商品归分店；不带门店建的归默认店")
     void newGoodsBelongsToCurrentStore() throws Exception {
-        String biz = merchant("12600330010", "归属门店·总店");
+        String biz = merchant("18600330010", "归属门店·总店");
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "归属门店·分店");
@@ -75,7 +75,7 @@ class GoodsStoreOwnershipTest {
     @Test
     @DisplayName("★ 编辑不改归属 —— 换一家店的上下文保存，商品还属于原来那家")
     void editKeepsOwner() throws Exception {
-        String biz = merchant("12600330020", "归属不变·总店");
+        String biz = merchant("18600330020", "归属不变·总店");
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "归属不变·分店");

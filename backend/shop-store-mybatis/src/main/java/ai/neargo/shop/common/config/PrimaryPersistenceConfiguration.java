@@ -15,8 +15,10 @@ import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInt
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import java.util.List;
+import java.util.Properties;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.mapping.VendorDatabaseIdProvider;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -70,6 +72,14 @@ public class PrimaryPersistenceConfiguration {
             throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(dataSource);
+        // Only actual H2 fixtures omit native lock-order optimizer hints.
+        var dialects = new Properties();
+        dialects.setProperty("MySQL", "MySQL");
+        dialects.setProperty("MariaDB", "MySQL");
+        dialects.setProperty("H2", "H2");
+        var databaseIds = new VendorDatabaseIdProvider();
+        databaseIds.setProperties(dialects);
+        bean.setDatabaseIdProvider(databaseIds);
         bean.setPlugins(interceptor);
 
         MybatisConfiguration configuration = new MybatisConfiguration();

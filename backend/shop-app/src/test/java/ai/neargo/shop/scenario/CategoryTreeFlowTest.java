@@ -328,7 +328,7 @@ class CategoryTreeFlowTest {
                         .content("[{\"dimNo\":\"SD_WEIGHT\",\"primary\":true}]"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        String bizToken = merchant("12600166001", "规格继承测试店");
+        String bizToken = merchant("18600166001", "规格继承测试店");
         String lv3Specs = mvc().perform(get("/biz/spec-templates?categoryNo=" + lv3)
                         .header("Authorization", "Bearer " + bizToken))
                 .andExpect(jsonPath("$.code").value(0))
@@ -354,7 +354,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★★★ 一个档位都不留的声明 = 全去掉，不是「没说」—— 否则删掉的档位会自己回来")
     void emptyValueDeclarationMeansAllRemoved() throws Exception {
-        String biz = merchant("12600167001", "档位删除测试店");
+        String biz = merchant("18600167001", "档位删除测试店");
 
         // 前提：平台给 CAT110 的 SD_WEIGHT 配了几档，商家默认全都拿得到
         assertThat(optionCount(biz, "CAT110", "SD_WEIGHT"))
@@ -448,7 +448,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 无资质授权时，上架挂了门槛的类目被拒 —— 而保存草稿不拦")
     void listingGatedCategoryNeedsAuthorization() throws Exception {
-        String token = merchant("12600131001", "准入测试·菜摊");
+        String token = merchant("18600131001", "准入测试·菜摊");
 
         // 保存到 CAT110（蔬菜，要 FRESH_VEG —— V168 降二级后门槛上移到这里）—— **这一步必须成功**：
         // 商家可能正准备去申请那张证，保存就拦住等于逼他归到错误的类目下
@@ -467,7 +467,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 运营授权之后，同一件商品就能上架了（门槛要有发证的一侧）")
     void authorizationOpensTheGate() throws Exception {
-        String token = merchant("12600131002", "准入测试·授权后");
+        String token = merchant("18600131002", "准入测试·授权后");
         String merchantNo = merchantNoOf(token);
         String goodsNo = saveGoods(token, "菠菜一把", "CAT110");
         approveGoods(goodsNo);
@@ -489,7 +489,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★★ 审核通过时一并授码 —— 不再有「通过了但一个码都没授」这个中间态")
     void auditGrantsCodesInOneStep() throws Exception {
-        String phone = "12600131010";
+        String phone = "18600131010";
         String user = TestLogin.consumer(mvc(), json, otpStore, phone);
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -525,7 +525,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 撤码时回一个「影响几件在架商品」—— 运营按确认之前要看得见代价")
     void revokingCodesReportsImpact() throws Exception {
-        String token = merchant("12600131011", "撤码测试·菜摊");
+        String token = merchant("18600131011", "撤码测试·菜摊");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -557,7 +557,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("无门槛类目照常上架 —— 准入不该把所有人都挡住")
     void ungatedCategoryStillWorks() throws Exception {
-        String token = merchant("12600131003", "准入测试·纸品");
+        String token = merchant("18600131003", "准入测试·纸品");
         String goodsNo = saveGoods(token, "抽纸一提", "CAT210");
         approveGoods(goodsNo);
 
@@ -570,7 +570,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("授权不能撤空 —— 撤空后商家静默失去上架能力，要停请走封禁")
     void cannotClearAllAuthCodes() throws Exception {
-        String token = merchant("12600131004", "准入测试·撤空");
+        String token = merchant("18600131004", "准入测试·撤空");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -586,7 +586,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("改授权必须写原因 —— 它决定商家能上架什么")
     void authChangeNeedsReason() throws Exception {
-        String token = merchant("12600131005", "准入测试·无理由");
+        String token = merchant("18600131005", "准入测试·无理由");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -627,7 +627,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 违规处置的两个副作用是处置的一部分：BREACH 累加毁约、SUSPEND 真的封店")
     void violationHasRealConsequences() throws Exception {
-        String token = merchant("12600151001", "治理测试·违规");
+        String token = merchant("18600151001", "治理测试·违规");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -650,7 +650,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 处置必须写事实 —— 没有事实的处置在申诉时站不住")
     void violationNeedsFacts() throws Exception {
-        String token = merchant("12600151002", "治理测试·无事实");
+        String token = merchant("18600151002", "治理测试·无事实");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -664,7 +664,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 认证标不给停业中的商家 —— 平台背书挂在封禁的店上，赔的是平台信用")
     void verifiedBadgeNeedsGoodStanding() throws Exception {
-        String token = merchant("12600151003", "治理测试·认证标");
+        String token = merchant("18600151003", "治理测试·认证标");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -689,7 +689,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 封禁必须写说明 —— 不写的话商家只看到「店没了」")
     void suspendNeedsRemark() throws Exception {
-        String token = merchant("12600151004", "治理测试·封禁说明");
+        String token = merchant("18600151004", "治理测试·封禁说明");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -703,7 +703,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("经营状态机：封禁中不能直接冻结（两者是不同性质的处置）")
     void operatingStateMachine() throws Exception {
-        String token = merchant("12600151005", "治理测试·状态机");
+        String token = merchant("18600151005", "治理测试·状态机");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -721,7 +721,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("商家档案下发的是脱敏手机号 —— 完整号码属于越权边界")
     void profilePhoneIsMasked() throws Exception {
-        String token = merchant("12600151006", "治理测试·脱敏");
+        String token = merchant("18600151006", "治理测试·脱敏");
         String merchantNo = merchantNoOf(token);
         String bd = opsLogin("bd", "bd123");
 
@@ -736,7 +736,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 干净的公告立刻生效 —— 不进审核队列（时效内容等不起人审）")
     void cleanNoticeTakesEffectImmediately() throws Exception {
-        String token = merchant("12600161001", "门面测试·干净公告");
+        String token = merchant("18600161001", "门面测试·干净公告");
 
         mvc().perform(post("/biz/store").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -752,7 +752,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 命中敏感词转人审：内容不生效，但**保留旧公告**（清空会让店主以为改坏了）")
     void flaggedNoticeGoesToReviewAndKeepsOldText() throws Exception {
-        String token = merchant("12600161002", "门面测试·命中");
+        String token = merchant("18600161002", "门面测试·命中");
         String merchantNo = merchantNoOf(token);
 
         // 先存一条干净的
@@ -785,7 +785,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 审核通过之后，内容这时才真正生效")
     void passedNoticeTakesEffect() throws Exception {
-        String token = merchant("12600161003", "门面测试·通过");
+        String token = merchant("18600161003", "门面测试·通过");
         String merchantNo = merchantNoOf(token);
         saveNotice(token, "老板说这是最低价");
 
@@ -803,7 +803,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 驳回必须写原因 —— 它原样出现在商家 B 端，不写商家不知道改什么")
     void rejectNeedsReason() throws Exception {
-        String token = merchant("12600161004", "门面测试·驳回");
+        String token = merchant("18600161004", "门面测试·驳回");
         String merchantNo = merchantNoOf(token);
         saveNotice(token, "全网第一");
 
@@ -831,7 +831,7 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★ 覆盖社区移除后再加回来不能撞唯一键 —— 逻辑删的行还占着索引位")
     void removedCommunityCanBeAddedBack() throws Exception {
-        String token = merchant("12600161005", "门面测试·社区来回改");
+        String token = merchant("18600161005", "门面测试·社区来回改");
 
         // ① 仅本社区，覆盖 CM001
         assertThat(json.readTree(saveScope(token, "COMMUNITY", "[\"CM001\"]"))

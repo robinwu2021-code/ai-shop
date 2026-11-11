@@ -1,6 +1,8 @@
 package ai.neargo.shop.pay.svc;
 
 import ai.neargo.shop.spi.entitlement.EntitlementSaleReservationPort;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
+import ai.neargo.shop.pay.svc.client.port.CoreBrandCouponSourcePortImpl;
 import ai.neargo.shop.spi.entitlement.EntitlementSaleSourcePort;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementGrantSourcePortImpl;
@@ -140,6 +142,11 @@ class PayApplicationBootTest {
         assertThat(ctx.containsBean("internalGuardFilter")).as("内部入口的管线没挂到容器上").isTrue();
         assertThat(java.util.List.of("openGuardFilter", "terminalGuardFilter", "callbackGuardFilter", "checkoutGuardFilter"))
                 .allMatch(ctx::containsBean);
+    }
+
+    @Test void brandCouponReverseSourceHasExactlyOneRealStandaloneClient() {
+        assertThat(ctx.getBeansOfType(BrandCouponSourcePort.class)).hasSize(1);
+        assertThat(ctx.getBean(BrandCouponSourcePort.class)).isInstanceOf(CoreBrandCouponSourcePortImpl.class);
     }
 
     @Test void saleCapacityAndReverseSourceHaveExactlyOneStandaloneOwner() {

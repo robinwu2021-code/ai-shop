@@ -39,6 +39,7 @@ class PrimaryPersistenceConfigurationTest {
             DataSource source = context.getBean("dataSource", DataSource.class);
             SqlSessionFactory factory = context.getBean("sqlSessionFactory", SqlSessionFactory.class);
             assertThat(factory.getConfiguration().getEnvironment().getDataSource()).isSameAs(source);
+            assertThat(factory.getConfiguration().getDatabaseId()).isEqualTo("H2");
             assertThat(context.getBean(SqlSessionTemplate.class).getSqlSessionFactory()).isSameAs(factory);
             assertThat(context.getBean(DataSourceTransactionManager.class).getDataSource()).isSameAs(source);
             try (var connection = source.getConnection(); var statement = connection.createStatement();

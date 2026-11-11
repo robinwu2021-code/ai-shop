@@ -65,9 +65,22 @@ class SchemaParityTest {
                 collect(Files.readString(f, StandardCharsets.UTF_8), migrated);
             }
         }
-        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root), migrations).applyTables(migrated);
-        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root), migrations).verifyCommonFixture(
-                Files.readString(testSchema));
+        Path repository = H2FixtureProjection.repositoryRoot(root);
+        // The generated primary fixture appends these independent histories in this exact order.
+        for (String extra : List.of("backend/pay/pay-domain/src/main/resources/db/pay",
+                "backend/secret/secret-store/src/main/resources/db/secret")) {
+            Path directory = repository.resolve(extra);
+            if (!Files.isDirectory(directory)) continue;
+            try (var files = Files.list(directory)) {
+                for (Path file : files.filter(p -> p.getFileName().toString().matches("V\\d+__.*\\.sql"))
+                        .sorted(java.util.Comparator.comparingInt(SchemaParityTest::versionOf)).toList()) {
+                    collect(Files.readString(file, StandardCharsets.UTF_8), migrated);
+                }
+            }
+        }
+        var projection = H2FixtureProjection.load(repository, migrations);
+        projection.applyTables(migrated);
+        projection.verifyCommonFixture(Files.readString(testSchema));
         Set<String> inTest = new LinkedHashSet<>();
         collect(Files.readString(testSchema, StandardCharsets.UTF_8), inTest);
 

@@ -1,3 +1,7 @@
+# 2026-11-11：AST 区分 Port 能力与 SPI 内真实声明的 nested record/enum。
+# 仅引用 nested 值类型的文件不再虚构反向能力；实际根 Port 的字段、参数、常量、class 仍计数。
+# 原词元预算按同一源码观测只降：Merchant 38→37、SettleSource 16→14、OpsAlert 5→4、
+# RefundSplitBack 8→6、Settle 67→5；ActivityParticipation/MemberQuery 仅值类型，移除旧误报项。
 # pay 域对**业务侧** Port 的引用数 —— **待办型棘轮，只准变少**。
 #
 # 这些是 pay → 业务 的反向依赖：pay 需要业务侧的事实（主体属性、订单来源），
@@ -28,7 +32,7 @@
 # HTTP 客户端方法（门店 id → 主体、市场）。门店是核心系统的，支付不复制门店表。
 # 2026-10-26 35 → 38：支付 I4 S7 进件迁入支付，`OnboardingServiceImpl` 建单 / 提交时取门店快照（主体名、门店名、市场、
 # 资金路径）—— 用的是 S2 已登记的同一个 `payStoreById`，**不是新的跨域方法**；+3 是新类的 import / 字段 / 构造参数。
-MerchantQueryPort	38
+MerchantQueryPort	37
 # 2026-09-29 14 → 15：`SettleServiceImpl` 判「这一单是不是平台代寄」
 # （`SettleSourcePort.SHIP_PLATFORM_CALL.equals(src.freightShipMode())`，V367 运费进结算）。
 # 不这么判就会对平台已付的快递费再抽一次佣金 —— 收两遍。
@@ -39,19 +43,17 @@ MerchantQueryPort	38
 # 2026-10-14 15 → 17：结算口径 A（`DefaultSettlementRefundPolicy`）判运费由谁回退 —— 平台代寄由平台承担、商家自寄由商家回退，
 # 判据与上一条是**同一个常量** `SHIP_PLATFORM_CALL`（import + 一处使用）。不复制到 pay 的理由同上。
 # 2026-10-18：旧积分引擎退出生产源码，移除其 SettleSourcePort import，17 → 16。
-SettleSourcePort	16
+SettleSourcePort	14
 
 # ── 2026-10-25 扫全部 spi Port 后补登（TDD-支付服务-I0地基 AC7，修 Review R28）──────────
 # 此前只数上面两个，下面这些「只在支付之外有实现、却被 pay 引用」的 Port 一直没人数。
 # 数字是登记当天的实测值，从此同样只准变少；判据见 PayReverseDependencyBudgetTest#reversePortsReferencedFromPay。
 # SettlePort 的 53 处绝大多数是它的嵌套记录 / 常量（SettlePort.xxx），不是调用；I3 SettlePort 收款方法转调 PaymentPort 时复核。
-ActivityParticipationPort	2
-MemberQueryPort	1
-OpsAlertPort	5
+OpsAlertPort	4
 OpsStaffPort	3
 PayoutAccountPort	4
 PickupQueryPort	4
-RefundSplitBackPort	8
+RefundSplitBackPort	6
 # 2026-10-25 53 → 56：支付 I1 F07 / F08 —— DirectAccounts 与 PaymentLedgerServiceImpl#reuse 的参数类型是
 # SettlePort.PaymentOpen（支付请求快照的记录类型），import + 两处签名。与上一条同为嵌套记录引用，不是调用。
 # 2026-10-25 56 → 58：支付 I3 S7 关单「关前必查单」查到已付时按结果入口入账，入参是收款账本现成的
@@ -67,7 +69,7 @@ RefundSplitBackPort	8
 # 收款入账 —— 引用随 controller 搬进了 pay，跨域调用本身没有新增。开发计划 M7.3「交易侧改由支付事件驱动」后两者都退场。
 # 2026-10-28 SettlePort 66 → 67、OrderRepairPort 3 → 4：pay-guard M7.1 在 pay-svc 的 PendingRemotePortsConfig 登记这两个 Port 的 .class（调用即抛的桩，
 # 不是调用）——回调入账在独立进程里还没有实现，那张账就是要把它列出来；M7.2 / M7.3 后与桩一起删。
-SettlePort	67
+SettlePort	5
 OrderRepairPort	4
 SourceFactsPort	3
 # 2026-10-26 新登记 2：同上，合并时登记、来自报表提交 f0cfe667b —— pay-domain 的 PaymentReportFactsService

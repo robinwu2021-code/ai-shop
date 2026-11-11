@@ -57,7 +57,7 @@ class BizRetailOrderDetailFlowTest {
     @Test
     @DisplayName("★★★ B2 完整详情：币种取主单（不再写死 CNY）、顾客备注、付款列表带渠道交易号、操作记录")
     void fullDetail() throws Exception {
-        Ctx c = prepare("12600139101", "完整详情店", "12600139102");
+        Ctx c = prepare("18600139101", "完整详情店", "18600139102");
         jdbc.update("UPDATE ord_sub_order SET remark=? WHERE sub_order_no=?", "放门口，不用按铃", c.subOrderNo());
         jdbc.update("UPDATE ord_order SET currency='TWD' WHERE order_no=(SELECT order_no FROM ord_sub_order"
                 + " WHERE sub_order_no=?)", c.subOrderNo());
@@ -88,7 +88,7 @@ class BizRetailOrderDetailFlowTest {
     @Test
     @DisplayName("★★ B1 列表按行业：caller=RETAIL 列得出零售单，caller=FOOD 列不出")
     void listByCaller() throws Exception {
-        Ctx c = prepare("12600139103", "行业筛选店", "12600139104");
+        Ctx c = prepare("18600139103", "行业筛选店", "18600139104");
         String retail = mvc().perform(get("/biz/order").param("caller", "RETAIL")
                         .header("Authorization", "Bearer " + c.merchantToken()))
                 .andReturn().getResponse().getContentAsString();
@@ -102,8 +102,8 @@ class BizRetailOrderDetailFlowTest {
     @Test
     @DisplayName("★ 别家的单：完整详情同样回「不存在」")
     void foreignIsNotFound() throws Exception {
-        Ctx mine = prepare("12600139105", "本店B", "12600139106");
-        Ctx other = prepare("12600139107", "别家B", "12600139108");
+        Ctx mine = prepare("18600139105", "本店B", "18600139106");
+        Ctx other = prepare("18600139107", "别家B", "18600139108");
         mvc().perform(get("/biz/order/" + other.subOrderNo() + "/full")
                         .header("Authorization", "Bearer " + mine.merchantToken()))
                 .andExpect(jsonPath("$.code").value(10404));

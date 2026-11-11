@@ -38,7 +38,7 @@ public class ManualServiceAdmissionRecoveryJob implements JobHandler {
         return "manual-service-admission-recovery";
     }
 
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "${shop.job.manual-service-admission-recovery.cron:0 * * * * *}")
     @SchedulerLock(name = "manual-service-admission-recovery", lockAtMostFor = "PT2M")
     public void scan() {
         jobs.run(name(), () -> run(null).detail());

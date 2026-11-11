@@ -15,6 +15,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 import javax.sql.DataSource;
@@ -69,6 +72,27 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
                         throw new AccessDenied(AccessStatus.FORBIDDEN);
                     return new FoundationTarget(scope.merchantNo(), storeNo);
                 });
+    }
+
+    /** Actual targets of the legacy member query, read independently of the handler transaction. */
+    List<StoreSnapshot> memberQueryTargets(String tenantNo, String entityNo, String targetStoreNo) {
+        return freshRead(() -> {
+            String target = targetStoreNo == null || targetStoreNo.isBlank() ? null : targetStoreNo;
+            List<StoreFacts> targets;
+            try {
+                targets = jdbc.query("""
+SELECT s.store_no,s.entity_no,s.business_type_code,s.commerce_model,s.status,m.status
+FROM mch_store s LEFT JOIN mch_entity m ON m.tenant_no=s.tenant_no AND m.entity_no=s.entity_no AND m.deleted=0
+WHERE s.tenant_no=? AND s.entity_no=? AND s.deleted=0 AND (? IS NULL OR s.store_no=?)
+""", (rs, i) -> readFacts(tenantNo, rs), tenantNo, entityNo, target, target);
+            } catch (IllegalArgumentException unknownModel) {
+                throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
+            }
+            if (target != null && targets.isEmpty())
+                throw new AccessDenied(AccessStatus.FORBIDDEN);
+            return targets.stream().map(StoreFacts::snapshot)
+                    .filter(f -> f.model() != CommerceModel.LEGACY).toList();
+        });
     }
 
     boolean hasPersistedNewStores() {
@@ -155,28 +179,21 @@ SELECT s.store_no,s.entity_no,s.business_type_code,s.commerce_model,s.status,m.s
 FROM mch_store s LEFT JOIN mch_entity m ON m.tenant_no=s.tenant_no AND m.entity_no=s.entity_no AND m.deleted=0
 WHERE s.tenant_no=? AND s.store_no=? AND s.deleted=0
 """,
-                        (rs, i) -> {
-                            var actual = new StoreRef(store.tenantNo(), rs.getString(1));
-                            var model = rs.getString(4);
-                            var active =
-                                    "ACTIVE".equals(rs.getString(5))
-                                            && ("ACTIVE".equals(rs.getString(6))
-                                                    || "PENDING_LICENSE".equals(rs.getString(6)));
-                            return new StoreFacts(
-                                    new StoreSnapshot(
-                                            actual,
-                                            rs.getString(2),
-                                            rs.getString(3),
-                                            active ? StoreStatus.ACTIVE : StoreStatus.DISABLED,
-                                            model == null
-                                                    ? CommerceModel.LEGACY
-                                                    : CommerceModel.valueOf(model)),
-                                    rs.getString(5),
-                                    rs.getString(6));
-                        },
+                        (rs, i) -> readFacts(store.tenantNo(), rs),
                         store.tenantNo(),
                         store.storeNo())
                 .stream()
                 .findFirst();
+    }
+
+    private static StoreFacts readFacts(String tenantNo, ResultSet rs) throws SQLException {
+        var actual = new StoreRef(tenantNo, rs.getString(1));
+        var model = rs.getString(4);
+        var active = "ACTIVE".equals(rs.getString(5))
+                && ("ACTIVE".equals(rs.getString(6)) || "PENDING_LICENSE".equals(rs.getString(6)));
+        return new StoreFacts(new StoreSnapshot(actual, rs.getString(2), rs.getString(3),
+                active ? StoreStatus.ACTIVE : StoreStatus.DISABLED,
+                model == null ? CommerceModel.LEGACY : CommerceModel.valueOf(model)),
+                rs.getString(5), rs.getString(6));
     }
 }

@@ -572,6 +572,7 @@ class CommerceAccessSecurityFlowTest {
                 CommunityServiceImpl.class,
                 BizPickupPointController.class,
                 BizMemberController.class,
+                MemberQueryScopeAuthority.class,
                 CommerceEndController.class,
                 BizEntityController.class,
                 ai.neargo.shop.merchantbridge.EntityReviewAssembler.class,

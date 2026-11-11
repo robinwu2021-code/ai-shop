@@ -110,8 +110,8 @@ class BizNotifyFlowTest {
     @Test
     @DisplayName("★ 支付成功 → 店主的 B 端收件箱收到「新订单」；C 端收件箱不被污染")
     void paidOrderNotifiesOwner() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127201");
-        String owner = loginAsOwnerOf("M0001", "12700127202");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127201");
+        String owner = loginAsOwnerOf("M0001", "18700127202");
 
         buyAndPay(buyer, "bizn-paid");
         dispatcher.dispatchPending();
@@ -128,8 +128,8 @@ class BizNotifyFlowTest {
     @Test
     @DisplayName("★ unread-count 轮询口径：来单 +1，全部已读归零")
     void unreadCountTracksInbox() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127203");
-        String owner = loginAsOwnerOf("M0001", "12700127204");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127203");
+        String owner = loginAsOwnerOf("M0001", "18700127204");
 
         long before = unreadCount(owner);
         buyAndPay(buyer, "bizn-unread");
@@ -145,8 +145,8 @@ class BizNotifyFlowTest {
     @Test
     @DisplayName("★ 售后申请 → 店主收到「新的售后申请」")
     void afterSaleNotifiesOwner() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127205");
-        String owner = loginAsOwnerOf("M0001", "12700127206");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127205");
+        String owner = loginAsOwnerOf("M0001", "18700127206");
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
             var entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                     .eq(MchEntity::getEntityNo, "M0001").last("limit 1"));
@@ -187,8 +187,8 @@ class BizNotifyFlowTest {
     @Test
     @DisplayName("★ 差评（≤2 星）→ 店主收到点名的「收到差评」")
     void badReviewNotifiesOwnerByName() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127207");
-        String owner = loginAsOwnerOf("M0001", "12700127208");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "18700127207");
+        String owner = loginAsOwnerOf("M0001", "18700127208");
 
         buyAndPay(buyer, "bizn-review");
         dispatcher.dispatchPending();

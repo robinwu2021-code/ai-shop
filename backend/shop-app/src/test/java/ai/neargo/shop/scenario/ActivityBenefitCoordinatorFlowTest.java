@@ -321,7 +321,7 @@ class ActivityBenefitCoordinatorFlowTest {
     @Test void consumerHttpClaimDerivesIdentityAndReadOnlyQueryCannotIssueAgain() throws Exception {
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(web)
                 .apply(SecurityMockMvcConfigurers.springSecurity()).build();
-        String phone = "126" + String.format("%08d",
+        String phone = "197" + String.format("%08d",
                 Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
         String token = TestLogin.consumer(mvc, json, otp, phone);
         String user = tokens.of(Realm.CONSUMER).get(token).orElseThrow().user().userNo();

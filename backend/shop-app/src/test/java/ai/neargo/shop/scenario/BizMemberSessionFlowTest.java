@@ -52,7 +52,7 @@ class BizMemberSessionFlowTest {
 
     /** 入驻 → 运营通过 → 换 B 端令牌 */
     private String merchant() throws Exception {
-        String phone = "1260077" + String.format("%04d", ++seq);
+        String phone = "1860077" + String.format("%04d", ++seq);
         String user = TestLogin.consumer(mvc(), json, otpStore, phone);
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)

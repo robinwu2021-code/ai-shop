@@ -60,7 +60,7 @@ class MultiStoreOrderScopeTest {
     @Test
     @DisplayName("★ 开第二家店后，默认只看到当前门店的单；allStores=true 才看到全部")
     void ordersAreScopedToCurrentStoreByDefault() throws Exception {
-        String token = merchant("12600180001", "双店测试·总店");
+        String token = merchant("18600180001", "双店测试·总店");
         String defaultStore = defaultStoreNo(token);
         // 多门店是 PRO 才有的能力，测试要说出「这家商家买了包」
         TestPlan.grantPro(planMapper, merchantNoOf(token));
@@ -102,7 +102,7 @@ class MultiStoreOrderScopeTest {
          * 撞号时两个类各建各的商家、却拿到同一条记录，先跑的那个把门店与坐标留给后跑的 ——
          * 表现是「单独跑绿、全量红」，而报错指向的是**对方**那条用例，与真因毫无关系。
          */
-        String token = merchant("12600180021", "经营台切店·总店");
+        String token = merchant("18600180021", "经营台切店·总店");
         String defaultStore = defaultStoreNo(token);
         TestPlan.grantPro(planMapper, merchantNoOf(token));
         String second = createStore(token, "经营台切店·分店");
@@ -171,7 +171,7 @@ class MultiStoreOrderScopeTest {
     @Test
     @DisplayName("订单上的 store_no 真的被写了 —— 双写没写对的话上面那条会假绿")
     void subOrderCarriesStoreNo() throws Exception {
-        String token = merchant("12600180002", "双写校验店");
+        String token = merchant("18600180002", "双写校验店");
         buyFrom(token, "13000180002", "scope-2");
 
         JsonNode rows = orders(token, null, true);

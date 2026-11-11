@@ -85,7 +85,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 用量与建店闸同一口径 —— 停用一家店，已用数减一且真的能再建一家")
     void usageMatchesTheQuotaGate() throws Exception {
-        String biz = merchant("12601200001", "商家套餐·用量口径");
+        String biz = merchant("18601200001", "商家套餐·用量口径");
         String merchantNo = merchantNoOf(biz);
         // 额度按住 3：这条测的是「用量口径与闸门是否同一把尺」，与 PRO 的真实额度（10）无关，
         // 用 10 的话要先建九家店才摸得到闸门，测试变慢且看不出重点。
@@ -123,7 +123,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 试用当场生效：开通后立刻能建第二家店，且一主体只能试一次")
     void trialIsOneShotAndTakesEffectImmediately() throws Exception {
-        String biz = merchant("12601200010", "商家套餐·试用");
+        String biz = merchant("18601200010", "商家套餐·试用");
         // FREE 现在是 3 家（V221）。这条要的是「试用前建不了第二家」这个动作，
         // 把额度按到 1 即可 —— 档位码保持 FREE，因为下面要断言它。
         ai.neargo.shop.support.TestPlan.capStores(planMapper, merchantNoOf(biz), 1);
@@ -153,7 +153,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 已经是付费档的人不给试用入口 —— 他要的是续费")
     void paidMerchantsGetNoTrialEntry() throws Exception {
-        String biz = merchant("12601200020", "商家套餐·已付费");
+        String biz = merchant("18601200020", "商家套餐·已付费");
         grantPro(merchantNoOf(biz));
 
         JsonNode p = plan(biz);
@@ -164,7 +164,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 试用目标跟着档位定义走，不是写死 PRO")
     void trialTargetFollowsTheDefinitions() throws Exception {
-        String biz = merchant("12601200030", "商家套餐·试用目标");
+        String biz = merchant("18601200030", "商家套餐·试用目标");
         assertThat(plan(biz).get("trialTier").asString()).isEqualTo("PRO");
 
         /*
@@ -191,7 +191,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 降级后套餐页写明是哪几家店 —— 商家自己停用的不在名单里")
     void suspendedListNamesOnlyPlatformPressedStores() throws Exception {
-        String biz = merchant("12601200040", "商家套餐·降级名单");
+        String biz = merchant("18601200040", "商家套餐·降级名单");
         String merchantNo = merchantNoOf(biz);
         // 额度按住 3，好让下面的「降级压店」只需铺三家店
         ai.neargo.shop.support.TestPlan.grantQuota(planMapper, merchantNo, 3);
@@ -285,7 +285,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 有效期内的方案给出宽限期截止 graceUntil = 到期 + 7 天，App 不再自己推算")
     void activePlanCarriesGraceUntil() throws Exception {
-        String biz = merchant("12601200041", "商家套餐·宽限期");
+        String biz = merchant("18601200041", "商家套餐·宽限期");
         String merchantNo = merchantNoOf(biz);
         grantPro(merchantNo);
         long expire = System.currentTimeMillis() + 20L * 86_400_000L;
@@ -303,13 +303,13 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("★ 权限：店长看不到套餐，也开不了试用")
     void onlyOwnerSeesThePlan() throws Exception {
-        String owner = merchant("12601200050", "商家套餐·权限");
+        String owner = merchant("18601200050", "商家套餐·权限");
         String store = defaultStoreNo(owner);
 
         String staffNo = json.readTree(mvc().perform(post("/biz/staff")
                         .header("Authorization", "Bearer " + owner)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginPhone\":\"12601200051\"}"))
+                        .content("{\"loginPhone\":\"18601200051\"}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("mchAccountNo").asString();
@@ -319,7 +319,7 @@ class BizPlanFlowTest {
                         .content("{\"storeNo\":\"" + store + "\",\"role\":\"MANAGER\",\"granted\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        String manager = TestLogin.merchantStaff(mvc(), json, otpStore, "12601200051");
+        String manager = TestLogin.merchantStaff(mvc(), json, otpStore, "18601200051");
         /*
          * 店长被拒是**设计**不是遗漏：这一页答的是「主体买了什么」，
          * 与建店、挂收款号同属主体结构面。他看到额度只会去催老板买单，
@@ -336,7 +336,7 @@ class BizPlanFlowTest {
     @Test
     @DisplayName("三档对比在同一个响应里给出，且标出当前那一档")
     void tiersComeWithTheCurrentFlag() throws Exception {
-        String biz = merchant("12601200060", "商家套餐·档位对比");
+        String biz = merchant("18601200060", "商家套餐·档位对比");
         JsonNode tiers = plan(biz).get("tiers");
         assertThat(tiers.size()).as("在售档位应当都给出来").isGreaterThanOrEqualTo(3);
         // 顺序按 sort：免费档在最前，端上照原序渲染不再排一次

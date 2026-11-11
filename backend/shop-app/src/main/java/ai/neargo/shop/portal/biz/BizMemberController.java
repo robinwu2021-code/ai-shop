@@ -1,6 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.common.Phones;
+import ai.neargo.shop.commercebridge.MemberQueryScopeAuthority;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -58,12 +59,15 @@ public class BizMemberController {
     private final MemberReachService reachService;
     private final MemberAudienceService audienceService;
     private final MerchantQueryPort merchantQuery;
+    private final MemberQueryScopeAuthority queryScope;
 
     public BizMemberController(MemberService memberService, MemberTagService tagService,
                                ai.neargo.shop.member.service.MemberSegmentService segmentService,
                                MemberReachService reachService,
                                MemberAudienceService audienceService,
-                               MerchantQueryPort merchantQuery) {
+                               MerchantQueryPort merchantQuery,
+                               MemberQueryScopeAuthority queryScope) {
+        this.queryScope = queryScope;
         this.merchantQuery = merchantQuery;
         this.segmentService = segmentService;
         this.reachService = reachService;
@@ -95,6 +99,7 @@ public class BizMemberController {
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "20") long size) {
         return noScope(() -> {
+            queryScope.require(storeNo);
             return memberService.list(BizContext.requireMerchantNo(),
                     new MemberQuery(storeNo, level, source, status, phone, split(tagNos),
                             lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size, null, null, idleDays));
@@ -106,6 +111,7 @@ public class BizMemberController {
     @GetMapping("/biz/members/stats")
     public MemberStatsVO stats(@RequestParam(required = false) String storeNo) {
         return noScope(() -> {
+            queryScope.require(storeNo);
             return memberService.stats(BizContext.requireMerchantNo(), storeNo);
         });
     }
@@ -350,6 +356,8 @@ public class BizMemberController {
     @PostMapping("/biz/members/tags/batch")
     public BatchTagVO batchTag(@RequestBody BatchTagReq req) {
         return noScope(() -> {
+            if (req.rule() != null && (req.memberNos() == null || req.memberNos().isEmpty()))
+                queryScope.require(req.scopeStoreNo());
             return audienceService.batchTag(BizContext.requireMerchantNo(), req.memberNos(), req.rule(),
                     req.scopeStoreNo(), req.tagNo(), !"REMOVE".equals(req.action()),
                     Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
@@ -427,6 +435,7 @@ public class BizMemberController {
     @PostMapping("/biz/member-segments")
     public SegmentVO saveSegment(@RequestBody SegmentReq req) {
         return noScope(() -> {
+            queryScope.require(req.scopeStoreNo());
             return segmentService.save(BizContext.requireMerchantNo(), req.segmentNo(), req.name(),
                     req.scopeStoreNo(), req.rule() == null ? emptyRule() : req.rule());
         });
@@ -450,6 +459,7 @@ public class BizMemberController {
     @PostMapping("/biz/member-segments/preview")
     public MemberVOs.SegmentPreviewVO previewSegment(@RequestBody SegmentReq req) {
         return noScope(() -> {
+            queryScope.require(req.scopeStoreNo());
             return segmentService.preview(BizContext.requireMerchantNo(), req.scopeStoreNo(),
                     req.rule() == null ? emptyRule() : req.rule());
         });

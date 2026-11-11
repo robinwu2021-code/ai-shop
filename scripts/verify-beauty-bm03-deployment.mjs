@@ -70,7 +70,11 @@ try{
  for(const table of infra){const pattern=new RegExp('CREATE TABLE IF NOT EXISTS '+table+'\\s*\\([\\s\\S]*?\\n\\);');const ddl=fixture.match(pattern)?.[0];assert(ddl,'infrastructure fixture '+table);sql(ddl.replace(' IF NOT EXISTS',''),'beauty_private');}
  const cryptoEntry=execFileSync('unzip',['-Z1',artifactsDir+'/retail.jar'],{encoding:'utf8'}).split('\n').find(s=>s.includes('/spring-security-crypto-'));
  const cryptoJar=dir+'/security-crypto.jar';writeFileSync(cryptoJar,execFileSync('unzip',['-p',artifactsDir+'/retail.jar',cryptoEntry]));
- const hashes=execFileSync(java,['--class-path',cryptoJar,root+'/scripts/fixtures/BeautyPasswordHashes.java'],{encoding:'utf8'}).trim().split('\n');
+ const passwordFixture=dir+'/password-fixture';mkdirSync(passwordFixture,{recursive:true});
+ execFileSync(java.replace(/java$/,'javac'),['-cp',cryptoJar,'-d',passwordFixture,
+  root+'/backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/server/fixture/BeautyPasswordHashes.java']);
+ const hashes=execFileSync(java,['--class-path',passwordFixture+':'+cryptoJar,
+  'ai.neargo.shop.beauty.server.fixture.BeautyPasswordHashes'],{encoding:'utf8'}).trim().split('\n');
  sql(`INSERT INTO mch_entity(entity_no,name,owner_user_no,status,created_at,updated_at) VALUES('M-BM03','BM03','U-BM03','ACTIVE',NOW(),NOW());
  INSERT INTO mch_store(store_no,entity_no,name,is_default,status,created_at,updated_at) VALUES('ST-BM03','M-BM03','BM03',1,'ACTIVE',NOW(),NOW());
  INSERT INTO mch_account(mch_account_no,entity_no,user_no,is_owner,is_primary,status,created_at,updated_at) VALUES('MC-BM03','M-BM03','U-BM03',1,1,'ACTIVE',NOW(),NOW());

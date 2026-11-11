@@ -566,6 +566,10 @@ shop:
     # 冻结窗口天数（TDD-账期推进与放款记录 §2.1 A）。freeze_expire_at = 本批最早成交 + 它
     freeze-days: ${SHOP_SETTLE_FREEZE_DAYS:7}
   job:
+    service-execution-recovery:
+      cron: ${SHOP_JOB_SERVICE_EXECUTION_RECOVERY_CRON:0 * * * * *}
+    manual-service-admission-recovery:
+      cron: ${SHOP_JOB_MANUAL_SERVICE_ADMISSION_RECOVERY_CRON:0 * * * * *}
     outbox:
       # 5 秒一轮：它投的是站内信，用户在等。见 OutboxDispatchJob 的类注释
       cron: ${SHOP_JOB_OUTBOX_CRON:*/5 * * * * *}

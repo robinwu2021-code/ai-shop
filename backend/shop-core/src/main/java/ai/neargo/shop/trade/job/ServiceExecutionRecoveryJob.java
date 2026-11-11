@@ -23,7 +23,7 @@ public class ServiceExecutionRecoveryJob implements JobHandler {
         this.jobs = jobs;
     }
     /** HOST worker SchedulingConfig activates this timer; the API process only registers the handler. */
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "${shop.job.service-execution-recovery.cron:0 * * * * *}")
     @SchedulerLock(name = "service-execution-recovery", lockAtMostFor = "PT2M")
     public void scan() {
         jobs.run(name(), () -> "已核对服务执行原单：" + service.recoverPending(100));

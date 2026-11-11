@@ -421,6 +421,11 @@ public final class ProductMappers {
                 <foreach collection="skus" item="sku" open="(" separator="," close=")">#{sku}</foreach>
                 ORDER BY id FOR UPDATE</script>
                 """)
+        @Select(value = """
+                <script>SELECT * FROM prd_stock_lock WHERE tenant_no='MAIN' AND sku_no IN
+                <foreach collection="skus" item="sku" open="(" separator="," close=")">#{sku}</foreach>
+                ORDER BY id FOR UPDATE</script>
+                """, databaseId = "H2")
         List<PrdStockLock> lockSkuOriginalsCurrent(@Param("skus") List<String> skus);
 
         /** Frozen tracked identity permits source-aware legacy-return routing without balance locks. */

@@ -215,7 +215,7 @@ class InvManagedSwitchTest {
 
     private String shop() throws Exception {
         int seq = SEQ.incrementAndGet();
-        String token = merchant("1260934%04d".formatted(seq), "记库存开关测试店-" + seq);
+        String token = merchant("1860934%04d".formatted(seq), "记库存开关测试店-" + seq);
         TestStoreCategory.open(mvc(), json, token, FRUIT);
         return token;
     }

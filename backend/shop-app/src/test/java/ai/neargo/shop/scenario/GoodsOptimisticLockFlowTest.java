@@ -137,9 +137,8 @@ class GoodsOptimisticLockFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String applyNo = json.readTree(body).get("data").get("applyNo").asString();
         String bd = TestLogin.operator(mvc(), json, "bd", "bd123");
-        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
-                .header("Authorization", "Bearer " + bd)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+        assertThat(postJson(bd, "/ops/merchant/apply/" + applyNo + "/audit", "{\"approved\":true}")
+                .path("code").asInt(-1)).as("入驻审核应成功后再建立门店夹具").isZero();
         String token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
         TestStoreCategory.open(mvc(), json, token, "CAT210");
         return token;

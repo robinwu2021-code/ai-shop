@@ -81,6 +81,7 @@ class OrderPayMethodTest {
             OrdOrder o = new OrdOrder();
             o.setOrderNo(orderNo);
             o.setUserNo(userNo);
+            o.setIdentityRevision(1L);
             o.setStatus(OrdOrder.WAIT_PAY);
             o.setPayAmount(9_900L);
             orderMapper.insert(o);
@@ -88,6 +89,7 @@ class OrderPayMethodTest {
             sub.setSubOrderNo("SUB-" + orderNo);
             sub.setOrderNo(orderNo);
             sub.setUserNo(userNo);
+            sub.setIdentityRevision(1L);
             sub.setEntityNo(entityNo);
             sub.setStatus(OrdOrder.WAIT_PAY);
             sub.setPayAmount(9_900L);

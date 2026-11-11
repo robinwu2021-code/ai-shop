@@ -188,15 +188,25 @@ class LegacyCouponSourceFenceFlowTest {
         String coupon = id();
         long now = System.currentTimeMillis();
         jdbc.update("INSERT INTO mkt_coupon(coupon_no,title,type,face_minor,funder,entity_no,total_count,start_at,"
-                + "end_at,tenant_no,created_at,updated_at) VALUES(?,'legacy','FULL_CUT',100,'MERCHANT','M1',100,?,?,"
+                + "end_at,tenant_no,created_at,updated_at) VALUES(?,'legacy','FULL_CUT',100,'MERCHANT','M0001',100,?,?,"
                 + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", coupon, now - 1000, now + 3600000);
+        var edit = new ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd(
+                coupon, "Editable legacy", "FULL_CUT", 100L, null, null,
+                0L, 100, 1, 10000L, now - 1000, now + 3600000);
+        assertThat(legacy.saveCoupon(edit, "OP").name()).isEqualTo("Editable legacy");
         var ctx = new EntitlementContext("MAIN", "MIGRATION", "MKT", "b".repeat(64));
         var source = new SourceIdentity(SourceSystem.MKT_LEGACY, SourceKind.TEMPLATE, coupon);
         String batch = id();
-        var draining = fences.transition(ctx, source, new Command(Action.BEGIN_DRAIN, batch, 0, "Mkt rehearsal", id()));
+        var draining = fences.transition(ctx, source, new Command(Action.BEGIN_DRAIN, batch,
+                fences.state(ctx, source).revision(), "Mkt rehearsal", id()));
         assertThatThrownBy(() -> legacy.grantTo(id(), coupon)).isInstanceOf(RuntimeException.class);
         var frozen = fences.transition(ctx, source, new Command(Action.FREEZE, batch, draining.revision(), "Empty batch", id()));
         assertThat(frozen.watermark()).matches("[a-f0-9]{64}");
+        assertThatThrownBy(() -> legacy.saveCoupon(edit, "OP"))
+                .isInstanceOfSatisfying(BizException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        assertThat(jdbc.queryForObject("SELECT title FROM mkt_coupon WHERE coupon_no=?", String.class, coupon))
+                .isEqualTo("Editable legacy");
         var exported=snapshots.exportFrozen(ctx,new ai.neargo.shop.spi.entitlement.LegacyCouponFrozenSnapshotPort.Query(
                 source,batch,frozen.frozenRevision(),frozen.watermark()));
         assertThat(exported.source().sourceSystem()).isEqualTo(SourceSystem.MKT_LEGACY);

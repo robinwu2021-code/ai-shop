@@ -89,6 +89,7 @@ class GoodsAggregateGiftTest {
         o.setSubOrderNo("SO-GIFT-PROBE-" + n);
         o.setOrderNo("O-GIFT-PROBE-" + n);
         o.setUserNo("U-GIFT-PROBE");
+        o.setIdentityRevision(1L);
         o.setEntityNo(ENTITY);
         o.setStoreNo(STORE);
         // 必须落在 TRANSACTED 里 —— 聚合按它过滤，用别的值这个测试就比了个寂寞

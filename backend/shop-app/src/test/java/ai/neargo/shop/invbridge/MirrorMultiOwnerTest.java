@@ -5,6 +5,38 @@ import ai.neargo.shop.invbridge.port.InventoryStockPort;
 import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.inventory.domain.service.LocationService;
 import ai.neargo.inventory.domain.service.ReservationService;
+import ai.neargo.inventory.domain.entity.InvOutboundLine;
+import ai.neargo.inventory.domain.entity.InvOutboundOrder;
+import ai.neargo.inventory.domain.entity.InvRefundRestore;
+import ai.neargo.inventory.domain.entity.InvLedger;
+import ai.neargo.inventory.domain.entity.InvReservation;
+import ai.neargo.inventory.domain.entity.InvReservationLine;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ReservationMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ReservationLineMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboundOrderMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboundLineMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
+import ai.neargo.inventory.domain.mapper.RefundRestoreMapper;
+import ai.neargo.inventory.domain.mapper.ReturnReceiptMapper;
+import ai.neargo.inventory.domain.policy.ExecutionStockRetentionGuard;
+import ai.neargo.inventory.domain.service.InboundService;
+import ai.neargo.inventory.domain.service.impl.OriginalReservationRestoreServiceImpl;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.mockito.ArgumentCaptor;
+import java.util.ArrayList;
+import java.util.UUID;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +45,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -71,20 +109,123 @@ class MirrorMultiOwnerTest {
     }
 
     @Test
-    @DisplayName("★★ 回补（restore）同样按业主分组 —— 镜像与直连两条路")
+    @DisplayName("★★ 镜像与直连恢复都使用跨业主冻结原单，不按当前SKU归属记账")
     void restoreGroupsByOwner() {
-        consume(InvMirrorEvent.RESTORE, "{\"ref\":\"AS1\",\"items\":["
-                + "{\"skuNo\":\"SA\",\"qty\":1},{\"skuNo\":\"SB\",\"qty\":4}]}");
-        verify(reservations).restore("OWN_A", "AS1",
-                List.of(new ReservationService.Line("IT_A", "LOC_OWN_A", 1, null)), "MIRROR");
-        verify(reservations).restore("OWN_B", "AS1",
-                List.of(new ReservationService.Line("IT_B", "LOC_OWN_B", 4, null)), "MIRROR");
+        var originalA = original("A", "SA", 2, 50L, 1L);
+        var originalB = original("B", "SB", 8, 80L, 2L);
+        var originals = List.of(originalA, originalB);
+        var heads = mock(ReservationMapper.class);
+        var lines = mock(ReservationLineMapper.class);
+        var outbound = mock(OutboundOrderMapper.class);
+        var posted = mock(OutboundLineMapper.class);
+        var ledger = mock(LedgerMapper.class);
+        var claims = mock(RefundRestoreMapper.class);
+        var returns = mock(ReturnReceiptMapper.class);
+        var retention = mock(ExecutionStockRetentionGuard.class);
+        var inbound = mock(InboundService.class);
+        var afterSales = mock(AfterSaleMapper.class);
+        var savedClaims = new ArrayList<InvRefundRestore>();
+        var manager = new DataSourceTransactionManager(new DriverManagerDataSource(
+                "jdbc:h2:mem:mirror-original-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1", "sa", ""));
+        var tx = new TransactionTemplate(manager);
+        for (var type : List.of(InvOutboundOrder.class, InvOutboundLine.class, InvRefundRestore.class,
+                InvLedger.class, OrdAfterSale.class)) {
+            TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), "mirror-original"), type);
+        }
+        when(heads.lockOriginal("P1")).thenReturn(originals.stream().map(FrozenOriginal::head).toList());
+        originals.forEach(row -> when(lines.lockOriginal(row.head().getReservationId())).thenReturn(List.of(row.line())));
+        when(outbound.selectOne(any())).thenAnswer(call -> originals.stream()
+                .filter(row -> matches(call.getArgument(0), row.order().getOutboundNo()))
+                .map(FrozenOriginal::order).findFirst().orElse(null));
+        when(posted.selectList(any())).thenAnswer(call -> originals.stream()
+                .filter(row -> matches(call.getArgument(0), row.order().getOutboundNo()))
+                .map(FrozenOriginal::posted).toList());
+        when(ledger.selectList(any())).thenReturn(List.of());
+        when(claims.selectList(any())).thenAnswer(call -> savedClaims.stream()
+                .filter(row -> matches(call.getArgument(0), row.getPurposeNo())).toList());
+        when(claims.lockByOriginalLines(anyList())).thenAnswer(call -> List.copyOf(savedClaims));
+        when(returns.lockByOriginalLines(anyList())).thenReturn(List.of());
+        doAnswer(call -> { savedClaims.add(call.getArgument(0)); return 1; })
+                .when(claims).insert(any(InvRefundRestore.class));
+        doAnswer(call -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            return null;
+        }).when(retention).requireUnretained(anyList());
+        var sales = List.of("AS1", "AS2").stream().map(no -> {
+            var row = new OrdAfterSale(); row.setAfterSaleNo(no); row.setOrderNo("P1"); return row;
+        }).toList();
+        when(afterSales.selectList(any())).thenAnswer(call -> sales.stream()
+                .filter(row -> matches(call.getArgument(0), row.getAfterSaleNo())).toList());
 
-        InventoryStockPort port = new InventoryStockPort(null, reservations, acl, locations);
-        port.restore("AS2", List.of(new SkuQty("SA", 1), new SkuQty("SB", 4)));
-        verify(reservations).restore("OWN_A", "AS2",
-                List.of(new ReservationService.Line("IT_A", "LOC_OWN_A", 1, null)), "SYSTEM");
-        verify(reservations).restore("OWN_B", "AS2",
-                List.of(new ReservationService.Line("IT_B", "LOC_OWN_B", 4, null)), "SYSTEM");
+        // Construct the real package-private original-source boundary through Spring, using mapper
+        // doubles only for the saved reservation, posted outbound and immutable restore claims.
+        var beans = new DefaultListableBeanFactory();
+        beans.registerSingleton("heads", heads); beans.registerSingleton("lines", lines);
+        beans.registerSingleton("outbound", outbound); beans.registerSingleton("posted", posted);
+        beans.registerSingleton("ledger", ledger); beans.registerSingleton("retention", retention);
+        beans.registerSingleton("claims", claims); beans.registerSingleton("returns", returns);
+        beans.registerSingleton("inbound", inbound);
+        var source = new RootBeanDefinition();
+        source.setBeanClassName("ai.neargo.inventory.domain.service.impl.OriginalReservationSource");
+        source.setAutowireMode(RootBeanDefinition.AUTOWIRE_CONSTRUCTOR);
+        beans.registerBeanDefinition("originalSource", source);
+        var restoreBean = new RootBeanDefinition(OriginalReservationRestoreServiceImpl.class);
+        restoreBean.setAutowireMode(RootBeanDefinition.AUTOWIRE_CONSTRUCTOR);
+        beans.registerBeanDefinition("originalRestores", restoreBean);
+        var restores = beans.getBean(OriginalReservationRestoreServiceImpl.class);
+        var adapter = new OriginalInventoryRestoreAdapter(acl, restores);
+        adapter.setOriginalBoundary(heads, manager);
+        adapter.setLegacyOriginalLookup(afterSales);
+        consumer.setOriginalRestores(adapter);
+        var port = new InventoryStockPort(null, reservations, acl, locations);
+        port.setOriginalRestores(adapter);
+        when(acl.ownerOfSku(anyString())).thenReturn("CURRENT_WRONG_OWNER");
+        when(acl.itemIdOfSku(anyString())).thenReturn("CURRENT_WRONG_ITEM");
+        when(locations.resolveStockLocation(anyString(), anyString())).thenReturn("CURRENT_WRONG_LOCATION");
+
+        tx.executeWithoutResult(status -> consume(InvMirrorEvent.RESTORE, "{\"ref\":\"AS1\",\"items\":["
+                + "{\"skuNo\":\"SA\",\"qty\":1,\"storeNo\":null,\"fulfillmentRef\":null,\"lifecycleVersion\":1},"
+                + "{\"skuNo\":\"SB\",\"qty\":4,\"storeNo\":null,\"fulfillmentRef\":null,\"lifecycleVersion\":1}]}"));
+        tx.executeWithoutResult(status -> port.restore("AS2", List.of(new SkuQty("SA", 1), new SkuQty("SB", 4))));
+        var postings = ArgumentCaptor.forClass(InboundService.Draft.class);
+        verify(inbound, times(4)).postDirectly(postings.capture(), eq("REFUND"));
+        assertThat(postings.getAllValues()).allSatisfy(draft -> assertThat(draft.sourceType()).isEqualTo("RETURN"));
+        assertThat(postings.getAllValues()).extracting(draft -> List.of(
+                draft.sourceRef(), draft.ownerId(), draft.locationId(), draft.lines())).containsExactlyInAnyOrder(
+                List.of("AS1", "OWN_A", "FROZEN_LOC_A", List.of(new InboundService.Line("IT_A", 1, null, 50L))),
+                List.of("AS1", "OWN_B", "FROZEN_LOC_B", List.of(new InboundService.Line("IT_B", 4, null, 80L))),
+                List.of("AS2", "OWN_A", "FROZEN_LOC_A", List.of(new InboundService.Line("IT_A", 1, null, 50L))),
+                List.of("AS2", "OWN_B", "FROZEN_LOC_B", List.of(new InboundService.Line("IT_B", 4, null, 80L))));
+        verify(acl, never()).ownerOfSku(anyString());
+        verify(acl, never()).itemIdOfSku(anyString());
+        verifyNoInteractions(reservations);
+    }
+
+    private static boolean matches(Wrapper<?> wrapper, String value) {
+        var query = (AbstractWrapper<?, ?, ?>) wrapper;
+        query.getSqlSegment();
+        return query.getParamNameValuePairs().containsValue(value);
+    }
+
+    private record FrozenOriginal(InvReservation head, InvReservationLine line,
+            InvOutboundOrder order, InvOutboundLine posted) {}
+
+    private static FrozenOriginal original(String suffix, String sku, int quantity, long cost, long id) {
+        var head = new InvReservation();
+        head.setReservationId("R_" + suffix); head.setOwnerId("OWN_" + suffix);
+        head.setExternalRef("P1"); head.setStatus("COMMITTED"); head.setLifecycleVersion(1);
+        head.setOutboundNo("OUT_" + suffix); head.setSourceManifestHash("a".repeat(64));
+        var line = new InvReservationLine();
+        line.setId(id); line.setReservationId(head.getReservationId()); line.setOwnerId(head.getOwnerId());
+        line.setItemId("IT_" + suffix); line.setLocationId("FROZEN_LOC_" + suffix);
+        line.setSourceSkuNo(sku); line.setQty(quantity);
+        var order = new InvOutboundOrder();
+        order.setOutboundNo(head.getOutboundNo()); order.setOwnerId(head.getOwnerId());
+        order.setLocationId(line.getLocationId()); order.setPurpose("SALE"); order.setStatus("POSTED");
+        order.setSourceRef("P1"); order.setReservationId(head.getReservationId());
+        var posted = new InvOutboundLine();
+        posted.setOutboundNo(order.getOutboundNo()); posted.setOwnerId(head.getOwnerId());
+        posted.setItemId(line.getItemId()); posted.setQty(quantity); posted.setUnitCostMinor(cost);
+        return new FrozenOriginal(head, line, order, posted);
     }
 }

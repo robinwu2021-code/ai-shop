@@ -72,11 +72,11 @@ export function probe({root,dir,dbPort,secret,platform,state,sql}){
  const libs=join(extracted,'BOOT-INF/lib');
  const cp=[join(extracted,'BOOT-INF/classes'),...readdirSync(libs).filter(n=>n.endsWith('.jar')).map(n=>join(libs,n))].join(':');
  const fixture=join(dir,'probe');mkdirSync(fixture,{recursive:true});
- execFileSync(process.env.JAVA_HOME+'/bin/javac',['-cp',cp,'-d',fixture,join(root,'scripts/fixtures/BeautyMerchantFactsProbe.java')]);
+ execFileSync(process.env.JAVA_HOME+'/bin/javac',['-cp',cp,'-d',fixture,join(root,'backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/server/fixture/BeautyMerchantFactsProbe.java')]);
  for(const mode of ['live','conflict','outage']){
   const failure=mode==='outage',conflict=mode==='conflict';
   const label='merchant-facts-'+mode;const output=join(dir,label+'.json');
-  const args=['-Xmx512m','-cp',fixture+':'+cp,'BeautyMerchantFactsProbe','--server.address=127.0.0.1','--server.port=0',
+  const args=['-Xmx512m','-cp',fixture+':'+cp,'ai.neargo.shop.beauty.server.fixture.BeautyMerchantFactsProbe','--server.address=127.0.0.1','--server.port=0',
   '--spring.datasource.url=jdbc:mysql://127.0.0.1:'+dbPort+'/beauty_bm01?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC',
   '--spring.datasource.username=root','--spring.datasource.password=','--spring.flyway.enabled=false',
   '--shop.beauty.enabled=true','--shop.beauty.deployment=standalone','--shop.beauty.migration.mode=migrate',

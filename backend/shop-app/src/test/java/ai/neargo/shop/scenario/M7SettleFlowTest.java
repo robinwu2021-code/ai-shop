@@ -104,10 +104,10 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★ 支付成功即生成结算单（按子单），金额可拆解")
     void billGeneratedOnPaid() throws Exception {
-        String token = login("12800128001");
+        String token = login("18800128001");
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-basic");
 
-        String biz = loginAsOwnerOf("M0001", "12800128002");
+        String biz = loginAsOwnerOf("M0001", "18800128002");
         JsonNode bill = firstBill(biz);
 
         // 无优惠时：gross = 实付 6980
@@ -133,7 +133,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★★★ I8：支付流水成功而订单没转已支付时，巡检要能自己补回来")
     void invariantI8RepairsOrderStuckInWaitPay() throws Exception {
-        String token = login("12800128099");
+        String token = login("18800128099");
         // 只扫本条之后成功的支付：从 0 扫且限 100 笔的话，全量里库中早已过百，本笔根本排不进这一轮
         long since = System.currentTimeMillis() - 1_000;
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-i8");
@@ -185,7 +185,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★★★ 发起了支付却没有回调的单，对账轴要扫得到 —— 这是掉单唯一的发现方式")
     void reconAxisFindsPaymentsStuckAfterOpen() throws Exception {
-        String token = login("12800128097");
+        String token = login("18800128097");
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
@@ -224,7 +224,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★★ I8 不会去动本来就没问题的单 —— 否则「补了几个」这个数永远等于扫描数")
     void invariantI8LeavesHealthyOrdersAlone() throws Exception {
-        String token = login("12800128098");
+        String token = login("18800128098");
         buyAndPay(token, "G0002", "SK0003", null, "m7-i8-clean");
 
         var r = reconciler.reconcile(0L, 100);
@@ -257,11 +257,11 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★ 平台券的钱要给商家：gross = 实付 + 平台补贴")
     void platformCouponIsReimbursedToMerchant() throws Exception {
-        String token = login("12800128003");
+        String token = login("18800128003");
         String userCouponNo = receive(token, coupon("平台满50减5", 500L, 5000L, "PLATFORM", null));
         buyAndPay(token, "G0002", "SK0003", userCouponNo, "m7-platform-coupon");
 
-        String biz = loginAsOwnerOf("M0001", "12800128004");
+        String biz = loginAsOwnerOf("M0001", "18800128004");
         JsonNode bill = firstBill(biz);
 
         // 用户实付 6480，但商家该拿到 6980 —— 那 500 是平台补的
@@ -271,11 +271,11 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★ 商家券的钱商家自己出：gross = 实付，不补回")
     void merchantCouponIsNotReimbursed() throws Exception {
-        String token = login("12800128005");
+        String token = login("18800128005");
         String userCouponNo = receive(token, coupon("本店满50减5", 500L, 5000L, "MERCHANT", "M0001"));
         buyAndPay(token, "G0002", "SK0003", userCouponNo, "m7-merchant-coupon");
 
-        String biz = loginAsOwnerOf("M0001", "12800128006");
+        String biz = loginAsOwnerOf("M0001", "18800128006");
         JsonNode bill = firstBill(biz);
 
         // 商家自己让的利，平台不补 —— 出资方分列（Q9）在这里兑现
@@ -287,12 +287,12 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★ 自带客流零佣金（R16）：商家实得 = 应结基数")
     void merchantOwnedTrafficHasZeroCommission() throws Exception {
-        String token = login("12800128010");
+        String token = login("18800128010");
         // 先扫码进店 → 归因 MERCHANT_OWNED
         enterStore(token, "M0001");
         buyAndPay(token, "G0002", "SK0003", null, "m7-owned");
 
-        String biz = loginAsOwnerOf("M0001", "12800128011");
+        String biz = loginAsOwnerOf("M0001", "18800128011");
         JsonNode bill = firstBill(biz);
 
         assertThat(bill.get("trafficSource").asString()).isEqualTo("MERCHANT_OWNED");
@@ -305,10 +305,10 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★ 平台客流按档收佣金，且费率**落库快照**（费率变了历史账不变）")
     void platformTrafficPaysCommission() throws Exception {
-        String token = login("12800128012");
+        String token = login("18800128012");
         buyAndPay(token, "G0002", "SK0003", null, "m7-platform");
 
-        String biz = loginAsOwnerOf("M0001", "12800128013");
+        String biz = loginAsOwnerOf("M0001", "18800128013");
         JsonNode bill = firstBill(biz);
 
         assertThat(bill.get("trafficSource").asString()).isEqualTo("PLATFORM");
@@ -324,7 +324,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("费率说明可查：商家要能自己算清楚每单能拿多少（B-11.9.5）")
     void rateCardIsVisibleToMerchant() throws Exception {
-        String biz = loginAsOwnerOf("M0001", "12800128014");
+        String biz = loginAsOwnerOf("M0001", "18800128014");
         mvc().perform(get("/biz/settle/rate-card").header("Authorization", "Bearer " + biz))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.merchantOwnedRate").value(0))
@@ -338,9 +338,9 @@ class M7SettleFlowTest {
     @DisplayName("分账执行：PENDING → SPLIT，回执落库")
     void executeSplit() throws Exception {
         givenSplitRecipient();
-        String token = login("12800128020");
+        String token = login("18800128020");
         buyAndPay(token, "G0002", "SK0003", null, "m7-exec");
-        String biz = loginAsOwnerOf("M0001", "12800128021");
+        String biz = loginAsOwnerOf("M0001", "18800128021");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
         settleService.executeSplit(settleNo);
@@ -355,9 +355,9 @@ class M7SettleFlowTest {
     @DisplayName("分账幂等：重复执行不会重复打款")
     void splitIsIdempotent() throws Exception {
         givenSplitRecipient();
-        String token = login("12800128022");
+        String token = login("18800128022");
         buyAndPay(token, "G0002", "SK0003", null, "m7-idem");
-        String biz = loginAsOwnerOf("M0001", "12800128023");
+        String biz = loginAsOwnerOf("M0001", "18800128023");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
         settleService.executeSplit(settleNo);
@@ -380,10 +380,10 @@ class M7SettleFlowTest {
          */
         var communitiesBefore = communityPoints(java.util.List.of("C0001", "C0002"), true);
         try {
-        String token = login("12800128099");
+        String token = login("18800128099");
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-points-fee");
 
-        String biz = loginAsOwnerOf("M0001", "12800128098");
+        String biz = loginAsOwnerOf("M0001", "18800128098");
         JsonNode bill = null;
         String body = mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + biz))
                 .andReturn().getResponse().getContentAsString();
@@ -438,7 +438,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("一个子单只能有一张结算单（重复生成 = 重复分账）")
     void oneBillPerSubOrder() throws Exception {
-        String token = login("12800128024");
+        String token = login("18800128024");
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-once");
 
         /*
@@ -451,7 +451,7 @@ class M7SettleFlowTest {
         settleOrchestrator.generateForOrder(payOrderNo);
         settleOrchestrator.generateForOrder(payOrderNo);
 
-        String biz = loginAsOwnerOf("M0001", "12800128025");
+        String biz = loginAsOwnerOf("M0001", "18800128025");
         String body = mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + biz))
                 .andReturn().getResponse().getContentAsString();
         long count = 0;
@@ -467,11 +467,11 @@ class M7SettleFlowTest {
     @DisplayName("★ 退款先回退分账（真实实现下依然成立，M5 的顺序约束不因换实现而失效）")
     void refundReversesSplitFirst() throws Exception {
         givenSplitRecipient();
-        String token = login("12800128030");
+        String token = login("18800128030");
         buyAndPay(token, "G0002", "SK0003", null, "m7-refund");
         // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
         makeMerchantDirect("M0001");
-        String biz = loginAsOwnerOf("M0001", "12800128031");
+        String biz = loginAsOwnerOf("M0001", "18800128031");
         String settleNo = firstBill(biz).get("settleNo").asString();
         settleService.executeSplit(settleNo);
 
@@ -490,11 +490,11 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("未分账的单退款：直接标记回退，不产生无谓的回退指令")
     void refundBeforeSplitNeedsNoReversal() throws Exception {
-        String token = login("12800128032");
+        String token = login("18800128032");
         buyAndPay(token, "G0002", "SK0003", null, "m7-refund-early");
         // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
         makeMerchantDirect("M0001");
-        String biz = loginAsOwnerOf("M0001", "12800128033");
+        String biz = loginAsOwnerOf("M0001", "18800128033");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
         String asNo = applyAfterSale(token, firstSubOrderNo(token));
@@ -512,10 +512,10 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("商家只看得到自己的结算单")
     void merchantSeesOwnBillsOnly() throws Exception {
-        String buyer = login("12800128040");
+        String buyer = login("18800128040");
         buyAndPay(buyer, "G0003", "SK0004", null, "m7-scope");   // M0002 的货
 
-        String m1 = loginAsOwnerOf("M0001", "12800128041");
+        String m1 = loginAsOwnerOf("M0001", "18800128041");
         String body = mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + m1))
                 .andReturn().getResponse().getContentAsString();
         for (JsonNode b : json.readTree(body).get("data")) {
@@ -526,12 +526,12 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("别家的结算单查不到（settleNo 可猜）")
     void cannotReadOthersBill() throws Exception {
-        String buyer = login("12800128042");
+        String buyer = login("18800128042");
         buyAndPay(buyer, "G0002", "SK0003", null, "m7-others");
-        String m1 = loginAsOwnerOf("M0001", "12800128043");
+        String m1 = loginAsOwnerOf("M0001", "18800128043");
         String settleNo = firstBill(m1).get("settleNo").asString();
 
-        String m2 = loginAsOwnerOf("M0002", "12800128044");
+        String m2 = loginAsOwnerOf("M0002", "18800128044");
         mvc().perform(get("/biz/settle/bills/" + settleNo).header("Authorization", "Bearer " + m2))
                 .andExpect(jsonPath("$.code").value(10404));
     }
@@ -540,7 +540,7 @@ class M7SettleFlowTest {
     @DisplayName("非商家看不到结算（没有钱的账可看）")
     void normalUserCannotSeeBills() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12800128045");
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "18800128045");
         mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(10403));
     }

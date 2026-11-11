@@ -97,6 +97,7 @@ class OrderListDateRangeTest {
         o.setSubOrderNo("SO-RANGE-PROBE-" + n);
         o.setOrderNo("O-RANGE-PROBE-" + n);
         o.setUserNo("U-RANGE-PROBE");
+        o.setIdentityRevision(1L);
         o.setEntityNo(ENTITY);
         o.setStoreNo(STORE);
         o.setStatus(OrdSubOrder.COMPLETED);

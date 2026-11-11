@@ -175,7 +175,7 @@ class GroupOrderFlowTest {
         String orderNo = order(login(phone()), groupNo, false);
         pay(orderNo, "TX-G4-" + seq);
 
-        String outsider = TestLogin.merchantOwner(mvc(), json, otpStore, "126" + String.format("%08d", ++seq));
+        String outsider = TestLogin.merchantOwner(mvc(), json, otpStore, "186" + String.format("%08d", ++seq));
         mvc().perform(post("/biz/group/" + groupNo + "/dissolve").header("Authorization", "Bearer " + outsider)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"不想拼了\"}"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers

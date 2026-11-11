@@ -10,6 +10,7 @@ import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.PaymentP
 import ai.neargo.shop.pay.acquiring.service.MerchantPaymentQueryService.Summary;
 import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
 import ai.neargo.shop.pay.biz.PayBizFacade.PaymentQuery;
+import ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
@@ -63,8 +64,10 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
     }
 
     @Override
-    public ai.neargo.shop.pay.biz.PayBizFacade.BizReceipts receipts(String storeNo, String bizNo) {
-        return biz.receipts(storeNo, operator(), bizNo);
+    public BizReceipts receipts(String storeNo, String bizNo) {
+        BizReceipts result = biz.receipts(storeNo, operator(), bizNo);
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo + "/" + bizNo, "业务单收款记录");
+        return result;
     }
 
     @Override
@@ -110,7 +113,9 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
 
     @Override
     public PaymentPage paymentOrders(String storeNo, PaymentQuery query) {
-        return biz.paymentOrders(storeNo, operator(), query);
+        PaymentPage result = biz.paymentOrders(storeNo, operator(), query);
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款列表");
+        return result;
     }
 
     @Override
@@ -122,12 +127,16 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
 
     @Override
     public Lookup paymentLookup(String storeNo, Long amountMinor, String within, String tradeNoSuffix) {
-        return biz.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix);
+        Lookup result = biz.paymentLookup(storeNo, operator(), amountMinor, within, tradeNoSuffix);
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款查找");
+        return result;
     }
 
     @Override
     public CollectStatus collectStatus(String storeNo) {
-        return biz.collectStatus(storeNo, operator());
+        CollectStatus result = biz.collectStatus(storeNo, operator());
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款能力");
+        return result;
     }
 
     @Override
@@ -146,7 +155,9 @@ public class BizPaymentAppServiceImpl implements BizPaymentAppService {
 
     @Override
     public LinkPage paymentLinks(String storeNo, String status, String cursor, Integer size) {
-        return biz.paymentLinks(storeNo, operator(), status, cursor, size);
+        LinkPage result = biz.paymentLinks(storeNo, operator(), status, cursor, size);
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "付款链接记录");
+        return result;
     }
 
     @Override

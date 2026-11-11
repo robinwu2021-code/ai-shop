@@ -876,11 +876,15 @@ class ArchitectureTest {
         return candidates.stream()
                 .flatMap(c -> c.getMethods().stream())
                 .filter(m -> m.isAnnotatedWith(Scheduled.class))
-                .filter(m -> !m.isAnnotatedWith(SchedulerLock.class))
-                .filter(m -> !callsOwnerShedLock(m, m.getOwner(), new HashSet<>()))
+                .filter(m -> !hasDistributedSchedulerLock(m))
                 .map(m -> m.getOwner().getSimpleName() + "#" + m.getName())
                 .sorted()
                 .toList();
+    }
+
+    static boolean hasDistributedSchedulerLock(JavaMethod method) {
+        return method.isAnnotatedWith(SchedulerLock.class)
+                || callsOwnerShedLock(method, method.getOwner(), new HashSet<>());
     }
 
     private static boolean callsOwnerShedLock(JavaMethod method, JavaClass owner, Set<JavaMethod> visited) {

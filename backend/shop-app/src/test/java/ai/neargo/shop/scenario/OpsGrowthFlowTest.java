@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li><b>审计走真链路</b>：扫码进店 → 下单付款 → 运营端在归因链路里查得到这个人这一条</li>
  * </ol>
  *
- * <p>手机号段 {@code 126005xxxxx}（商户）/ {@code 130005xxxxx}（买家），尾号 3xxxx 段归本类。
+ * <p>手机号段 {@code 186005xxxxx}（商户）/ {@code 130005xxxxx}（买家），尾号 3xxxx 段归本类。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -84,7 +84,7 @@ class OpsGrowthFlowTest {
         String ops = opsLogin();
         saveRule(ops, DEFAULT_PRIORITY, 30, "OVERWRITE", "\"DEVICE\",\"PHONE\"");
 
-        String biz = merchant("12600530001", "增长·扫码进店测试店");
+        String biz = merchant("18600530001", "增长·扫码进店测试店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 20);
         String skuNo = firstSku(goodsNo);
@@ -134,7 +134,7 @@ class OpsGrowthFlowTest {
     @DisplayName("★ 改优先级 → 同一份线索判定跟着变 → 商家佣金档跟着变")
     void priorityDrivesTrafficSourceAndFeeTier() throws Exception {
         String ops = opsLogin();
-        String biz = merchant("12600530010", "增长·优先级测试店");
+        String biz = merchant("18600530010", "增长·优先级测试店");
         String merchantNo = merchantNoOf(biz);
         String goodsNo = listedGoods(biz, 20);
         String skuNo = firstSku(goodsNo);
@@ -169,8 +169,8 @@ class OpsGrowthFlowTest {
     @DisplayName("★ 冲突策略真的在裁决：KEEP_FIRST 不覆盖并留 KEPT 痕，OVERWRITE 覆盖")
     void conflictPolicyDecidesAndLeavesTrace() throws Exception {
         String ops = opsLogin();
-        String storeA = merchantNoOf(merchant("12600530020", "增长·冲突 A 店"));
-        String storeB = merchantNoOf(merchant("12600530021", "增长·冲突 B 店"));
+        String storeA = merchantNoOf(merchant("18600530020", "增长·冲突 A 店"));
+        String storeB = merchantNoOf(merchant("18600530021", "增长·冲突 B 店"));
 
         // ---- KEEP_FIRST：先到先得
         saveRule(ops, DEFAULT_PRIORITY, 30, "KEEP_FIRST", "\"DEVICE\",\"PHONE\"");
@@ -204,7 +204,7 @@ class OpsGrowthFlowTest {
     @DisplayName("★ 窗口期真的写进归属：改成 1 天，新归属的到期时刻跟着变")
     void windowDaysDrivesExpiry() throws Exception {
         String ops = opsLogin();
-        String store = merchantNoOf(merchant("12600530030", "增长·窗口期测试店"));
+        String store = merchantNoOf(merchant("18600530030", "增长·窗口期测试店"));
 
         saveRule(ops, DEFAULT_PRIORITY, 30, "OVERWRITE", "\"DEVICE\",\"PHONE\"");
         long thirty = report(login("13000530041"), store, null, null).get("expireAt").asLong();

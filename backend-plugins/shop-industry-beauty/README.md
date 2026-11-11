@@ -197,7 +197,7 @@ BM02-c班表/远程事实及整模块隔离构件部署已通过主TDD§25关口
 独立服务的BeautyMerchantClientConfiguration提供三个既有Port的远程实现，使用内部凭证向PLATFORM读取人员、规范资源和周窗口；embedded继续本地所有者，不复制数据。
 原生验证：`node scripts/verify-schedule-maintenance.mjs`，`--employment-only`聚焦任职变更对已有周规则的保护。
 整模块验证：沿BM-01的真实构件环境变量，执行`node scripts/verify-beauty-bm02-deployment.mjs`，可设`BEAUTY_BM02_EVIDENCE_DIR`保存证据。
-部署脚本复用原隔离框架并扩展人员/资源/周规则用例；`scripts/fixtures/BeautyMerchantFactsProbe.java`只在验收中对已提取且记录摘要的实际server类路径启动原BeautyApplication，调用真实远程Bean。它不是生产路由，不替代普通server/host JAR启动，该历史BM02证据不证明BM03预约链路；BM03采用末节独立普通JAR HTTP harness。
+部署脚本复用原隔离框架并扩展人员/资源/周规则用例；`backend-plugins/shop-industry-beauty/beauty-server/src/test/java/ai/neargo/shop/beauty/server/fixture/BeautyMerchantFactsProbe.java`只在验收中对已提取且记录摘要的实际server类路径启动原BeautyApplication，调用真实远程Bean。它不是生产路由，不替代普通server/host JAR启动，该历史BM02证据不证明BM03预约链路；BM03采用末节独立普通JAR HTTP harness。
 模块隔离部署已通过；实际范围/构件摘要/延期项见主TDD§25。内部事实冲突映射HTTP409；任职变更遇本店ACTIVE规则时须先显式停用，包含历史日期规则。
 
 ### BM03-a1预约来源存储

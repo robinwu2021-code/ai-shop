@@ -2,6 +2,7 @@ package ai.neargo.shop.commercebridge;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -23,6 +24,7 @@ import ai.neargo.shop.merchant.service.impl.MerchantServiceImpl;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.spi.notify.OpsAlertPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
+import ai.neargo.shop.user.service.AuthService;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -63,8 +65,8 @@ class FoundationQueryMysqlTest {
             new CommerceMigrationRunner(f.ds).migrate();
             CommerceStoreCreationFlowTest.seedPublishedCatalog(f.jdbc);
             f.jdbc.update(
-                    "insert into usr_account(user_no,created_at,updated_at) values"
-                            + " ('N',now(),now())");
+                    "insert into usr_account(user_no,market,created_at,updated_at) values"
+                            + " ('N','CN',now(),now())");
             var authority = new HostStoreCreationAuthority(f.ds, Map.of("CN", "CNY"),org.mockito.Mockito.mock(ai.neargo.shop.auth.PermChecker.class));
             var facade =
                     new CommerceStoreCreationConfiguration()
@@ -116,12 +118,16 @@ class FoundationQueryMysqlTest {
             web.register(
                     ApiResponseWrapper.class,
                     ai.neargo.shop.portal.biz.BizFoundationController.class);
+            var accountMarkets = mock(AuthService.class);
+            when(accountMarkets.accountMarket("N")).thenReturn("CN");
             var mvc =
                     CommerceAccessSecurityFlowTest.merchantMvc(
                             f,
                             web,
                             true,
                             Map.of(
+                                    AuthService.class,
+                                    accountMarkets,
                                     MerchantAdminPort.class,
                                     services.getBean(MerchantAdminPort.class),
                                     OpsService.class,

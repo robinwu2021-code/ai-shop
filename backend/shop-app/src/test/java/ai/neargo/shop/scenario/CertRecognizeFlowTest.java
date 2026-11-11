@@ -68,7 +68,7 @@ class CertRecognizeFlowTest {
         // 测试环境本来就没配 shop.ai.vision.*，这一条正好覆盖生产上「模型挂了」的那一支
         assertThat(certVision.isEnabled()).as("测试环境不该连着真模型").isFalse();
 
-        String token = merchant("12600190001", "识别·没配模型");
+        String token = merchant("18600190001", "识别·没配模型");
         String body = mvc().perform(multipart("/biz/qualifications/recognize")
                         .file(new MockMultipartFile("file", "lic.jpg", "image/jpeg", jpeg()))
                         .header("Authorization", "Bearer " + token))
@@ -88,7 +88,7 @@ class CertRecognizeFlowTest {
     @Test
     @DisplayName("★★★ 识别不落任何东西 —— 不写资质、不建媒体记录")
     void recognizePersistsNothing() throws Exception {
-        String token = merchant("12600190002", "识别·不落库");
+        String token = merchant("18600190002", "识别·不落库");
 
         long qualsBefore = qualCount(token);
         mvc().perform(multipart("/biz/qualifications/recognize")
@@ -107,7 +107,7 @@ class CertRecognizeFlowTest {
     @Test
     @DisplayName("★ 不是图的字节要拒 —— 后缀是客户端说了算的")
     void rejectsNonImageBytes() throws Exception {
-        String token = merchant("12600190003", "识别·假图");
+        String token = merchant("18600190003", "识别·假图");
         mvc().perform(multipart("/biz/qualifications/recognize")
                         .file(new MockMultipartFile("file", "fake.jpg", "image/jpeg",
                                 "这不是图片，只是一段文本".getBytes(java.nio.charset.StandardCharsets.UTF_8)))

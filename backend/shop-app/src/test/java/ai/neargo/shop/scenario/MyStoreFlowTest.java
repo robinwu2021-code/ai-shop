@@ -62,10 +62,10 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("★ AC1 主体号进店落到具体门店：我的店里是门店名，不是主体名")
     void entityLinkLandsOnDefaultStore() throws Exception {
-        String entityNo = approvedMerchantNo("12600136001", "门店化测试主体甲", "CM-MYS-A");
+        String entityNo = approvedMerchantNo("18600136001", "门店化测试主体甲", "CM-MYS-A");
         MchStore def = defaultStore(entityNo);
         rename(def, "甲 · 福田店");
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136101");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136101");
 
         // 老链接带的是主体号
         call(post("/mp/store/" + entityNo + "/enter"), buyer, "{\"source\":\"SCAN\"}");
@@ -81,9 +81,9 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("★ AC2 首次来源只定一次：先分享后列表，仍记分享与分享人；次数累加")
     void firstSourceIsSticky() throws Exception {
-        String entityNo = approvedMerchantNo("12600136002", "门店化测试主体乙", "CM-MYS-B");
+        String entityNo = approvedMerchantNo("18600136002", "门店化测试主体乙", "CM-MYS-B");
         String storeNo = defaultStore(entityNo).getStoreNo();
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136102");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136102");
         String userNo = userNoOf(buyer);
 
         call(post("/mp/store/" + storeNo + "/enter"), buyer, "{\"source\":\"SHARE\",\"inviterNo\":\"U-INV-1\"}");
@@ -99,9 +99,9 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("AC2 非分享来源不记分享人；不认识的来源按 LIST，不猜成分享")
     void inviterOnlyForShare() throws Exception {
-        String entityNo = approvedMerchantNo("12600136003", "门店化测试主体丙", "CM-MYS-C");
+        String entityNo = approvedMerchantNo("18600136003", "门店化测试主体丙", "CM-MYS-C");
         String storeNo = defaultStore(entityNo).getStoreNo();
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136103");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136103");
 
         call(post("/mp/store/" + storeNo + "/enter"), buyer, "{\"source\":\"WHATEVER\",\"inviterNo\":\"U-INV-3\"}");
 
@@ -113,7 +113,7 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("种子商家的老链接（主体号 M0002）落到它的默认门店 ST-M0002")
     void seedEntityLink() throws Exception {
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136109");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136109");
         call(post("/mp/store/M0002/enter"), buyer, "{}");
         JsonNode mine = data(get("/mp/store/mine"), buyer);
         assertThat(storeNos(mine)).containsExactly("ST-M0002");
@@ -122,9 +122,9 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("★ 不带 source、不带 body 的进店照常成功，按 LIST 记（老调用方都不带）")
     void enterWithoutSource() throws Exception {
-        String entityNo = approvedMerchantNo("12600136008", "门店化测试主体庚", "CM-MYS-G");
+        String entityNo = approvedMerchantNo("18600136008", "门店化测试主体庚", "CM-MYS-G");
         String storeNo = defaultStore(entityNo).getStoreNo();
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136108");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136108");
 
         call(post("/mp/store/" + entityNo + "/enter"), buyer, "{}");
         mvc().perform(authed(post("/mp/store/" + storeNo + "/enter"), buyer))
@@ -138,10 +138,10 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("★ AC3 同主体两家店是两行；只逛过的超过 30 天掉出，买过的一直在")
     void twoStoresTwoRowsAndKeepRules() throws Exception {
-        String entityNo = approvedMerchantNo("12600136004", "门店化测试主体丁", "CM-MYS-D");
+        String entityNo = approvedMerchantNo("18600136004", "门店化测试主体丁", "CM-MYS-D");
         MchStore a = defaultStore(entityNo);
         MchStore b = addStore(entityNo, "STMYS0004B", "丁 · 二号店", "ACTIVE", null, null);
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136104");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136104");
         String userNo = userNoOf(buyer);
 
         call(post("/mp/store/" + a.getStoreNo() + "/enter"), buyer, "{\"source\":\"LIST\"}");
@@ -169,7 +169,7 @@ class MyStoreFlowTest {
     @DisplayName("★ AC4/AC5 附近：去掉我的店、按距离升序，没坐标的排最后而不是以 0 米排第一；停用的不列")
     void nearbyOrderAndExclusions() throws Exception {
         String community = "CM-MYS-E";
-        String entityNo = approvedMerchantNo("12600136005", "门店化测试主体戊", community);
+        String entityNo = approvedMerchantNo("18600136005", "门店化测试主体戊", community);
         MchStore def = defaultStore(entityNo);
         // 买家在 (22.540000, 114.050000)
         int lat = 22_540_000, lng = 114_050_000;
@@ -178,7 +178,7 @@ class MyStoreFlowTest {
         MchStore near = addStore(entityNo, "STMYS0005N", "戊 · 近店", "ACTIVE", 22_541_000, 114_050_000);
         MchStore visited = addStore(entityNo, "STMYS0005V", "戊 · 逛过", "ACTIVE", 22_540_100, 114_050_000);
         MchStore closed = addStore(entityNo, "STMYS0005R", "戊 · 停用", "READONLY", 22_540_000, 114_050_000);
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136105");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136105");
         call(post("/mp/store/" + visited.getStoreNo() + "/enter"), buyer, "{\"source\":\"LIST\"}");
         call(post("/mp/store/" + closed.getStoreNo() + "/enter"), buyer, "{\"source\":\"LIST\"}");
 
@@ -219,7 +219,7 @@ class MyStoreFlowTest {
     @DisplayName("AC8 游客：我的店回空、附近照常可逛")
     void guestSeesNearbyOnly() throws Exception {
         String community = "CM-MYS-F";
-        String entityNo = approvedMerchantNo("12600136006", "门店化测试主体己", community);
+        String entityNo = approvedMerchantNo("18600136006", "门店化测试主体己", community);
         String storeNo = defaultStore(entityNo).getStoreNo();
 
         JsonNode mine = data(get("/mp/store/mine"), null);
@@ -233,7 +233,7 @@ class MyStoreFlowTest {
     @Test
     @DisplayName("不存在的门店号 404（不按主体号兜底 —— ST 开头就是门店号）")
     void unknownStoreIs404() throws Exception {
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600136107");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600136107");
         JsonNode r = json.readTree(mvc().perform(authed(post("/mp/store/ST-NOPE/enter"), buyer)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andReturn().getResponse().getContentAsString());
@@ -281,6 +281,7 @@ class MyStoreFlowTest {
         o.setSubOrderNo(no);
         o.setOrderNo("O" + no);
         o.setUserNo(userNo);
+        o.setIdentityRevision(1L);
         o.setEntityNo(entityNo);
         o.setStoreNo(storeNo);
         o.setStatus(status);

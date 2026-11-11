@@ -66,6 +66,13 @@ class MpEndpointAuthTest {
 
     /** 匿名访问回 401，已逐条实弹验证。 */
     private static final Set<String> REQUIRES_LOGIN = Set.of(
+            // CheckoutService/CheckoutPaymentService require the current buyer before looking up an operation.
+            "GET /mp/checkout/{operationNo}",
+            "GET /mp/checkout/{operationNo}/payments/{paymentOperationNo}",
+            "POST /mp/checkout/{operationNo}/confirmations",
+            "POST /mp/checkout/{operationNo}/orders",
+            "POST /mp/checkout/{operationNo}/payments",
+            "POST /mp/checkout/{operationNo}/payments/lookup",
             "POST /mp/member-code",
             "POST /mp/orders/{orderNo}/entitlement-authorizations",
             "POST /mp/entitlement-quotes",
@@ -550,6 +557,8 @@ class MpEndpointAuthTest {
      * 这条用例会红并把 10400 打出来 —— 那时补一个字段进来，不要改判据。
      */
     private static final java.util.Map<String, String> PROBE_BODY = java.util.Map.ofEntries(
+            java.util.Map.entry("POST /mp/checkout/{operationNo}/confirmations", "{\"quoteNo\":\"PROBE-QUOTE\",\"quoteRevision\":1,\"quoteHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"),
+            java.util.Map.entry("POST /mp/checkout/{operationNo}/orders", "{\"confirmationNo\":\"PROBE-CONFIRMATION\"}"),
             java.util.Map.entry("POST /mp/order/points-quote", "{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":20}"),
             java.util.Map.entry("POST /mp/entitlement-quotes", "{\"orderDraftRef\":\"PROBE-SUB\",\"orderRevision\":0,\"selectedInstanceNos\":[]}"),
             java.util.Map.entry("POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}"),

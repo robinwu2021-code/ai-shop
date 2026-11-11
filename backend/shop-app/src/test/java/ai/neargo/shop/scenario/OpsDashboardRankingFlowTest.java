@@ -56,12 +56,12 @@ class OpsDashboardRankingFlowTest {
     @DisplayName("★ 商家排行：按 GMV 降序，数字与真实下单对得上")
     void rankingMatchesRealOrders() throws Exception {
         // 两家店，一家卖 3 单 ×￥50，一家卖 1 单 ×￥20 —— 顺序与金额都可预期
-        String big = merchant("12609390001", "排行·大店");
+        String big = merchant("18609390001", "排行·大店");
         String bigNo = merchantNoOf(big);
         String bigGoods = listedGoods(big, 50_00, 100);
         String bigSku = firstSku(bigGoods);
 
-        String small = merchant("12609390010", "排行·小店");
+        String small = merchant("18609390010", "排行·小店");
         String smallNo = merchantNoOf(small);
         String smallGoods = listedGoods(small, 20_00, 100);
         String smallSku = firstSku(smallGoods);
@@ -105,7 +105,7 @@ class OpsDashboardRankingFlowTest {
     @Test
     @DisplayName("★★★ 商家后台的 GMV 与平台排行上的**逐分钱相等** —— 取消的单两边都不算")
     void merchantDashboardAndPlatformRankingAgree() throws Exception {
-        String biz = merchant("12609390030", "口径·对账店");
+        String biz = merchant("18609390030", "口径·对账店");
         String merchantNo = merchantNoOf(biz);
         String goods = listedGoods(biz, 50_00, 100);
         String sku = firstSku(goods);
@@ -148,7 +148,7 @@ class OpsDashboardRankingFlowTest {
     @Test
     @DisplayName("★ 售后率跟着真实售后单动 —— 这一列是用来挑「卖得多也赔得多」的店的")
     void afterSaleRateReflectsRealTickets() throws Exception {
-        String biz = merchant("12609390020", "排行·售后店");
+        String biz = merchant("18609390020", "排行·售后店");
         String merchantNo = merchantNoOf(biz);
         // 退掉的单会离开成交态。**这正是要覆盖的形状**：若排行只按成交态取商家集合，
         // 这家店会从榜上凭空消失 —— 而它是「卖得多也赔得多」那一类的极端情形。

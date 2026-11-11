@@ -56,7 +56,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 新店打开工作台是一串 0，不是报错 —— 报错会让店主以为账号没开通")
     void freshMerchantSeesZeros() throws Exception {
-        String token = merchant("12600141001", "工作台测试·新店");
+        String token = merchant("18600141001", "工作台测试·新店");
 
         String body = mvc().perform(get("/biz/dashboard/todo").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -82,7 +82,7 @@ class BizDashboardAndReviewFlowTest {
     @DisplayName("不是商家的人打不开工作台（403，不是空对象）")
     void nonMerchantIsRejected() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
-        String consumer = TestLogin.merchantOwner(mvc(), json, otpStore, "12600141009");
+        String consumer = TestLogin.merchantOwner(mvc(), json, otpStore, "18600141009");
         mvc().perform(get("/biz/dashboard/todo").header("Authorization", "Bearer " + consumer))
                 .andExpect(jsonPath("$.code").value(10403));
     }
@@ -98,7 +98,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★★★ 用 C 端手上那个单号（子单号）能发表评价 —— 这条链路曾经整条是断的")
     void reviewAcceptsTheSubOrderNoCEndActuallyHas() throws Exception {
-        String token = merchant("12600142007", "评价测试·子单号");
+        String token = merchant("18600142007", "评价测试·子单号");
         String goodsNo = saveGoods(token, "评价测试·子单号 商品");
         approveGoods(goodsNo);
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
@@ -135,7 +135,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★★★ 评价要真的计入商家评分 —— 那句话就印在发表页上")
     void reviewActuallyMovesTheRating() throws Exception {
-        var seeded = seedReview("12600142008", "评价测试·评分", 2);
+        var seeded = seedReview("18600142008", "评价测试·评分", 2);
         String merchantNo = json.readTree(mvc().perform(get("/biz/merchant/profile")
                         .header("Authorization", "Bearer " + seeded.token))
                 .andReturn().getResponse().getContentAsString())
@@ -175,7 +175,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 回复只能回一次 —— 回复是公开表态，反复改会变成评论区来回改口")
     void replyOnlyOnce() throws Exception {
-        var seeded = seedReview("12600142001", "评价测试·回复", 5);
+        var seeded = seedReview("18600142001", "评价测试·回复", 5);
 
         mvc().perform(post("/biz/review/" + seeded.reviewNo + "/reply")
                         .header("Authorization", "Bearer " + seeded.token)
@@ -194,8 +194,8 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 回不了别家的评价（且不区分「不存在」与「不是你的」）")
     void cannotReplyToAnotherMerchantsReview() throws Exception {
-        var mine = seedReview("12600142002", "评价测试·本店", 5);
-        String other = merchant("12600142003", "评价测试·别家");
+        var mine = seedReview("18600142002", "评价测试·本店", 5);
+        String other = merchant("18600142003", "评价测试·别家");
 
         mvc().perform(post("/biz/review/" + mine.reviewNo + "/reply")
                         .header("Authorization", "Bearer " + other)
@@ -207,7 +207,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 好评不能申诉 —— 放开的话「凡是不满意都申诉」会把裁决台淹掉")
     void goodReviewIsNotAppealable() throws Exception {
-        var seeded = seedReview("12600142004", "评价测试·好评", 5);
+        var seeded = seedReview("18600142004", "评价测试·好评", 5);
 
         mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
                         .header("Authorization", "Bearer " + seeded.token)
@@ -219,7 +219,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("差评可申诉，但必须写理由，且只能申诉一次")
     void badReviewAppealFlow() throws Exception {
-        var seeded = seedReview("12600142005", "评价测试·差评", 1);
+        var seeded = seedReview("18600142005", "评价测试·差评", 1);
 
         // 空理由：裁决台上无法处理，只会变成一条永远待办的单
         mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
@@ -245,7 +245,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 待回复评价进得了工作台待办，回复之后减一")
     void pendingReplyShowsInTodo() throws Exception {
-        var seeded = seedReview("12600142006", "评价测试·待办", 4);
+        var seeded = seedReview("18600142006", "评价测试·待办", 4);
 
         assertThat(todoField(seeded.token, "toReply")).isEqualTo(1);
         mvc().perform(post("/biz/review/" + seeded.reviewNo + "/reply")
@@ -261,7 +261,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 结束早于开始的活动被拒 —— 它会「永远不生效」而状态看着正常")
     void campaignTimeWindowMustBeValid() throws Exception {
-        String token = merchant("12600143001", "营销测试·时段");
+        String token = merchant("18600143001", "营销测试·时段");
         long now = System.currentTimeMillis();
 
         mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
@@ -274,7 +274,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 活动类型创建后不可改 —— 改类型等于换一套优惠语义，应当新建")
     void campaignTypeIsImmutable() throws Exception {
-        String token = merchant("12600143002", "营销测试·改类型");
+        String token = merchant("18600143002", "营销测试·改类型");
         String no = createCampaign(token, "FULL_CUT", "满 50 减 5");
 
         mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
@@ -287,7 +287,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("新建是 DRAFT，启停在 RUNNING ↔ PAUSED 之间")
     void campaignToggleFlow() throws Exception {
-        String token = merchant("12600143003", "营销测试·启停");
+        String token = merchant("18600143003", "营销测试·启停");
         String no = createCampaign(token, "COUPON", "新客券");
 
         assertThat(campaignStatus(token, no)).isEqualTo("DRAFT");
@@ -302,9 +302,9 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 动不了别家的活动（不区分「不存在」与「不是你的」）")
     void cannotTouchAnotherMerchantsCampaign() throws Exception {
-        String mine = merchant("12600143004", "营销测试·本店");
+        String mine = merchant("18600143004", "营销测试·本店");
         String no = createCampaign(mine, "FULL_CUT", "本店活动");
-        String other = merchant("12600143005", "营销测试·别家");
+        String other = merchant("18600143005", "营销测试·别家");
 
         mvc().perform(post("/biz/campaign/" + no + "/toggle").header("Authorization", "Bearer " + other)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"running\":true}"))
@@ -316,7 +316,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 没配拼团价的商品开不了团 —— 开团这一步不能临时定价")
     void cannotOpenGroupWithoutGroupPrice() throws Exception {
-        String token = merchant("12600144001", "开团测试·无拼团价");
+        String token = merchant("18600144001", "开团测试·无拼团价");
         String goodsNo = saveGoods(token, "普通商品");
         approveGoods(goodsNo);
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + token)
@@ -331,9 +331,9 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 开不了别家商品的团 —— 否则谁都能拿别人的货把单收进自己店")
     void cannotOpenGroupOnAnotherMerchantsGoods() throws Exception {
-        String mine = merchant("12600144002", "开团测试·货主");
+        String mine = merchant("18600144002", "开团测试·货主");
         String goodsNo = saveGoods(mine, "别家的货");
-        String other = merchant("12600144003", "开团测试·外人");
+        String other = merchant("18600144003", "开团测试·外人");
 
         mvc().perform(post("/biz/groups").header("Authorization", "Bearer " + other)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -344,7 +344,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★★★ 商家从 /biz 读得到自己刚建的活动 —— 带域表不绕域时这一页恒空，而接口成功")
     void merchantSeesOwnActivitiesOverHttp() throws Exception {
-        String token = merchant("12600144020", "活动可见性·真 HTTP");
+        String token = merchant("18600144020", "活动可见性·真 HTTP");
         currentEntityNo = json.readTree(mvc().perform(get("/biz/context")
                         .header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString())
@@ -386,7 +386,7 @@ class BizDashboardAndReviewFlowTest {
          * 没有任何一层拦。C 端看到的会是「团购价 ¥15.00 / 原价 ¥9.90」，
          * 而凑齐人数的买家实际上多付了钱。
          */
-        String token = merchant("12600144010", "开团测试·价格倒挂");
+        String token = merchant("18600144010", "开团测试·价格倒挂");
         // 活动是按主体建的，夹具要知道挂给谁 —— 从 /biz/context 拿，不猜
         currentEntityNo = json.readTree(mvc().perform(get("/biz/context")
                         .header("Authorization", "Bearer " + token))
@@ -455,7 +455,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("商家团列表默认为空，不是报错")
     void merchantGroupsStartEmpty() throws Exception {
-        String token = merchant("12600144004", "开团测试·空列表");
+        String token = merchant("18600144004", "开团测试·空列表");
         mvc().perform(get("/biz/groups").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.length()").value(0));
@@ -488,7 +488,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 顾客列表不下发完整手机号（B12）")
     void customerListNeverLeaksPhone() throws Exception {
-        var seeded = seedReview("12600145001", "顾客测试·脱敏", 5);
+        var seeded = seedReview("18600145001", "顾客测试·脱敏", 5);
 
         String body = mvc().perform(get("/biz/customers").header("Authorization", "Bearer " + seeded.token))
                 .andExpect(jsonPath("$.code").value(0))
@@ -503,7 +503,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("新店的顾客列表是空数组，不是报错")
     void customerListStartsEmpty() throws Exception {
-        String token = merchant("12600145002", "顾客测试·空");
+        String token = merchant("18600145002", "顾客测试·空");
         mvc().perform(get("/biz/customers").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.length()").value(0));
@@ -512,7 +512,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 没配过配送规则时返回默认值，不是空 —— 空会让店主以为功能坏了")
     void deliveryRuleHasDefaults() throws Exception {
-        String token = merchant("12600145010", "配送测试·默认值");
+        String token = merchant("18600145010", "配送测试·默认值");
         mvc().perform(get("/biz/delivery/rule").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.radius").value(3000))
@@ -522,7 +522,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 免运费门槛低于起送价被拒 —— 那等于每单都免运费，店主却以为设了门槛")
     void freeThresholdBelowMinOrderIsRejected() throws Exception {
-        String token = merchant("12600145011", "配送测试·门槛");
+        String token = merchant("18600145011", "配送测试·门槛");
 
         mvc().perform(post("/biz/delivery/rule").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -544,7 +544,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("分享物料带得出店名与可点的链接；带 goodsNo 时指向单品")
     void shareKitCarriesShopNameAndLink() throws Exception {
-        String token = merchant("12600145020", "分享测试·小店");
+        String token = merchant("18600145020", "分享测试·小店");
 
         String body = mvc().perform(get("/biz/store/share-kit").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
@@ -564,7 +564,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★★ 整店海报：生得出一张 750×1200 的真 PNG，不是回落地页链接那半句假话")
     void storePosterRendersRealPng() throws Exception {
-        String token = merchant("12600147001", "海报测试·整店");
+        String token = merchant("18600147001", "海报测试·整店");
 
         String body = mvc().perform(get("/biz/store/poster").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
@@ -582,7 +582,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★★ 单品海报：带 goodsNo 也照样出图——字体缺失/取不到码都不该让接口整个报错")
     void goodsPosterRendersRealPng() throws Exception {
-        String token = merchant("12600147002", "海报测试·单品");
+        String token = merchant("18600147002", "海报测试·单品");
         String goodsNo = saveGoods(token, "海报测试·苹果");
 
         String body = mvc().perform(get("/biz/store/poster").param("goodsNo", goodsNo)
@@ -601,7 +601,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("不存在的商品：退化成整店海报，不是 500")
     void posterWithUnknownGoodsFallsBackToStorePoster() throws Exception {
-        String token = merchant("12600147003", "海报测试·商品不存在");
+        String token = merchant("18600147003", "海报测试·商品不存在");
 
         mvc().perform(get("/biz/store/poster").param("goodsNo", "G-NOT-EXIST")
                         .header("Authorization", "Bearer " + token))
@@ -614,7 +614,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 申诉的另一半：商家申诉 → 平台支持 → 差评从 C 端消失")
     void appealUpheldRemovesTheReview() throws Exception {
-        var seeded = seedReview("12600146001", "裁决测试·支持", 1);
+        var seeded = seedReview("18600146001", "裁决测试·支持", 1);
         String goodsNo = goodsOf(seeded.token);
 
         // 差评此刻对买家可见
@@ -642,7 +642,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("驳回申诉时差评保留 —— 驳回不是「什么都没发生」")
     void appealDismissedKeepsTheReview() throws Exception {
-        var seeded = seedReview("12600146002", "裁决测试·驳回", 1);
+        var seeded = seedReview("18600146002", "裁决测试·驳回", 1);
         String goodsNo = goodsOf(seeded.token);
         String appealNo = json.readTree(mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
                                 .header("Authorization", "Bearer " + seeded.token)
@@ -665,7 +665,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★ 裁决必须写说明，且裁完就是终态（同一条差评不能有两个结论）")
     void appealDecisionNeedsVerdictAndIsFinal() throws Exception {
-        var seeded = seedReview("12600146003", "裁决测试·终态", 1);
+        var seeded = seedReview("18600146003", "裁决测试·终态", 1);
         String appealNo = json.readTree(mvc().perform(post("/biz/review/" + seeded.reviewNo + "/appeal")
                                 .header("Authorization", "Bearer " + seeded.token)
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -695,7 +695,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("评价驳回必须写理由；待裁决列表按状态筛得出来")
     void reviewDecideAndAppealQueue() throws Exception {
-        var seeded = seedReview("12600146004", "裁决测试·队列", 2);
+        var seeded = seedReview("18600146004", "裁决测试·队列", 2);
         String support = opsLogin("support", "support123");
 
         mvc().perform(post("/ops/reviews/" + seeded.reviewNo + "/decide")
@@ -882,7 +882,7 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("★★★ 工作台显示本店近 7 天到访（PV/UV）—— §6 浏览记录在 B 端露出")
     void dashboardShowsRecentVisits() throws Exception {
-        String token = merchant("12600141055", "到访看板测试店");
+        String token = merchant("18600141055", "到访看板测试店");
         String merchantNo = json.readTree(mvc().perform(get("/biz/merchant/profile")
                         .header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString())

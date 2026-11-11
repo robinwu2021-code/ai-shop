@@ -551,7 +551,7 @@ class InventoryBizEndpointTest {
          *
          * 两条支路只差一个自变量：退休时那件物料上有没有货。
          */
-        String token = merchant("12600288010", "退休上账·果蔬");
+        String token = merchant("18600288010", "退休上账·果蔬");
         String goodsNo = saveGoods(token, null, "[]", "[{\"optionValues\":[],\"price\":900,\"stock\":0,\"saleUnit\":\"袋\"}]");
         drainOutbox();
         String oldSku = onlyLiveSkuOf(goodsNo);
@@ -659,7 +659,7 @@ class InventoryBizEndpointTest {
          * 商家在库存里看不到那件货、盘不着、进不了货，**而任何地方都不会报错**。
          * 跑批还要 worker profile，线上没有常驻调度。
          */
-        String token = merchant("12600288001", "建品上账·粮油");
+        String token = merchant("18600288001", "建品上账·粮油");
         TestStoreCategory.open(mvc(), json, token, "CAT110");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -990,7 +990,7 @@ class InventoryBizEndpointTest {
      */
     private Shop shop() throws Exception {
         int seq = SEQ.incrementAndGet();
-        String phone = "126002%05d".formatted(seq % 100000);
+        String phone = "186002%05d".formatted(seq % 100000);
         String token = merchant(phone, "进销存接口测试店-" + seq);
 
         JsonNode ctx = ok(get("/biz/context"), token);

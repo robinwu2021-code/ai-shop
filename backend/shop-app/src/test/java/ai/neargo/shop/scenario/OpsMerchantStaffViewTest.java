@@ -53,7 +53,7 @@ class OpsMerchantStaffViewTest {
     @DisplayName("★★ 运营看得到商家的人、门店角色，以及他用哪个号登录")
     void opsSeesStaffAndTheirLoginPhone() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        String merchantNo = ownMerchantNo("12700270101", "运营只读店A");
+        String merchantNo = ownMerchantNo("18700270101", "运营只读店A");
         /*
          * **加一个真员工再看**。只有老板的话这条断言是空转的：
          * 老板的 `mch_account.login_phone` 本来就是空（他走 C 端账号登录），
@@ -61,9 +61,9 @@ class OpsMerchantStaffViewTest {
          */
         mvc().perform(post("/biz/staff").header("Authorization", "Bearer "
                         // A7：/biz/** 只认 btk_
-                        + TestLogin.merchantOwner(mvc(), json, otpStore, "12700270101"))
+                        + TestLogin.merchantOwner(mvc(), json, otpStore, "18700270101"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"loginPhone\":\"12700270111\",\"displayName\":\"小周\"}"));
+                .content("{\"loginPhone\":\"18700270111\",\"displayName\":\"小周\"}"));
 
         String body = mvc().perform(get("/ops/merchants/" + merchantNo + "/staff")
                         .header("Authorization", "Bearer " + admin))
@@ -77,7 +77,7 @@ class OpsMerchantStaffViewTest {
          * 客服要回答的第一个问题往往正是「他到底是用哪个号登进去的」——
          * 一个 `138****8000` 回答不了它。
          */
-        assertThat(body).as("要给完整号，它是登录用户名").contains("12700270111");
+        assertThat(body).as("要给完整号，它是登录用户名").contains("18700270111");
         assertThat(body).as("姓名也要给 —— 一列号码认不出人").contains("小周");
         // 老板那一行的 loginPhone 本来就是空：他走 C 端账号登录，不占员工手机号
         assertThat(json.readTree(body).get("data").size()).isEqualTo(2);
@@ -87,7 +87,7 @@ class OpsMerchantStaffViewTest {
     @DisplayName("★★★ 平台不能改商家的授权 —— 这一段刻意只有读，没有写")
     void noWriteEndpointForMerchantStaff() throws Exception {
         String admin = opsLogin("admin", "admin123");
-        String merchantNo = ownMerchantNo("12700270102", "运营只读店B");
+        String merchantNo = ownMerchantNo("18700270102", "运营只读店B");
 
         /*
          * 谁能进这家店是商家的雇佣关系；平台替商家改授权，
@@ -108,7 +108,7 @@ class OpsMerchantStaffViewTest {
     @Test
     @DisplayName("★★ 没有 merchant:merchant:read 的角色看不到 —— 员工名单本身是商家的信息")
     void needsMerchantReadPerm() throws Exception {
-        String merchantNo = ownMerchantNo("12700270103", "运营只读店C");
+        String merchantNo = ownMerchantNo("18700270103", "运营只读店C");
         // finance 只管钱，不该顺带拿到全平台商家的员工名单
         String finance = opsLogin("finance", "finance123");
 

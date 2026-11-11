@@ -65,7 +65,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OpsDataScopeFlowTest {
 
     /** 城西片区的买家（C0001 / M0001 的货）。号段与其他场景测试错开，避免发码限流互撞 */
-    private static final String BUYER_WEST = "12600812001";
+    private static final String BUYER_WEST = "18600812001";
     /** 城东片区的买家（C0002 / M0002 的货） */
     private static final String BUYER_EAST = "13000813001";
 

@@ -2162,7 +2162,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         fresh ? skuMapper.insert(toSave) : skuMapper.updateCatalogMetadata(toSave));
                 if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
                 if (!fresh) toSave.setVersion(Math.addExact(toSave.getVersion(), 1));
-                stockChanges.put(skuNo, sku.stock());
+                if (newSku) stockChanges.put(skuNo, sku.stock());
                 saved.add(toSave);
                 kept.add(key);
             }

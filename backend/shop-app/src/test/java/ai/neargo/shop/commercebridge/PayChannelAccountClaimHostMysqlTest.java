@@ -11,7 +11,6 @@ import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.config.PayChannelAccountClaimConfiguration;
 import ai.neargo.shop.config.PayBizOnboardingConfiguration;
 import ai.neargo.shop.merchant.paysync.StoreSyncProperties;
-import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.payclient.*;
 import ai.neargo.shop.portal.biz.*;
 import ai.neargo.svc.client.*;
@@ -66,7 +65,7 @@ class PayChannelAccountClaimHostMysqlTest {
         when(sources.status("MAIN","M")).thenReturn(new PaySourceLinkApi.Status("PENDING","PM","VERIFY_PENDING","PENDING",null));
         web.register(PayChannelAccountClaimConfiguration.class,PayBizOnboardingConfiguration.class,
                 BizChannelAccountClaimController.class,BizPayOnboardingController.class,
-                PayBizExceptionHandler.class,ApiResponseWrapper.class,StoreOwnershipWritePortImpl.class);
+                PayBizExceptionHandler.class,ApiResponseWrapper.class);
         web.addBeanFactoryPostProcessor(beans->{
             beans.registerSingleton("claimJdbc",f.jdbc);beans.registerSingleton("authJdbcClient",JdbcClient.create(f.ds));beans.registerSingleton("claimSources",sources);
             beans.registerSingleton("claimSync",new StoreSyncProperties(true,"http://127.0.0.1:1","AI_SHOP_UME","local-test","MAIN","CN",null,Duration.ofSeconds(60),Duration.ofSeconds(1)));

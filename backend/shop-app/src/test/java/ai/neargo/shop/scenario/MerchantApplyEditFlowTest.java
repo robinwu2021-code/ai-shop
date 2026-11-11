@@ -45,7 +45,7 @@ class MerchantApplyEditFlowTest {
     @Test
     @DisplayName("★★★ 待审核时改意向：改完从库里读回来是新值，不是「接口说成功了」")
     void pendingApplyCanBeEditedAndIsPersisted() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600150001");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "18600150001");
         String applyNo = submit(user, "意向测试店A", "13900000001", "生鲜", "CM-AE-A");
 
         edit(user, applyNo, "{\"name\":\"意向测试店A-改过\",\"contactPhone\":\"13900000002\","
@@ -63,7 +63,7 @@ class MerchantApplyEditFlowTest {
     @Test
     @DisplayName("★★★ 清空一个格子要真的清空 —— updateById 会跳过 null，那句 set 根本不生成")
     void clearingAFieldActuallyClearsIt() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600150002");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "18600150002");
         String applyNo = submit(user, "意向测试店B", "13900000003", "生鲜", "CM-AE-B");
 
         // 先填上推荐人与简介，再把它们清掉 —— 改意向最常见的动作就是「删掉一个填错的格子」
@@ -83,7 +83,7 @@ class MerchantApplyEditFlowTest {
     @Test
     @DisplayName("★★★ 运营开始看了就锁 —— 否则他看的与库里存的不是同一份")
     void reviewingApplyIsLocked() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600150003");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "18600150003");
         String applyNo = submit(user, "意向测试店C", "13900000004", "生鲜", "CM-AE-C");
 
         String bd = opsLogin("bd", "bd123");
@@ -102,10 +102,10 @@ class MerchantApplyEditFlowTest {
     @Test
     @DisplayName("★★★ 不是自己的单当「不存在」，不是「无权限」—— 后者等于确认单号有效")
     void othersApplyLooksLikeNotFound() throws Exception {
-        String owner = TestLogin.consumer(mvc(), json, otpStore, "12600150004");
+        String owner = TestLogin.consumer(mvc(), json, otpStore, "18600150004");
         String applyNo = submit(owner, "意向测试店D", "13900000005", "生鲜", "CM-AE-D");
 
-        String stranger = TestLogin.consumer(mvc(), json, otpStore, "12600150005");
+        String stranger = TestLogin.consumer(mvc(), json, otpStore, "18600150005");
         edit(stranger, applyNo, "{\"name\":\"别人的单\",\"contactPhone\":\"13900000006\",\"category\":\"生鲜\"}")
                 .andExpect(jsonPath("$.code").value(10404));
     }

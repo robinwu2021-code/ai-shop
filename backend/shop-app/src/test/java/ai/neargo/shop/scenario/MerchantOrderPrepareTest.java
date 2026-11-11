@@ -46,6 +46,7 @@ class MerchantOrderPrepareTest {
         sub.setSubOrderNo(subNo);
         sub.setOrderNo("ORDPR" + System.nanoTime() % 100_000_000L);
         sub.setUserNo("UPR" + System.nanoTime() % 100_000_000L);
+        sub.setIdentityRevision(1L);
         sub.setEntityNo(entityNo);
         sub.setStatus(OrdSubOrder.WAIT_FULFILL);
         sub.setFulfillment(Fulfillments.EXPRESS);

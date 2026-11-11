@@ -50,7 +50,7 @@ class GoodsDetailStoreNameTest {
     @Test
     @DisplayName("★★★ AC1 带门店号进详情：店铺卡是那家门店名，不是主体名")
     void detailWithStoreNoShowsStoreName() throws Exception {
-        String biz = merchant("12609190001", "门店名科技有限公司");
+        String biz = merchant("18609190001", "门店名科技有限公司");
         // 用默认营业门店（上架类目与它一致，不触发跨店冲突）；改名成明确不等于主体名的值，
         // 否则默认店名若恰好等于商家名，「显示的是门店名」这条就验不出来（假绿）
         String storeA = defaultStoreNo(biz);
@@ -70,7 +70,7 @@ class GoodsDetailStoreNameTest {
     @Test
     @DisplayName("★★★ AC2 不带门店号：按商品唯一在售店解析，仍显门店名（首页推荐/搜索/购物车进来）")
     void detailWithoutStoreNoResolvesByGoods() throws Exception {
-        String biz = merchant("12609190002", "无号科技有限公司");
+        String biz = merchant("18609190002", "无号科技有限公司");
         String storeA = defaultStoreNo(biz);
         renameStore(storeA, "无号测试·甲店");
         String goodsNo = onSaleGoodsAt(biz, storeA, "只在甲店卖的抽纸 B");
@@ -86,14 +86,14 @@ class GoodsDetailStoreNameTest {
     @Test
     @DisplayName("★★★ 买家登录后查详情：门店名仍要有（数据域不能把取名查询过滤成空）")
     void detailWithBuyerTokenStillHasStoreName() throws Exception {
-        String biz = merchant("12609190003", "带登录科技有限公司");
+        String biz = merchant("18609190003", "带登录科技有限公司");
         String storeA = defaultStoreNo(biz);
         renameStore(storeA, "带登录测试·甲店");
         String goodsNo = onSaleGoodsAt(biz, storeA, "只在甲店卖的抽纸 C");
 
         // **关键：带 C 端消费者 token**。匿名查看不出问题（无数据域），
         // 一带登录 token 就触发请求线程的数据域，而取名若没 executeWithoutScope 会被过滤成 null。
-        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600190099");
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "18600190099");
         JsonNode data = data(get("/mp/goods/" + goodsNo).header("Authorization", "Bearer " + buyer));
         assertThat(data.get("store").isNull()).as("带 token 也要填上 store").isFalse();
         assertThat(data.get("store").get("storeName").asString())

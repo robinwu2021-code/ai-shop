@@ -31,7 +31,21 @@
           "favoriteCount": 0,
           "displayName": "",
           "currentStoreNo": null,
-          "account": "15965010103"
+          "account": "15965010103",
+          "subjectKind": "USR",
+          "currentIdentity": {
+            "identityNo": "OWNER",
+            "type": "OWNER",
+            "merchantNo": "",
+            "merchantName": null,
+            "entityCount": 0,
+            "role": "店主",
+            "roleCodes": [
+              "OWNER"
+            ],
+            "storeCount": 0
+          },
+          "userNo": "<USR>"
         }
       }
     }
@@ -145,7 +159,21 @@
         "favoriteCount": 0,
         "displayName": "",
         "currentStoreNo": "STORE-EXAMPLE",
-        "account": "15965010103"
+        "account": "15965010103",
+        "subjectKind": "USR",
+        "currentIdentity": {
+          "identityNo": "OWNER",
+          "type": "OWNER",
+          "merchantNo": "ENTITY-EXAMPLE",
+          "merchantName": "Selected pending shop",
+          "entityCount": 1,
+          "role": "店主",
+          "roleCodes": [
+            "OWNER"
+          ],
+          "storeCount": 1
+        },
+        "userNo": "<USR>"
       }
     }
   },
@@ -433,7 +461,21 @@
         "favoriteCount": 0,
         "displayName": "",
         "currentStoreNo": "STORE-EXAMPLE",
-        "account": "15965010103"
+        "account": "15965010103",
+        "subjectKind": "USR",
+        "currentIdentity": {
+          "identityNo": "OWNER",
+          "type": "OWNER",
+          "merchantNo": "ENTITY-EXAMPLE",
+          "merchantName": null,
+          "entityCount": 1,
+          "role": "店主",
+          "roleCodes": [
+            "OWNER"
+          ],
+          "storeCount": 1
+        },
+        "userNo": "<USR>"
       }
     }
   },
@@ -486,7 +528,11 @@
         "qualificationItems": [],
         "onBehalf": false,
         "agreedAt": 1793717763513,
-        "referrerPhone": null
+        "referrerPhone": null,
+        "ownerUserNo": "<USR>",
+        "marketCode": null,
+        "storeProfile": null,
+        "storeNo": null
       }
     }
   },

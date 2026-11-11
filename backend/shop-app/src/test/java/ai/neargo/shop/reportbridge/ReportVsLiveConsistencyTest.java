@@ -77,6 +77,7 @@ class ReportVsLiveConsistencyTest {
         o.setSubOrderNo(PROBE + n);
         o.setOrderNo("O-RPT-CONSIST-" + n);
         o.setUserNo("U-RPT-CONSIST");
+        o.setIdentityRevision(1L);
         o.setEntityNo(ENTITY);
         o.setStoreNo("S-RPT-CONSIST");
         // 必须是 TRANSACTED 里的一个 —— 两边都按它过滤，用别的值这个测试就比了个寂寞

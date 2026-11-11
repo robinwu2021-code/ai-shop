@@ -31,6 +31,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
+import javax.sql.DataSource;
 
 @EnabledIfEnvironmentVariable(
         named = "COMMERCE_MYSQL_URL",
@@ -595,11 +596,16 @@ class BizFoundationAccessMysqlTest {
         // Use real transactions + actual application/membership/store rows. The dictionary,
         // operator recipients and notification hook are independent of target selection.
         services.register(ApplyTransactions.class);
+        services.registerBean("dataSource", DataSource.class, () -> f.ds);
         services.registerBean(StoreOwnershipWritePort.class, () -> new StoreOwnershipWritePortImpl(f.jdbc));
         services.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,
                 () -> mock(ai.neargo.shop.platform.MarketPhonePolicyService.class));
-        services.registerBean(ai.neargo.shop.spi.user.MerchantQueryPort.class,
-                () -> mock(ai.neargo.shop.spi.user.MerchantQueryPort.class));
+        if (services.getBeanFactory().getBeanNamesForType(
+                ai.neargo.shop.spi.user.MerchantQueryPort.class, false, false).length == 0) {
+            services.registerBean(ai.neargo.shop.spi.user.MerchantQueryPort.class,
+                    () -> port instanceof ai.neargo.shop.spi.user.MerchantQueryPort queries
+                            ? queries : mock(ai.neargo.shop.spi.user.MerchantQueryPort.class));
+        }
         services.registerBean(DataSourceTransactionManager.class, () -> f.manager);
         services.registerBean(
                 OpsServiceImpl.class,
