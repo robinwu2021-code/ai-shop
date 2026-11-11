@@ -10327,6 +10327,96 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueSettlementController$VoidRequest"
+      },
+      "WorkOrderIntentRequest_46c927cbd5": {
+        "properties": {
+          "storeNo": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
+          },
+          "taskNo": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
+          },
+          "workOrderNo": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "storeNo",
+          "taskNo",
+          "workOrderNo"
+        ],
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$WorkOrderIntentRequest"
+      },
+      "WorkOrderIntent_00c52d261b": {
+        "properties": {
+          "operationNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopeRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "serviceOrderNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taskNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taskRevision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "workOrderNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$WorkOrderIntent"
       }
     },
     "securitySchemes": {
@@ -11874,6 +11964,80 @@
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/Preview_d941ba5254"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:ent:use')"
+      }
+    },
+    "/biz/entitlement-uses/work-order-intents": {
+      "post": {
+        "operationId": "BizEntitlementUseController_workOrderIntent",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkOrderIntentRequest_46c927cbd5"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/WorkOrderIntent_00c52d261b"
                         },
                         {
                           "type": "null"

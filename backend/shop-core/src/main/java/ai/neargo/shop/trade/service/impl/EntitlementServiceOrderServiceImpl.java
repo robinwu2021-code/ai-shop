@@ -28,6 +28,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.entitlement.ServiceWorkOrderOriginPort.Origin;
 import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Quote;
 import ai.neargo.shop.spi.storedvalue.StoredValueUseQuotePort.Selection;
 import ai.neargo.shop.spi.member.CustomerIdentityPort;
@@ -127,8 +128,20 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         return createInternal(ctx, entity, c.storeNo(), c.items(), key, hash(json.writeValueAsString(c)), false,
                 c::userNo);
     }
+    @Override @Transactional
+    public ServiceOrderSnapshot createForWorkOrder(EntitlementContext ctx, String entity, String storeNo,
+                                                   Origin origin, String key) {
+        var items = List.of(new ServiceOrderCreate.Line(origin.skuNo(), origin.quantity()));
+        return createInternal(ctx, entity, storeNo, items, key,
+                hash(json.writeValueAsString(List.of("WORK_ORDER", origin))), false, origin::userNo, origin);
+    }
     private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
             List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder) {
+        return createInternal(ctx, entity, storeNo, items, key, payload, monetary, holder, null);
+    }
+    private ServiceOrderSnapshot createInternal(EntitlementContext ctx, String entity, String storeNo,
+            List<ServiceOrderCreate.Line> items, String key, String payload, boolean monetary, Supplier<String> holder,
+            Origin origin) {
         if (key == null || key.isBlank() || key.length() > 128) badRequest();
         ownershipWrites.lockAndCheck(ctx.tenantNo(), entity, storeNo);
         String no = orderNo(ctx, entity, key, json);
@@ -166,7 +179,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         String staff = users.findActive(ctx.tenantNo(), ctx.actorNo()).map(UserScopeFactsPort.ActiveUser::nickname)
                 .orElse(null);
         var frozen = new FrozenSource(ctx.tenantNo(), reference(no), userNo, entity, storeNo,
-                market.currency(), lines, store.storeName(), staff, categories, at);
+                market.currency(), lines, store.storeName(), staff, categories, at, origin);
         var row = new OrdEntServiceOrder(); row.setTenantNo(ctx.tenantNo()); row.setServiceOrderNo(no);
         row.setOperationNo(operationNo(no)); row.setEntityNo(entity); row.setStoreNo(storeNo);
         row.setUserNo(userNo); row.setOperatorNo(ctx.actorNo()); row.setRequestKeyHash(hash(key));
@@ -225,6 +238,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
                 || !now().isBefore(row.getDeadline())) conflict();
         if (!preview.redeemable()) conflict();
         var view = snapshot(row, json);
+        if (view.workOrderOrigin() != null) unavailable();
         if (amount(view.fact()) != 0 || preview.unitsToUse() != units(view.fact())) conflict();
         row.setPreviewSnapshot(json.writeValueAsString(new PreviewBinding(kind, preview, day)));
         row.setPreviewExpiresAt(LocalDateTime.ofInstant(preview.expiresAt(), ZoneOffset.UTC));
@@ -237,6 +251,7 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     public ServiceOrderSnapshot bindMoneyPreview(EntitlementContext ctx, String entity, String store, String no,
                                                  Quote quote) {
         var row = lock(ctx.tenantNo(), no); merchant(row, ctx, entity, store); var view = snapshot(row, json);
+        if (view.workOrderOrigin() != null) unavailable();
         if (!List.of("CREATED", "PREVIEWED").contains(row.getStatus()) || !now().isBefore(row.getDeadline())
                 || !quote.redeemable() || !view.fact().source().equals(quote.sourceRef())
                 || !view.fact().currency().equals(quote.currency()) || amount(view.fact()) != quote.amountMinor()
@@ -258,7 +273,9 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
     @Override @Transactional
     public ServiceOrderSnapshot stage(EntitlementContext ctx, String entity, String store, ServiceUseSubmit c) {
         var row = lock(ctx.tenantNo(), c.serviceOrderNo()); merchant(row, ctx, entity, store);
-        var view = snapshot(row, json); var binding = view.preview();
+        var view = snapshot(row, json);
+        if (view.workOrderOrigin() != null) unavailable();
+        var binding = view.preview();
         if (binding == null || !binding.ref().equals(c.previewRef())
                 || binding.assetRevision() != c.expectedAssetRevision()) conflict();
         if (view.command() != null) {

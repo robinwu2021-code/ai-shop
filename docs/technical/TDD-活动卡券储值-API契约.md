@@ -52,6 +52,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P11 | POST | /mp/entitlement-claims | BenefitClaimCommand | ClaimReceipt | 登录本人 | 模板CENTER或活动资格，不任意领付费卡 |
 | P11a | GET | /mp/entitlement-claims/{intentNo} | 无 | ClaimReceipt | 登录本人 | 查询原领取意图及结果，不隐式重新发行 |
 | P12 | POST | /biz/entitlement-uses/preview | UsePreviewCommand | UsePreview | pay:ent:use | 先看后核，检查可用状态 |
+| P12a | POST | /biz/entitlement-uses/work-order-intents | WorkOrderIntentRequest + Idempotency-Key | WorkOrderIntent | pay:ent:use | 美业原工单行来源草稿 |
 | P13 | POST | /biz/entitlement-uses | UseSubmitCommand | OperationView | pay:ent:use | 受控核销，由应用协调源授权，不裸露commit |
 | P14 | GET | /biz/entitlement-uses/{operationNo} | 无 | OperationView | pay:ent:read | 未知状态查原操作，不重新扣 |
 | P14a | POST | /biz/entitlement-uses/{operationNo}/cancel | reason + Idempotency-Key | OperationView | pay:ent:use | 原经办人和门店校验，只取消未完成意图，不是退款 |
@@ -624,7 +625,8 @@ P07请求复用`CreateBatch(templateVersionNo,audienceFactRef)`；受众引用�
 |---|---|---|
 | POST /biz/entitlement-uses/preview | Idempotency-Key≤128；storeNo、instanceNo、items[{skuNo,quantity}]；customerRef/code/orderRef三选一；serviceDate、units可选但必须等于真实源 | pay:ent:use且门店范围；{operationNo,orderRef,sourceRef,preview}；预览不扣次；CODE仅可选兑换券定位 |
 | POST /biz/entitlement-uses | {sourceRef,previewRef,expectedAssetRevision,authorizationRef?} | pay:ent:use、原经办人及门店；{operationNo,status,holdNo,usageNo,occurredAt}；服务端从源派生会员、项目、次数、币种和授权引用 |
-| GET /biz/entitlement-uses/{operationNo} | 原操作号 | pay:ent:read及门店范围；只读。授权前WAIT_AUTH，确认待商家提交WAIT_SUBMIT；已过新提案期限EXPIRED；未知PROCESSING；扣次后COMMITTED |
+| POST /biz/entitlement-uses/work-order-intents | Idempotency-Key≤128；storeNo、workOrderNo、taskNo | pay:ent:use及门店范围；返回原操作号、服务单号、工单号、任务号、两个版本及 CREATED 状态。持有人、SKU 和数量取自工单服务。 |
+| GET /biz/entitlement-uses/{operationNo} | 原操作号 | pay:ent:read及门店范围；只读。工单来源草稿CREATED；独立核销授权前WAIT_AUTH，确认待商家提交WAIT_SUBMIT；已过新提案期限EXPIRED；未知PROCESSING；扣次后COMMITTED |
 | POST /biz/entitlement-uses/{operationNo}/cancel | {reason}≤100字 | pay:ent:use、原经办人及门店；仅取消尚未完成的核销请求，不是退款；负栅栏阻止迟到prepare |
 | GET /mp/entitlement-service-orders | size默认20、1–50 | C本人尚待确认/提交/处理的核销单，不接收userNo |
 | GET /mp/entitlement-service-orders/{serviceOrderNo} | 核销单号 | 仅C本人；门店、项目、数量、服务时间、权益标题、扣后余次、确认元数据；不返回原命令/身份码/授权引用 |

@@ -3,6 +3,7 @@ package ai.neargo.shop.beauty.config;
 import ai.neargo.shop.beauty.api.biz.BizStorePolicyController;
 import ai.neargo.shop.beauty.api.mp.MpStoreController;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -14,6 +15,7 @@ import org.springframework.core.env.Environment;
 @ConditionalOnBeautyWebEnabled
 @Profile({"api", "ops"})
 @ComponentScan(basePackageClasses = {BizStorePolicyController.class, MpStoreController.class})
+@Import(BeautyEntitlementOriginConfiguration.class)
 public class BeautyWebAutoConfiguration {
     public BeautyWebAutoConfiguration(Environment environment) {
         String deployment = environment.getProperty("shop.beauty.deployment", "").toLowerCase(Locale.ROOT);
