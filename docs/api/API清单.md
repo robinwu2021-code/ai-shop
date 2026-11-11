@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1194 个接口**：后端已实现 945（79%）· 前端在调 1028
+**合计 1198 个接口**：后端已实现 949（79%）· 前端在调 1031
 
 ---
 
@@ -1162,7 +1162,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **584** 个接口 ｜ 后端已实现 **443**（76%）｜ 前端在调 **420**
+共 **588** 个接口 ｜ 后端已实现 **447**（76%）｜ 前端在调 **423**
 
 ### aftersale（5）
 
@@ -1832,7 +1832,7 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（36）
+### system（40）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1849,6 +1849,8 @@
 | POST | `/ops/industries/{industry}/enabled` | 停用后入驻表单里不再出现这个行业 | — | `Industry` | — | ✅ | ✅ |
 | POST | `/ops/industries/{industry}/micro-allowed` | 改某通道的小微白名单 | — | `Industry` | — | ✅ | ✅ |
 | POST | `/ops/industries/{industry}/points-forced` | 强制开启积分：商家不可自行关闭 */ | — | `Industry` | — | ✅ | ✅ |
+| GET | `/ops/market-phone-policies` | marketPhonePolicies | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/market-phone-policies/{market}` | saveMarketPhonePolicy | — | `MarketPhonePolicy` | — | ✅ | ⬜ |
 | GET | `/ops/markets` | listMarkets | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/markets/{code}` | 市场与汇率（P-17.1.3） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/media/backfill` | 磁盘对账：把「磁盘上有、库里没有」的文件补录进来 | — | `MediaBackfillResult` | — | ✅ | ✅ |
@@ -1864,6 +1866,8 @@
 | POST | `/ops/rule-texts` | 规则文案（P-17.1.4） | — | `RuleTexts` | — | ✅ | ✅ |
 | GET | `/ops/service-scopes` | listServiceScopes | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/service-scopes/{scope}/enabled` | 开关某一档，返回最新的三档全量 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/store-industries` | 门店行业配置全量，含停用项 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/store-industries` | expectedVersion=null 新建 | — | `StoreIndustry` | — | ✅ | ✅ |
 | GET | `/ops/test-identities` | listTestIdentities | — | `TestIdentityList` | — | ✅ | ✅ |
 | POST | `/ops/test-identities` | 加一条或改备注（按 类型 + 规范化后的值 认） | — | `TestIdentityList` | — | ✅ | ✅ |
 | POST | `/ops/test-identities/{id}/enabled` | setTestIdentityEnabled | — | `TestIdentityList` | — | ✅ | ✅ |

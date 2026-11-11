@@ -1260,6 +1260,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `businessTypeCode` | `string` | 否 | — |
+| `currency` | `string` | 否 | — |
+| `currentPlanVersionNo` | `string` | 否 | — |
+| `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
 | `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
@@ -1284,6 +1288,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `businessTypeCode` | `string` | 否 | — |
+| `currency` | `string` | 否 | — |
+| `currentPlanVersionNo` | `string` | 否 | — |
+| `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
 | `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
@@ -1309,6 +1317,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `businessTypeCode` | `string` | 否 | — |
+| `currency` | `string` | 否 | — |
+| `currentPlanVersionNo` | `string` | 否 | — |
+| `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
 | `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
@@ -13147,6 +13159,45 @@ _无字段_
 | `remark` | `string` | 否 | 备注：为什么这么配。改白名单是会被商家追问的操作 |
 
 
+#### GET `/ops/market-phone-policies`
+
+marketPhonePolicies
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MarketPhonePolicy`](#marketphonepolicy)\[\]
+
+
+#### POST `/ops/market-phone-policies/{market}`
+
+saveMarketPhonePolicy
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `market` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MarketPhonePolicy`](#marketphonepolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `market` | `string` | 是 | — |
+| `callingPrefix` | `string,null` | 是 | — |
+| `recordOnly` | `boolean` | 是 | — |
+| `smsVerificationEnabled` | `boolean` | 是 | — |
+| `smsChannelReady` | `boolean` | 是 | — |
+| `marketEnabled` | `boolean` | 是 | — |
+
+
 #### GET `/ops/markets`
 
 listMarkets
@@ -13410,6 +13461,44 @@ _无字段_
 **出参**（`data`）
 
 类型：[`ServiceScopeConfig`](#servicescopeconfig)\[\]
+
+
+#### GET `/ops/store-industries`
+
+门店行业配置全量，含停用项
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StoreIndustry`](#storeindustry)\[\]
+
+
+#### POST `/ops/store-industries`
+
+expectedVersion=null 新建
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`StoreIndustry`](#storeindustry)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industryCode` | `string` | 是 | — |
+| `subIndustryCode` | `string` | 是 | — |
+| `businessTypeCode` | `string` | 是 | — |
+| `nameZh` | `string` | 是 | — |
+| `nameTw` | `string` | 是 | — |
+| `nameEn` | `string,null` | 否 | — |
+| `sort` | `number` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
 
 
 #### GET `/ops/test-identities`
@@ -15672,6 +15761,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `catalogVersion` | `number` | 否 | 当前已发布目录版本；0 为尚未发布。 |
 | `draft` | [`MallBusinessTypeDraft`](#mallbusinesstypedraft) | 否 | 当前草稿 |
 | `version` | `number` | 否 | 乐观锁版本 |
 
@@ -16268,6 +16358,10 @@ SKU 版本行；PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `businessTypeCode` | `string` | 否 | — |
+| `currency` | `string` | 否 | — |
+| `currentPlanVersionNo` | `string` | 否 | — |
+| `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
 | `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
@@ -16285,6 +16379,19 @@ SKU 版本行；PUBLISHED 之后只读
 | `timezone` | `string` | 是 | 时区标识，如 `Asia/Shanghai`。截单时间按它切分自然日 |
 | `rate` | `number` | 是 | 对基准货币的汇率。 ⚠️ 基准货币（CNY）恒为 1 且**不可改** —— 改了整套价格换算的原点就没了。 |
 | `enabled` | `boolean` | 是 | 是否开放该市场。关掉后该市场的商品不再售卖 |
+
+### MarketPhonePolicy
+
+Region-specific contact recording. SMS can open only after the deployment declares a ready channel.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `market` | `string` | 是 | — |
+| `callingPrefix` | `string,null` | 是 | — |
+| `recordOnly` | `boolean` | 是 | — |
+| `smsVerificationEnabled` | `boolean` | 是 | — |
+| `smsChannelReady` | `boolean` | 是 | — |
+| `marketEnabled` | `boolean` | 是 | — |
 
 ### Material
 
@@ -16537,7 +16644,7 @@ SKU 版本行；PUBLISHED 之后只读
 | `name` | `string` | 是 | 拟用店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
 | `subject` | `string` | 是 | 法律形态 NATURAL_PERSON / INDIVIDUAL / ENTERPRISE |
 | `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人 |
-| `contactPhone` | `string` | 是 | 联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号** |
+| `contactPhone` | `string` | 是 | 联系方式；仅记录地区不建立手机号登录身份，店主归属沿已注册账号。 |
 | `referrerPhone` | `string` | 否 | 推荐人手机号（V353，选填）。**奖励靠它人工发** —— 小程序里不能出现「邀请商家入驻得 X 元」（拉人头 + 奖励会被判平台型经营）， 所以规则只在官网与企微里，运营在这一栏看到号之后自己去发券 （TDD-C 端裂变与商家招募 §8.3）。 可选：绝大多数申请没有推荐人，那时这一栏整个不渲染。 |
 | `category` | `string` | 是 | 主营类目。**商家自己的说法**（「食品」），不是权威码 |
 | `categoryCodes` | `string`\[\] | 否 | 审核通过时授予的经营类目码 —— **平台的裁定**，与 `category` 并存。 <p>两者分开是为了留痕：追溯时要的恰恰是这两者的差 （「他说卖食品，我们批的是预包装食品」）。 |
@@ -19324,6 +19431,20 @@ REJECTED 不是终态：商家改完可以重新提审。
 - `ACTIVE`
 - `READONLY`
 - `SUSPENDED`
+
+### StoreIndustry
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industryCode` | `string` | 是 | — |
+| `subIndustryCode` | `string` | 是 | — |
+| `businessTypeCode` | `string` | 是 | — |
+| `nameZh` | `string` | 是 | — |
+| `nameTw` | `string` | 是 | — |
+| `nameEn` | `string,null` | 否 | — |
+| `sort` | `number` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
 
 ### StoreMode
 
