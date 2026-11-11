@@ -1,6 +1,7 @@
 package ai.neargo.shop.platform.api.ops;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.platform.MarketPhonePolicyService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import jakarta.validation.Valid;
@@ -19,10 +20,10 @@ public class OpsMarketPhonePolicyController {
     private final AuditLogPort audit;
     public OpsMarketPhonePolicyController(MarketPhonePolicyService policies, AuditLogPort audit) {this.policies=policies;this.audit=audit;}
     @GetMapping("/ops/market-phone-policies")
-    @PreAuthorize("@perm.can('system:param:read') or @perm.can('merchant:apply:onbehalf')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_READ + "') or @perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "')")
     public List<MarketPhonePolicyService.Policy> list() { return policies.list(); }
     @PostMapping("/ops/market-phone-policies/{market}")
-    @PreAuthorize("@perm.can('system:param:update')")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_UPDATE + "')")
     public MarketPhonePolicyService.Policy save(@PathVariable String market, @Valid @RequestBody Save command) {
         var result=policies.save(market,command.recordOnly(),command.smsVerificationEnabled(),SecurityUtils.currentUserNo());
         audit.record("MARKET_PHONE_POLICY",market,command.reason());return result;
