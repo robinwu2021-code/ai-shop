@@ -41,7 +41,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Actual separate inventory database must survive and compensate an order transaction rollback. */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:order-inventory-recovery;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
-        "shop.inventory.datasource.url=jdbc:h2:mem:inv-order-recovery;MODE=MySQL;DB_CLOSE_DELAY=-1",
+        "shop.inventory.datasource.url=jdbc:h2:mem:inv-order-recovery;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
         "shop.inventory.stock-authority=INVENTORY"
 })
 @ActiveProfiles("test")
