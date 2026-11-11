@@ -1,0 +1,62 @@
+[
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms/_next/static/chunks/4bd1b696-92152b0f5947070d.js",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms/_next/static/chunks/794-c550c81da1cd7a39.js",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/oms/_next/static/chunks/main-app-0ef359703f5d8a2a.js",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/_next/static/chunks/0f_8yvvihz4gw.js",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/_next/static/chunks/0if-vqkhyn-zc.js",
+    "status": 200
+  },
+  {
+    "origin": "https://nearshop.umeshop.ai",
+    "path": "/ops-shop/_next/static/chunks/1pq-tbmkfqa45.js",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms/_next/static/chunks/4bd1b696-92152b0f5947070d.js",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms/_next/static/chunks/794-c550c81da1cd7a39.js",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/oms/_next/static/chunks/main-app-0ef359703f5d8a2a.js",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/_next/static/chunks/0f_8yvvihz4gw.js",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/_next/static/chunks/0if-vqkhyn-zc.js",
+    "status": 200
+  },
+  {
+    "origin": "https://twpay.umeshop.ai",
+    "path": "/ops-shop/_next/static/chunks/1pq-tbmkfqa45.js",
+    "status": 200
+  }
+]
