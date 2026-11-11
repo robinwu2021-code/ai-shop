@@ -171,6 +171,18 @@ class EntitlementServiceUseHttpFlowTest {
         assertThat(detail.path("usage").path("units").asInt()).isEqualTo(1);
         assertThat(detail.path("remainingUnits").asInt()).isEqualTo(29);
         assertThat(detail.toString()).doesNotContain("principal", "bonus", "authorizationRef", "commandSnapshot");
+        String usageNo = completed.path("usageNo").asString();
+        assertThat(jdbc.update("UPDATE ent_usage SET source_order_no='UNRELATED' WHERE usage_no=?", usageNo))
+                .isEqualTo(1);
+        try {
+            var unresolved = getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data");
+            assertThat(unresolved.path("status").asString()).isEqualTo("PROCESSING");
+            assertThat(unresolved.hasNonNull("usageNo")).isFalse();
+        } finally {
+            jdbc.update("UPDATE ent_usage SET source_order_no=? WHERE usage_no=?", order, usageNo);
+        }
+        assertThat(getJson(mvc, "/biz/entitlement-uses/" + operation, merchant).path("data"))
+                .isEqualTo(original);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE order_no=?", Integer.class, order)).isZero();
     }
 }

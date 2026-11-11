@@ -25,6 +25,7 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementUseService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseWriter;
 import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntUseIntentMapper;
+import ai.neargo.shop.pay.mapper.entitlement.EntUsageMapper;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
 import ai.neargo.shop.pay.migration.service.EntitlementOwnerRegistryService;
@@ -72,9 +73,10 @@ public class EntitlementRuntimeRouting {
         return new EntitlementQueryPortImpl(service);
     }
     @Bean
-    EntitlementUseFactsPort entitlementUseFactsPort(EntUseIntentMapper intents, EntitlementUseWriter writer,
+    EntitlementUseFactsPort entitlementUseFactsPort(EntUseIntentMapper intents, EntUsageMapper usages,
+                                                   EntitlementUseWriter writer,
                                                    EntitlementSourceFence fences, ObjectMapper json) {
-        return new EntitlementUseFactsPortImpl(intents, writer, fences, json);
+        return new EntitlementUseFactsPortImpl(intents, usages, writer, fences, json);
     }
     @Bean
     PaymentAttemptFactsPort paymentAttemptFactsPort(PaymentMapper mapper) {
