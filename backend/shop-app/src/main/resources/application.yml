@@ -619,6 +619,8 @@ shop:
 
   # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
   pay:
+    # 浏览器可访问的独立支付运营端地址；留空时不展示跳转入口，不能使用内部服务地址。
+    ops-public-base-url: ${SHOP_PAY_OPS_PUBLIC_BASE_URL:}
     # B App 进件转发：需真实联调验收后启用；商家会话必须使用 db。
     biz-onboarding:
       enabled: ${NEARPAY_BIZ_ONBOARDING_ENABLED:false}

@@ -1,0 +1,97 @@
+{
+  "verifiedAt": "2026-11-11T11:36:32.347773+00:00",
+  "scope": "OPS-assisted store and fiat payment source closure; not actual collection activation",
+  "sourceBase": "0da97979287141530f7ef50f3b2252569bfcbebb",
+  "backend": {
+    "PayServiceApplicationServiceTest": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "PayServiceApplicationNativeMysqlTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "PayServiceApplyRequestsTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "OpsPayServiceControllerTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "StoreScopedDailyRoutesFlowTest": {
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "H2FixtureProjectionTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "SchemaDriftTest": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "TableHasProducerTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "executionNotes": [
+    "First focused batch: 56 tests, 55 passed; one new native assertion expected an incorrect Spring exception subtype. The actual MySQL JSON constraint rejected the write correctly.",
+    "After asserting the actual constraint rejection, the complete source owner/native pair was rerun: 12/12 passed. Remaining 44 results are reused.",
+    "B apply delegation/validation changes were removed after confirming the deployed Flutter source still sends the legacy five-field form. Existing B behavior remains; current normal full gate is still required.",
+    "After checking actual production DML privileges, removed extra runtime trigger metadata scanning; the 12-case source/native batch was rerun with a restricted DML account case."
+  ],
+  "frontend": {
+    "opsReact": {
+      "tests": 7,
+      "failures": 0,
+      "environment": "happy-dom; actual FormDrawer + React Query; includes retry, subject switch and new submission followed by failed status refresh"
+    },
+    "opsTypecheck": "passed",
+    "opsLint": "passed",
+    "bizPlanScope": {
+      "tests": 7,
+      "failures": 0,
+      "commit": "0da979792"
+    }
+  },
+  "ddl": {
+    "migration": "V660__merchant_pay_service_application.sql",
+    "native": "MySQL 9 on loopback3308, unique disposable database per test, exact migration via Flyway; all temporary databases dropped",
+    "h2": "retains complete table/checks/unique keys; exact descriptor-bound trigger projection, never claims native trigger equivalence",
+    "productionPrivileges": "Existing application account has no TRIGGER metadata privilege. Runtime metadata scanning was removed; application remains append-only and uses its existing DML permissions. A native limited-DML account regression covers submission/replay and immutable UPDATE rejection."
+  },
+  "compatibility": {
+    "ops": "Stable requestNo required; old page must refresh before submitting",
+    "flutterBiz": "Legacy five-field POST behavior preserved; persistent B resubmission requires coordinated Flutter client delivery"
+  },
+  "scopeExclusions": {
+    "C2": "not in ancestry; V659 absent; actual START remains disabled",
+    "approvedException": "only four existing C1 NO_PRODUCER registrations, user approved 2026-11-11",
+    "actualCollection": "profile APPROVED is not account/product/credential/store binding/routing or transaction success"
+  },
+  "releaseStatus": "incremental validation only; normal gate, publication, deployment and new online store/payment acceptance pending",
+  "review": {
+    "scope": "source owner/contracts, native DDL, OPS permissions and stale UI responses",
+    "finding": "P2: cached APPROVED remained visible when a new profile was submitted and the next GET failed",
+    "resolution": "reset source review query after every submission outcome; hide prior query data on read failure; new real component regression passed",
+    "remainingP1P2": "none in reviewed changes"
+  }
+}

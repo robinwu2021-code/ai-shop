@@ -8510,6 +8510,23 @@ _无字段_
 | `noRecipient` | `boolean` | 是 | 这家店一个能收消息的人都没有 —— 该做的是去给这家店配人 |
 
 
+#### GET `/ops/merchant/{merchantNo}/pay-service`
+
+payServiceStatus
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/merchant/{merchantNo}/pay-service/apply`
 
 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联

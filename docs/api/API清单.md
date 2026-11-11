@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1200 个接口**：后端已实现 951（79%）· 前端在调 1033
+**合计 1201 个接口**：后端已实现 951（79%）· 前端在调 1033
 
 ---
 
@@ -1163,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **589** 个接口 ｜ 后端已实现 **448**（76%）｜ 前端在调 **424**
+共 **590** 个接口 ｜ 后端已实现 **448**（76%）｜ 前端在调 **424**
 
 ### aftersale（5）
 
@@ -1560,7 +1560,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（64）
+### merchant（65）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1594,6 +1594,7 @@
 | PUT | `/ops/merchant-plans/{merchantNo}/quota` | 单商家额度覆盖 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | GET | `/ops/merchant-plans/upgrade-signals` | 升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchant/{entityNo}/nudge` | 主动触达商家（M2） | — | `MerchantNudgeResult` | — | ✅ | ⬜ |
+| GET | `/ops/merchant/{merchantNo}/pay-service` | payServiceStatus | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant/{merchantNo}/pay-service/apply` | 为主体申请支付服务（TDD-运营端申请支付服务）：在独立支付服务 near-pay 建平台商户、来源链接与门店关联 | — | `object` | — | ⬜ | ⬜ |
 | POST | `/ops/merchant/apply/{applyNo}/accept` | 受理：告诉商家「有人在看了」 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `MerchantApply` | — | ✅ | ✅ |

@@ -146,6 +146,20 @@
         "48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4",
         "3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905"
       ]
+    },
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V660__merchant_pay_service_application.sql",
+      "sourceSha256": "217383dbb70cbee6d0cf72b6dab15936cb227f480d38d84b71b596e02aba2d75",
+      "descriptor": "backend/shop-merchant/src/main/resources/META-INF/shop/merchant-pay-service-application-schema.json",
+      "descriptorSha256": "7ea4796b70f601642555819ab6e409da2759f6ace65348b82ef43e667df9f85c",
+      "datasource": "PRIMARY",
+      "mode": "PROJECT_WITH_NATIVE_TRIGGERS",
+      "capability": "merchant-pay-service-application-original",
+      "guardClass": "ai.neargo.shop.merchant.paysync.PayServiceApplicationStore",
+      "absentTables": [],
+      "retainedStatementHashes": [
+        "4e6c7425bd91e4088f4f2d9ba78beda90dfda6ac3dd0e57a4ecea529bbc9644c"
+      ]
     }
   ]
 }

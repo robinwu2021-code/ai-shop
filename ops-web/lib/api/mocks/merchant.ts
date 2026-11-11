@@ -4,12 +4,13 @@ import * as db from "@/lib/mock/db";
 import { storeIndustries, marketPhonePolicies } from "@/lib/mock/db/system";
 import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
-import type { MerchantApi } from "../contracts/merchant";
+import type { MerchantApi, PayServiceStatus } from "../contracts/merchant";
 import type { LegalForm, MerchantChainRow } from "@/lib/types";
 
 /** 六个卡点各一行，末两行是通的 —— 全是卡点看不出对比，全是通的看不出这页为什么存在 */
 /** 本次会话里已经提醒过的「商家 × 事由」。真实实现按日期落库，mock 只要能演出第二次 */
 const nudgedToday = new Set<string>();
+const payServiceProfiles = new Map<string, PayServiceStatus>();
 
 /** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
 const selfOperatedByPhone = new Map<string, string>();
@@ -562,9 +563,16 @@ export const merchantMock: MerchantApi = {
     return wait(m, 400);
   },
 
+  payServiceStatus: async (merchantNo) => {
+    find(merchantNo);
+    return wait(payServiceProfiles.get(merchantNo) ?? { status: "NONE", merchantRef: null, linkStatus: null, profileStatus: null,
+      reviewReason: null, merchantOpsUrl: null, onboardingOpsUrl: null });
+  },
+
   applyPayService: async (merchantNo, form) => {
     find(merchantNo);
     if (!form.legalName?.trim() || !form.registrationNo?.trim()) fail("法定名称与统一编号必填", "Legal name and registration no. are required");
+    payServiceProfiles.set(merchantNo, { status: "PENDING", merchantRef: `PM-${merchantNo}`, linkStatus: "VERIFY_PENDING", profileStatus: "PENDING", reviewReason: null, merchantOpsUrl: null, onboardingOpsUrl: null });
     return wait({ merchantRef: `PM-${merchantNo}`, applicationRef: `APP-${merchantNo}`, status: "VERIFY_PENDING", storeLinks: [] }, 400);
   },
 

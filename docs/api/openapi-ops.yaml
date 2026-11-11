@@ -29833,6 +29833,38 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant/{merchantNo}/pay-service":
+    get:
+      operationId: "payServiceStatus"
+      summary: "payServiceStatus"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/merchants/{merchantNo}/archive":
     post:
       operationId: "archiveMerchant"

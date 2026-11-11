@@ -99,6 +99,7 @@ export const RULES = [
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/nudge$/, "merchant:merchant:nudge"],
   // 为主体申请支付服务（TDD-运营端申请支付服务，V633）
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/pay-service\/apply$/, "merchant:merchant:pay-apply"],
+  ["GET", /^\/ops\/merchant\/\{entityNo\}\/pay-service$/, "merchant:merchant:pay-apply"],
   ["POST", /^\/ops\/merchant\/\{entityNo\}\/stock-doubt$/, "inventory:stock:read"],
   ["GET", /^\/ops\/merchant\/chain$/, "merchant:merchant:read"],
   ["GET", /^\/ops\/points\/account$/, "finance:settle:read"],

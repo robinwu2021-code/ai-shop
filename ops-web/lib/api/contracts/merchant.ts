@@ -18,6 +18,7 @@ import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
 /** 申请支付服务表单：法定名称、统一编号必填 */
 export interface PayServiceApplyForm {
+  requestNo: string;
   legalName: string;
   registrationNo: string;
   representativeName?: string;
@@ -31,6 +32,17 @@ export interface PayServiceApplyResult {
   applicationRef: string | null;
   status: string;
   storeLinks: unknown[];
+}
+
+/** 仅来源核验与资料审核状态，不代表可收款。 */
+export interface PayServiceStatus {
+  status: string;
+  merchantRef: string | null;
+  linkStatus: string | null;
+  profileStatus: string | null;
+  reviewReason: string | null;
+  merchantOpsUrl: string | null;
+  onboardingOpsUrl: string | null;
 }
 
 export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"entityCashRefunds"|"requestEntityCashRefund"|"payoutEntityCashRefund"|"recoverEntityCashRefund">, EntityPlanPurchaseApi {
@@ -302,6 +314,7 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    * 之后的核验、渠道账户、凭证、绑定门店在 near-pay 运营端完成。只有独立部署可用，内嵌部署后端报依赖不可用。
    */
   applyPayService(merchantNo: string, form: PayServiceApplyForm): Promise<PayServiceApplyResult>;
+  payServiceStatus(merchantNo: string): Promise<PayServiceStatus>;
   archiveMerchant(merchantNo: string): Promise<Merchant>;
   unarchiveMerchant(merchantNo: string): Promise<Merchant>;
 
