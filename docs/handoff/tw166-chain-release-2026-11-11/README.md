@@ -13,3 +13,7 @@
 - Inserted the canonical AP023 version 1 draft template from V483 under audit marker TW166-DRAFT-FIXTURE. The FOOD preset endpoint returned AP023/v1 with enabled=false and available=false. The scoped TWD draft attempt returned 10404. Scope validation requires the store's entity to be ACTIVE. Draft authoring also has a deployment opt-in. Publication was outside this acceptance.
 - FOOD PRO and CHAIN remain OFF_SALE. The authorized operator needs commerce:catalog:read/edit/publish and commerce:mall:offline:evidence/confirm plus commerce:mall:order:read for readback. The designated 166 automation identities tested carry NearPay roles and do not have the required permissions. FOOD industry publication would affect the shared FOOD catalog. No FOOD order or synthetic ledger entry was created.
 - Reusable backups are at `/data0/app/ai-shop/releases/tw166-chain-20261111` and `/data0/mysql9/backups/tw166-chain-20261111`.
+
+## Scoped draft candidate
+
+The draft path now supports a deployment scope configured under `shop.promotion.draft-scope`. For this acceptance configure tenant-no MAIN, entity-no M261106BF7GK8052W, store-no ST2611100C2XNFCXRS, template-code AP023 and currency TWD. The existing merchant permission, active entity check and selected store ownership validation run before draft admission. The existing global activity flag remains required for publishing and status changes. Default configuration keeps the scoped path closed. This candidate awaits formal activation of the test entity for 166 acceptance.

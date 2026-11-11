@@ -73,6 +73,30 @@ class ActivityVersionManagementTest {
         row.setName("预置优惠"); row.setDraftSchema("{\"scene\":\"ORDER\",\"effect\":\"" + effect + "\"}");
         when(presets.catalog("MAIN", "ACTIVITY")).thenReturn(List.of(row));
     }
+    @Test void scopedDraftAllowsOnlyTheConfiguredMerchantStoreAndLeavesPublicationClosed() {
+        var props = new PromotionFeatureProperties();
+        var gate = new PromotionFeatureGate(props);
+        var original = definition("TW draft", "ORDER");
+        var draft = new UnifiedActivityDefinition(original.name(), original.scene(), "AP023", 1,
+                new RedemptionScope("STORES", List.of("S1")), null, original.schedule(), original.rule(),
+                original.quotaLimit(), original.budgetLimitMinor(), original.perUserLimit(), "TWD");
+
+        assertThrows(BizException.class, () -> gate.requireDraft(actor, draft));
+
+        props.getDraftScope().setTenantNo("MAIN");
+        props.getDraftScope().setEntityNo("M1");
+        props.getDraftScope().setStoreNo("S1");
+        props.getDraftScope().setTemplateCode("AP023");
+        props.getDraftScope().setCurrency("TWD");
+        assertDoesNotThrow(() -> gate.requireDraft(actor, draft));
+        assertThrows(BizException.class, () -> gate.requireDraft(new ActivityActor("MAIN", "M2", "U2", null), draft));
+        assertThrows(BizException.class, () -> gate.requireDraft(
+                new ActivityActor("MAIN", "M1", "U1", null, "MGS1", "BR1"), draft));
+        props.getDraftScope().setStoreNo("S2");
+        assertThrows(BizException.class, () -> gate.requireDraft(actor, draft));
+        assertThrows(BizException.class, gate::requireActivity);
+    }
+
     @Test void instantiateUsesPresetMetadataWithoutInventingCommercialValues() {
         var service = service(); preset("CUT");
         var saved = service.saveDraft(actor, new SaveDraft(null, null, definition(null, null)), "KEY1");

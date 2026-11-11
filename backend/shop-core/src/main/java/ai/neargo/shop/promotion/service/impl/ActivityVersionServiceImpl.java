@@ -111,7 +111,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         references(actor, resolved);
         String no = command.activityNo() == null ? BizKey.next(BizKey.PROMO_ACTIVITY) : command.activityNo();
         return commands.execute(actor, "ACTIVITY_DRAFT", requestKey, command, no, ActivityView.class, () -> {
-            features.requireActivity();
+            features.requireDraft(actor, resolved);
             PmtActivity row;
             if (command.activityNo() == null) {
                 if (command.expectedRevision() != null && command.expectedRevision() != 0) {
