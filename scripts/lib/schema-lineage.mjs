@@ -440,16 +440,6 @@ export const KEY_OWNERS = {
   "hold_no": {
     "table": "mch_booking_hold"
   },
-  "buyer_no": {
-    "table": "usr_account",
-    "col": "user_no",
-    "scope": [
-      {
-        "from": "tenant_no",
-        "to": "tenant_no"
-      }
-    ]
-  },
   "confirmation_no": {
     "table": "ord_checkout_confirmation",
     "scope": [
@@ -486,7 +476,7 @@ export const NAME_COLLISIONS = {
   "policy_no": "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。",
   "bridge_actor_no": "打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。",
   "voucher_no": "积分 pts_voucher 与储值 sv_voucher 独立发号；仅登记四条同族引用，禁止根互连或跨族关联。；统一扩展：积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。",
-  "quote_no": "营销 mkt_quote、订单定价 ord_price_quote、结算 ord_checkout_quote 三族独立发号；按源表选择同族根并匹配 tenant_no，禁止根互连或裸号跨族连接。operation.current_quote_no 仅标识结算报价，不能代替 revision/hash/caller 校验。",
+  "quote_no": "营销 mkt_quote、订单定价 ord_price_quote、结算 ord_checkout_quote 及渠道导入 ord_channel_quote 四族独立发号；按源表选择同族根并匹配 tenant_no，禁止根互连或裸号跨族连接。operation.current_quote_no 仅标识结算报价，不能代替 revision/hash/caller 校验。",
   "plan_no": "pts_topup_plan 按 (plan_no,period_key) 定义独立计划；pmt_migration_decision 与 ent_migration_import 引用 tenant 内 ent_migration_plan；sv_recharge、sv_recharge_plan_version 与 sv_statement 引用 tenant 内 sv_recharge_plan。三族不可裸号互连。",
   "grant_no": "普通发放路径 ent_instance.grant_no → ent_grant.grant_no；MIGRATION_BASELINE 实例来自 ent_migration_asset.baseline_no，未创建 ent_grant，因此不画无条件实例边。仅售卡承诺和券投影可限定引用 ent_grant。；mch_management_grant 是独立经营管理授权族；服务执行及其库存retention保留服务grant上下文，不连接 ent_grant。",
   "trade_no": "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
@@ -546,7 +536,16 @@ export const NAME_COLLISIONS = {
   "catalog_no": "目录仅在主体内唯一；prd_store_catalog_version 须同时匹配 tenant_no 与 entity_no 才能引用 prd_store_catalog。",
   "actor_account_no": "支付 ord_checkout_payment_request 与 stl_payment_operation 保存解析后的 mch_account.mch_account_no（包括 USR 路径）；mch_staff_log 历史保存 login userNo，禁止全局连商家账号。",
   "execution_no": "普通退款义务条件路径 ord_refund_obligation.execution_no → ord_refund_execution.execution_no；PRF- + after_sale_no 路径指 ord_points_refund_execution.after_sale_no，不能画无条件普通执行边。",
-  "claim_no": "mch_store_entity_claim是门店经营主体认领回执；mch_plan_purchase_claim是主体额度包付款申报，分别按tenant+原门店/订单及各自编号授权，不能按claim_no跨族关联。"
+  "claim_no": "mch_store_entity_claim是门店经营主体认领回执；mch_plan_purchase_claim是主体额度包付款申报，分别按tenant+原门店/订单及各自编号授权，不能按claim_no跨族关联。",
+  "snapshot_no": "ord_card_sale_snapshot 是售卡冻结快照；mbr_brand_audience_snapshot 是品牌受众快照，两族独立发号，不可按同名跨族连接。",
+  "legal_entity_no": "V651/V652 的品牌法人主体引用 tenant 内 mch_entity.entity_no；只登记已审计的品牌与受众快照来源。",
+  "occupation_no": "V621 实际占用根在 mch_resource_occupation；数量单元、段及桶投影须同时匹配 tenant_no 与 entity_no。",
+  "start_command_no": "V621 实际占用及数量单元引用原 START 命令 mch_resource_command.command_no，必须保留 tenant_no/entity_no；不能连到其他命令族。",
+  "logical_demand_no": "V621 逻辑需求标识仅在 tenant_no/entity_no/occupation_no 内解释；同一需求可有多个数量单元和段，并非独立全局根键，不画单列 FK。",
+  "issuer_entity_no": "V652 品牌费用规则、冻结快照及账单的发行主体引用 tenant 内 mch_entity.entity_no；只登记已审计来源。",
+  "rule_version_no": "V652 品牌费用规则版本由 pmt_brand_cost_rule 持有；快照须同时匹配 tenant/management/brand/issuer_entity，不能跨品牌套用规则。",
+  "expense_entity_no": "V652 品牌费用账单及事实的费用承担主体引用 tenant 内 mch_entity.entity_no；不是发行主体的别名。",
+  "buyer_no": "结算、人工服务及行业订单来源的 USER 买家引用 tenant 内 usr_account.user_no；mch_plan_purchase 按 buyer_kind 解释，不能无条件连用户账号。"
 };
 
 // Exact source-audited memberships; new tables require explicit review.
@@ -606,7 +605,9 @@ export const COLLISION_MEMBERS = {
     "ord_pricing_funding_source",
     "ord_industry_order_source",
     "ord_pricing_fee_application",
-    "ord_pricing_fee_advice"
+    "ord_pricing_fee_advice",
+    "ord_channel_import",
+    "ord_channel_quote"
   ],
   "receipt_no": [
     "stl_payment",
@@ -1160,6 +1161,51 @@ export const COLLISION_MEMBERS = {
   "claim_no": [
     "mch_store_entity_claim",
     "mch_plan_purchase_claim"
+  ],
+  "snapshot_no": [
+    "ord_card_sale_snapshot",
+    "mbr_brand_audience_snapshot"
+  ],
+  "legal_entity_no": [
+    "mch_brand",
+    "mbr_brand_audience_snapshot"
+  ],
+  "occupation_no": [
+    "mch_resource_occupation",
+    "mch_resource_occupation_unit",
+    "mch_resource_occupation_segment",
+    "mch_resource_occupation_bucket"
+  ],
+  "start_command_no": [
+    "mch_resource_occupation",
+    "mch_resource_occupation_unit"
+  ],
+  "logical_demand_no": [
+    "mch_resource_occupation_unit",
+    "mch_resource_occupation_segment",
+    "mch_resource_occupation_bucket"
+  ],
+  "issuer_entity_no": [
+    "pmt_brand_cost_rule",
+    "pmt_brand_cost_snapshot",
+    "pmt_brand_cost_statement"
+  ],
+  "rule_version_no": [
+    "pmt_brand_cost_rule",
+    "pmt_brand_cost_snapshot"
+  ],
+  "expense_entity_no": [
+    "pmt_brand_cost_statement",
+    "pmt_brand_cost_fact"
+  ],
+  "buyer_no": [
+    "ord_industry_order_source",
+    "ord_checkout_operation",
+    "ord_checkout_confirmation",
+    "ord_checkout_payment_request",
+    "stl_payment_operation",
+    "ord_manual_service_admission",
+    "mch_plan_purchase"
   ]
 };
 
@@ -1185,12 +1231,32 @@ export const TABLE_KEY_OWNERS = {
           "to": "tenant_no"
         }
       ]
+    },
+    "buyer_no": {
+      "table": "usr_account",
+      "col": "user_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
     }
   },
   "ord_checkout_operation": {
     "current_quote_no": {
       "table": "ord_checkout_quote",
       "col": "quote_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    },
+    "buyer_no": {
+      "table": "usr_account",
+      "col": "user_no",
       "scope": [
         {
           "from": "tenant_no",
@@ -1547,12 +1613,32 @@ export const TABLE_KEY_OWNERS = {
           "to": "tenant_no"
         }
       ]
+    },
+    "buyer_no": {
+      "table": "usr_account",
+      "col": "user_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
     }
   },
   "stl_payment_operation": {
     "actor_account_no": {
       "table": "mch_account",
       "col": "mch_account_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    },
+    "buyer_no": {
+      "table": "usr_account",
+      "col": "user_no",
       "scope": [
         {
           "from": "tenant_no",
@@ -1796,6 +1882,16 @@ export const TABLE_KEY_OWNERS = {
           "to": "tenant_no"
         }
       ]
+    },
+    "buyer_no": {
+      "table": "usr_account",
+      "col": "user_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
     }
   },
   "pts_topup_plan": {
@@ -1816,6 +1912,219 @@ export const TABLE_KEY_OWNERS = {
         {
           "from": "tenant_no",
           "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "ord_manual_service_admission": {
+    "buyer_no": {
+      "table": "usr_account",
+      "col": "user_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "mch_brand": {
+    "legal_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "mbr_brand_audience_snapshot": {
+    "legal_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "pmt_brand_cost_rule": {
+    "issuer_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "pmt_brand_cost_snapshot": {
+    "issuer_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    },
+    "rule_version_no": {
+      "table": "pmt_brand_cost_rule",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "management_no",
+          "to": "management_no"
+        },
+        {
+          "from": "brand_no",
+          "to": "brand_no"
+        },
+        {
+          "from": "issuer_entity_no",
+          "to": "issuer_entity_no"
+        }
+      ]
+    }
+  },
+  "pmt_brand_cost_statement": {
+    "issuer_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    },
+    "expense_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "pmt_brand_cost_fact": {
+    "expense_entity_no": {
+      "table": "mch_entity",
+      "col": "entity_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        }
+      ]
+    }
+  },
+  "mch_resource_occupation_unit": {
+    "occupation_no": {
+      "table": "mch_resource_occupation",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
+    },
+    "start_command_no": {
+      "table": "mch_resource_command",
+      "col": "command_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
+    }
+  },
+  "mch_resource_occupation_segment": {
+    "occupation_no": {
+      "table": "mch_resource_occupation",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
+    }
+  },
+  "mch_resource_occupation_bucket": {
+    "occupation_no": {
+      "table": "mch_resource_occupation",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
+    }
+  },
+  "mch_resource_occupation": {
+    "start_command_no": {
+      "table": "mch_resource_command",
+      "col": "command_no",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        }
+      ]
+    }
+  },
+  "ord_channel_import": {
+    "quote_no": {
+      "table": "ord_channel_quote",
+      "scope": [
+        {
+          "from": "tenant_no",
+          "to": "tenant_no"
+        },
+        {
+          "from": "entity_no",
+          "to": "entity_no"
+        },
+        {
+          "from": "store_no",
+          "to": "store_no"
+        },
+        {
+          "from": "admission_no",
+          "to": "admission_no"
         }
       ]
     }

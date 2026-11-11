@@ -84,6 +84,24 @@ export interface StoreCategory {
   pendingCount: number;
 }
 export interface Store {
+  /** 门店所属主体的经营市场；未补经营上下文的列表可为空 */
+  market?: string | null;
+  /** 经营市场币种，取 sys_market；市场元数据不可用时为空 */
+  currency?: string | null;
+  /** 币种的小数位数，取 sys_market；市场元数据不可用时为空 */
+  currencyScale?: number | null;
+  /** 经营市场时区，取 sys_market；市场元数据不可用时为空 */
+  timeZone?: string | null;
+  /** 建店保存的行业码；自填行业为 OTHER，存量门店可为空 */
+  industryCode?: string | null;
+  /** 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 */
+  subIndustryCode?: string | null;
+  /** 门店经营类型码，存量门店可为空 */
+  businessTypeCode?: string | null;
+  /** 选择 OTHER 时填写的行业名称，未自填时为空 */
+  industryText?: string | null;
+  /** 选择 OTHER 时填写的子业态名称，未自填时为空 */
+  subIndustryText?: string | null;
   /** 门店号。一旦生成不再变 —— 换主体只换归属，不换它 */
   storeNo: string;
   /** 门店名 */

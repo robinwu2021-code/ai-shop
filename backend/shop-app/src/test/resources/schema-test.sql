@@ -27,6 +27,9 @@
 CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";
 
 
+CREATE ALIAS IF NOT EXISTS H2_JSON_LENGTH FOR "ai.neargo.shop.support.H2JsonFunctions.length";
+
+
 -- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql | trg_ccf_mkt_campaign_insert,trg_ccf_mkt_campaign_update,trg_ccf_mkt_campaign_delete,trg_ccf_pmt_activity_insert,trg_ccf_pmt_activity_update,trg_ccf_pmt_activity_delete,trg_ccf_pmt_activity_version_insert,trg_ccf_pmt_activity_version_update,trg_ccf_pmt_activity_version_delete,trg_ccf_pmt_activity_goods_insert,trg_ccf_pmt_activity_goods_update,trg_ccf_pmt_activity_goods_delete,trg_ccf_pmt_activity_rule_insert,trg_ccf_pmt_activity_rule_update,trg_ccf_pmt_activity_rule_delete,trg_ccf_pmt_enrollment_insert,trg_ccf_pmt_enrollment_update,trg_ccf_pmt_enrollment_delete,trg_ccf_pmt_enrollment_goods_insert,trg_ccf_pmt_enrollment_goods_update,trg_ccf_pmt_enrollment_goods_delete
 
 -- Native capability absent: backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
@@ -1576,9 +1579,6 @@ CREATE TABLE IF NOT EXISTS mch_entity
 
 CREATE TABLE IF NOT EXISTS mch_entity_apply
 (
-    store_profile TEXT,
-    store_no VARCHAR(32),
-    market_code VARCHAR(8) DEFAULT NULL,
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     apply_no VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NOT NULL,
@@ -1612,6 +1612,9 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     agreed_at BIGINT NULL,
     referrer_phone VARCHAR(32) DEFAULT NULL,
     industry_note VARCHAR(64) DEFAULT NULL,
+    market_code VARCHAR(8) NULL,
+    store_profile TEXT NULL,
+    store_no VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_apply_no UNIQUE (apply_no),
     CONSTRAINT uk_apply_active_owner UNIQUE (active_owner)
@@ -6611,7 +6614,10 @@ CREATE TABLE IF NOT EXISTS ord_ent_authorization
     CONSTRAINT uk_order_auth_quote UNIQUE (tenant_no,quote_ref),
     CHECK (source_revision>=0 AND amount_minor>=0),
     CHECK (expires_at>created_at),
-    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL) OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL AND authorized_at IS NOT NULL AND authorized_at<expires_at) OR ((CASE status WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))),
+    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL)
+        OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL
+            AND authorized_at IS NOT NULL AND authorized_at<expires_at)
+        OR ((CASE status WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))),
     CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'CANCELLED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
@@ -6647,7 +6653,11 @@ CREATE TABLE IF NOT EXISTS ord_ent_source_decision
     CONSTRAINT uk_source_intent UNIQUE (tenant_no,purpose,source_key),
     CONSTRAINT uk_source_settled UNIQUE (tenant_no,purpose,settled_source_key),
     CHECK (source_revision>=0 AND amount_minor>=0),
-    CHECK ((status='CANCELLED' AND settled_source_key IS NULL AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT'))) OR (status='COMMITTED' AND settled_source_key IS NOT NULL AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT') OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
+    CHECK ((status='CANCELLED' AND settled_source_key IS NULL
+        AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT')))
+        OR (status='COMMITTED' AND settled_source_key IS NOT NULL
+        AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT')
+        OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
 );
 
 CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
@@ -7288,7 +7298,8 @@ CREATE TABLE IF NOT EXISTS pay_ent_source_fence
     CONSTRAINT uk_ent_fence_source UNIQUE (tenant_no,purpose,source_key),
     CONSTRAINT uk_ent_fence_operation UNIQUE (tenant_no,purpose,operation_no),
     CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
-    CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL) OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
+    CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL)
+        OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_order_use
@@ -7317,7 +7328,8 @@ CREATE TABLE IF NOT EXISTS ord_ent_order_use
     CONSTRAINT uk_order_use_order UNIQUE (tenant_no,order_no),
     CONSTRAINT uk_order_use_source UNIQUE (tenant_no,source_key),
     CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
-    CHECK (((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL) OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
+    CHECK (((CASE status WHEN 'PENDING' THEN TRUE WHEN 'APPLIED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL)
+        OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_payment_seal
@@ -7392,7 +7404,10 @@ CREATE TABLE IF NOT EXISTS ent_code_token
     CONSTRAINT uk_token UNIQUE (tenant_no,token_hash),
     CONSTRAINT uk_token_request UNIQUE (tenant_no,user_no,request_key_hash),
     CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'USED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
-    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL) OR ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_operation_no IS NULL AND consumed_store_no IS NULL AND consumed_actor_no IS NULL AND consumed_at IS NULL))
+    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL
+        AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL)
+        OR ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_operation_no IS NULL AND consumed_store_no IS NULL
+        AND consumed_actor_no IS NULL AND consumed_at IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_benefit_intent
@@ -7452,7 +7467,8 @@ CREATE TABLE IF NOT EXISTS ord_ent_service_order
     CHECK ((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (NOT (CASE status WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
     CHECK (NOT (CASE status WHEN 'PENDING' THEN TRUE WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR command_snapshot IS NOT NULL),
-    CHECK (((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL) OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
+    CHECK (((CASE status WHEN 'CREATED' THEN TRUE WHEN 'PREVIEWED' THEN TRUE WHEN 'AUTHORIZED' THEN TRUE WHEN 'PENDING' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NULL)
+        OR ((CASE status WHEN 'COMMIT_DECIDED' THEN TRUE WHEN 'CANCEL_DECIDED' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND decision_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_entitlement_binding
@@ -7496,7 +7512,8 @@ CREATE TABLE IF NOT EXISTS prd_ent_binding_command
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_card_binding_request UNIQUE (tenant_no,request_key),
-    CHECK ((status='PENDING' AND response_snapshot IS NULL) OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
+    CHECK ((status='PENDING' AND response_snapshot IS NULL)
+        OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS sv_account
@@ -7590,7 +7607,8 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
     CHECK (principal_minor>0 AND bonus_minor>=0),
     CHECK ((CASE status WHEN 'WAIT_COLLECTION' THEN TRUE WHEN 'SUBMITTED' THEN TRUE WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE WHEN 'CANCELLED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
-    CHECK (NOT (CASE status WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
+    CHECK (NOT (CASE status WHEN 'RECEIVED' THEN TRUE WHEN 'CREDITED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) OR
+        (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
     CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
     CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
         OR (status<>'CANCELLED' AND cancelled_at IS NULL)),
@@ -8042,7 +8060,8 @@ CREATE TABLE IF NOT EXISTS ent_migration_alias
     CONSTRAINT uk_migration_alias_request UNIQUE (tenant_no,request_key),
     CHECK (canonical_stage_no=pmt_stage_no AND pmt_stage_no<>mkt_stage_no),
     CHECK (matched_instance_count>=0),
-    CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64 AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64
+        AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (CHAR_LENGTH(TRIM(reason))>0),
     CHECK (status='RECOGNIZED')
 );
@@ -8101,10 +8120,23 @@ CREATE TABLE IF NOT EXISTS ent_legacy_coupon_operation
     CHECK (CHAR_LENGTH(owner_plan_hash)=64 AND CHAR_LENGTH(economic_hash)=64 AND CHAR_LENGTH(command_hash)=64),
     CHECK (discount_minor IS NULL OR discount_minor>0),
     CHECK ((CASE status WHEN 'PREPARING' THEN TRUE WHEN 'HELD' THEN TRUE WHEN 'COMMITTED' THEN TRUE WHEN 'RELEASED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
-    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL AND hold_asset_seq IS NULL AND held_at IS NULL AND (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)) OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
-    CHECK (((CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL AND source_committed_at IS NOT NULL) OR (NOT (CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NULL AND commit_decision_no IS NULL AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
-    CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq))) OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL AND release_asset_seq IS NULL)),
-    CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL) OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
+    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL
+         AND hold_asset_seq IS NULL AND held_at IS NULL AND (CASE status WHEN 'PREPARING' THEN TRUE WHEN 'RELEASED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+     OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL
+         AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
+    CHECK (((CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL
+         AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL
+         AND source_committed_at IS NOT NULL)
+     OR (NOT (CASE status WHEN 'COMMITTED' THEN TRUE WHEN 'REVERSED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND commit_asset_seq IS NULL AND commit_decision_no IS NULL
+         AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
+    CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL
+         AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq)))
+     OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL
+         AND release_asset_seq IS NULL)),
+    CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL
+         AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL)
+     OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL
+         AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
@@ -8138,7 +8170,10 @@ CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
     CONSTRAINT uk_legacy_checkout_no UNIQUE (tenant_no,checkout_no),
     CONSTRAINT uk_legacy_checkout_operation UNIQUE (tenant_no,operation_no),
     CONSTRAINT uk_legacy_checkout_order UNIQUE (tenant_no,order_no),
-    CONSTRAINT ck_legacy_checkout_state CHECK ( (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
+    CONSTRAINT ck_legacy_checkout_state CHECK (
+   (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL)
+   OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL)
+   OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
     CONSTRAINT ck_legacy_checkout_not_deleted CHECK (deleted=0),
     CONSTRAINT ck_legacy_checkout_pay_ack CHECK (
    ((CASE pay_state WHEN 'PENDING' THEN TRUE WHEN 'NONE' THEN TRUE ELSE CASE WHEN pay_state IS NULL THEN NULL ELSE FALSE END END) AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
@@ -8301,7 +8336,8 @@ CREATE TABLE IF NOT EXISTS ent_migration_asset
     CONSTRAINT uk_migration_asset_baseline UNIQUE (tenant_no,baseline_no),
     CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version=0),
     CHECK (total_units>0 AND baseline_remaining_units>=0 AND baseline_remaining_units<=total_units),
-    CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL) OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
+    CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL)
+     OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ent_migration_usage
@@ -8350,7 +8386,8 @@ CREATE TABLE IF NOT EXISTS pmt_migration_return
     CONSTRAINT uk_migration_return UNIQUE (tenant_no,return_no),
     CONSTRAINT uk_migration_return_source UNIQUE (tenant_no,source_usage_no),
     CHECK (status='COMMITTED' AND deleted=0 AND version>=0),
-    CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL) OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
+    CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL)
+     OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ent_migration_return
@@ -8413,7 +8450,8 @@ CREATE TABLE IF NOT EXISTS ent_legacy_coupon_issue
     CONSTRAINT uk_legacy_issue_no UNIQUE (tenant_no,issue_no),
     CONSTRAINT uk_legacy_issue_batch UNIQUE (tenant_no,batch_no),
     CHECK ((CASE source_system WHEN 'PMT' THEN TRUE WHEN 'MKT_LEGACY' THEN TRUE ELSE CASE WHEN source_system IS NULL THEN NULL ELSE FALSE END END) AND (CASE mode WHEN 'TARGETED' THEN TRUE WHEN 'CENTER' THEN TRUE ELSE CASE WHEN mode IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND version>=0),
-    CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL) OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
+    CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL)
+     OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
@@ -8703,6 +8741,7 @@ CREATE TABLE IF NOT EXISTS mch_brand
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
     stored_value_status VARCHAR(24) NOT NULL DEFAULT 'NONE',
+    legal_entity_no VARCHAR(64) NULL,
     CONSTRAINT mch_brand_uk_1 UNIQUE (tenant_no,brand_no),
     CONSTRAINT mch_brand_uk_2 UNIQUE (tenant_no,management_no,name_key),
     CONSTRAINT mch_brand_uk_3 UNIQUE (tenant_no,management_no,create_key)
@@ -9414,7 +9453,8 @@ CREATE TABLE IF NOT EXISTS ord_pricing_funding_source
     CONSTRAINT uk_pricing_funding_source_no UNIQUE (funding_source_no),
     CONSTRAINT uk_pricing_funding_source_quote UNIQUE (tenant_no, quote_no),
     CONSTRAINT ck_pricing_funding_source_amount CHECK (amount_minor >= 0),
-    CONSTRAINT ck_pricing_funding_source_state CHECK ( (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL)),
+    CONSTRAINT ck_pricing_funding_source_state CHECK (
+        (status = 'PENDING' AND cancel_reason IS NULL) OR (status = 'CANCELLED' AND cancel_reason IS NOT NULL)),
     CONSTRAINT ck_pricing_funding_basis_json CHECK (basis_snapshot IS NULL OR (basis_snapshot IS JSON))
 );
 
@@ -10203,38 +10243,71 @@ CREATE TABLE IF NOT EXISTS sv_financial_membership_change
 
 CREATE TABLE IF NOT EXISTS ord_industry_fulfillment_progress
 (
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    entity_no VARCHAR(32) NOT NULL, sub_order_no VARCHAR(32) NOT NULL, order_item_id BIGINT NOT NULL,
-    source_component_ref VARCHAR(64) NOT NULL, fulfilled_qty DECIMAL(24,6) NOT NULL,
-    unit VARCHAR(16) NOT NULL, plan_hash VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,updated_by VARCHAR(32) NULL,
-    version BIGINT NOT NULL DEFAULT 0,deleted INT NOT NULL DEFAULT 0,
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,
+    fulfilled_qty DECIMAL(24,6) NOT NULL,
+    unit VARCHAR(16) NOT NULL,
+    plan_hash VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(32) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
     CONSTRAINT uk_industry_fulfill_progress UNIQUE (tenant_no,entity_no,sub_order_no,order_item_id,source_component_ref)
 );
 
 CREATE TABLE IF NOT EXISTS ord_industry_amendment
 (
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,
-    amendment_no VARCHAR(32) NOT NULL,operation_key VARCHAR(64) NOT NULL,request_hash VARCHAR(64) NOT NULL,
-    kind VARCHAR(16) NOT NULL,source_return_no VARCHAR(32) NULL,source_hash VARCHAR(64) NOT NULL,
-    command_snapshot TEXT NOT NULL,evidence_snapshot JSON NULL,inventory_snapshot JSON NULL,
-    status VARCHAR(24) NOT NULL,actor_no VARCHAR(32) NOT NULL,expected_sub_version BIGINT NOT NULL,
-    currency VARCHAR(3) NOT NULL,receivable_delta_minor BIGINT NOT NULL DEFAULT 0,replacement_cart_no VARCHAR(32) NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,updated_by VARCHAR(32) NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    source_return_no VARCHAR(32) NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    evidence_snapshot TEXT NULL,
+    inventory_snapshot TEXT NULL,
+    status VARCHAR(24) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    expected_sub_version BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    receivable_delta_minor BIGINT NOT NULL DEFAULT 0,
+    replacement_cart_no VARCHAR(32) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(32) NULL,
     net_delta_minor BIGINT NULL,
     tax_delta_minor BIGINT NULL,
-    CONSTRAINT uk_industry_amendment_no UNIQUE (amendment_no),UNIQUE KEY uk_industry_amendment_key(tenant_no,entity_no,operation_key)
+    CONSTRAINT uk_industry_amendment_no UNIQUE (amendment_no),
+    CONSTRAINT uk_industry_amendment_key UNIQUE (tenant_no,entity_no,operation_key)
 );
 
 CREATE TABLE IF NOT EXISTS ord_industry_amendment_line
 (
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,amendment_no VARCHAR(32) NOT NULL,order_item_id BIGINT NOT NULL,
-    source_component_ref VARCHAR(64) NOT NULL,quantity DECIMAL(24,6) NOT NULL,physical_reduction_qty DECIMAL(24,6) NOT NULL,
-    cancel_qty DECIMAL(24,6) NOT NULL,unit VARCHAR(16) NOT NULL,disposition VARCHAR(16) NOT NULL,
-    receivable_reduction_minor BIGINT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    amendment_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,
+    quantity DECIMAL(24,6) NOT NULL,
+    physical_reduction_qty DECIMAL(24,6) NOT NULL,
+    cancel_qty DECIMAL(24,6) NOT NULL,
+    unit VARCHAR(16) NOT NULL,
+    disposition VARCHAR(16) NOT NULL,
+    receivable_reduction_minor BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
     net_reduction_minor BIGINT NOT NULL,
     tax_reduction_minor BIGINT NOT NULL,
     CONSTRAINT uk_industry_amendment_line UNIQUE (amendment_no,order_item_id,source_component_ref)
@@ -10242,47 +10315,83 @@ CREATE TABLE IF NOT EXISTS ord_industry_amendment_line
 
 CREATE TABLE IF NOT EXISTS ord_industry_receivable_adjustment
 (
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,
-    store_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,
-    amendment_no VARCHAR(32) NOT NULL,currency VARCHAR(3) NOT NULL,amount_minor BIGINT NOT NULL,
-    source_hash VARCHAR(64) NOT NULL,reason VARCHAR(255) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(32) NOT NULL,UNIQUE KEY uk_receivable_amendment(amendment_no),KEY ix_receivable_order(order_no,id),
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
     net_delta_minor BIGINT NULL,
-    tax_delta_minor BIGINT NULL
+    tax_delta_minor BIGINT NULL,
+    CONSTRAINT uk_receivable_amendment UNIQUE (amendment_no)
 );
 
 CREATE TABLE IF NOT EXISTS ord_industry_fee_line_adjustment
 (
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,amendment_no VARCHAR(32) NOT NULL,order_item_id BIGINT NOT NULL,
-    source_component_ref VARCHAR(64) NOT NULL,amount_minor BIGINT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(32) NOT NULL,UNIQUE KEY uk_fee_line_adjustment(amendment_no,order_item_id)
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    amendment_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_fee_line_adjustment UNIQUE (amendment_no,order_item_id)
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_rule
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,status VARCHAR(16) NOT NULL,
-    version BIGINT NOT NULL,updated_at DATETIME(3) NOT NULL,updated_by VARCHAR(32) NOT NULL,
-    CONSTRAINT uk_pricing_fee_rule UNIQUE (entity_no,store_no,rule_no),CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_pricing_fee_rule UNIQUE (entity_no,store_no,rule_no),
+    CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_revision
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,definition_snapshot JSON NOT NULL,
-    request_key CHAR(64) NOT NULL,request_hash CHAR(64) NOT NULL,actor_no VARCHAR(32) NOT NULL,
-    version BIGINT NOT NULL,reason VARCHAR(255) NOT NULL,created_at DATETIME(3) NOT NULL,
-    CONSTRAINT uk_pricing_fee_revision UNIQUE (revision_no),UNIQUE KEY uk_pricing_fee_rule_command (entity_no,store_no,request_key)
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    definition_snapshot TEXT NOT NULL,
+    request_key CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_pricing_fee_revision UNIQUE (revision_no),
+    CONSTRAINT uk_pricing_fee_rule_command UNIQUE (entity_no,store_no,request_key)
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_scope
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    scope_no VARCHAR(32) NOT NULL,rule_no VARCHAR(32) NOT NULL,currency CHAR(3) NOT NULL,
-    goods_basis_minor BIGINT NOT NULL,fee_minor BIGINT NOT NULL,version BIGINT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    scope_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    goods_basis_minor BIGINT NOT NULL,
+    fee_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL,
     CONSTRAINT uk_pricing_fee_scope UNIQUE (entity_no,store_no,scope_no,rule_no),
     CHECK (goods_basis_minor>=0 AND fee_minor>=0)
 );
@@ -10290,30 +10399,56 @@ CREATE TABLE IF NOT EXISTS ord_pricing_fee_scope
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_application
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    application_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,quote_no VARCHAR(32) NOT NULL,
-    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,scope_no VARCHAR(32) NOT NULL,currency CHAR(3) NOT NULL,
-    original_goods_basis_minor BIGINT NOT NULL DEFAULT 0,current_goods_basis_minor BIGINT NOT NULL DEFAULT 0,current_quantity DECIMAL(20,6) NOT NULL DEFAULT 0,
-    fee_minor BIGINT NOT NULL,adjusted_fee_minor BIGINT NOT NULL,source_hash CHAR(64) NOT NULL,created_at DATETIME(3) NOT NULL,
-    CONSTRAINT uk_pricing_fee_application UNIQUE (application_no),UNIQUE KEY uk_pricing_fee_quote_scope (entity_no,store_no,quote_no,rule_no,scope_no),
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    scope_no VARCHAR(32) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    original_goods_basis_minor BIGINT NOT NULL DEFAULT 0,
+    current_goods_basis_minor BIGINT NOT NULL DEFAULT 0,
+    current_quantity DECIMAL(20,6) NOT NULL DEFAULT 0,
+    fee_minor BIGINT NOT NULL,
+    adjusted_fee_minor BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_pricing_fee_application UNIQUE (application_no),
+    CONSTRAINT uk_pricing_fee_quote_scope UNIQUE (entity_no,store_no,quote_no,rule_no,scope_no),
     CHECK (fee_minor>=0 AND adjusted_fee_minor>=0)
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_advice
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    application_no VARCHAR(32) NOT NULL,quote_no VARCHAR(32) NOT NULL,current_fee_minor BIGINT NOT NULL,target_fee_minor BIGINT NOT NULL,
-    source_hash CHAR(64) NOT NULL,status VARCHAR(16) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    current_fee_minor BIGINT NOT NULL,
+    target_fee_minor BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
     CONSTRAINT uk_pricing_fee_advice UNIQUE (entity_no,store_no,application_no,source_hash),
-    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'SUPERSEDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),CHECK (target_fee_minor>=0)
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'SUPERSEDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CHECK (target_fee_minor>=0)
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_reconciliation
 (
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    application_no VARCHAR(32) NOT NULL,amendment_no VARCHAR(32) NOT NULL,source_hash CHAR(64) NOT NULL,
-    before_goods_minor BIGINT NOT NULL,after_goods_minor BIGINT NOT NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    before_goods_minor BIGINT NOT NULL,
+    after_goods_minor BIGINT NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT uk_fee_reconciliation UNIQUE (entity_no,application_no,amendment_no)
 );
@@ -11049,9 +11184,16 @@ CREATE TABLE IF NOT EXISTS mch_resource
     CONSTRAINT ck_mch_resource_type CHECK ((CASE resource_type WHEN 'STAFF' THEN TRUE WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_mch_resource_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'SUSPENDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_mch_resource_capacity CHECK (capacity > 0),
-    CONSTRAINT ck_mch_resource_shape CHECK ( (resource_type='STAFF' AND store_no IS NULL AND personnel_no IS NOT NULL AND CHAR_LENGTH(TRIM(personnel_no)) > 0 AND capacity=1) OR ((CASE resource_type WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END) AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no)) > 0 AND personnel_no IS NULL) ),
+    CONSTRAINT ck_mch_resource_shape CHECK (
+        (resource_type='STAFF' AND store_no IS NULL AND personnel_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(personnel_no)) > 0 AND capacity=1)
+        OR ((CASE resource_type WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END) AND store_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(store_no)) > 0 AND personnel_no IS NULL)
+    ),
     CONSTRAINT ck_mch_resource_identity CHECK (CHAR_LENGTH(TRIM(resource_no)) > 0),
-    CONSTRAINT ck_mch_resource_open_ref CHECK ( open_occupation_no IS NULL OR CHAR_LENGTH(TRIM(open_occupation_no)) > 0 )
+    CONSTRAINT ck_mch_resource_open_ref CHECK (
+        open_occupation_no IS NULL OR CHAR_LENGTH(TRIM(open_occupation_no)) > 0
+    )
 );
 
 CREATE TABLE IF NOT EXISTS mch_schedule_rule
@@ -11453,7 +11595,13 @@ CREATE TABLE IF NOT EXISTS mbr_guest_registration
     CONSTRAINT uk_mbr_guest_no UNIQUE (tenant_no, guest_no),
     CONSTRAINT uk_mbr_guest_key UNIQUE (tenant_no, entity_no, store_no, actor_realm, actor_kind, actor_no, key_hash),
     CONSTRAINT ck_mbr_guest_actor CHECK (actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
-    CONSTRAINT ck_mbr_guest_state CHECK ( (state='REGISTERED' AND version=1 AND claimed_user_no IS NULL AND claimed_at IS NULL AND claim_key_hash IS NULL AND claim_request_hash IS NULL AND claim_actor_no IS NULL AND claim_actor_realm IS NULL AND claim_actor_kind IS NULL) OR (state='CLAIMED' AND version=2 AND claimed_user_no IS NOT NULL AND claimed_at IS NOT NULL AND claim_key_hash IS NOT NULL AND claim_request_hash IS NOT NULL AND claim_actor_no IS NOT NULL AND claim_actor_realm='MERCHANT' AND (CASE claim_actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN claim_actor_kind IS NULL THEN NULL ELSE FALSE END END))),
+    CONSTRAINT ck_mbr_guest_state CHECK (
+        (state='REGISTERED' AND version=1 AND claimed_user_no IS NULL AND claimed_at IS NULL
+            AND claim_key_hash IS NULL AND claim_request_hash IS NULL AND claim_actor_no IS NULL
+            AND claim_actor_realm IS NULL AND claim_actor_kind IS NULL)
+        OR (state='CLAIMED' AND version=2 AND claimed_user_no IS NOT NULL AND claimed_at IS NOT NULL
+            AND claim_key_hash IS NOT NULL AND claim_request_hash IS NOT NULL AND claim_actor_no IS NOT NULL
+            AND claim_actor_realm='MERCHANT' AND (CASE claim_actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN claim_actor_kind IS NULL THEN NULL ELSE FALSE END END))),
     CONSTRAINT ck_mbr_guest_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
 );
 
@@ -11830,12 +11978,18 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission
     CONSTRAINT uk_manual_order UNIQUE (tenant_no,order_no),
     CONSTRAINT uk_manual_operation UNIQUE (tenant_no,caller,operation_no),
     CONSTRAINT uk_manual_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
-    CONSTRAINT ck_manual_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND admission_kind='MANUAL_OFFLINE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
-    CONSTRAINT ck_manual_money CHECK (declared_minor>0 AND currency='CNY' AND (CASE method WHEN 'CASH' THEN TRUE WHEN 'OFFLINE_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND receipt_provenance='MANUAL_DECLARATION'),
+    CONSTRAINT ck_manual_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND
+        admission_kind='MANUAL_OFFLINE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_manual_money CHECK (declared_minor>0 AND currency='CNY' AND
+        (CASE method WHEN 'CASH' THEN TRUE WHEN 'OFFLINE_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND receipt_provenance='MANUAL_DECLARATION'),
     CONSTRAINT ck_manual_phase CHECK ((CASE phase WHEN 'RECEIVED' THEN TRUE WHEN 'STOCK_PENDING' THEN TRUE WHEN 'ADMITTED' THEN TRUE WHEN 'SUSPENDED' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_manual_revisions CHECK (admission_revision>0 AND order_revision>=0 AND version>0 AND deleted=0),
-    CONSTRAINT ck_manual_stock CHECK ((CASE stock_authority WHEN 'PLATFORM' THEN TRUE WHEN 'DUAL' THEN TRUE WHEN 'INVENTORY' THEN TRUE ELSE CASE WHEN stock_authority IS NULL THEN NULL ELSE FALSE END END) AND (CASE stock_lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN stock_lifecycle_version IS NULL THEN NULL ELSE FALSE END END) AND (stock_manifest_json IS JSON) AND (stock_manifest_json IS JSON OBJECT)),
-    CONSTRAINT ck_manual_admitted CHECK (phase<>'ADMITTED' OR (stock_outcome IS NOT NULL AND stock_outcome='APPLIED' AND stock_state IS NOT NULL AND (CASE stock_state WHEN 'ALLOCATED' THEN TRUE WHEN 'CONSUMED' THEN TRUE ELSE CASE WHEN stock_state IS NULL THEN NULL ELSE FALSE END END) AND stock_observation_hash IS NOT NULL)),
+    CONSTRAINT ck_manual_stock CHECK ((CASE stock_authority WHEN 'PLATFORM' THEN TRUE WHEN 'DUAL' THEN TRUE WHEN 'INVENTORY' THEN TRUE ELSE CASE WHEN stock_authority IS NULL THEN NULL ELSE FALSE END END) AND
+        (CASE stock_lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN stock_lifecycle_version IS NULL THEN NULL ELSE FALSE END END) AND (stock_manifest_json IS JSON)
+        AND (stock_manifest_json IS JSON OBJECT)),
+    CONSTRAINT ck_manual_admitted CHECK (phase<>'ADMITTED' OR
+        (stock_outcome IS NOT NULL AND stock_outcome='APPLIED' AND stock_state IS NOT NULL
+         AND (CASE stock_state WHEN 'ALLOCATED' THEN TRUE WHEN 'CONSUMED' THEN TRUE ELSE CASE WHEN stock_state IS NULL THEN NULL ELSE FALSE END END) AND stock_observation_hash IS NOT NULL)),
     CONSTRAINT ck_manual_times CHECK (received_at<=recorded_at),
     CONSTRAINT ck_counter_admission_party CHECK (
         (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
@@ -11872,7 +12026,9 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action
     PRIMARY KEY (id),
     CONSTRAINT uk_manual_action UNIQUE (tenant_no,action_no),
     CONSTRAINT uk_manual_action_revision UNIQUE (tenant_no,declaration_no,admission_revision),
-    CONSTRAINT ck_manual_action CHECK (tenant_no='MAIN' AND admission_revision>0 AND version>0 AND deleted=0 AND (CASE action WHEN 'RECEIPT_RECORDED' THEN TRUE WHEN 'STOCK_OBSERVED' THEN TRUE WHEN 'ADMISSION_CHANGED' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND (result_json IS JSON) AND (result_json IS JSON OBJECT))
+    CONSTRAINT ck_manual_action CHECK (tenant_no='MAIN' AND admission_revision>0 AND version>0 AND deleted=0
+        AND (CASE action WHEN 'RECEIPT_RECORDED' THEN TRUE WHEN 'STOCK_OBSERVED' THEN TRUE WHEN 'ADMISSION_CHANGED' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END)
+        AND (result_json IS JSON) AND (result_json IS JSON OBJECT))
 );
 
 CREATE TABLE IF NOT EXISTS mkt_counter_campaign_fence
@@ -12248,13 +12404,21 @@ CREATE TABLE IF NOT EXISTS ord_external_certificate_use
 CREATE TABLE IF NOT EXISTS ord_channel_funding_history
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
-    created_at DATETIME(3) NOT NULL, created_by VARCHAR(32) NOT NULL,
-    updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(32) NOT NULL,
-    version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
-    history_no VARCHAR(32) NOT NULL, admission_no VARCHAR(32) NOT NULL,
-    previous_collection VARCHAR(32) NULL, admitted_collection VARCHAR(32) NOT NULL,
-    previous_snapshot LONGTEXT NULL, admitted_snapshot LONGTEXT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    history_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    previous_collection VARCHAR(32) NULL,
+    admitted_collection VARCHAR(32) NOT NULL,
+    previous_snapshot LONGTEXT NULL,
+    admitted_snapshot LONGTEXT NOT NULL,
     original_collection_hash VARCHAR(64) NOT NULL,
     CONSTRAINT uk_ord_channel_funding_history UNIQUE (history_no),
     CONSTRAINT uk_ord_channel_funding_collection UNIQUE (tenant_no,entity_no,store_no,admission_no,admitted_collection)
@@ -12264,15 +12428,28 @@ CREATE TABLE IF NOT EXISTS ord_channel_fulfillment_evidence
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), created_by VARCHAR(32) NOT NULL,
-    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_by VARCHAR(32) NOT NULL,
-    version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
-    entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL, source_order_ref VARCHAR(64) NOT NULL,
-    order_no VARCHAR(32) NOT NULL, sub_order_no VARCHAR(32) NOT NULL, fulfillment_no VARCHAR(32) NOT NULL,
-    revision_no VARCHAR(32) NOT NULL, receipt_no VARCHAR(32) NOT NULL, stage VARCHAR(24) NOT NULL,
-    source_hash CHAR(64) NOT NULL, request_hash CHAR(64) NOT NULL, plan_hash CHAR(64) NOT NULL,
-    inventory_receipt_hash CHAR(64) NOT NULL, content_hash CHAR(64) NOT NULL,
-    payload_snapshot LONGTEXT NOT NULL, occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_order_ref VARCHAR(64) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    fulfillment_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    receipt_no VARCHAR(32) NOT NULL,
+    stage VARCHAR(24) NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    inventory_receipt_hash CHAR(64) NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    payload_snapshot LONGTEXT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_channel_fulfillment_action UNIQUE (tenant_no,fulfillment_no,revision_no),
     CONSTRAINT uk_channel_fulfillment_receipt UNIQUE (tenant_no,receipt_no)
 );
@@ -12280,10 +12457,17 @@ CREATE TABLE IF NOT EXISTS ord_channel_fulfillment_evidence
 CREATE TABLE IF NOT EXISTS ord_food_stock_bridge_command
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tenant_no VARCHAR(32) NOT NULL, entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
-    plan_no VARCHAR(32) NOT NULL, action VARCHAR(32) NOT NULL, operation_key VARCHAR(128) NOT NULL,
-    intent_hash CHAR(64) NOT NULL, command_json LONGTEXT NOT NULL, payload_json LONGTEXT NOT NULL,
-    created_at DATETIME(3) NOT NULL, created_by VARCHAR(32) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    operation_key VARCHAR(128) NOT NULL,
+    intent_hash CHAR(64) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
     CONSTRAINT uk_ord_food_stock_bridge_command UNIQUE (tenant_no,entity_no,store_no,plan_no,action,operation_key)
 );
 
@@ -12576,6 +12760,210 @@ CREATE TABLE IF NOT EXISTS mch_plan_purchase_evidence
     subject_kind VARCHAR(16) NOT NULL,
     purpose VARCHAR(32) NOT NULL,
     PRIMARY KEY (tenant_no,asset_key)
+);
+
+CREATE TABLE IF NOT EXISTS mbr_brand_audience_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    snapshot_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    legal_entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    resource_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    resource_version VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    planned_count INT NOT NULL,
+    pre_skipped_count INT NOT NULL,
+    pre_skip_json TEXT NOT NULL,
+    recipients_json TEXT NOT NULL,
+    member_facts_json TEXT NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    claimed_command_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_brand_audience_snapshot UNIQUE (tenant_no,snapshot_no),
+    CONSTRAINT ck_brand_audience_counts CHECK(planned_count>=0 AND pre_skipped_count>=0 AND pre_skipped_count<=planned_count
+ AND planned_count=pre_skipped_count+H2_JSON_LENGTH(recipients_json))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_coupon_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    definition_hash CHAR(64) NOT NULL,
+    source_json TEXT NOT NULL,
+    cost_rule_version_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    native_template_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    native_version_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    native_revision BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_coupon_source UNIQUE (tenant_no,source_no),
+    CONSTRAINT uk_brand_coupon_template UNIQUE (tenant_no,native_template_no),
+    CONSTRAINT uk_brand_coupon_version UNIQUE (tenant_no,native_version_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_coupon_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    namespace_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    operation_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    status VARCHAR(24) NOT NULL,
+    request_json TEXT NOT NULL,
+    checkpoint_json TEXT NOT NULL,
+    response_json TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_coupon_command UNIQUE (tenant_no,command_no),
+    CONSTRAINT uk_brand_coupon_namespace UNIQUE (tenant_no,namespace_hash),
+    CONSTRAINT uk_brand_coupon_operation UNIQUE (tenant_no,operation_hash)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_marketing_command
+(
+    tenant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_id CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    management_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    brand_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    PRIMARY KEY(tenant_no,command_id)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_entity_no VARCHAR(64) NOT NULL,
+    rule_version_no VARCHAR(64) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    headquarters_bp INT NOT NULL,
+    store_bp INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    published_at DATETIME(3) NULL,
+    CONSTRAINT uk_brand_cost_rule UNIQUE (tenant_no,rule_version_no),
+    CHECK (headquarters_bp>=0 AND store_bp>=0 AND headquarters_bp+store_bp=10000)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_entity_no VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(16) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    resource_version VARCHAR(64) NOT NULL,
+    rule_version_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    headquarters_bp INT NOT NULL,
+    store_bp INT NOT NULL,
+    stores_json TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_brand_cost_snapshot UNIQUE (tenant_no,resource_type,resource_version)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    resource_version VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    consumer_entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    total_minor BIGINT NOT NULL,
+    basis_json TEXT NOT NULL,
+    refund_state_json TEXT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_brand_cost_source UNIQUE (tenant_no,source_type,source_no),
+    CHECK (total_minor>0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_statement
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    management_no VARCHAR(64) NOT NULL,
+    brand_no VARCHAR(64) NOT NULL,
+    issuer_entity_no VARCHAR(64) NOT NULL,
+    expense_entity_no VARCHAR(64) NOT NULL,
+    statement_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    through_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    total_minor BIGINT NOT NULL,
+    headquarters_minor BIGINT NOT NULL,
+    store_minor BIGINT NOT NULL,
+    facts_json TEXT NULL,
+    created_at DATETIME(3) NOT NULL,
+    confirmed_at DATETIME(3) NULL,
+    created_by VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_brand_cost_statement UNIQUE (tenant_no,statement_no),
+    CHECK (total_minor=headquarters_minor+store_minor)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_brand_cost_fact
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    event_kind VARCHAR(16) NOT NULL,
+    expense_entity_no VARCHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    headquarters_minor BIGINT NOT NULL,
+    store_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    statement_no VARCHAR(64) NULL,
+    CONSTRAINT uk_brand_cost_fact UNIQUE (tenant_no,source_type,source_no,event_no,expense_entity_no),
+    CHECK (amount_minor=headquarters_minor+store_minor)
 );
 
 CREATE TABLE IF NOT EXISTS pay_channel_product
@@ -19475,8 +19863,43 @@ INSERT IGNORE INTO sys_merchant_plan_def
 (plan_code,name,store_quota,staff_quota,cross_store_stats,trial_days,enabled,sort,tenant_no,created_at,updated_at,version,deleted)
 SELECT 'CHAIN','连锁版',30,15,1,14,1,30,'MAIN',NOW(),NOW(),0,0 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM sys_merchant_plan_def WHERE plan_code='CHAIN');
-UPDATE mch_plan_purchase SET creator_no=buyer_no,creator_kind=buyer_kind,
-  snapshot_json=JSON_SET(snapshot_json,'$.creatorNo',buyer_no,'$.creatorKind',buyer_kind);
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'ACT__SYSTEM_PARAM_READ','OPS_SYSTEM','system:param:read','仅后端',NULL,NULL,'system:param:read','IMPLEMENTED',0,NULL,'ACTION',930,NOW(),NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='ACT__SYSTEM_PARAM_READ');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT DISTINCT g.role_code,'ACT__SYSTEM_PARAM_READ',g.end_code,NOW(),NOW()
+FROM sys_role_point g JOIN sys_function_point p ON p.point_code=g.point_code
+WHERE p.point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+  AND p.perm_code='system:param:read';
+DELETE FROM sys_role_point WHERE id IN (SELECT menu_grant.id FROM sys_role_point menu_grant JOIN sys_function_point menu ON menu.point_code=menu_grant.point_code
+LEFT JOIN (
+  SELECT DISTINCT g.role_code,g.end_code,p.perm_code FROM sys_role_point g
+  JOIN sys_function_point p ON p.point_code=g.point_code
+  WHERE p.point_code NOT IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+) authority ON authority.role_code=menu_grant.role_code AND authority.end_code=menu_grant.end_code
+  AND authority.perm_code=CASE WHEN menu.point_code='OPS_SYSTEM__TAB_AUTHCODE' THEN 'product:category:read' ELSE 'system:industry:read' END
+WHERE menu.point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+  AND menu_grant.role_code<>'SUPER_ADMIN' AND authority.role_code IS NULL);
+UPDATE sys_function_point SET
+  ui_perm_code=CASE WHEN point_code='OPS_SYSTEM__TAB_AUTHCODE' THEN 'product:category:read' ELSE 'system:industry:read' END,
+  perm_code=CASE WHEN point_code='OPS_SYSTEM__TAB_AUTHCODE' THEN 'product:category:read' ELSE 'system:industry:read' END,
+  updated_at=NOW()
+WHERE point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT DISTINCT authority_grant.role_code,menu.point_code,authority_grant.end_code,NOW(),NOW()
+FROM sys_role_point authority_grant
+JOIN sys_function_point authority ON authority.point_code=authority_grant.point_code
+JOIN sys_function_point menu ON menu.perm_code=authority.perm_code
+WHERE menu.point_code IN ('OPS_SYSTEM__TAB_INDUSTRY','OPS_SYSTEM__TAB_SCOPE','OPS_SYSTEM__TAB_AUTHCODE')
+  AND authority_grant.end_code='OPS';
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_SYSTEM__TAB_STOREINDUSTRY','OPS_SYSTEM','门店行业与子行业','经营范围','/system?tab=storeIndustry',
+  'commerce:catalog:read','commerce:catalog:read','IMPLEMENTED',1,'P-17.1','MENU',95,NOW(),NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_function_point WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT 'SUPER_ADMIN','OPS_SYSTEM__TAB_STOREINDUSTRY','OPS',NOW(),NOW()
+WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_SYSTEM__TAB_STOREINDUSTRY' AND end_code='OPS');
+UPDATE sys_function_point SET gated_by='commerce.catalog.enabled' WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY';
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

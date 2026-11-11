@@ -958,7 +958,7 @@ _无字段_
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
-| `actorNo` | `string` | 否 | — |
+| `actorNo` | `string` | 否 | 当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值** （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。 老后端不下发 → 当成不认识，显示「店內人員」。 |
 
 
 ### coupon-issues
@@ -7590,7 +7590,7 @@ _无字段_
 |---|---|:---:|---|
 | `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
 | `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
-| `method` | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER` | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
 | `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
 | `note` | `string` | 否 | ≤ 100 字 |
 | `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
@@ -7627,8 +7627,8 @@ App 外收款记录　🔒
 |---|---|---|:---:|---|
 | `from` | query | `string` | 否 | — |
 | `to` | query | `string` | 否 | — |
-| `method` | query | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER`\[\] | 否 | — |
-| `status` | query | `RECORDED` \| `VOIDED`\[\] | 否 | 状态筛选，取值见对应枚举 |
+| `method` | query | [`OfflineRecordMethod`](#offlinerecordmethod)\[\] | 否 | — |
+| `status` | query | [`OfflineRecordStatus`](#offlinerecordstatus)\[\] | 否 | 状态筛选，取值见对应枚举 |
 | `q` | query | `string` | 否 | — |
 | `orderNo` | query | `string` | 否 | 订单单号（按商家拆单后的子订单） |
 | `cursor` | query | `string` | 否 | — |
@@ -9794,6 +9794,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -9924,6 +9933,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -9966,6 +9984,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -10082,6 +10109,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -10121,6 +10157,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -10516,6 +10561,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |
@@ -12840,7 +12894,7 @@ App 平台（版本策略按它分行）。与后端 sys_app_version.platform �
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
-| `actorNo` | `string` | 否 | — |
+| `actorNo` | `string` | 否 | 当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值** （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。 老后端不下发 → 当成不认识，显示「店內人員」。 |
 
 ### BookExpressReq
 
@@ -15371,7 +15425,7 @@ SKU 组件：一件 SKU 交付哪些东西
 |---|---|:---:|---|
 | `amountMinor` | `number` | 是 | 金额（最小单位，> 0）；TWD 必须是 100 的倍数（整元） |
 | `currency` | [`CurrencyCode`](#currencycode) | 是 | 必须等于门店市场币种（台湾 TWD） |
-| `method` | `CASH` \| `BANK_TRANSFER` \| `EXTERNAL_POS` \| `OTHER` | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
+| `method` | [`OfflineRecordMethod`](#offlinerecordmethod) | 是 | 现金 / 银行转账 / 外部刷卡机 / 其他 |
 | `orderNo` | `string` | 否 | 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 |
 | `note` | `string` | 否 | ≤ 100 字 |
 | `receivedAt` | `string` | 否 | 实际收款时刻，ISO 8601 带偏移；不传 = 现在。不得晚于现在 +2 分钟、不得早于门店时区「今天 − 31 天」00:00 |
@@ -17591,6 +17645,15 @@ Processing state of a persisted stock synchronization command.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `market` | `string,null` | 否 | 门店所属主体的经营市场；未补经营上下文的列表可为空 |
+| `currency` | `string,null` | 否 | 经营市场币种，取 sys_market；市场元数据不可用时为空 |
+| `currencyScale` | `number,null` | 否 | 币种的小数位数，取 sys_market；市场元数据不可用时为空 |
+| `timeZone` | `string,null` | 否 | 经营市场时区，取 sys_market；市场元数据不可用时为空 |
+| `industryCode` | `string,null` | 否 | 建店保存的行业码；自填行业为 OTHER，存量门店可为空 |
+| `subIndustryCode` | `string,null` | 否 | 建店保存的子业态码；自填子业态为 OTHER，存量门店可为空 |
+| `businessTypeCode` | `string,null` | 否 | 门店经营类型码，存量门店可为空 |
+| `industryText` | `string,null` | 否 | 选择 OTHER 时填写的行业名称，未自填时为空 |
+| `subIndustryText` | `string,null` | 否 | 选择 OTHER 时填写的子业态名称，未自填时为空 |
 | `storeNo` | `string` | 是 | 门店号。一旦生成不再变 —— 换主体只换归属，不换它 |
 | `name` | `string` | 是 | 门店名 |
 | `address` | `string` | 否 | 门店地址。顾客据此找到取货点，也是履约范围的锚点 |

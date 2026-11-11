@@ -144,7 +144,7 @@ function nativePolicyFixture(change = () => {}) {
     const root = mkdtempSync(join(tmpdir(), 'native-projection-'));
     try {
         const real = JSON.parse(readFileSync(join(repository, 'backend/scripts/h2-fixture-policy.json'), 'utf8'));
-        const entry = structuredClone(real.entries.find(value => value.migration.includes('/V544__')));
+        const entry = structuredClone(real.entries.find(value => value.capability === 'manual-service-execution'));
         for (const name of [entry.migration, entry.descriptor]) {
             const target = join(root, name);
             mkdirSync(dirname(target), { recursive: true });

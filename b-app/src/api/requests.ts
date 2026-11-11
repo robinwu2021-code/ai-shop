@@ -30,6 +30,7 @@ import type {
   RefundMode,
 } from "@shared/types";
 import type { GoodsDraft, GoodsEntrySource } from "./contract";
+import type { OfflineRecordMethod, OfflineRecordStatus } from "./pay";
 import type { ZipPick } from "@shared/ports/zip-media";
 
 // ---------------------------------------------------------------- 预约排期
@@ -1190,7 +1191,7 @@ export interface OfflineRecordCreateReq {
   /** 必须等于门店市场币种（台湾 TWD） */
   currency: CurrencyCode;
   /** 现金 / 银行转账 / 外部刷卡机 / 其他 */
-  method: "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+  method: OfflineRecordMethod;
   /** 本店子单号（GET /biz/order 的 orderNo）；不是本店的 → 10404 */
   orderNo?: string;
   /** ≤ 100 字 */
@@ -1203,13 +1204,17 @@ export interface OfflineRecordCreateReq {
 export interface OfflineRecordListQuery {
   /** yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93 */
   from?: string;
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天 */
   to?: string;
-  method?: Array<"CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER">;
-  status?: Array<"RECORDED" | "VOIDED">;
+  /** 收款方式筛选；不传 = 全部方式 */
+  method?: OfflineRecordMethod[];
+  /** 记录状态筛选；不传 = 全部状态 */
+  status?: OfflineRecordStatus[];
   /** 1–32 字，命中订单号或备注 */
   q?: string;
   /** 精确匹配订单号：订单详情据此判断「已有外部記錄」 */
   orderNo?: string;
+  /** 上一页返回的游标；不传 = 第一页 */
   cursor?: string;
   /** 1–50，默认 20 */
   size?: number;
@@ -1217,16 +1222,20 @@ export interface OfflineRecordListQuery {
 
 /** 汇总查询；区间规则同列表 */
 export interface OfflineRecordSummaryQuery {
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天，区间不超过 93 天 */
   from?: string;
+  /** yyyy-MM-dd（门店市场），含；不传 = 今天 */
   to?: string;
 }
 
 /** 更正：店主 / 店长，记账后 31 天内 */
 export interface OfflineRecordCorrectReq {
+  /** 更正后的金额（最小单位，> 0）；TWD 必须是 100 的倍数 */
   amountMinor: number;
   /** 必须等于原记录币种 */
   currency: CurrencyCode;
-  method: "CASH" | "BANK_TRANSFER" | "EXTERNAL_POS" | "OTHER";
+  /** 更正后的收款方式 */
+  method: OfflineRecordMethod;
   /** 新的实收时刻；不传 = 不改 */
   receivedAt?: string;
   /** 1–100 字 */
@@ -1239,6 +1248,7 @@ export interface OfflineRecordCorrectReq {
 export interface OfflineRecordVoidReq {
   /** 1–100 字 */
   reason: string;
+  /** 列表里拿到的 version；不符 → 10409 */
   expectedVersion: number;
 }
 

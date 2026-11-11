@@ -467,7 +467,7 @@ public class BizMemberController {
     }
 
     /**
-     * 按门店市场校验会员手机号（商户App服务端能力清单 P0）：大陆仍是 11 位号段规则与原提示语，
+     * 按门店市场校验会员手机号（商户App服务端能力清单 P0）：大陆仍是 11 位号段规则，
      * 其它市场用国际宽判据。此前写在注解上只认大陆号，台湾门店建不了会员。
      * 空号码不在这里拦 —— 与原注解一致（{@code @Pattern} 放行 null），交给服务层判。
      */
@@ -478,8 +478,7 @@ public class BizMemberController {
         String market = storeNo == null ? null
                 : merchantQuery.storeProfileOf(storeNo).map(MerchantQueryPort.StoreProfile::market).orElse(null);
         if (!Phones.valid(phone, market)) {
-            boolean mainland = market == null || market.isBlank() || "CN".equals(market);
-            throw mainland ? BizException.of(ErrorCode.BAD_REQUEST, Phones.MESSAGE) : BizException.of(ErrorCode.BAD_REQUEST);
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         }
     }
 

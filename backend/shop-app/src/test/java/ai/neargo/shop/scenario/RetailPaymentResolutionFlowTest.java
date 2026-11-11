@@ -101,6 +101,23 @@ class RetailPaymentResolutionFlowTest {
     }
 
     @Test
+    void merchantSeesParentOnlyWhenEveryChildIsVisible() {
+        String order = seed("LATE_PAYMENT", "CANCELLED", true);
+        child(order, "S2-" + order, "M-" + order);
+        DataScopeContext.set(DataScopeSpec.of("MERCHANT", Set.of("M-" + order)));
+        try {
+            var cases = operations.list(null).stream()
+                    .filter(row -> order.equals(row.payNo())).toList();
+            assertThat(cases).hasSize(1);
+            assertThat(cases.getFirst().canRefund()).isTrue();
+            assertThat(cases.getFirst().amountMinor()).isEqualTo(1000);
+        } finally {
+            DataScopeContext.clear();
+        }
+        verifyNoInteractions(refunds);
+    }
+
+    @Test
     void callbackReplayKeepsOriginalCoordinatesAndCompletedResolution() {
         String no = "FACT" + UUID.randomUUID().toString().replace("-", "");
         var order = new ai.neargo.shop.trade.entity.OrdOrder();

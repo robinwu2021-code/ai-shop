@@ -4735,6 +4735,7 @@ components:
           description: "这些角色合起来的权限码，**已取并集**（老板是 `[\"*\"]`）。\n\n端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。"
         actorNo:
           type: "string"
+          description: "当前登录的操作人号，与外部记账 `recordedBy`、`history[].by` 等「谁做的」字段**同一个值** （店主是 C 端用户号，手机号登录的店员是店员账号号）。端上拿它比对显示「我」。 老后端不下发 → 当成不认识，显示「店內人員」。"
       required:
         - "merchantNo"
         - "currentStoreNo"
@@ -5512,6 +5513,51 @@ components:
     Store:
       type: "object"
       properties:
+        market:
+          type:
+            - "string"
+            - "null"
+          description: "门店所属主体的经营市场；未补经营上下文的列表可为空"
+        currency:
+          type:
+            - "string"
+            - "null"
+          description: "经营市场币种，取 sys_market；市场元数据不可用时为空"
+        currencyScale:
+          type:
+            - "number"
+            - "null"
+          description: "币种的小数位数，取 sys_market；市场元数据不可用时为空"
+        timeZone:
+          type:
+            - "string"
+            - "null"
+          description: "经营市场时区，取 sys_market；市场元数据不可用时为空"
+        industryCode:
+          type:
+            - "string"
+            - "null"
+          description: "建店保存的行业码；自填行业为 OTHER，存量门店可为空"
+        subIndustryCode:
+          type:
+            - "string"
+            - "null"
+          description: "建店保存的子业态码；自填子业态为 OTHER，存量门店可为空"
+        businessTypeCode:
+          type:
+            - "string"
+            - "null"
+          description: "门店经营类型码，存量门店可为空"
+        industryText:
+          type:
+            - "string"
+            - "null"
+          description: "选择 OTHER 时填写的行业名称，未自填时为空"
+        subIndustryText:
+          type:
+            - "string"
+            - "null"
+          description: "选择 OTHER 时填写的子业态名称，未自填时为空"
         storeNo:
           type: "string"
           description: "门店号。一旦生成不再变 —— 换主体只换归属，不换它"
@@ -15116,12 +15162,7 @@ components:
           "$ref": "#/components/schemas/CurrencyCode"
           description: "必须等于门店市场币种（台湾 TWD）"
         method:
-          type: "string"
-          enum:
-            - "CASH"
-            - "BANK_TRANSFER"
-            - "EXTERNAL_POS"
-            - "OTHER"
+          "$ref": "#/components/schemas/OfflineRecordMethod"
           description: "现金 / 银行转账 / 外部刷卡机 / 其他"
         orderNo:
           type: "string"
@@ -15138,6 +15179,14 @@ components:
         - "method"
       additionalProperties: false
       description: "记一笔。幂等键走 Idempotency-Key 请求头，不在请求体里"
+    OfflineRecordMethod:
+      type: "string"
+      enum:
+        - "CASH"
+        - "BANK_TRANSFER"
+        - "EXTERNAL_POS"
+        - "OTHER"
+      description: "收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款"
     OfflineRecordListQuery:
       type: "object"
       properties:
@@ -15146,22 +15195,17 @@ components:
           description: "yyyy-MM-dd（门店市场），含；不传 = 今天。to − from ≤ 93"
         to:
           type: "string"
+          description: "yyyy-MM-dd（门店市场），含；不传 = 今天"
         method:
           type: "array"
           items:
-            type: "string"
-            enum:
-              - "CASH"
-              - "BANK_TRANSFER"
-              - "EXTERNAL_POS"
-              - "OTHER"
+            "$ref": "#/components/schemas/OfflineRecordMethod"
+          description: "收款方式筛选；不传 = 全部方式"
         status:
           type: "array"
           items:
-            type: "string"
-            enum:
-              - "RECORDED"
-              - "VOIDED"
+            "$ref": "#/components/schemas/OfflineRecordStatus"
+          description: "记录状态筛选；不传 = 全部状态"
         q:
           type: "string"
           description: "1–32 字，命中订单号或备注"
@@ -15170,18 +15214,27 @@ components:
           description: "精确匹配订单号：订单详情据此判断「已有外部記錄」"
         cursor:
           type: "string"
+          description: "上一页返回的游标；不传 = 第一页"
         size:
           type: "number"
           description: "1–50，默认 20"
       additionalProperties: false
       description: "列表查询"
+    OfflineRecordStatus:
+      type: "string"
+      enum:
+        - "RECORDED"
+        - "VOIDED"
+      description: "已记 / 已作废（作废是终态，行不删）"
     OfflineRecordSummaryQuery:
       type: "object"
       properties:
         from:
           type: "string"
+          description: "yyyy-MM-dd（门店市场），含；不传 = 今天，区间不超过 93 天"
         to:
           type: "string"
+          description: "yyyy-MM-dd（门店市场），含；不传 = 今天"
       additionalProperties: false
       description: "汇总查询；区间规则同列表"
     OfflineRecordCorrectReq:
@@ -15189,16 +15242,13 @@ components:
       properties:
         amountMinor:
           type: "number"
+          description: "更正后的金额（最小单位，> 0）；TWD 必须是 100 的倍数"
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
           description: "必须等于原记录币种"
         method:
-          type: "string"
-          enum:
-            - "CASH"
-            - "BANK_TRANSFER"
-            - "EXTERNAL_POS"
-            - "OTHER"
+          "$ref": "#/components/schemas/OfflineRecordMethod"
+          description: "更正后的收款方式"
         receivedAt:
           type: "string"
           description: "新的实收时刻；不传 = 不改"
@@ -15224,6 +15274,7 @@ components:
           description: "1–100 字"
         expectedVersion:
           type: "number"
+          description: "列表里拿到的 version；不符 → 10409"
       required:
         - "reason"
         - "expectedVersion"
@@ -15676,20 +15727,6 @@ components:
         - "history"
       additionalProperties: false
       description: "外部收款记录（四个接口共用）"
-    OfflineRecordMethod:
-      type: "string"
-      enum:
-        - "CASH"
-        - "BANK_TRANSFER"
-        - "EXTERNAL_POS"
-        - "OTHER"
-      description: "收款方式。不用 POS：那个词在收款订单的 source 里已表示平台自己的 POS 收款"
-    OfflineRecordStatus:
-      type: "string"
-      enum:
-        - "RECORDED"
-        - "VOIDED"
-      description: "已记 / 已作废（作废是终态，行不删）"
     OfflineRecordHistory:
       type: "object"
       properties:
@@ -30838,28 +30875,23 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "yyyy-MM-dd（门店市场），含；不传 = 今天"
         - name: "method"
           in: "query"
           required: false
           schema:
             type: "array"
             items:
-              type: "string"
-              enum:
-                - "CASH"
-                - "BANK_TRANSFER"
-                - "EXTERNAL_POS"
-                - "OTHER"
+              "$ref": "#/components/schemas/OfflineRecordMethod"
+            description: "收款方式筛选；不传 = 全部方式"
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "array"
             items:
-              type: "string"
-              enum:
-                - "RECORDED"
-                - "VOIDED"
+              "$ref": "#/components/schemas/OfflineRecordStatus"
+            description: "记录状态筛选；不传 = 全部状态"
         - name: "q"
           in: "query"
           required: false
@@ -30877,6 +30909,7 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "上一页返回的游标；不传 = 第一页"
         - name: "size"
           in: "query"
           required: false
@@ -30916,11 +30949,13 @@ paths:
           required: false
           schema:
             type: "string"
+            description: "yyyy-MM-dd（门店市场），含；不传 = 今天，区间不超过 93 天"
         - name: "to"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "yyyy-MM-dd（门店市场），含；不传 = 今天"
       responses:
         "200":
           description: "OK"

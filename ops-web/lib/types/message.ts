@@ -125,9 +125,13 @@ export type TicketSource = "C_USER" | "B_MERCHANT";
  * `at` 以 Z 或 ±hh:mm 结尾的是 UTC；不带时区的是**设备本地时间**原文（服务端不猜时区）；null = 时间缺失。
  */
 export interface TicketDiagnostic {
+  /** 请求时间原文；带偏移或 Z 为 UTC，无时区为设备本地时间，缺失为 null */
   at: string | null;
+  /** HTTP 请求方法 */
   method: string;
+  /** 已脱敏的请求路径，不含查询参数 */
   path: string;
+  /** 请求结果摘要（HTTP 状态或网络错误） */
   outcome: string;
 }
 

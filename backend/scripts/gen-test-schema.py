@@ -185,6 +185,8 @@ def _h2_type(col: str) -> str:
     simple = r"([A-Za-z_]\w*)"
     for match in re.finditer(r"\bJSON_VALID\(\s*" + simple + r"\s*\)", mask, re.I):
         replacements.append((match.start(), match.end(), f"({match.group(1)} IS JSON)"))
+    for match in re.finditer(r"\bJSON_LENGTH\(\s*" + simple + r"\s*\)", mask, re.I):
+        replacements.append((match.start(), match.end(), f"H2_JSON_LENGTH({match.group(1)})"))
     for match in re.finditer(r"\bMICROSECOND\(\s*" + simple + r"\s*\)", mask, re.I):
         replacements.append((match.start(), match.end(), f"EXTRACT(MICROSECOND FROM {match.group(1)})"))
     for match in re.finditer(r"\bJSON_TYPE\(\s*" + simple + r"\s*\)", mask, re.I):
@@ -431,6 +433,9 @@ def main():
                           else src_dir.as_posix().split("resources/")[-1] + "/V*.sql")]
     if src_dir == MIGRATION_DIR:
         out.append('CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";\n\n')
+    if any(re.search(r"\bH2_JSON_LENGTH\s*\(", _sql_code_mask(col), re.I)
+           for cols in tables.values() for col in cols):
+        out.append('CREATE ALIAS IF NOT EXISTS H2_JSON_LENGTH FOR "ai.neargo.shop.support.H2JsonFunctions.length";\n\n')
     for policy in policies.values():
         entry = policy.entry
         if entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS":
@@ -782,6 +787,25 @@ def replay(sql, tables, order, seeds, renames, altered):
     replay_statements(sql_statements(sql), tables, order, seeds, renames, altered)
 
 
+def _h2_permission_seed(stmt):
+    """Keep derived permission grants/revocations; both tables are generated seeds.
+
+    Restrict this projection to sys_role_point/sys_function_point joins. Other
+    joined DML may read historical business columns and remains a backfill.
+    """
+    refs = set(re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_]\w*)", _sql_code_mask(stmt), re.I))
+    if not refs or not refs <= {"sys_role_point", "sys_function_point"}:
+        return None
+    delete = re.match(r"DELETE\s+(\w+)\s+FROM\s+sys_role_point\s+(\w+)\s+(?=JOIN\b)", stmt, re.I)
+    if delete and delete.group(1) == delete.group(2):
+        # The primary key selects precisely the original single DELETE target.
+        return ("DELETE FROM sys_role_point WHERE id IN (SELECT " + delete.group(1)
+                + ".id FROM sys_role_point " + delete.group(2) + " " + stmt[delete.end():] + ")")
+    if re.match(r"INSERT\s+IGNORE\s+INTO\s+sys_role_point\s*\([^)]*\)\s*SELECT\s+DISTINCT\b", stmt, re.I | re.S):
+        return re.sub(r"^INSERT\s+IGNORE\s+INTO", "INSERT INTO", stmt, flags=re.I)
+    return None
+
+
 def replay_statements(statements, tables, order, seeds, renames, altered):
     # Keep already lexed native bodies whole; never re-split projected statements.
     for stmt in statements:
@@ -797,6 +821,8 @@ def replay_statements(statements, tables, order, seeds, renames, altered):
             create_unique_index(stmt, tables)
         elif low.startswith("drop table"):
             drop_table(stmt, tables, order)
+        elif (permission_seed := _h2_permission_seed(stmt)) is not None:
+            seeds.append((None, [], permission_seed))
         elif low.startswith("update ") or low.startswith("delete from"):
             # UPDATE / DELETE 有**两种**，处理方式相反，判据是「有没有 JOIN / SELECT」：
             #
@@ -814,6 +840,14 @@ def replay_statements(statements, tables, order, seeds, renames, altered):
             #    而它要搬的是存量自提点的归属，H2 测试库里一行都没有 —— 搬无可搬。
             if re.search(r"\b(join|select)\b", low):
                 pass
+            elif re.search(r"\bJSON_[A-Za-z_]+\s*\(", _sql_code_mask(stmt), re.I):
+                # JSON writes to an empty business owner are historical backfills,
+                # not replayable seeds. Never silently discard a seeded-table write.
+                target = re.match(r"UPDATE\s+(\w+)\b", stmt, re.I)
+                if target and not any(re.match(r"INSERT\s+INTO\s+" + re.escape(target.group(1))
+                                               + r"\b", seed, re.I) for _, _, seed in seeds):
+                    continue
+                raise ValueError("Unsupported JSON mutation of retained H2 seed data: " + stmt)
             else:
                 seeds.append(_snapshot(stmt, tables))
         elif low.startswith("insert ignore into"):
@@ -927,18 +961,9 @@ def create_table(stmt, tables, order):
         return
     name, body = m.group(1), m.group(2)
     cols = []
-    # 先合并续行：列定义可能换行写（如 COMMENT 单独一行），逐行处理会把它当成独立列
-    merged = []
-    for raw in body.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("--"):
-            continue
-        if merged and (line.upper().startswith("COMMENT") or not merged[-1].endswith(",")):
-            merged[-1] = merged[-1].rstrip(",") + " " + line
-        else:
-            merged.append(line)
-
-    for line in merged:
+    # Physical lines are formatting: compact migrations put multiple fields on one
+    # line, and multiline CHECK/COMMENT expressions are still one definition.
+    for line in _split_actions(body):
         line = re.sub(r"\s+COMMENT\s+'[^']*'", "", line.rstrip(",")).strip()
         if not line:
             continue
@@ -1003,28 +1028,19 @@ def alter_table(stmt, tables, order, renames, altered):
 def _split_actions(action):
     """按顶层逗号切多动作 ALTER —— 括号内（如 UNIQUE KEY 的列清单）与
     单引号内（COMMENT 文本）的逗号不算分隔符。"""
-    parts, buf, depth, quoted = [], [], 0, False
-    for ch in action:
-        if quoted:
-            buf.append(ch)
-            if ch == "'":
-                quoted = False
-            continue
-        if ch == "'":
-            quoted = True
-        elif ch == "(":
+    parts, start, depth = [], 0, 0
+    for at, ch in enumerate(_sql_code_mask(action)):
+        if ch == "(":
             depth += 1
         elif ch == ")":
             depth -= 1
-        if ch == "," and depth == 0:
-            parts.append("".join(buf).strip())
-            buf = []
-            continue
-        buf.append(ch)
-    tail = "".join(buf).strip().rstrip(";")
+        elif ch == "," and depth == 0:
+            parts.append(action[start:at].strip())
+            start = at + 1
+    tail = action[start:].strip().rstrip(";")
     if tail:
         parts.append(tail)
-    return [p for p in parts if p]
+    return [part for part in parts if part]
 
 
 def _apply_action(table, action, cols):

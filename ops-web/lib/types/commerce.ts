@@ -871,8 +871,11 @@ export interface MallAccessSegment {
 
 /** 门店订阅视图 */
 export interface MallSubscriptionView {
+  /** 门店经营类型码 */
   businessTypeCode?: string;
+  /** 门店订阅报价使用的币种 */
   currency?: string;
+  /** 当前订阅方案的版本号 */
   currentPlanVersionNo?: string;
   /** 服务器评估当前方案的时间（毫秒） */
   serverNow?: number;
@@ -911,7 +914,10 @@ export interface MallRevokeRequest {
 // ── 线下银行转账（Task8）───────────────────────────────────────────────
 
 /** 管理查询包含停用档案；报价仍只使用可用档案。 */
-export interface MallOfflineCollectionProfile extends MallOfflineCollectionTerms { enabled: boolean }
+export interface MallOfflineCollectionProfile extends MallOfflineCollectionTerms {
+  /** 是否允许新报价使用此收款档案 */
+  enabled: boolean;
+}
 
 /** 收款档案（按币种；每次修改生成新版本） */
 export interface MallOfflineCollectionTerms {

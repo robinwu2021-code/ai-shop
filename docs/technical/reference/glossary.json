@@ -32373,6 +32373,12 @@
           "ar": "لا يمكن تنفيذ هذا الإجراء على طلب السحب في حالته الحالية، يرجى التحديث وإعادة المحاولة"
         },
         {
+          "key": "err.sms.verification_disabled",
+          "zh-CN": "当前地区尚未开放短信验证，请使用邮箱登录",
+          "en": "SMS verification is not available in this region. Use email sign-in.",
+          "ar": "التحقق عبر الرسائل النصية غير متاح في هذه المنطقة. استخدم البريد الإلكتروني."
+        },
+        {
           "key": "err.spec.in_use",
           "zh-CN": "仍有 {0} 件商品使用该规格，请先调整那些商品或将其下架，再停用",
           "en": "Still used by {0} product(s). Adjust or delist them before archiving",
@@ -44795,6 +44801,7 @@
           "RESET_TOKEN_INVALID",
           "OTP_LOCKED",
           "OTP_INVALID",
+          "SMS_VERIFICATION_DISABLED",
           "PHONE_ALREADY_BOUND",
           "PHONE_REQUIRED_FOR_PASSWORD",
           "ADDRESS_PHONE_FORMAT",
@@ -53860,6 +53867,30 @@
       "name": "MIN_KEY_BYTES",
       "type": "int",
       "value": "32",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "BrandCouponSourceInternal",
+      "name": "TEMPLATE_VALIDATION",
+      "type": "String",
+      "value": "\"/internal/core/promotion/brand-coupons/template-validation\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "BrandCouponSourceInternal",
+      "name": "USE_VALIDATION",
+      "type": "String",
+      "value": "\"/internal/core/promotion/brand-coupons/use-validation\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "BrandCouponSourceInternal",
+      "name": "AUDIENCE",
+      "type": "String",
+      "value": "\"/internal/core/promotion/brand-coupons/audience\"",
       "zh": "",
       "module": "shop-base"
     },

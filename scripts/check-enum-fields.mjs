@@ -67,6 +67,16 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // NULL preserves legacy fulfillment ownership; SERVICE_EXECUTION selects the managed execution owner.
+  // This internal routing fact is not exposed as a finite client field.
+  { concept: "ord_sub_order.fulfillment_authority（履约权属）", field: "ord_sub_order.fulfillment_authority",
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdSubOrder.java", only: ["SERVICE_EXECUTION"] }, clients: [] },
+  { concept: "ord_offline_record.status（外部记账状态）", field: "ord_offline_record.status",
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOfflineRecord.java" },
+    clients: [{ file: "b-app/src/api/pay.ts", type: "OfflineRecordStatus" }] },
+  { concept: "ord_offline_record_event.action（外部记账动作）", field: "ord_offline_record_event.action",
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOfflineRecordEvent.java" },
+    clients: [{ file: "b-app/src/api/pay.ts", type: "OfflineRecordAction" }] },
   // 商户问题回报与 App 版本（TDD-商户App问题回报与版本，V638）
   { concept: "notify_ticket.category（回报分类）", field: "notify_ticket.category", backend: { ddl: ["notify_ticket", "category"] }, clients: [{ file: "packages/shared/src/types/message.ts", type: "FeedbackCategory" }] },
   { concept: "notify_ticket.source（工单来源）", field: "notify_ticket.source", backend: { ddl: ["notify_ticket", "source"] }, clients: [{ file: "ops-web/lib/types/message.ts", type: "TicketSource" }] },

@@ -15,6 +15,22 @@ spec.loader.exec_module(generator)
 
 
 class StatementBoundaryTest(unittest.TestCase):
+    def test_compact_create_definitions_convert_every_json_column_and_keep_constraint(self):
+        tables, order = {}, []
+        generator.create_table("CREATE TABLE compact (id BIGINT, label VARCHAR(80) DEFAULT 'comma, (quote)', a JSON, b JSON, CONSTRAINT ck CHECK(JSON_LENGTH(b)>=0))", tables, order)
+        self.assertEqual(['    id BIGINT', "    label VARCHAR(80) DEFAULT 'comma, (quote)'",
+                          '    a TEXT', '    b TEXT', '    CONSTRAINT ck CHECK(H2_JSON_LENGTH(b)>=0)'], tables['compact'])
+
+    def test_json_business_backfill_is_omitted_only_for_an_owner_without_seed_rows(self):
+        baseline = 'CREATE TABLE owner (id INT, payload JSON);'
+        backfill = "UPDATE owner SET payload=JSON_SET(payload,'$.id',id);"
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        generator.replay(baseline + backfill, tables, order, seeds, renames, altered)
+        self.assertEqual([], seeds)
+        generator.replay("INSERT INTO owner(id,payload) VALUES(1,'{}');", tables, order, seeds, renames, altered)
+        with self.assertRaisesRegex(ValueError, 'Unsupported JSON mutation of retained H2 seed data'):
+            generator.replay(backfill, tables, order, seeds, renames, altered)
+
     def test_inline_mysql_charset_is_removed_only_from_sql_code(self):
         self.assertEqual("name VARCHAR(64)  DEFAULT 'CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'",
                          generator._h2_type("name VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT 'CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'"))
@@ -35,6 +51,23 @@ class StatementBoundaryTest(unittest.TestCase):
         sql = "SELECT 'a;''b'; SELECT \"c;d\"; SELECT `e;f`; SELECT 1;"
         self.assertEqual(["SELECT 'a;''b'", 'SELECT "c;d"', 'SELECT `e;f`', 'SELECT 1'],
                          generator.split_statements(sql))
+
+
+class PermissionSeedProjectionTest(unittest.TestCase):
+    def test_joined_permission_seed_keeps_predicates_without_treating_business_backfill_as_seed(self):
+        migration = (MIGRATIONS / 'V655__ops_store_industry_maintenance.sql').read_text()
+        statements = list(generator.sql_statements(migration))
+        projected = [generator._h2_permission_seed(stmt) for stmt in statements]
+        self.assertEqual(3, sum(stmt is not None for stmt in projected))
+        delete = next(stmt for stmt in statements if stmt.startswith('DELETE menu_grant'))
+        suffix = delete.split('FROM sys_role_point menu_grant', 1)[1].lstrip()
+        self.assertEqual('DELETE FROM sys_role_point WHERE id IN (SELECT menu_grant.id '
+                         'FROM sys_role_point menu_grant ' + suffix + ')',
+                         generator._h2_permission_seed(delete))
+        for sql in ['DELETE target FROM orders target JOIN sys_role_point p ON p.id=target.id',
+                    'INSERT IGNORE INTO sys_role_point(role_code) SELECT DISTINCT role_code FROM orders',
+                    'DELETE other FROM sys_role_point target JOIN sys_function_point p ON p.point_code=target.point_code']:
+            self.assertIsNone(generator._h2_permission_seed(sql))
 
 
 class ReleaseSourceConstraintTest(unittest.TestCase):
@@ -130,6 +163,17 @@ class ReleaseSourceConstraintTest(unittest.TestCase):
 
 
 class SessionSafeH2ConstraintTest(unittest.TestCase):
+    def test_json_length_keeps_count_constraint_and_only_supports_one_column_argument(self):
+        self.assertEqual(
+            "CONSTRAINT ck_counts CHECK (planned=skipped+H2_JSON_LENGTH(recipients_json))",
+            generator._h2_type("CONSTRAINT ck_counts CHECK (planned=skipped+JSON_LENGTH(recipients_json))"))
+        literal = "label VARCHAR(80) DEFAULT 'JSON_LENGTH(recipients_json)'"
+        self.assertEqual(literal, generator._h2_type(literal))
+        for expression in ["CHECK (JSON_LENGTH(payload,'$.items')=1)",
+                           "CHECK (JSON_LENGTH(JSON_EXTRACT(payload,'$.items'))=1)"]:
+            with self.assertRaisesRegex(ValueError, 'Unsupported JSON function'):
+                generator._h2_type(expression)
+
     def test_constant_scope_check_keeps_null_result_and_column_nullability(self):
         self.assertEqual(
             "    CHECK ((CASE scope_type WHEN 'BRAND' THEN TRUE WHEN 'STORE' THEN TRUE "

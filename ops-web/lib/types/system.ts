@@ -38,20 +38,32 @@ export interface MarketConfig {
   enabled: boolean;
 }
 
+/** 可供建店选择的行业、子业态与经营类型映射 */
 export interface StoreIndustry {
+  /** 行业码 */
   industryCode: string;
+  /** 子业态码，与行业码共同标识一条配置 */
   subIndustryCode: string;
+  /** 对应的门店经营类型码 */
   businessTypeCode: string;
+  /** 简体中文名称 */
   nameZh: string;
+  /** 繁体中文名称 */
   nameTw: string;
+  /** 英文名称；未配置时为空 */
   nameEn?: string | null;
+  /** 展示顺序，数值越小越靠前 */
   sort: number;
+  /** 是否允许建店时选择此项 */
   enabled: boolean;
+  /** 当前配置版本，修改时带回 expectedVersion */
   version: number;
 }
 
 export interface SaveStoreIndustry extends Omit<StoreIndustry, "version"> {
+  /** 新增时为 null；修改时为当前配置版本 */
   expectedVersion: number | null;
+  /** 本次配置变更的审计原因 */
   reason: string;
 }
 
@@ -394,20 +406,38 @@ export type AppVersionLang = "zh-Hant" | "zh-Hans" | "en" | "ar";
 
 /** 保存一行策略 */
 export interface SaveAppVersionPolicy {
+  /** 最新版本号 */
   latest: string;
+  /** 最低支持版本；低于此版本须更新 */
   minSupported: string;
+  /** 各语言的更新说明；zh-Hant 必填，其余语言回落 zh-Hant */
   notes: Partial<Record<AppVersionLang, string[]>>;
+  /** 应用商店或下载链接；不提供时为 null */
   storeUrl: string | null;
+  /** 当前策略版本，保存时用于乐观锁校验 */
   expectedRevision: number;
 }
 
 /** Region-specific contact recording. SMS can open only after the deployment declares a ready channel. */
 export interface MarketPhonePolicy {
+  /** 经营市场码 */
   market: string;
+  /** 国际电话区号；未配置时为 null */
   callingPrefix: string | null;
+  /** 是否只记录号码，不验证短信 */
   recordOnly: boolean;
+  /** 是否开放短信验证码验证 */
   smsVerificationEnabled: boolean;
+  /** 当前部署是否已配置可用短信通道，只读 */
   smsChannelReady: boolean;
+  /** 当前经营市场是否开放，只读 */
   marketEnabled: boolean;
 }
-export interface SaveMarketPhonePolicy { recordOnly: boolean; smsVerificationEnabled: boolean; reason: string }
+export interface SaveMarketPhonePolicy {
+  /** 是否只记录号码，不验证短信 */
+  recordOnly: boolean;
+  /** 是否开放短信验证码验证；开启前须具备可用短信通道 */
+  smsVerificationEnabled: boolean;
+  /** 本次策略变更的审计原因 */
+  reason: string;
+}

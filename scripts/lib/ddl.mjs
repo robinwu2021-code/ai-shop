@@ -188,7 +188,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
   // 下游也直接读取完整子句，不再用 [^;]* 把合法的元数据截短。
   for (const { table, action } of alterActions(sql)) {
     const m = action.match(
-      /^(ADD\s+COLUMN|RENAME\s+COLUMN|DROP\s+COLUMN|MODIFY\s+COLUMN)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([\s\S]*)$/i,
+      /^(ADD(?:\s+COLUMN)?|RENAME\s+COLUMN|DROP\s+COLUMN|MODIFY(?:\s+COLUMN)?)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)(?:\s+([\w()]+))?([\s\S]*)$/i,
     );
     if (!m) continue;
     const [, opRaw, col, rest, tail] = m;
@@ -196,7 +196,9 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
     const t = tables.get(table) ?? tables.get(renamed.get(table));
     if (!t) continue;
     switch (opRaw.toUpperCase().replace(/\s+/g, " ")) {
+      case "ADD":
       case "ADD COLUMN":
+        if (NOT_A_COLUMN.test(col)) break;
         if (!t.cols.some((c) => c.name === col)) {
           t.cols.push({
             name: col,
@@ -214,6 +216,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
           .map((i) => i.split(",").map((c) => c.trim()).filter((c) => c !== col).join(", "))
           .filter(Boolean);
         break;
+      case "MODIFY":
       case "MODIFY COLUMN": {
         const hit = t.cols.find((c) => c.name === col);
         if (!hit) break;

@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
 import { readColumnNames, readSchema as readDdlSchema } from "../../../scripts/lib/ddl.mjs";
 // @ts-expect-error -- shared pure JavaScript lineage API
-import { KEY_OWNERS, TABLE_KEY_OWNERS, NAME_COLLISIONS, relations, resolveReference, columnBadge, unclassifiedBusinessKeys, describeRelation } from "../../../scripts/lib/schema-lineage.mjs";
+import { KEY_OWNERS, TABLE_KEY_OWNERS, NAME_COLLISIONS, COLLISION_MEMBERS, relations, resolveReference, columnBadge, unclassifiedBusinessKeys, describeRelation } from "../../../scripts/lib/schema-lineage.mjs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -242,7 +242,8 @@ describe("对账血缘", () => {
     // Exact native-owner omissions belong to the shared H2 policy, never an ad hoc table exemption.
     const projectionPolicy = JSON.parse(readFileSync(join(ROOT, "backend/scripts/h2-fixture-policy.json"), "utf8"));
     const nativeAbsent = new Set<string>(projectionPolicy.entries
-      .filter((entry: any) => entry.datasource === "PRIMARY" && entry.mode === "NATIVE_OWNER_ABSENT")
+      .filter((entry: any) => entry.datasource === "PRIMARY"
+        && ["NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"].includes(entry.mode))
       .flatMap((entry: any) => entry.absentTables));
     const onlyJs = [...fixtureSchema.keys()].filter((t) => !inH2.has(t) && !nativeAbsent.has(t));
     const onlyPy = [...inH2].filter((t) => !fixtureSchema.has(t));
@@ -257,7 +258,7 @@ describe("对账血缘", () => {
   const byColumn = (col: string) => relations(tables).filter((r: any) => r.col === col);
 
   // A global marketing owner would fabricate checkout edges and lose tenant scope.
-  it("quote_no 保留营销、统一定价与结算三族的 tenant 内关系", () => {
+  it("quote_no 保留营销、统一定价、结算与渠道四族的限定关系", () => {
     expect(byColumn("quote_no")).toEqual([
       ref("mkt_quote_revision", "quote_no", "mkt_quote"),
       ref("ord_price_quote_line", "quote_no", "ord_price_quote"),
@@ -265,6 +266,10 @@ describe("对账血缘", () => {
       ref("ord_pricing_funding_source", "quote_no", "ord_price_quote"),
       ref("ord_industry_order_source", "quote_no", "ord_price_quote"),
       ref("ord_checkout_confirmation", "quote_no", "ord_checkout_quote"),
+      ref("ord_channel_import", "quote_no", "ord_channel_quote", "quote_no", [
+        ...tenant, { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" },
+        { from: "admission_no", to: "admission_no" },
+      ]),
     ]);
   });
 
@@ -296,7 +301,7 @@ describe("对账血缘", () => {
   });
 
   it("quote_no 两根不连自身或跨族，结算确认不连营销报价", () => {
-    for (const root of ["mkt_quote", "ord_price_quote", "ord_checkout_quote"]) {
+    for (const root of ["mkt_quote", "ord_price_quote", "ord_checkout_quote", "ord_channel_quote"]) {
       expect(schema.get(root)?.has("quote_no")).toBe(true);
       expect(resolveReference(tables, root, "quote_no"), root).toBeNull();
       expect(byColumn("quote_no").filter((r: any) => r.from === root)).toEqual([]);
@@ -326,7 +331,7 @@ describe("对账血缘", () => {
     expect(relations(extended).filter((r: any) => r.from === "unreviewed_quote")).toEqual([]);
     expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe("");
     expect(unclassifiedBusinessKeys(extended).filter((x: string) => x.startsWith("quote_no（"))).toEqual([
-      "quote_no（出现在 mkt_quote、mkt_quote_revision、ord_price_quote、ord_price_quote_line、ord_price_quote_allocation、ord_pricing_funding_source、ord_industry_order_source、ord_pricing_fee_application、ord_pricing_fee_advice、ord_checkout_quote、ord_checkout_confirmation、unreviewed_quote）",
+      `quote_no（出现在 ${[...tables.keys()].filter((table) => COLLISION_MEMBERS.quote_no.includes(table)).concat("unreviewed_quote").join("、")}）`,
     ]);
     extended.get("unreviewed_quote").uniques.add("quote_no");
     expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe('<i class="k uk">UK</i>');
@@ -370,14 +375,18 @@ describe("对账血缘", () => {
     for (const pair of scope as typeof tenant) expect(description).toContain(`${from}.${pair.from} = ${to}.${pair.to}`);
   });
 
-  it("buyer 角色四表指 user_no；confirmation 与迁移 return 保留 tenant", () => {
+  it("已审计 USER buyer 指 user_no，套餐多态 buyer 不连用户；confirmation 与迁移 return 保留 tenant", () => {
     expect(byColumn("buyer_no")).toEqual([
+      ref("ord_industry_order_source", "buyer_no", "usr_account", "user_no"),
       ref("ord_checkout_operation", "buyer_no", "usr_account", "user_no"),
       ref("ord_checkout_confirmation", "buyer_no", "usr_account", "user_no"),
       ref("ord_checkout_payment_request", "buyer_no", "usr_account", "user_no"),
       ref("stl_payment_operation", "buyer_no", "usr_account", "user_no"),
+      ref("ord_manual_service_admission", "buyer_no", "usr_account", "user_no"),
     ]);
+    expect(resolveReference(tables, "mch_plan_purchase", "buyer_no")).toBeNull();
     expect(byColumn("confirmation_no")).toEqual([
+      ref("ord_create_intent", "confirmation_no", "ord_checkout_confirmation"),
       ref("ord_checkout_operation", "confirmation_no", "ord_checkout_confirmation"),
       ref("ord_service_execution", "confirmation_no", "ord_checkout_confirmation"),
     ]);
@@ -427,27 +436,67 @@ describe("对账血缘", () => {
   });
 
   const fixture = (source = ["buyer_no", "tenant_no"], target = ["user_no", "tenant_no"], uniques: string[] = []) => new Map([
-    ["fixture_source", { cols: source.map(name => ({ name })), uniques: new Set(uniques) }],
+    ["ord_checkout_operation", { cols: source.map(name => ({ name })), uniques: new Set(uniques) }],
     ["usr_account", { cols: target.map(name => ({ name })), uniques: new Set() }],
   ]);
   it("目标角色列及 scope 双方列必须存在；badge 使用同一真实 resolver", () => {
     for (const f of [fixture(undefined, ["tenant_no"]), fixture(["buyer_no"]), fixture(undefined, ["user_no"]), fixture(["tenant_no"])]) {
       expect(relations(f)).toEqual([]);
-      expect(columnBadge(f, "fixture_source", "buyer_no")).toBe("");
+      expect(columnBadge(f, "ord_checkout_operation", "buyer_no")).toBe("");
     }
-    expect(relations(fixture())).toEqual([ref("fixture_source", "buyer_no", "usr_account", "user_no")]);
-    expect(columnBadge(fixture(), "fixture_source", "buyer_no")).toBe('<i class="k fk">FK</i>');
-    expect(columnBadge(fixture(undefined, undefined, ["buyer_no"]), "fixture_source", "buyer_no")).toBe('<i class="k uk">UK</i>');
-    expect(columnBadge(fixture(undefined, ["tenant_no"], ["buyer_no"]), "fixture_source", "buyer_no")).toBe('<i class="k uk">UK</i>');
+    expect(relations(fixture())).toEqual([ref("ord_checkout_operation", "buyer_no", "usr_account", "user_no")]);
+    expect(columnBadge(fixture(), "ord_checkout_operation", "buyer_no")).toBe('<i class="k fk">FK</i>');
+    expect(columnBadge(fixture(undefined, undefined, ["buyer_no"]), "ord_checkout_operation", "buyer_no")).toBe('<i class="k uk">UK</i>');
+    expect(columnBadge(fixture(undefined, ["tenant_no"], ["buyer_no"]), "ord_checkout_operation", "buyer_no")).toBe('<i class="k uk">UK</i>');
   });
 
   it.each(["unit_no", "action_no", "source_line_no", "source_operation_no", "declaration_no",
-    "receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
+    "receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no",
+    "snapshot_no", "legal_entity_no", "occupation_no", "start_command_no", "logical_demand_no",
+    "issuer_entity_no", "rule_version_no", "expense_entity_no", "buyer_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
     const extended = new Map(tables);
     extended.set("unreviewed_table", { cols: [{ name: col }, { name: "tenant_no" }], uniques: new Set() });
     expect(resolveReference(extended, "unreviewed_table", col)).toBeNull();
     expect(columnBadge(extended, "unreviewed_table", col)).toBe("");
     expect(unclassifiedBusinessKeys(extended).some((x: string) => x.startsWith(`${col}（`) && x.includes("unreviewed_table"))).toBe(true);
+  });
+
+  it("新增占用与品牌键已审计，局部需求及跨族快照不伪造 FK", () => {
+    const debt = unclassifiedBusinessKeys(tables);
+    for (const key of ["quote_no", "snapshot_no", "legal_entity_no", "occupation_no", "start_command_no",
+      "logical_demand_no", "issuer_entity_no", "rule_version_no", "expense_entity_no", "buyer_no"]) {
+      expect(debt.some((entry: string) => entry.startsWith(`${key}（`)), key).toBe(false);
+    }
+    expect(byColumn("snapshot_no")).toEqual([]);
+    expect(byColumn("logical_demand_no")).toEqual([]);
+    for (const source of ["mch_resource_occupation_unit", "mch_resource_occupation_segment", "mch_resource_occupation_bucket"]) {
+      expect(resolveReference(tables, source, "occupation_no")).toEqual(ref(source, "occupation_no", "mch_resource_occupation",
+        "occupation_no", [...tenant, { from: "entity_no", to: "entity_no" }]));
+    }
+    for (const source of ["mch_resource_occupation", "mch_resource_occupation_unit"]) {
+      expect(resolveReference(tables, source, "start_command_no")).toEqual(ref(source, "start_command_no", "mch_resource_command",
+        "command_no", [...tenant, { from: "entity_no", to: "entity_no" }]));
+    }
+    for (const [col, sources] of Object.entries({
+      legal_entity_no: ["mch_brand", "mbr_brand_audience_snapshot"],
+      issuer_entity_no: ["pmt_brand_cost_rule", "pmt_brand_cost_snapshot", "pmt_brand_cost_statement"],
+      expense_entity_no: ["pmt_brand_cost_statement", "pmt_brand_cost_fact"],
+    })) for (const source of sources) {
+      expect(resolveReference(tables, source, col)).toEqual(ref(source, col, "mch_entity", "entity_no"));
+    }
+  });
+
+  it("品牌费用规则版本匹配完整发行范围，任一 scope 列缺失就拒绝关系", () => {
+    const source = "pmt_brand_cost_snapshot", target = "pmt_brand_cost_rule";
+    const scope = [...tenant, ...["management_no", "brand_no", "issuer_entity_no"].map(name => ({ from: name, to: name }))];
+    expect(resolveReference(tables, source, "rule_version_no"))
+      .toEqual(ref(source, "rule_version_no", target, "rule_version_no", scope));
+    for (const table of [source, target]) for (const pair of scope) {
+      const missing = new Map(tables);
+      const def = tables.get(table);
+      missing.set(table, { ...def, cols: def.cols.filter((col: any) => col.name !== pair.from) });
+      expect(resolveReference(missing, source, "rule_version_no"), `${table}.${pair.from}`).toBeNull();
+    }
   });
 
   it("全登记 owner 和限定引用目标及 scope 列真实存在", () => {

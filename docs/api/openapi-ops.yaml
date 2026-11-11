@@ -11356,12 +11356,16 @@ components:
           type:
             - "string"
             - "null"
+          description: "请求时间原文；带偏移或 Z 为 UTC，无时区为设备本地时间，缺失为 null"
         method:
           type: "string"
+          description: "HTTP 请求方法"
         path:
           type: "string"
+          description: "已脱敏的请求路径，不含查询参数"
         outcome:
           type: "string"
+          description: "请求结果摘要（HTTP 状态或网络错误）"
       required:
         - "at"
         - "method"
@@ -12134,24 +12138,33 @@ components:
       properties:
         industryCode:
           type: "string"
+          description: "行业码"
         subIndustryCode:
           type: "string"
+          description: "子业态码，与行业码共同标识一条配置"
         businessTypeCode:
           type: "string"
+          description: "对应的门店经营类型码"
         nameZh:
           type: "string"
+          description: "简体中文名称"
         nameTw:
           type: "string"
+          description: "繁体中文名称"
         nameEn:
           type:
             - "string"
             - "null"
+          description: "英文名称；未配置时为空"
         sort:
           type: "number"
+          description: "展示顺序，数值越小越靠前"
         enabled:
           type: "boolean"
+          description: "是否允许建店时选择此项"
         version:
           type: "number"
+          description: "当前配置版本，修改时带回 expectedVersion"
       required:
         - "industryCode"
         - "subIndustryCode"
@@ -12162,33 +12175,44 @@ components:
         - "enabled"
         - "version"
       additionalProperties: false
+      description: "可供建店选择的行业、子业态与经营类型映射"
     SaveStoreIndustry:
       type: "object"
       properties:
         industryCode:
           type: "string"
+          description: "行业码"
         subIndustryCode:
           type: "string"
+          description: "子业态码，与行业码共同标识一条配置"
         businessTypeCode:
           type: "string"
+          description: "对应的门店经营类型码"
         nameZh:
           type: "string"
+          description: "简体中文名称"
         nameTw:
           type: "string"
+          description: "繁体中文名称"
         nameEn:
           type:
             - "string"
             - "null"
+          description: "英文名称；未配置时为空"
         sort:
           type: "number"
+          description: "展示顺序，数值越小越靠前"
         enabled:
           type: "boolean"
+          description: "是否允许建店时选择此项"
         expectedVersion:
           type:
             - "number"
             - "null"
+          description: "新增时为 null；修改时为当前配置版本"
         reason:
           type: "string"
+          description: "本次配置变更的审计原因"
       required:
         - "businessTypeCode"
         - "enabled"
@@ -12786,16 +12810,21 @@ components:
       properties:
         latest:
           type: "string"
+          description: "最新版本号"
         minSupported:
           type: "string"
+          description: "最低支持版本；低于此版本须更新"
         notes:
           "$ref": "#/components/schemas/Partial%3CRecord%3CAppVersionLang%2Cstring%5B%5D%3E%3E"
+          description: "各语言的更新说明；zh-Hant 必填，其余语言回落 zh-Hant"
         storeUrl:
           type:
             - "string"
             - "null"
+          description: "应用商店或下载链接；不提供时为 null"
         expectedRevision:
           type: "number"
+          description: "当前策略版本，保存时用于乐观锁校验"
       required:
         - "latest"
         - "minSupported"
@@ -12809,18 +12838,24 @@ components:
       properties:
         market:
           type: "string"
+          description: "经营市场码"
         callingPrefix:
           type:
             - "string"
             - "null"
+          description: "国际电话区号；未配置时为 null"
         recordOnly:
           type: "boolean"
+          description: "是否只记录号码，不验证短信"
         smsVerificationEnabled:
           type: "boolean"
+          description: "是否开放短信验证码验证"
         smsChannelReady:
           type: "boolean"
+          description: "当前部署是否已配置可用短信通道，只读"
         marketEnabled:
           type: "boolean"
+          description: "当前经营市场是否开放，只读"
       required:
         - "market"
         - "callingPrefix"
@@ -12835,10 +12870,13 @@ components:
       properties:
         recordOnly:
           type: "boolean"
+          description: "是否只记录号码，不验证短信"
         smsVerificationEnabled:
           type: "boolean"
+          description: "是否开放短信验证码验证；开启前须具备可用短信通道"
         reason:
           type: "string"
+          description: "本次策略变更的审计原因"
       required:
         - "recordOnly"
         - "smsVerificationEnabled"
@@ -14637,10 +14675,13 @@ components:
       properties:
         businessTypeCode:
           type: "string"
+          description: "门店经营类型码"
         currency:
           type: "string"
+          description: "门店订阅报价使用的币种"
         currentPlanVersionNo:
           type: "string"
+          description: "当前订阅方案的版本号"
         serverNow:
           type: "number"
           description: "服务器评估当前方案的时间（毫秒）"
@@ -14731,6 +14772,7 @@ components:
           description: "指引内容（bankCode / bankAccount / accountName）"
         enabled:
           type: "boolean"
+          description: "是否允许新报价使用此收款档案"
       required:
         - "currency"
         - "enabled"

@@ -66,24 +66,24 @@ export function StoreIndustryTab({ c, canWrite }: { c: SystemCopy; canWrite: boo
         <FieldGrid>
           <div><Label htmlFor="si-industry">{c.siIndustry}</Label>
             {form.child ? <Select id="si-industry" value={form.industryCode} disabled={form.expectedVersion !== null}
-              onChange={(e) => setForm({ ...form, industryCode: e.target.value })}>
+              onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, industryCode: value }); }}>
               <option value="">{c.siChoose}</option>{parents.map((p) => <option key={p.industryCode} value={p.industryCode}>{p.nameZh} · {p.industryCode}</option>)}
             </Select> : <Input id="si-industry" value={form.industryCode} maxLength={32} disabled={form.expectedVersion !== null}
-              onChange={(e) => setForm({ ...form, industryCode: e.target.value })} />}</div>
+              onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, industryCode: value }); }} />}</div>
           {form.child && <div><Label htmlFor="si-sub">{c.siSub}</Label><Input id="si-sub" value={form.subIndustryCode} maxLength={48}
-            disabled={form.expectedVersion !== null} onChange={(e) => setForm({ ...form, subIndustryCode: e.target.value })} /></div>}
+            disabled={form.expectedVersion !== null} onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, subIndustryCode: value }); }} /></div>}
           <div><Label htmlFor="si-type">{c.siType}</Label><Select id="si-type" value={form.businessTypeCode}
-            onChange={(e) => setForm({ ...form, businessTypeCode: e.target.value })}>
+            onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, businessTypeCode: value }); }}>
             <option value="">{c.siChoose}</option>{(types.data ?? []).map((t) => <option key={t.draft?.typeCode} value={t.draft?.typeCode}>
               {t.draft?.name} · {t.draft?.typeCode}{t.catalogVersion ? "" : ` · ${c.siUnpublished}`}</option>)}
           </Select></div>
-          <div><Label htmlFor="si-zh">{c.siZh}</Label><Input id="si-zh" value={form.nameZh} maxLength={32} onChange={(e) => setForm({ ...form, nameZh: e.target.value })} /></div>
-          <div><Label htmlFor="si-tw">{c.siTw}</Label><Input id="si-tw" value={form.nameTw} maxLength={32} onChange={(e) => setForm({ ...form, nameTw: e.target.value })} /></div>
-          <div><Label htmlFor="si-en">{c.siEn}</Label><Input id="si-en" value={form.nameEn ?? ""} maxLength={64} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} /></div>
-          <div><Label htmlFor="si-sort">{c.siSort}</Label><Input id="si-sort" type="number" min={0} value={form.sort} onChange={(e) => setForm({ ...form, sort: Number(e.target.value) })} /></div>
+          <div><Label htmlFor="si-zh">{c.siZh}</Label><Input id="si-zh" value={form.nameZh} maxLength={32} onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, nameZh: value }); }} /></div>
+          <div><Label htmlFor="si-tw">{c.siTw}</Label><Input id="si-tw" value={form.nameTw} maxLength={32} onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, nameTw: value }); }} /></div>
+          <div><Label htmlFor="si-en">{c.siEn}</Label><Input id="si-en" value={form.nameEn ?? ""} maxLength={64} onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, nameEn: value }); }} /></div>
+          <div><Label htmlFor="si-sort">{c.siSort}</Label><Input id="si-sort" type="number" min={0} value={form.sort} onChange={(e) => { const value = Number(e.target.value); setForm((f) => f && { ...f, sort: value }); }} /></div>
         </FieldGrid>
-        <Label htmlFor="si-enabled">{c.siEnabled}</Label><Switch id="si-enabled" checked={form.enabled} onChange={(enabled) => setForm({ ...form, enabled })} />
-        <Label htmlFor="si-reason">{c.siReason}</Label><Input id="si-reason" value={form.reason} maxLength={1024} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+        <Label htmlFor="si-enabled">{c.siEnabled}</Label><Switch id="si-enabled" checked={form.enabled} onChange={(enabled) => setForm((f) => f && { ...f, enabled })} />
+        <Label htmlFor="si-reason">{c.siReason}</Label><Input id="si-reason" value={form.reason} maxLength={1024} onChange={(e) => { const value = e.target.value; setForm((f) => f && { ...f, reason: value }); }} />
         <Button disabled={!canWrite || !valid} loading={save.isPending} onClick={() => save.mutate(form)}>{c.siSave}</Button>
       </div>}
     </Drawer>

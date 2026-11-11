@@ -41,6 +41,102 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SchemaGeneratorTest {
 
     @Test
+    void derivedMenuSeedsRetainParamReadWithoutGrantingIndustryAuthority() throws Exception {
+        Path root = H2FixtureProjection.repositoryRoot(Path.of(""));
+        Path fixture = Files.createTempDirectory("permission-seed-schema");
+        Path baseline = fixture.resolve("V1__permissions.sql");
+        Path migration = fixture.resolve("V2__store_industry.sql");
+        Path generated = fixture.resolve("schema.sql");
+        try {
+            Files.writeString(baseline, """
+                    CREATE TABLE sys_function_point (
+                      point_code VARCHAR(64) PRIMARY KEY, function_code VARCHAR(64), name VARCHAR(100),
+                      group_name VARCHAR(64), href VARCHAR(100), ui_perm_code VARCHAR(64), perm_code VARCHAR(64),
+                      backend_status VARCHAR(24), ui_ready INT, matrix_code VARCHAR(24), point_type VARCHAR(24),
+                      sort INT, created_at DATETIME, updated_at DATETIME, gated_by VARCHAR(64)
+                    );
+                    CREATE TABLE sys_role_point (
+                      id BIGINT AUTO_INCREMENT PRIMARY KEY, role_code VARCHAR(64), point_code VARCHAR(64),
+                      end_code VARCHAR(8), created_at DATETIME, updated_at DATETIME,
+                      UNIQUE KEY uk_grant(role_code,point_code,end_code)
+                    );
+                    INSERT INTO sys_function_point(point_code,perm_code) VALUES
+                      ('OPS_SYSTEM__TAB_INDUSTRY','system:param:read'),
+                      ('OPS_SYSTEM__TAB_SCOPE','system:param:read'),
+                      ('OPS_SYSTEM__TAB_AUTHCODE','system:param:read'),
+                      ('ACT_INDUSTRY','system:industry:read'),('ACT_CATEGORY','product:category:read');
+                    INSERT INTO sys_role_point(role_code,point_code,end_code) VALUES
+                      ('TECH_OPS','OPS_SYSTEM__TAB_INDUSTRY','OPS'),
+                      ('TECH_OPS','OPS_SYSTEM__TAB_SCOPE','OPS'),
+                      ('TECH_OPS','OPS_SYSTEM__TAB_AUTHCODE','OPS'),
+                      ('INDUSTRY_OPS','ACT_INDUSTRY','OPS'),('CATEGORY_OPS','ACT_CATEGORY','OPS'),
+                      ('SUPER_ADMIN','OPS_SYSTEM__TAB_INDUSTRY','OPS');
+                    """);
+            Files.copy(root.resolve("backend/shop-app/src/main/resources/db/migration/V655__ops_store_industry_maintenance.sql"), migration);
+            assertThat(runGenerator(root.resolve("backend/scripts/gen-test-schema.py"), generated, fixture)).isZero();
+            try (var connection = java.sql.DriverManager.getConnection("jdbc:h2:mem:permission_seed_" + System.nanoTime() + ";MODE=MySQL", "sa", "")) {
+                org.h2.tools.RunScript.execute(connection, Files.newBufferedReader(generated));
+                try (var statement = connection.createStatement()) {
+                    for (var expected : Map.of(
+                            "TECH_OPS", Set.of("ACT__SYSTEM_PARAM_READ"),
+                            "INDUSTRY_OPS", Set.of("ACT_INDUSTRY", "OPS_SYSTEM__TAB_INDUSTRY", "OPS_SYSTEM__TAB_SCOPE"),
+                            "CATEGORY_OPS", Set.of("ACT_CATEGORY", "OPS_SYSTEM__TAB_AUTHCODE"),
+                            "SUPER_ADMIN", Set.of("ACT__SYSTEM_PARAM_READ", "OPS_SYSTEM__TAB_INDUSTRY", "OPS_SYSTEM__TAB_SCOPE", "OPS_SYSTEM__TAB_STOREINDUSTRY")).entrySet()) {
+                        var actual = new java.util.HashSet<String>();
+                        try (var result = statement.executeQuery("SELECT point_code FROM sys_role_point WHERE role_code='" + expected.getKey() + "'")) {
+                            while (result.next()) actual.add(result.getString(1));
+                        }
+                        assertThat(actual).as(expected.getKey()).isEqualTo(expected.getValue());
+                    }
+                }
+            }
+        } finally {
+            Files.deleteIfExists(generated);
+            Files.deleteIfExists(migration);
+            Files.deleteIfExists(baseline);
+            Files.deleteIfExists(fixture);
+        }
+    }
+
+    @Test
+    void brandAudienceCountConstraintKeepsJsonCardinality() throws Exception {
+        Path root = H2FixtureProjection.repositoryRoot(Path.of(""));
+        Path fixture = Files.createTempDirectory("brand-audience-schema");
+        Path migration = fixture.resolve("V1__brand_promotion.sql");
+        Path generated = fixture.resolve("schema.sql");
+        try {
+            Files.copy(root.resolve("backend/shop-app/src/main/resources/db/migration/V652__brand_promotion.sql"), migration);
+            assertThat(runGenerator(root.resolve("backend/scripts/gen-test-schema.py"), generated, fixture)).isZero();
+            String sql = Files.readString(generated);
+            String check = SchemaDdl.definitions(sql).get("mbr_brand_audience_snapshot").get("ck_brand_audience_counts");
+            assertThat(check).contains("planned_count=pre_skipped_count+H2_JSON_LENGTH(recipients_json)");
+            try (var connection = java.sql.DriverManager.getConnection("jdbc:h2:mem:brand_counts_" + System.nanoTime() + ";MODE=MySQL", "sa", "")) {
+                org.h2.tools.RunScript.execute(connection, new java.io.StringReader(sql));
+                try (var statement = connection.createStatement()) {
+                    statement.execute("CREATE TABLE count_probe (planned_count INT NOT NULL, pre_skipped_count INT NOT NULL, recipients_json TEXT NOT NULL, " + check.replace("ck_brand_audience_counts", "ck_probe_counts") + ")");
+                    statement.execute("INSERT INTO count_probe VALUES (3,1,'[\"a\",{\"nested\":[1,2]}]'), (0,0,'[]')");
+                    for (String invalid : List.of("(2,1,'[\"a\",\"b\"]')", "(1,2,'[]')", "(-1,0,'[]')", "(1,0,'invalid json')")) {
+                        assertThatThrownBy(() -> statement.execute("INSERT INTO count_probe VALUES " + invalid))
+                                .isInstanceOf(java.sql.SQLException.class);
+                    }
+                    try (var result = statement.executeQuery("SELECT H2_JSON_LENGTH(NULL), H2_JSON_LENGTH('null'), H2_JSON_LENGTH('1'), H2_JSON_LENGTH('\"text\"'), H2_JSON_LENGTH('{\"a\":1,\"b\":[],\"a\":2}')")) {
+                        assertThat(result.next()).isTrue();
+                        assertThat(result.getObject(1)).isNull();
+                        assertThat(result.getInt(2)).isEqualTo(1);
+                        assertThat(result.getInt(3)).isEqualTo(1);
+                        assertThat(result.getInt(4)).isEqualTo(1);
+                        assertThat(result.getInt(5)).isEqualTo(2);
+                    }
+                }
+            }
+        } finally {
+            Files.deleteIfExists(generated);
+            Files.deleteIfExists(migration);
+            Files.deleteIfExists(fixture);
+        }
+    }
+
+    @Test
     @DisplayName("★ schema-test.sql 必须真的是生成出来的（生成器能跑 + 产出等价 + H2 能建）")
     void generatorReproducesCommittedSchema() throws Exception {
         Path module = Path.of("").toAbsolutePath();          // backend/shop-app

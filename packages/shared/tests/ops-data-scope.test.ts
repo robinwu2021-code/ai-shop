@@ -70,6 +70,13 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  * 不过写端点本来就不在 G1 的扫描范围里（G1 只看 GET），所以它们不必登记。
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
+  "PaymentResolutionOpsServiceImpl#visibleParents":
+    "先按当前运营数据域读取可见子单，再只为同批payNos比较全体子单；全体比较只用于拒绝含域外子单的主单，"
+    + "不返回其明细。RetailPaymentResolutionFlowTest同时覆盖部分可见拒绝与全部可见通过，禁止删除先行域内查询",
+  "PaymentResolutionOpsServiceImpl#list":
+    "allowed已由visibleParents按全部子单均在当前数据域内筛定；仅按该批已授权主单号回捞退款资格，"
+    + "不扩大列表可见范围。主单本身不具备商家锚点，不能代替子单全量可见性判定",
+
   /*
    * 套餐商城运营查询（/ops/biz-mall/**，可移植 commerce starter）。静态调用图从
    * MallHttpContextPort 进到 ShopMallAuthority，而它的**商家分支**会经 BizIdentityResolver

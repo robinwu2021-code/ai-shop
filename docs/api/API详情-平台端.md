@@ -1260,9 +1260,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -1288,9 +1288,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -1317,9 +1317,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -13233,12 +13233,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `market` | `string` | 是 | — |
-| `callingPrefix` | `string,null` | 是 | — |
-| `recordOnly` | `boolean` | 是 | — |
-| `smsVerificationEnabled` | `boolean` | 是 | — |
-| `smsChannelReady` | `boolean` | 是 | — |
-| `marketEnabled` | `boolean` | 是 | — |
+| `market` | `string` | 是 | 经营市场码 |
+| `callingPrefix` | `string,null` | 是 | 国际电话区号；未配置时为 null |
+| `recordOnly` | `boolean` | 是 | 是否只记录号码，不验证短信 |
+| `smsVerificationEnabled` | `boolean` | 是 | 是否开放短信验证码验证 |
+| `smsChannelReady` | `boolean` | 是 | 当前部署是否已配置可用短信通道，只读 |
+| `marketEnabled` | `boolean` | 是 | 当前经营市场是否开放，只读 |
 
 
 #### GET `/ops/markets`
@@ -13533,15 +13533,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `industryCode` | `string` | 是 | — |
-| `subIndustryCode` | `string` | 是 | — |
-| `businessTypeCode` | `string` | 是 | — |
-| `nameZh` | `string` | 是 | — |
-| `nameTw` | `string` | 是 | — |
-| `nameEn` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
-| `version` | `number` | 是 | — |
+| `industryCode` | `string` | 是 | 行业码 |
+| `subIndustryCode` | `string` | 是 | 子业态码，与行业码共同标识一条配置 |
+| `businessTypeCode` | `string` | 是 | 对应的门店经营类型码 |
+| `nameZh` | `string` | 是 | 简体中文名称 |
+| `nameTw` | `string` | 是 | 繁体中文名称 |
+| `nameEn` | `string,null` | 否 | 英文名称；未配置时为空 |
+| `sort` | `number` | 是 | 展示顺序，数值越小越靠前 |
+| `enabled` | `boolean` | 是 | 是否允许建店时选择此项 |
+| `version` | `number` | 是 | 当前配置版本，修改时带回 expectedVersion |
 
 
 #### GET `/ops/test-identities`
@@ -16413,9 +16413,9 @@ SKU 版本行；PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `businessTypeCode` | `string` | 否 | — |
-| `currency` | `string` | 否 | — |
-| `currentPlanVersionNo` | `string` | 否 | — |
+| `businessTypeCode` | `string` | 否 | 门店经营类型码 |
+| `currency` | `string` | 否 | 门店订阅报价使用的币种 |
+| `currentPlanVersionNo` | `string` | 否 | 当前订阅方案的版本号 |
 | `serverNow` | `number` | 否 | 服务器评估当前方案的时间（毫秒） |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
@@ -16441,12 +16441,12 @@ Region-specific contact recording. SMS can open only after the deployment declar
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `market` | `string` | 是 | — |
-| `callingPrefix` | `string,null` | 是 | — |
-| `recordOnly` | `boolean` | 是 | — |
-| `smsVerificationEnabled` | `boolean` | 是 | — |
-| `smsChannelReady` | `boolean` | 是 | — |
-| `marketEnabled` | `boolean` | 是 | — |
+| `market` | `string` | 是 | 经营市场码 |
+| `callingPrefix` | `string,null` | 是 | 国际电话区号；未配置时为 null |
+| `recordOnly` | `boolean` | 是 | 是否只记录号码，不验证短信 |
+| `smsVerificationEnabled` | `boolean` | 是 | 是否开放短信验证码验证 |
+| `smsChannelReady` | `boolean` | 是 | 当前部署是否已配置可用短信通道，只读 |
+| `marketEnabled` | `boolean` | 是 | 当前经营市场是否开放，只读 |
 
 ### Material
 
@@ -19493,17 +19493,19 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 ### StoreIndustry
 
+可供建店选择的行业、子业态与经营类型映射
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `industryCode` | `string` | 是 | — |
-| `subIndustryCode` | `string` | 是 | — |
-| `businessTypeCode` | `string` | 是 | — |
-| `nameZh` | `string` | 是 | — |
-| `nameTw` | `string` | 是 | — |
-| `nameEn` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
-| `version` | `number` | 是 | — |
+| `industryCode` | `string` | 是 | 行业码 |
+| `subIndustryCode` | `string` | 是 | 子业态码，与行业码共同标识一条配置 |
+| `businessTypeCode` | `string` | 是 | 对应的门店经营类型码 |
+| `nameZh` | `string` | 是 | 简体中文名称 |
+| `nameTw` | `string` | 是 | 繁体中文名称 |
+| `nameEn` | `string,null` | 否 | 英文名称；未配置时为空 |
+| `sort` | `number` | 是 | 展示顺序，数值越小越靠前 |
+| `enabled` | `boolean` | 是 | 是否允许建店时选择此项 |
+| `version` | `number` | 是 | 当前配置版本，修改时带回 expectedVersion |
 
 ### StoreMode
 
@@ -19700,10 +19702,10 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `at` | `string,null` | 是 | — |
-| `method` | `string` | 是 | — |
-| `path` | `string` | 是 | — |
-| `outcome` | `string` | 是 | — |
+| `at` | `string,null` | 是 | 请求时间原文；带偏移或 Z 为 UTC，无时区为设备本地时间，缺失为 null |
+| `method` | `string` | 是 | HTTP 请求方法 |
+| `path` | `string` | 是 | 已脱敏的请求路径，不含查询参数 |
+| `outcome` | `string` | 是 | 请求结果摘要（HTTP 状态或网络错误） |
 
 ### TicketSource
 

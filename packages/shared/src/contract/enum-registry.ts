@@ -72,6 +72,12 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "b-app:OfflineRecordMethod", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "商家自报的 App 外收款方式，与 BizOfflineRecordController.METHODS 的请求校验一致；不代表平台支付通道。" },
+  { decl: "b-app:OfflineRecordStatus", dom: "trade", shape: "STATUS", verdict: "OK", words: ["RECORDED", "VOIDED"],
+    note: "外部记账当前状态，与 OrdOfflineRecord 常量一致；作废仍保留审计历史。" },
+  { decl: "b-app:OfflineRecordAction", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "外部记账只追加事件的动作，与 OrdOfflineRecordEvent.CREATE / CORRECT / VOID 一致。" },
   { decl: "ops-web:MallCategoryLocale", dom: "commerce", shape: "CLASS", verdict: "OK", words: ["zh-CN", "zh-TW", "en"],
     note: "Language keys of a biz-mall category name; a subset of the platform locales." },
   { decl: "ops-web:MallCategoryStatus", dom: "commerce", shape: "STATUS", verdict: "OK", words: ["ENABLED", "DISABLED"],
