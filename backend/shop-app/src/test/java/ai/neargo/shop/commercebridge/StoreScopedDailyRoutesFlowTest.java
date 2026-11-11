@@ -369,6 +369,29 @@ class StoreScopedDailyRoutesFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 本地库存预检与零售/餐饮补货在新模型门店上能进门店（不是 70006），未登记的 stock-control 子路径仍拒")
+    void stockControlRoutesPassAdmission() throws Exception {
+        String[] o = newModelOwner("15965020113");
+        for (String path : new String[] {"/biz/stock-control/retail-replenishment/context",
+                "/biz/stock-control/retail-replenishment", "/biz/stock-control/replenishments/context"}) {
+            JsonNode r = call(o[0], o[1], path);
+            assertNotEquals(70006, r.path("code").asInt(), path + " → " + r);
+        }
+        JsonNode context = call(o[0], o[1], "/biz/stock-control/retail-replenishment/context");
+        assertEquals(0, context.path("code").asInt(), context.toString());
+        assertEquals(o[1], context.path("data").path("storeNo").asText());
+        for (String path : new String[] {"/biz/stock-control/preflight", "/biz/stock-control/retail-replenishment",
+                "/biz/stock-control/retail-replenishment/connection", "/biz/stock-control/retail-replenishment/adjustments",
+                "/biz/stock-control/retail-replenishment/SRP1/receive"}) {
+            String body = mvc.perform(post(path).header("Authorization", "Bearer " + o[0]).header("X-Store-No", o[1])
+                            .header("Idempotency-Key", "K").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertNotEquals(70006, json.readTree(body).path("code").asInt(), path + " → " + body);
+        }
+        assertEquals(70006, call(o[0], o[1], "/biz/stock-control/not-registered").path("code").asInt());
+    }
+
+    @Test
     @DisplayName("★★ 逐条登记、不放开兜底：本店下未登记的子路径仍然 70006")
     void unregisteredStoreSubpathStillDenied() throws Exception {
         String[] o = newModelOwner("15965020112");

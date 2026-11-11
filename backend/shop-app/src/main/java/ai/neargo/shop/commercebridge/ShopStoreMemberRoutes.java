@@ -77,6 +77,9 @@ final class ShopStoreMemberRoutes {
             HostRoute.of("GET,POST", "/biz/pickup-points(?:/candidates)?"),
             // 进销存，及本店线下销售、库存总览 / 对齐 / 对账（sell-rules、stock-sync 见上）
             HostRoute.of("GET,POST,PUT", "/biz/inventory/.+"),
+            // 本地库存预检与补货收货（零售 PLATFORM / 餐饮 FOOD_LOCAL，类级 @PreAuthorize biz:stock，门店范围由控制器复核）
+            HostRoute.of("POST", "/biz/stock-control/preflight"),
+            HostRoute.of("GET,POST", "/biz/stock-control/(?:replenishments|retail-replenishment)(?:/.*)?"),
             HostRoute.of("GET,POST", STORE + "(?:offline-sale|stock-overview|stock-alignment|stock-reconcile)(?:/.*)?"),
             // 门店级配送方式（App W05 多选；取代主体级 fulfillmentReach 单选。TDD-商户App接口字段对齐「已拍板 2」）
             HostRoute.of("GET,PUT", "/biz/stores/[A-Za-z0-9_-]{1,64}/fulfillment"),
