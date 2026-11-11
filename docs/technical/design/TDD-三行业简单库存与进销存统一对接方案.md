@@ -761,7 +761,7 @@ MerchantGoods既有写入口先取得同实体围栏。REPLENISH下saveStock/sav
 
 实施清单：
 
-- [ ] D2-04 `ai.neargo.shop.product.api.biz.BizRetailStockReplenishmentController`，路径`/biz/stock-control/retail-replenishments`，权限复用`biz:stock`，范围复用`LocalStockAccessPolicy`；context/connection/list/register/get/receive/close/return-dispatch/return-ack/adjustments/manual-receipt/reconciliation。与FOOD路径分离，FOOD门店调用零售入口因无PLATFORM原件/非RETAIL开启而拒绝。
+- [ ] D2-04 `ai.neargo.shop.product.api.biz.BizRetailStockReplenishmentController`，路径`/biz/stock-control/retail-replenishment`，权限复用`biz:stock`，范围复用`LocalStockAccessPolicy`；context/connection/list/register/get/receive/close/return-dispatch/return-ack/adjustments/manual-receipt/reconciliation。与FOOD路径分离，FOOD门店调用零售入口因无PLATFORM原件/非RETAIL开启而拒绝。
 - [ ] D2-04 `RetailStockReplenishmentService`编排：register（恢复→源出库→registerRetail）、configure（恢复→仅开启时取源水位→configureRetail）、ackReturn（恢复→源入库→原服务）、reconcile（源出库；未装源客户端报SOURCE_UNVERIFIED）、adjust（同键回执沿原Target重放，新调整按当前实际池观察，客户端不传Target）、list（游标分页，attention=待收/差异/待验收）。`StockReplenishmentAdmissionService.recoverConfiguration`补配置原键恢复。
 - [ ] D2-04 预检发布：`LocalStockStrategyPolicy`仅对RETAIL+SKU放开REPLENISH→PLATFORM；`LocalStockControlServiceImpl`要求该门店零售连接实际开启，否则STRATEGY_NOT_ENABLED；能力加RECEIVE/ADJUST。FOOD/美业REPLENISH仍拒绝。
 - [ ] D2-04 改挂预检：`StoreRelinkHostFactsPortImpl`把prd_stock_replenishment及connection/command/movement/manual/return（主体或门店）与prd_stock_writer（主体）计入历史，空商品目录也不放过。

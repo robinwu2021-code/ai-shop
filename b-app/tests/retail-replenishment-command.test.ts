@@ -28,11 +28,11 @@ describe('retail replenishment original requests',()=>{
  });
  it('uses the RETAIL paths with trusted scope headers, never the FOOD entry',async()=>{
   await retailReplenishmentHttp.mRrReceive(scope,'SRP1',{cumulativeQuantity:18},'K');
-  expect(transport.post).toHaveBeenLastCalledWith('/biz/stock-control/retail-replenishments/SRP1/receive',{cumulativeQuantity:18},{'X-Store-No':'S','X-Stock-Entity-No':'E','Idempotency-Key':'K'});
+  expect(transport.post).toHaveBeenLastCalledWith('/biz/stock-control/retail-replenishment/SRP1/receive',{cumulativeQuantity:18},{'X-Store-No':'S','X-Stock-Entity-No':'E','Idempotency-Key':'K'});
   await retailReplenishmentHttp.mRrAdjust(scope,{itemNo:'SKU',baseUnit:'EA',delta:-2,reason:'loss'},'J');
-  expect(transport.post).toHaveBeenLastCalledWith('/biz/stock-control/retail-replenishments/adjustments',{itemNo:'SKU',baseUnit:'EA',delta:-2,reason:'loss'},expect.objectContaining({'Idempotency-Key':'J'}));
+  expect(transport.post).toHaveBeenLastCalledWith('/biz/stock-control/retail-replenishment/adjustments',{itemNo:'SKU',baseUnit:'EA',delta:-2,reason:'loss'},expect.objectContaining({'Idempotency-Key':'J'}));
   await retailReplenishmentHttp.mRrList(scope,{after:'SRP1',size:20});
-  expect(transport.get).toHaveBeenLastCalledWith('/biz/stock-control/retail-replenishments',{after:'SRP1',size:20},{'X-Store-No':'S','X-Stock-Entity-No':'E'});
+  expect(transport.get).toHaveBeenLastCalledWith('/biz/stock-control/retail-replenishment',{after:'SRP1',size:20},{'X-Store-No':'S','X-Stock-Entity-No':'E'});
   for(const call of [...transport.post.mock.calls,...transport.get.mock.calls]) expect(String(call[0])).not.toContain('/biz/stock-control/replenishments');
  });
 });

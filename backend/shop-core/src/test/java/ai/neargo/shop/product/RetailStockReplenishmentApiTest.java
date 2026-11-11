@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 /** Public RETAIL entry: real permission/scope policy and MVC binding; service is a seam. */
 class RetailStockReplenishmentApiTest {
     private static final Scope S = new Scope("MAIN", "E", "S");
-    private static final String BASE = "/biz/stock-control/retail-replenishments";
+    private static final String BASE = "/biz/stock-control/retail-replenishment";
     private static final String WIRE = """
             {"documentNo":"OUT","lineNo":1,"mapping":{"itemNo":"SKU","baseUnit":"EA","factor":1}}
             """;

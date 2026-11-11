@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.*;
 
 /** RETAIL physical replenishment into the original PLATFORM pool; the body never selects owner, pool or actor. */
 @RestController @Profile("api") @Validated
-@RequestMapping("/biz/stock-control/retail-replenishments")
+@RequestMapping("/biz/stock-control/retail-replenishment")
 @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
 public class BizRetailStockReplenishmentController {
     public record Register(@NotBlank @Size(max=32) String documentNo, @Min(1) int lineNo, @NotNull @Valid Mapping mapping) {

@@ -3,7 +3,7 @@
   "info": {
     "title": "FOOD physical replenishment and MAIN source admission",
     "version": "2026-11-11-I04-D2-04",
-    "description": "Simple business stock remains independent. All cumulative quantities are local frozen base units, never deltas. Preserve original request parameters (including BigDecimal representation) under a repeated key. Source line identity excludes connection generation. ACK is the committed queryable local receipt, not a claim of additional source push acknowledgment. Return-ack only verifies source actual receipt, does not mean source available stock/clearance. Stable source instance must be configured by shop.inventory.replenishment.source-system; no activation, source posting, automatic sync or writer switch is performed. I04-C: OFF stops unfamiliar new originals while accepted ones finish; generation excludes logistics dedupe. Stable source identity cannot be switched by reconnect. Local 17 stays 17. Actual source late low-sequence originals use manual evidence only. A CANCELLED original is a permanent source-action/key tombstone, preventing late execution without reversing committed effects. Remote client transport no longer requires embedded inventory feature. Existing mirror DISABLING/DEACTIVATE/OFF barrier remains independent. D2-01/02: MAIN owns one immutable source-line claim across FOOD and retail. Host commits the claim before signed FOOD registration; EXTERNAL is an intent, not a FOOD stock receipt. Existing FOOD originals are queried including archived source identities; missing history transport is not absence. Old internal registration recovers existing sources only. Deploy that FOOD gate before the new host; no mixed unregistered writers may use the host signing credential. Retail registration remains internal PENDING only: no retail public API, quantity writer or App is enabled. D2-04: RETAIL public paths under /biz/stock-control/retail-replenishments are published (biz:stock, server-resolved scope). Integer counts only; FOOD and RETAIL entries are separate and a FOOD store cannot open RETAIL intake."
+    "description": "Simple business stock remains independent. All cumulative quantities are local frozen base units, never deltas. Preserve original request parameters (including BigDecimal representation) under a repeated key. Source line identity excludes connection generation. ACK is the committed queryable local receipt, not a claim of additional source push acknowledgment. Return-ack only verifies source actual receipt, does not mean source available stock/clearance. Stable source instance must be configured by shop.inventory.replenishment.source-system; no activation, source posting, automatic sync or writer switch is performed. I04-C: OFF stops unfamiliar new originals while accepted ones finish; generation excludes logistics dedupe. Stable source identity cannot be switched by reconnect. Local 17 stays 17. Actual source late low-sequence originals use manual evidence only. A CANCELLED original is a permanent source-action/key tombstone, preventing late execution without reversing committed effects. Remote client transport no longer requires embedded inventory feature. Existing mirror DISABLING/DEACTIVATE/OFF barrier remains independent. D2-01/02: MAIN owns one immutable source-line claim across FOOD and retail. Host commits the claim before signed FOOD registration; EXTERNAL is an intent, not a FOOD stock receipt. Existing FOOD originals are queried including archived source identities; missing history transport is not absence. Old internal registration recovers existing sources only. Deploy that FOOD gate before the new host; no mixed unregistered writers may use the host signing credential. Retail registration remains internal PENDING only: no retail public API, quantity writer or App is enabled. D2-04: RETAIL public paths under /biz/stock-control/retail-replenishment are published (biz:stock, server-resolved scope). Integer counts only; FOOD and RETAIL entries are separate and a FOOD store cannot open RETAIL intake."
   },
   "paths": {
     "/biz/stock-control/replenishments": {
@@ -1889,7 +1889,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/context": {
+    "/biz/stock-control/retail-replenishment/context": {
       "get": {
         "operationId": "getRetailReplenishmentContext",
         "summary": "Server-resolved entity/store/actor and RETAIL intake connection",
@@ -1954,7 +1954,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/connection": {
+    "/biz/stock-control/retail-replenishment/connection": {
       "post": {
         "operationId": "configureRetailReplenishment",
         "summary": "Open/close new RETAIL source intake; enabling takes the trusted source watermark and the PLATFORM writer",
@@ -2040,7 +2040,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments": {
+    "/biz/stock-control/retail-replenishment": {
       "get": {
         "operationId": "listRetailReplenishments",
         "summary": "Originals needing receipt/difference/return attention",
@@ -2216,7 +2216,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/adjustments": {
+    "/biz/stock-control/retail-replenishment/adjustments": {
       "post": {
         "operationId": "adjustRetailStock",
         "summary": "Formal signed adjustment with immutable movement; same key replays on the original target",
@@ -2302,7 +2302,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}": {
+    "/biz/stock-control/retail-replenishment/{no}": {
       "get": {
         "operationId": "getRetailReplenishment",
         "summary": "Current progress of one original",
@@ -2377,7 +2377,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}/reconciliation": {
+    "/biz/stock-control/retail-replenishment/{no}/reconciliation": {
       "get": {
         "operationId": "reconcileRetailReplenishment",
         "summary": "Read-only check of this original; SOURCE_UNVERIFIED when the source is not reachable",
@@ -2452,7 +2452,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}/receive": {
+    "/biz/stock-control/retail-replenishment/{no}/receive": {
       "post": {
         "operationId": "receiveRetailReplenishment",
         "summary": "Cumulative integer receipt; only the delta increases the original pool",
@@ -2548,7 +2548,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}/close": {
+    "/biz/stock-control/retail-replenishment/{no}/close": {
       "post": {
         "operationId": "closeRetailReplenishment",
         "summary": "Close and record the remaining difference; no stock change",
@@ -2644,7 +2644,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}/return-dispatch": {
+    "/biz/stock-control/retail-replenishment/{no}/return-dispatch": {
       "post": {
         "operationId": "dispatchRetailReplenishmentReturn",
         "summary": "Cumulative return to source; only the delta decreases the original pool",
@@ -2740,7 +2740,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}/return-ack": {
+    "/biz/stock-control/retail-replenishment/{no}/return-ack": {
       "post": {
         "operationId": "ackRetailReplenishmentReturn",
         "summary": "Accept a trusted source RETURN line referencing this original; no local stock change",
@@ -2836,7 +2836,7 @@
         }
       }
     },
-    "/biz/stock-control/retail-replenishments/{no}/manual-receipt": {
+    "/biz/stock-control/retail-replenishment/{no}/manual-receipt": {
       "post": {
         "operationId": "adoptRetailManualReceipt",
         "summary": "Link an existing ADJUST_IN movement once; no additional stock",
@@ -4418,7 +4418,7 @@
   },
   "x-retail-local-effects": {
     "contract": "ai.neargo.shop.product.service.RetailStockReplenishmentService",
-    "publication": "Published by BizRetailStockReplenishmentController under /biz/stock-control/retail-replenishments (D2-04). Source RPC precedes the local transaction; completed original keys replay before any source call.",
+    "publication": "Published by BizRetailStockReplenishmentController under /biz/stock-control/retail-replenishment (D2-04). Source RPC precedes the local transaction; completed original keys replay before any source call.",
     "methods": [
       "get",
       "receive",
