@@ -761,9 +761,29 @@ MerchantGoods既有写入口先取得同实体围栏。REPLENISH下saveStock/sav
 
 实施清单：
 
-- [ ] D2-04 `ai.neargo.shop.product.api.biz.BizRetailStockReplenishmentController`，路径`/biz/stock-control/retail-replenishment`，权限复用`biz:stock`，范围复用`LocalStockAccessPolicy`；context/connection/list/register/get/receive/close/return-dispatch/return-ack/adjustments/manual-receipt/reconciliation。与FOOD路径分离，FOOD门店调用零售入口因无PLATFORM原件/非RETAIL开启而拒绝。
-- [ ] D2-04 `RetailStockReplenishmentService`编排：register（恢复→源出库→registerRetail）、configure（恢复→仅开启时取源水位→configureRetail）、ackReturn（恢复→源入库→原服务）、reconcile（源出库；未装源客户端报SOURCE_UNVERIFIED）、adjust（同键回执沿原Target重放，新调整按当前实际池观察，客户端不传Target）、list（游标分页，attention=待收/差异/待验收）。`StockReplenishmentAdmissionService.recoverConfiguration`补配置原键恢复。
-- [ ] D2-04 预检发布：`LocalStockStrategyPolicy`仅对RETAIL+SKU放开REPLENISH→PLATFORM；`LocalStockControlServiceImpl`要求该门店零售连接实际开启，否则STRATEGY_NOT_ENABLED；能力加RECEIVE/ADJUST。FOOD/美业REPLENISH仍拒绝。
-- [ ] D2-04 改挂预检：`StoreRelinkHostFactsPortImpl`把prd_stock_replenishment及connection/command/movement/manual/return（主体或门店）与prd_stock_writer（主体）计入历史，空商品目录也不放过。
-- [ ] D2-05 b-app `pages/retail-replenishments/index`、`api/retail-replenishment*.ts`、`shared/retail-replenishment-command.ts`：显示实际主体池/门店池、待收/差异/退仓/验收；未完成操作按`实体:门店:账号`保存原键原body，切换范围不重发；无mock成功。
-- [ ] D2-06 验证：编排单测、MVC权限/范围/字段、预检与改挂单测、MySQL9原生端到端（开启→登记→实收→退仓→验收→调整→关联→核对，FOOD范围隔离）、App vitest + vue-tsc、合同/UI清单闸门。
+- [x] D2-04 `ai.neargo.shop.product.api.biz.BizRetailStockReplenishmentController`，路径`/biz/stock-control/retail-replenishment`，权限复用`biz:stock`，范围复用`LocalStockAccessPolicy`；context/connection/list/register/get/receive/close/return-dispatch/return-ack/adjustments/manual-receipt/reconciliation。与FOOD路径分离，FOOD门店调用零售入口因无PLATFORM原件/非RETAIL开启而拒绝。
+- [x] D2-04 `RetailStockReplenishmentService`编排：register（恢复→源出库→registerRetail）、configure（恢复→仅开启时取源水位→configureRetail）、ackReturn（恢复→源入库→原服务）、reconcile（源出库；未装源客户端报SOURCE_UNVERIFIED）、adjust（同键回执沿原Target重放，新调整按当前实际池观察，客户端不传Target）、list（游标分页，attention=待收/差异/待验收）。`StockReplenishmentAdmissionService.recoverConfiguration`补配置原键恢复。
+- [x] D2-04 预检发布：`LocalStockStrategyPolicy`仅对RETAIL+SKU放开REPLENISH→PLATFORM；`LocalStockControlServiceImpl`要求该门店零售连接实际开启，否则STRATEGY_NOT_ENABLED；能力加RECEIVE/ADJUST。FOOD/美业REPLENISH仍拒绝。
+- [x] D2-04 改挂预检：`StoreRelinkHostFactsPortImpl`把prd_stock_replenishment及connection/command/movement/manual/return（主体或门店）与prd_stock_writer（主体）计入历史，空商品目录也不放过。
+- [x] D2-05 b-app `pages/retail-replenishments/index`、`api/retail-replenishment*.ts`、`shared/retail-replenishment-command.ts`：显示实际主体池/门店池、待收/差异/退仓/验收；未完成操作按`实体:门店:账号`保存原键原body，切换范围不重发；无mock成功。
+- [x] D2-06 本地验证（真机/166另列H）：编排单测、MVC权限/范围/字段、预检与改挂单测、MySQL9原生端到端（开启→登记→实收→退仓→验收→调整→关联→核对，FOOD范围隔离）、App vitest + vue-tsc、合同/UI清单闸门。
+
+### 17.13 D2-04/05/06本地实现与证据（2026-11-11）
+
+**零售补货的ai-shop正式入口、App页面与本地闭环已在本机完成；未部署、未签发凭据、未在真机/166营业验收（仍归I04-H）。**
+
+| 设计 | 实现落点 | 验证 |
+|---|---|---|
+| 正式入口与范围 | `BizRetailStockReplenishmentController`（`/biz/stock-control/retail-replenishment`，单数集合段符合`/biz`命名约定）；`LocalStockAccessPolicy`解析主体/门店/操作人；线上计数为整数（`@Digits(fraction=0)`），JSON的1.5不会被截成1；请求体不接受target/owner | `RetailStockReplenishmentApiTest` 4：权限/门店/旧主体意图、注入字段/小数/越界/缺键400、只传原件号与认证操作人 |
+| 来源编排与原号恢复 | `RetailStockReplenishmentServiceImpl`新增register/configure/ackReturn/adjust/reconcile/list重载；`StockReplenishmentAdmissionService.recoverConfiguration` | `RetailStockReplenishmentEntryNativeMysqlTest` 4（MySQL9）：开启只取一次水位；原键重放时源服务故障仍返回原结果；15收+5正式调整+关联=37且关联不再加；退5→32；验收重放不调源；核对无差异；FOOD门店开启失败不留writer；兄弟门店不可见/不可写；按原件号游标翻页；关闭接入后旧原件仍可收尾、未装源客户端核对报SOURCE_UNVERIFIED |
+| 预检发布 | `LocalStockStrategyPolicy`仅RETAIL+SKU可REPLENISH；`LocalStockControlServiceImpl`要求该门店零售接入实际开启，能力加RECEIVE/ADJUST | `LocalStockControlServiceTest` 8（新增/修改2）：未开启/FOOD/美业/非SKU仍STRATEGY_NOT_ENABLED，开启后路由PLATFORM并保留精度/租户判据 |
+| 改挂预检 | `StoreRelinkHostFactsPortImpl`计入6张补货表（主体或门店）及`prd_stock_writer`（主体） | `StoreRelinkHostFactsPortImplTest` 41（新增7） |
+| App | `pages/retail-replenishments/index`、`api/retail-replenishment*.ts`、`shared/retail-replenishment-command.ts`、三语`retailReplenishment`词条、首页入口 | vitest 10新增+原餐饮17共27通过；`vue-tsc --noEmit`退出0 |
+
+App恢复语义与餐饮不同：零售命令与永久回执原子提交，不存在“已认领未执行”中间态，因此不提供封存/状态查询；结果未知时按原实体/门店/账号、原键、原body重发，明确4xx（服务端已判定且未提交）才移除待核对项。切换门店或账号后不重发旧操作。
+
+既有证据复用：D2-01/02/03 原生18+12项在本批构造参数调整后全部重跑通过（共34项MySQL9，含新增4项），未重复无关全仓测试。MySQL为本机临时初始化的9.7.4隔离实例（127.0.0.1:3308，数据目录在会话临时区，用例自建自删随机库），未连接共享业务库或166。
+
+闸门：pre-push依次通过UI清单（336）、原型、进销存界面清单（16屏）、运营功能清单、V2文档、ops合同、App调用合同；停在“后端无App入口”，其基线外记录与D2-03交接逐条相同（27条，无库存项）。单独执行其余闸门：app-orphan、backend-ui-delivery、ops-orphan、i18n-orphan、RTL、inventory-independence、handrolled-ui、settle-status-i18n通过；controller-cohesion（餐饮补货/支付进件控制器）、sql-portability（独立库存迁移排序规则）、generated-docs（餐饮`mRpState`复数段）三项在交接提交8363a3084上同样失败，本批未新增条目。`BizEndpointPermTest`补登记全部`/biz/stock-control/*`共37条端点后仅余5条其他域既有缺口；`ArchitectureTest`既有违规不含本批类。
+
+剩余：餐饮补货已发布路径的复数段与胖控制器属既有欠账，不在本批改名；App尚无按门店经营类型隐藏入口（服务端拒绝非零售门店）；App端策略选择未接预检；真实App设备、目标环境迁移/凭据、166源仓及营业验收归I04-H；SHARED_SYNC/DELEGATED、美业及完整盘点/跨池迁移继续后置。
