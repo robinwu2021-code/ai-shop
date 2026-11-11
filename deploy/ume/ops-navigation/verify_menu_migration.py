@@ -60,8 +60,10 @@ def visible(snap):
     return hrefs, perms
 
 
-def verify(db, before_path, expected_path, v657_path, version, removed_points, merged_into):
-    before, after = json.load(open(before_path)), snapshot(db)
+def verify(db, before_path, expected_path, v657_path, version, removed_points, merged_into, after_path=None):
+    """after_path 给定时只比对两份快照文件（生产：快照由 166 上的 MenuSnapshot 导出），不连库。"""
+    before = json.load(open(before_path))
+    after = json.load(open(after_path)) if after_path else snapshot(db)
     exp = json.load(open(expected_path))
     aliases = dict(re.findall(r"point_code IN \('([^']+)','([^']+)'\)", open(v657_path).read()))
     checks, problems = {}, []
@@ -132,7 +134,7 @@ def verify(db, before_path, expected_path, v657_path, version, removed_points, m
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["snapshot", "seed", "verify"])
+    ap.add_argument("cmd", choices=["snapshot", "seed", "verify", "compare"])
     ap.add_argument("db")
     ap.add_argument("paths", nargs="*")
     ap.add_argument("--version")
@@ -150,10 +152,14 @@ if __name__ == "__main__":
             q(a.db, f"INSERT INTO sys_role_point (role_code,point_code,end_code,entity_no,created_at,updated_at) "
                     f"VALUES ('{CUSTOM}','OPS_AFTERSALE__TAB_REFUND_BACK','OPS',{ent},NOW(),NOW())")
     else:
-        before, expected, v657, out = a.paths
+        if a.cmd == "compare":   # compare <before.json> <after.json> <expected> <v657.sql> <out>；db 参数仅作标签
+            before, after_path, expected, v657, out = a.paths
+        else:
+            before, expected, v657, out = a.paths
+            after_path = None
         if not (a.version and a.removed and a.merged_into):
-            sys.exit("verify 需要 --version、--removed、--merged-into")
-        checks, problems, after = verify(a.db, before, expected, v657, a.version, a.removed, a.merged_into)
+            sys.exit(a.cmd + " 需要 --version、--removed、--merged-into")
+        checks, problems, after = verify(a.db, before, expected, v657, a.version, a.removed, a.merged_into, after_path)
         json.dump({"flyway": dict(zip(("version", "checksum", "success"),
                                       (checks["flyway"][0][0], int(checks["flyway"][0][1]), int(checks["flyway"][0][2]))))
                    if checks["flyway"] else {}, "checks": checks, "problems": problems},
