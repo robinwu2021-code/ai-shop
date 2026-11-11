@@ -1450,6 +1450,25 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                 });
     }
 
+    /** 扫码顾客在开台前下堂食单：绑定阶段必然因没有台账而失败，所以必须在去核心建单之前就拒绝，不能留孤儿单。 */
+    @Test
+    void customerDineInWithoutCheckIsRejectedBeforeCoreOrderIsCreated() {
+        run(
+                true,
+                c -> {
+                    c.fixture.sql().update("UPDATE fnb_check_cart SET fulfillment='DINE_IN',check_no=NULL");
+                    assertThatThrownBy(
+                                    () -> c.service.customerPlace("A", BUYER, postpayRequest(), "DINE-NO-CHECK"))
+                            .isInstanceOf(BizException.class);
+                    assertThat(c.coreCalls).hasValue(0);
+                    assertThat(
+                                    c.fixture
+                                            .sql()
+                                            .queryForObject("SELECT COUNT(*) FROM fnb_order_batch", Integer.class))
+                            .isZero();
+                });
+    }
+
     @Test
     void postpayAcceptsRealUnpaidOwnerProofAndPublishesQuotaAndDispatchInOneTransaction() {
         run(

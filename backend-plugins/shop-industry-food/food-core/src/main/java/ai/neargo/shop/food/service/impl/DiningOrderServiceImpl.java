@@ -787,6 +787,10 @@ public class DiningOrderServiceImpl implements DiningOrderService {
         if (!Objects.equals(access.buyerNo(), cart.getBuyerNo())
                 || !List.of("H5", "QR", "KIOSK").contains(cart.getOrderSource())
                 || !List.of("PICKUP", "DINE_IN", "DELIVERY").contains(cart.getFulfillment())
+                // 堂食只能挂在已开台账上后付（绑定阶段 validateDiningRoomFrozen 的前提），
+                // 必须在去核心建单之前拒绝，否则核心留下一张永远绑不上的 WAIT_PAY 单。
+                || "DINE_IN".equals(cart.getFulfillment())
+                        && (cart.getCheckNo() == null || !"POSTPAY".equals(req.payMode()))
                 || access.buyerNo() == null && !"POSTPAY".equals(req.payMode()))
             throw unsupported();
         String principal = access.buyerNo() == null ? access.sessionNo() : access.buyerNo();
