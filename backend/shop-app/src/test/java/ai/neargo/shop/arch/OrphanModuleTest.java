@@ -49,9 +49,13 @@ class OrphanModuleTest {
      * 同一类 —— 由 Gradle 编，不归 Maven。它曾经只是「留档」、要人记得放回仓库外的离线工程，
      * 正是本测试要防的副本；现在 {@code b-app/offline/build-apk.sh} 每次打包先从这里同步过去，
      * 仓库这份就是被编译的那份，不会再分叉。
+     *
+     * <p>{@code ops-navigation}（2026-11-11）：166 运营导航发布工具 {@code deploy/ume/ops-navigation}。
+     * {@code MenuMigration}/{@code MenuSnapshot} 每次发布都从这个目录编译、在 ai-shop-ops 同镜像的一次性容器里执行
+     * （见该目录 README），与 {@code native-plugins} 同理 —— 仓库这份就是被执行的那份，不是留档副本。
      */
     private static final List<String> ALLOWED = List.of(
-            "node_modules", "target", ".git", "android-shell", "dist", "native-plugins");
+            "node_modules", "target", ".git", "android-shell", "dist", "native-plugins", "ops-navigation");
 
     @Test
     @DisplayName("★★ Maven 之外不得有 Java 源码目录 —— 不参与构建的代码不会有任何东西提醒你它已经过时")

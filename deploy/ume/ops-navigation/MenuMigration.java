@@ -1,10 +1,3 @@
-# MenuMigration（V657 发布用 Flyway 执行器，留档）
-
-2026-11-11 在 166 上编译执行过一次（编译产物 SHA256 见 `evidence/deployment-20261111.json` 的 `MenuMigration.class`）。
-原为本目录下的 `MenuMigration.java`；它不属于任何 Maven 模块，`OrphanModuleTest` 不允许 Maven 之外存在 Java 源码，
-因此原文逐字转存于此，仅作发布记录，不参与构建。
-
-```java
 import java.util.Properties;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,4 +13,3 @@ public class MenuMigration {
   var r=f.migrate();System.out.println("executed="+r.migrationsExecuted+" target="+r.targetSchemaVersion);
  }
 }
-```
