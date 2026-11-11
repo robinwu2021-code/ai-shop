@@ -4,6 +4,7 @@ import ai.neargo.inventory.domain.service.StockCountService;
 import ai.neargo.shop.invbridge.InventoryMirrorConsumer;
 import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
 import ai.neargo.shop.portal.biz.BizOrderInventoryTraceController;
+import ai.neargo.shop.spi.inventory.InventoryAvailabilityPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,6 +75,8 @@ class InventoryDisabledContextTest {
                 .as("凭证服务同上").isEmpty();
         assertThat(ctx.getBeanNamesForType(StockCountService.class))
                 .as("库存镜像消费者依赖盘点服务，进销存关闭时也必须一并关闭").isEmpty();
+        assertThat(ctx.getBeanNamesForType(InventoryAvailabilityPort.class))
+                .as("进销存关闭时不注册依赖领域 ACL/Mapper 的可用量适配，不伪造库存事实").isEmpty();
         assertThat(ctx.getBeanNamesForType(InventoryMirrorConsumer.class)).isEmpty();
         assertThat(ctx.getBeanNamesForType(InventoryTraceSyncProjection.class)).isEmpty();
         assertThat(ctx.getBeanNamesForType(BizOrderInventoryTraceController.class))

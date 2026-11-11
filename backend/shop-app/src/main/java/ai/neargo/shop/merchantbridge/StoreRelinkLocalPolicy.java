@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchantbridge;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import ai.neargo.commerce.api.common.StoreRef;
 import ai.neargo.commerce.api.subscription.StoreRelinkFacade;
 import ai.neargo.shop.common.BizException;
@@ -24,9 +26,9 @@ public class StoreRelinkLocalPolicy {
     private final ObjectProvider<StoreRelinkFacade> subscriptions;
     private final List<StoreRelinkIndustryFactsPort> industries;
     private final MerchantPlanService plans;
-    @org.springframework.beans.factory.annotation.Value("${inventory.enabled:false}")
+    @Value("${inventory.enabled:false}")
     private boolean inventoryEnabled;
-    @org.springframework.beans.factory.annotation.Value("${shop.inventory.enabled:false}")
+    @Value("${shop.inventory.enabled:false}")
     private boolean inventoryBridgeEnabled;
     public StoreRelinkLocalPolicy(JdbcTemplate jdbc, StoreRelinkHostFactsPort history,
             ObjectProvider<StoreRelinkFacade> subscriptions,List<StoreRelinkIndustryFactsPort> industries,MerchantPlanService plans) {

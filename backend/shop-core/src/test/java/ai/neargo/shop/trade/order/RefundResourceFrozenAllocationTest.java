@@ -31,7 +31,7 @@ class RefundResourceFrozenAllocationTest {
             row.setStatus("SUCCEEDED"); row.setResourceStatus("PENDING"); row.setRestoreStock(true); row.setStockAuthority("INVENTORY");
             row.setPlanJson(json.writeValueAsString(plan)); row.setStockNeedsJson(json.writeValueAsString(List.of(target)));
             var child=new OrdSubOrder(); child.setOrderNo("O1"); child.setSubOrderNo("S1"); child.setStatus(status); child.setInventoryLifecycleVersion(2);
-            when(store.read("RF1")).thenReturn(row); when(children.selectOne(any())).thenReturn(child);
+            when(store.currentSource("RF1")).thenReturn(row); when(children.selectOne(any())).thenReturn(child);
             when(children.selectList(any())).thenReturn(List.of(child));
             var service=new RefundResourceServiceImpl(store,stock,children,coupons,switches,json,"INVENTORY",manager);
             service.recover("RF1");

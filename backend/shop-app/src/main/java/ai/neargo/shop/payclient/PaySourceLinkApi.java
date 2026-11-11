@@ -1,5 +1,9 @@
 package ai.neargo.shop.payclient;
 
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
+
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,9 +45,9 @@ public interface PaySourceLinkApi {
     record Status(String status, String merchantRef, String linkStatus, String profileStatus, String reviewReason) {
     }
 
-    @org.springframework.web.service.annotation.GetExchange("/internal/pay/v2/source-links/status")
-    Status status(@org.springframework.web.bind.annotation.RequestParam("sourceScope") String sourceScope,
-                  @org.springframework.web.bind.annotation.RequestParam("sourceEntityRef") String sourceEntityRef);
+    @GetExchange("/internal/pay/v2/source-links/status")
+    Status status(@RequestParam("sourceScope") String sourceScope,
+                  @RequestParam("sourceEntityRef") String sourceEntityRef);
     record StoreClaimCommand(String requestNo, String requestHash, String sourceScope,
             String sourceEntityRef, String targetEntityRef, String storeRef, String storeNo, long expectedRevision, boolean retireSource) {
         public StoreClaimCommand(String requestNo, String requestHash, String sourceScope,
@@ -58,19 +62,19 @@ public interface PaySourceLinkApi {
 
     @PostExchange("/internal/pay/v2/source-links/store-claims/prepare")
     StoreClaimView prepareStoreClaim(@RequestBody StoreClaimCommand body);
-    @org.springframework.web.service.annotation.GetExchange("/internal/pay/v2/source-links/store-claims/{requestNo}")
-    StoreClaimView storeClaim(@org.springframework.web.bind.annotation.PathVariable("requestNo") String requestNo,
-            @org.springframework.web.bind.annotation.RequestParam("sourceScope") String sourceScope);
+    @GetExchange("/internal/pay/v2/source-links/store-claims/{requestNo}")
+    StoreClaimView storeClaim(@PathVariable("requestNo") String requestNo,
+            @RequestParam("sourceScope") String sourceScope);
     @PostExchange("/internal/pay/v2/source-links/store-claims/{requestNo}/commit")
-    StoreClaimView commitStoreClaim(@org.springframework.web.bind.annotation.PathVariable("requestNo") String requestNo,
+    StoreClaimView commitStoreClaim(@PathVariable("requestNo") String requestNo,
             @RequestBody StoreClaimCommand body);
     @PostExchange("/internal/pay/v2/source-links/store-claims/{requestNo}/abort")
-    StoreClaimView abortStoreClaim(@org.springframework.web.bind.annotation.PathVariable("requestNo") String requestNo,
+    StoreClaimView abortStoreClaim(@PathVariable("requestNo") String requestNo,
             @RequestBody StoreClaimCommand body);
-    @org.springframework.web.service.annotation.GetExchange("/internal/pay/v2/source-links/relink-check")
-    StoreRelinkCheck relinkCheck(@org.springframework.web.bind.annotation.RequestParam("sourceScope") String sourceScope,
-            @org.springframework.web.bind.annotation.RequestParam("sourceEntityRef") String entity,
-            @org.springframework.web.bind.annotation.RequestParam("storeRef") String storeRef,
-            @org.springframework.web.bind.annotation.RequestParam("storeNo") String storeNo);
+    @GetExchange("/internal/pay/v2/source-links/relink-check")
+    StoreRelinkCheck relinkCheck(@RequestParam("sourceScope") String sourceScope,
+            @RequestParam("sourceEntityRef") String entity,
+            @RequestParam("storeRef") String storeRef,
+            @RequestParam("storeNo") String storeNo);
 
 }

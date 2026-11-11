@@ -5,7 +5,10 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
-import ai.neargo.shop.spi.trade.IndustryChannelFulfillmentSourcePort;
+import ai.neargo.shop.spi.trade.IndustryChannelFulfillmentSourcePort.Data;
+import ai.neargo.shop.spi.trade.IndustryChannelFulfillmentSourcePort.Facts;
+import ai.neargo.shop.spi.trade.IndustryChannelFulfillmentSourcePort.Line;
+import ai.neargo.shop.spi.trade.IndustryChannelFulfillmentSourcePort.Query;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort.Scope;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort;
 import ai.neargo.shop.spi.trade.RetailChannelFulfillmentSealed;
@@ -37,7 +40,7 @@ import java.util.Optional;
  */
 @Service
 @ConditionalOnProperty(name = "shop.trade.channel.enabled", havingValue = "true")
-public final class ChannelFulfillmentEvidenceStore implements IndustryChannelFulfillmentSourcePort {
+public final class ChannelFulfillmentEvidenceStore {
     private final IndustryChannelOrderStore source;
     private final ChannelFulfillmentEvidenceMapper rows;
 
@@ -197,7 +200,6 @@ public final class ChannelFulfillmentEvidenceStore implements IndustryChannelFul
                         data.occurredAt()));
     }
 
-    @Override
     public Facts read(Query query) {
         if (TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("Source lookup outside caller transaction required");

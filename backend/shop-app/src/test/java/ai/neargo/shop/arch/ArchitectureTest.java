@@ -1,6 +1,17 @@
 package ai.neargo.shop.arch;
 
 import ai.neargo.shop.trade.mapper.CheckoutMappers.OperationMapper;
+import ai.neargo.shop.invbridge.ExecutionStockRetentionRecoveryJob;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+import net.javacrumbs.shedlock.core.LockConfiguration;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+import tools.jackson.databind.json.JsonMapper;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -392,8 +403,9 @@ class ArchitectureTest {
     @Test
     void databaseMapperClassificationKeepsSqlProtectionAndExcludesJsonCodecs() {
         var examples = new ClassFileImporter().importClasses(
-                ObjectMapper.class, MchStoreMapper.class, BaseMapper.class);
+                ObjectMapper.class, JsonMapper.class, MchStoreMapper.class, BaseMapper.class);
         assertThat(PERSISTENCE_MAPPER.test(examples.get(ObjectMapper.class))).isFalse();
+        assertThat(PERSISTENCE_MAPPER.test(examples.get(JsonMapper.class))).isFalse();
         assertThat(PERSISTENCE_MAPPER.test(examples.get(MchStoreMapper.class))).isTrue();
         assertThat(PERSISTENCE_MAPPER.test(examples.get(BaseMapper.class))).isTrue();
     }
@@ -412,8 +424,10 @@ class ArchitectureTest {
                 new ClassFileImporter()
                         .importClasses(
                                 JsonCodecController.class,
+                                JsonMapperController.class,
                                 PersistenceMapperController.class,
                                 ObjectMapper.class,
+                                JsonMapper.class,
                                 OperationMapper.class);
         ArchRule jsonRule =
                 noControllerPersistenceMapperDependencies(
@@ -423,6 +437,8 @@ class ArchitectureTest {
                         JavaClass.Predicates.type(PersistenceMapperController.class));
 
         assertThat(jsonRule.evaluate(fixtures).hasViolation()).isFalse();
+        assertThat(noControllerPersistenceMapperDependencies(
+                JavaClass.Predicates.type(JsonMapperController.class)).evaluate(fixtures).hasViolation()).isFalse();
         var persistenceResult = persistenceRule.evaluate(fixtures);
         assertThat(persistenceResult.hasViolation()).isTrue();
         assertThat(persistenceResult.getFailureReport().getDetails())
@@ -437,9 +453,9 @@ class ArchitectureTest {
     private static ArchRule noControllerPersistenceMapperDependencies(
             DescribedPredicate<JavaClass> controllers) {
         // Keep explicit database classification and the existing name guard; Jackson remains a codec.
-        DescribedPredicate<JavaClass> persistenceMappers = PERSISTENCE_MAPPER.or(
-                JavaClass.Predicates.simpleNameEndingWith("Mapper")
-                        .and(not(JavaClass.Predicates.type(ObjectMapper.class))));
+        DescribedPredicate<JavaClass> persistenceMappers = PERSISTENCE_MAPPER
+                .or(JavaClass.Predicates.simpleNameEndingWith("Mapper"))
+                .and(not(JavaClass.Predicates.assignableTo(ObjectMapper.class)));
         return noClasses()
                 .that(controllers)
                 .should()
@@ -452,6 +468,14 @@ class ArchitectureTest {
         private final ObjectMapper json;
 
         private JsonCodecController(ObjectMapper json) {
+            this.json = json;
+        }
+    }
+
+    private static final class JsonMapperController {
+        private final JsonMapper json;
+
+        private JsonMapperController(JsonMapper json) {
             this.json = json;
         }
     }
@@ -823,7 +847,7 @@ class ArchitectureTest {
     }
 
     /**
-     * 每个 {@code @Scheduled} 都必须带 {@code @SchedulerLock}。
+     * 每个 {@code @Scheduled} 都必须使用声明式或程序化 ShedLock。
      *
      * <p><b>这条守的是「加第二个 worker 实例的那一天」。</b>
      * 定时任务已经被 {@code @Profile("worker")} 挡住了「api 实例也在跑」这一层，
@@ -839,22 +863,99 @@ class ArchitectureTest {
      * <p>所以这条不能靠人记得 —— 加任务的人正在想的是业务，不是部署形态。
      */
     @Test
-    @DisplayName("★★★ 每个 @Scheduled 都要有 @SchedulerLock —— 漏一个，扩容那天就重复执行")
+    @DisplayName("★★★ 每个 @Scheduled 都要有真实分布式锁 —— 漏一个，扩容那天就重复执行")
     void everyScheduledMethodMustBeLocked() {
-        List<String> unlocked = classes.stream()
+        assertThat(unlockedScheduledMethods(classes))
+                .as("这些定时任务没有分布式锁。worker 起两个实例时它们会各跑一遍。\n"
+                        + "  使用独立任务名的 @SchedulerLock，或同 owner 调用路径中的 LockingTaskExecutor.executeWithLock。\n"
+                        + "  lockAtMostFor 必须覆盖该任务的一次有界扫描，并为进程失效提供接管时限。")
+                .isEmpty();
+    }
+
+    private static List<String> unlockedScheduledMethods(JavaClasses candidates) {
+        return candidates.stream()
                 .flatMap(c -> c.getMethods().stream())
-                .filter(m -> m.isAnnotatedWith(org.springframework.scheduling.annotation.Scheduled.class))
-                .filter(m -> !m.isAnnotatedWith(net.javacrumbs.shedlock.spring.annotation.SchedulerLock.class))
+                .filter(m -> m.isAnnotatedWith(Scheduled.class))
+                .filter(m -> !m.isAnnotatedWith(SchedulerLock.class))
+                .filter(m -> !callsOwnerShedLock(m, m.getOwner(), new HashSet<>()))
                 .map(m -> m.getOwner().getSimpleName() + "#" + m.getName())
                 .sorted()
                 .toList();
+    }
 
-        assertThat(unlocked)
-                .as("这些定时任务没有分布式锁。worker 起两个实例时它们会各跑一遍。\n"
-                        + "  加 @SchedulerLock(name=..., lockAtLeastFor=..., lockAtMostFor=...)：\n"
-                        + "  · name 每个任务独立 —— 共用一把锁会让后一个被静默跳过\n"
-                        + "  · lockAtMostFor 要小于调度间隔，否则卡死时整条链停摆")
-                .isEmpty();
+    private static boolean callsOwnerShedLock(JavaMethod method, JavaClass owner, Set<JavaMethod> visited) {
+        if (!visited.add(method)) return false;
+        for (var call : method.getMethodCallsFromSelf()) {
+            var target = call.getTarget();
+            var parameters = target.getRawParameterTypes();
+            if (target.getOwner().isAssignableTo(LockingTaskExecutor.class)
+                    && target.getName().equals("executeWithLock")
+                    && parameters.size() == 2
+                    && parameters.get(1).isEquivalentTo(LockConfiguration.class)
+                    && (parameters.getFirst().isEquivalentTo(Runnable.class)
+                        || parameters.getFirst().isEquivalentTo(LockingTaskExecutor.Task.class)
+                        || parameters.getFirst().isEquivalentTo(LockingTaskExecutor.TaskWithResult.class))) {
+                return true;
+            }
+            if (target.getOwner().equals(owner)
+                    && target.resolveMember().filter(next -> callsOwnerShedLock(next, owner, visited)).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    void scheduledLockRuleFollowsTypedOwnerCallPaths() {
+        var fixtures = new ClassFileImporter().importClasses(
+                ExecutionStockRetentionRecoveryJob.class, ProgrammaticallyLockedSchedule.class,
+                FakeNamedLockSchedule.class, UnlockedSchedule.class, SameNamedLockExecutor.class,
+                LockingTaskExecutor.class);
+        assertThat(unlockedScheduledMethods(fixtures)).containsExactlyInAnyOrder(
+                FakeNamedLockSchedule.class.getSimpleName() + "#scan",
+                UnlockedSchedule.class.getSimpleName() + "#scan");
+    }
+
+    private static final class ProgrammaticallyLockedSchedule {
+        private final LockingTaskExecutor locks;
+
+        private ProgrammaticallyLockedSchedule(LockingTaskExecutor locks) { this.locks = locks; }
+
+        @Scheduled(fixedDelay = 30000)
+        void scan() { runLocked(); }
+
+        private void runLocked() {
+            locks.executeWithLock((Runnable) () -> {}, fixtureLock());
+        }
+    }
+
+    private static final class SameNamedLockExecutor {
+        void executeWithLock(Runnable task, LockConfiguration lock) { task.run(); }
+    }
+
+    private static final class FakeNamedLockSchedule {
+        private final SameNamedLockExecutor locks = new SameNamedLockExecutor();
+
+        @Scheduled(fixedDelay = 30000)
+        void scan() { locks.executeWithLock(() -> {}, fixtureLock()); }
+    }
+
+    private static final class UnlockedSchedule {
+        private final LockingTaskExecutor locks;
+
+        private UnlockedSchedule(LockingTaskExecutor locks) { this.locks = locks; }
+
+        @Scheduled(fixedDelay = 30000)
+        void scan() {}
+
+        // A real lock elsewhere in the owner is insufficient: scan never calls it.
+        private void unrelatedLockedMethod() {
+            locks.executeWithLock((Runnable) () -> {}, fixtureLock());
+        }
+    }
+
+    private static LockConfiguration fixtureLock() {
+        return new LockConfiguration(Instant.EPOCH, "architecture-lock-fixture", Duration.ofMinutes(2), Duration.ZERO);
     }
 
     /**

@@ -7,15 +7,55 @@ import org.springframework.dao.DuplicateKeyException;
 
 class CommerceSchemaMysqlTest {
     @Test
-    void ownsThirtySevenTablesAndIndependentHistory() {
+    void ownsCommerceTablesAndIndependentHistory() {
         try (var db = new MysqlDatabase()) {
             db.migrate();
+            // V1–V13 own these 37 business tables plus their independent Flyway history.
             assertEquals(
-                    37,
-                    db.jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=?",
-                            Integer.class,
-                            db.name));
+                    java.util.Set.of(
+                            "commerce_schema_history",
+                            "commerce_event_inbox",
+                            "commerce_expiry_notice",
+                            "commerce_outbox",
+                            "mall_category",
+                            "mall_fulfillment_task",
+                            "mall_offline_action",
+                            "mall_offline_cash_refund",
+                            "mall_offline_claim",
+                            "mall_offline_evidence",
+                            "mall_order",
+                            "mall_order_component",
+                            "mall_order_item",
+                            "mall_payment_ref",
+                            "mall_product",
+                            "mall_quote",
+                            "mall_refund",
+                            "mall_refund_item",
+                            "mall_shipment",
+                            "mall_sku",
+                            "mall_sku_component",
+                            "mall_sku_version",
+                            "mch_end_schedule_event",
+                            "mch_store_end_grant",
+                            "mch_subscription_account",
+                            "mch_subscription_conversion",
+                            "mch_subscription_conversion_item",
+                            "mch_subscription_credit_account",
+                            "mch_subscription_credit_ledger",
+                            "mch_subscription_credit_lot",
+                            "mch_subscription_migration_map",
+                            "mch_subscription_period",
+                            "mch_subscription_reservation",
+                            "sys_business_end",
+                            "sys_business_type",
+                            "sys_industry_plan",
+                            "sys_industry_plan_version",
+                            "sys_plan_version_end"),
+                    new java.util.HashSet<>(
+                            db.jdbc.queryForList(
+                                    "SELECT table_name FROM information_schema.tables WHERE table_schema=?",
+                                    String.class,
+                                    db.name)));
             assertEquals(
                     0,
                     db.jdbc.queryForObject(

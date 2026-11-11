@@ -154,7 +154,7 @@ class BackendI18nParityTest {
         Set<String> identityKeys = new LinkedHashSet<>();
         var identityCalls = Pattern.compile("messages\\.getMessage\\(\\s*\"([^\"]+)\"");
         var identitySource = java.nio.file.Path.of(
-                "src/main/java/ai/neargo/shop/merchantbridge/LoginIdentityServiceImpl.java");
+                "src/main/java/ai/neargo/shop/merchantbridge/impl/LoginIdentityServiceImpl.java");
         var identityMatcher = identityCalls.matcher(java.nio.file.Files.readString(identitySource));
         while (identityMatcher.find()) identityKeys.add(identityMatcher.group(1));
         assertThat(keysOf(BASE)).containsAll(identityKeys);

@@ -3,7 +3,7 @@ package ai.neargo.shop.portal.biz;
 import static org.assertj.core.api.Assertions.*;
 import ai.neargo.shop.merchant.brand.ManagementModels.Actor;
 import ai.neargo.shop.merchantbridge.ManagementAccess;
-import ai.neargo.shop.promotion.BrandMarketingApplicationService;
+import ai.neargo.shop.merchantbridge.BrandMarketingApplicationService;
 import ai.neargo.shop.promotion.BrandMarketingCommandInputs.PublishActivity;
 import java.util.List;
 import java.util.Map;

@@ -1,4 +1,8 @@
-package ai.neargo.shop.promotion.cost;
+package ai.neargo.shop.promotion.cost.impl;
+
+import ai.neargo.shop.promotion.cost.BrandPromotionCostService;
+import ai.neargo.shop.promotion.cost.PromotionCostShares;
+import ai.neargo.shop.promotion.cost.BrandPromotionCostModels;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -13,7 +17,7 @@ import ai.neargo.shop.promotion.dto.ActivityActor;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort.UseFact;
 import ai.neargo.shop.spi.marketing.BrandPromotionScopePort;
-import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.spi.trade.RefundQuantityFactsPort;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -42,9 +46,11 @@ public class BrandPromotionCostServiceImpl implements BrandPromotionCostService 
     private final BrandPromotionScopePort organization;
     private final ActivityCommandDeduplicator commands;
     private final ObjectMapper json;
+    private final RefundQuantityFactsPort refunds;
 
     public BrandPromotionCostServiceImpl(@Qualifier("transactionManager") PlatformTransactionManager manager,
-            BrandPromotionScopePort organization, ActivityCommandDeduplicator commands, ObjectMapper json) {
+            BrandPromotionScopePort organization, ActivityCommandDeduplicator commands, ObjectMapper json,
+            RefundQuantityFactsPort refunds) {
         if (!(manager instanceof DataSourceTransactionManager data)) {
             throw new IllegalStateException("Core JDBC transaction required");
         }
@@ -52,6 +58,7 @@ public class BrandPromotionCostServiceImpl implements BrandPromotionCostService 
         this.organization = organization;
         this.commands = commands;
         this.json = json;
+        this.refunds = refunds;
     }
 
     @Override @Transactional
@@ -321,20 +328,14 @@ public class BrandPromotionCostServiceImpl implements BrandPromotionCostService 
                     (int)value(source,"store_bp"));
             recordFact(source,"PAID"+ActivityCommandDeduplicator.hash(text(source,"order_no")).substring(0,60),"PAID",original,
                     Instant.ofEpochMilli(value(orders.getFirst(),"paid_at")));
-            var refunds=db.queryForList("SELECT execution_no,plan_json,succeeded_at FROM ord_refund_execution "
-                    + "WHERE tenant_no=? AND sub_order_no=? AND status='SUCCEEDED' AND succeeded_at<=? "
-                    + "ORDER BY succeeded_at,id",actor.tenantNo(),text(source,"sub_order_no"),through.toEpochMilli());
             var basis=List.of(json.readValue(text(source,"basis_json"),Line[].class));
             var state=text(source,"refund_state_json")==null ? new RefundState(Map.of(),List.of(),0)
                     : json.readValue(text(source,"refund_state_json"),RefundState.class);
             Map<Long,Long> quantities=new HashMap<>(state.quantities());
             var processed=new ArrayList<>(state.processed());
             long before=state.refundedMinor();
-            for(var refund:refunds) {
-                if(processed.contains(text(refund,"execution_no")))continue;
-                var plan=json.readValue(text(refund,"plan_json"),RefundPlan.class);
-                if(!text(source,"sub_order_no").equals(plan.subOrderNo()))conflict();
-                for(var line:plan.lines())quantities.merge(line.itemId(),(long)line.qty(),Math::addExact);
+            for(var refund:refunds.succeeded(actor.tenantNo(),text(source,"sub_order_no"),through,processed)) {
+                for(var line:refund.lines())quantities.merge(line.itemId(),(long)line.qty(),Math::addExact);
                 boolean fullyReturned=basis.stream().filter(l->l.itemId()!=0)
                         .allMatch(l->quantities.getOrDefault(l.itemId(),0L)>=l.quantity());
                 long after=0;
@@ -346,10 +347,10 @@ public class BrandPromotionCostServiceImpl implements BrandPromotionCostService 
                     after=Math.addExact(after,reversal);
                 }
                 var reversed=PromotionCostShares.reverse(original,before,after);
-                recordFact(source,text(refund,"execution_no"),"REFUND",reversed,
-                        Instant.ofEpochMilli(value(refund,"succeeded_at")));
+                recordFact(source,refund.executionNo(),"REFUND",reversed,
+                        Instant.ofEpochMilli(refund.succeededAt()));
                 before=after;
-                processed.add(text(refund,"execution_no"));
+                processed.add(refund.executionNo());
                 db.update("UPDATE pmt_brand_cost_source SET refund_state_json=? WHERE tenant_no=? AND id=?",
                         json.writeValueAsString(new RefundState(quantities,processed,after)),actor.tenantNo(),
                         value(source,"id"));

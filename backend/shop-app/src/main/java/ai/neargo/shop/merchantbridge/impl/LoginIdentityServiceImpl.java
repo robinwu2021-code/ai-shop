@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchantbridge;
+package ai.neargo.shop.merchantbridge.impl;
 
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.auth.store.TokenHash;

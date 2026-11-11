@@ -37,11 +37,5 @@
 # 不是长期停车场。再往里加行之前先问一句：这条是今天修不了，还是没人去修。
 # ══════════════════════════════════════════════════════════════════════════
 
-# ══════════════════════════════════════════════════════════════════════════
-# 2026-11-06 登记 3 条（推 codex/ai-shop-codex 时发现，此前两次推送用了 --no-verify）。
-# 都不是商城 / 收款 / 付款链接 / near-pay 修复带来的，归属会话请修好后删行：
-#   · CheckoutContractTest —— 741b38178 服务结账：内部 API 方法清单与断言不一致（多出的 *Bound 方法）
-#   · ExecutionPreparationOriginalProtocolTest ×2 —— 87311602b 美业任务准备：协议字段校验与执行凭证形状
-CheckoutContractTest.eightOwnerMethodsKeepConsumerPaymentOutOfDelegatedInternalApi
-ExecutionPreparationOriginalProtocolTest.concreteCallRoundTripsAndRejectsUnknownMissingDuplicateFields
-ExecutionPreparationOriginalProtocolTest.evidenceReplyRequiresSignedMatchingReferenceAndServerDecodedDigest
+# 2026-11-11：2026-11-06 登记的 3 条协议夹具已修复并通过定向验证，清单再次清零。
+# 完整 normal pre-push 仍要求 backend 零失败；不得用旧登记豁免协议回归。

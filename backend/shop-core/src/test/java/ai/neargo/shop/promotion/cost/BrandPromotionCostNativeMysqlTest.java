@@ -1,11 +1,14 @@
 package ai.neargo.shop.promotion.cost;
 
+import ai.neargo.shop.promotion.cost.impl.BrandPromotionCostServiceImpl;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.cost.BrandPromotionCostModels.GenerateStatement;
 import ai.neargo.shop.promotion.cost.BrandPromotionCostModels.RevisionCommand;
 import ai.neargo.shop.promotion.cost.BrandPromotionCostModels.SaveRule;
@@ -15,6 +18,7 @@ import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.spi.marketing.BrandPromotionScopePort;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.trade.port.RefundQuantityFactsPortImpl;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import java.nio.file.Files;
@@ -77,6 +81,8 @@ class BrandPromotionCostNativeMysqlTest {
         assertThat(voided.status()).isEqualTo("VOID");
         assertThat(voided.facts()).isEqualTo(adjustment.facts());
         assertThat(voided.discrepancyMinor()).isZero();
+        // Accepted refund identities are permanent: reissuing freed facts must not decode their old snapshots again.
+        f.db.update("UPDATE ord_refund_execution SET plan_json='{}' WHERE execution_no='R1'");
         var recovered=f.run(()->f.cost.generate(f.actor,"HQ",period,"refund-1-reissued"));
         assertThat(recovered.totalMinor()).isEqualTo(-10);
         f.run(()->f.cost.confirm(f.actor,"HQ",recovered.statementNo(),new RevisionCommand(0),"reissued-confirm"));
@@ -103,11 +109,23 @@ class BrandPromotionCostNativeMysqlTest {
                 new RevisionCommand(0),"discrepancy"))).isInstanceOf(BizException.class);
     }
 
+    @Test void unprocessedOriginalRefundPlanOwnershipStillConflicts() throws Exception {
+        var f=new Fixture();
+        var through=Instant.now().plusSeconds(60);
+        f.refund("R1",1,Instant.now().toEpochMilli());
+        f.db.update("UPDATE ord_refund_execution SET plan_json=? WHERE execution_no='R1'",
+                f.json.writeValueAsString(new RefundPlan("OTHER",List.of(new RefundLine(1,1,200)),0)));
+        assertThatThrownBy(()->f.refunds.succeeded("MAIN","SUB1",through,List.of()))
+                .isInstanceOfSatisfying(BizException.class,
+                        failure -> assertThat(failure.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+    }
+
     private static class Fixture {
         final ObjectMapper json=new ObjectMapper();
         final JdbcTemplate db;
         final TransactionTemplate tx;
         final BrandPromotionCostServiceImpl cost;
+        final RefundQuantityFactsPortImpl refunds;
         final ActivityActor actor=new ActivityActor("MAIN","HQ","ACTOR",Set.of("S2"),"M1","B1");
         Fixture() throws Exception {
             var ds=new DriverManagerDataSource(System.getProperty("promotion.cost.mysql.url"),
@@ -135,7 +153,9 @@ class BrandPromotionCostNativeMysqlTest {
             var organization=mock(BrandPromotionScopePort.class);
             when(organization.find("MAIN","M1","B1","HQ")).thenReturn(new BrandPromotionScopePort.Brand("M1","B1",
                     "HQ",1,1,List.of(new BrandPromotionScopePort.Store("S2","E2",1,"BIND",1,"CN"))));
-            cost=new BrandPromotionCostServiceImpl(manager,organization,new ActivityCommandDeduplicator(mapper,json),json);
+            refunds=new RefundQuantityFactsPortImpl(manager,json);
+            cost=new BrandPromotionCostServiceImpl(manager,organization,new ActivityCommandDeduplicator(mapper,json),json,
+                    refunds);
         }
         <T>T run(Supplier<T> action) { return tx.execute(status->action.get()); }
         void refund(String no,int qty,long at) {

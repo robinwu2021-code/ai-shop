@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.brand.impl;
+package ai.neargo.shop.merchant.brand.port;
 
 import static ai.neargo.shop.merchant.brand.ManagementRepository.num;
 import static ai.neargo.shop.merchant.brand.ManagementRepository.str;

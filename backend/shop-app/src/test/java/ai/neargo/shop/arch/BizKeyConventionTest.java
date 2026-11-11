@@ -119,8 +119,69 @@ class BizKeyConventionTest {
             return statement.contains("row.setEntryNo(");
         }
         // Legacy usages retain protocol identity, with a separate EU mapping bound on insert.
-        return path.endsWith("/pay/migration/service/LegacyCouponUsageRecorder.java")
-                && statement.contains("row.setUsageNo(");
+        if (path.endsWith("/pay/migration/service/LegacyCouponUsageRecorder.java")
+                && statement.contains("row.setUsageNo(")) {
+            return true;
+        }
+        String relative = BACKEND.toAbsolutePath().normalize()
+                .relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+        // CL is an immutable original item link; PO is durable payment process identity;
+        // RC identifies an actual successful receipt. None is a human document number.
+        return switch (relative) {
+            case "shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java" ->
+                    originalOpaqueUuid(statement, "row.setSourceLineNo", "CL");
+            case "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineReceiptServiceImpl.java",
+                    "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutPaymentServiceImpl.java" ->
+                    originalOpaqueUuid(statement, "row.setPaymentOperationNo", "PO");
+            case "pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentOperationServiceImpl.java" ->
+                    originalOpaqueUuid(statement, "row.setOperationNo", "PO");
+            case "pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentLedgerServiceImpl.java" ->
+                    originalOpaqueUuid(statement, "patch.setReceiptNo", "RC");
+            default -> false;
+        };
+    }
+
+    /** Only the existing opaque UUID form is classified; timestamps and counters remain violations. */
+    private static boolean originalOpaqueUuid(String statement, String setter, String prefix) {
+        String expected = setter + "(\"" + prefix + "\"+UUID.randomUUID().toString().replace(\"-\",\"\"))";
+        String compact = statement.replaceAll("\\s+", "");
+        return compact.equals(expected) || compact.equals(expected + ";");
+    }
+
+    @Test
+    void opaqueOriginalIdentitiesAreLimitedToTheirExactOwnerFileSetterAndUuidForm() {
+        record Identity(String file, String setter, String prefix) { }
+        var originals = List.of(
+                new Identity("shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+                        "row.setSourceLineNo", "CL"),
+                new Identity("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineReceiptServiceImpl.java",
+                        "row.setPaymentOperationNo", "PO"),
+                new Identity("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutPaymentServiceImpl.java",
+                        "row.setPaymentOperationNo", "PO"),
+                new Identity("pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentOperationServiceImpl.java",
+                        "row.setOperationNo", "PO"),
+                new Identity("pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentLedgerServiceImpl.java",
+                        "patch.setReceiptNo", "RC"));
+        for (var original : originals) {
+            Path file = BACKEND.resolve(original.file());
+            String uuid = "(\"" + original.prefix() + "\" + UUID.randomUUID().toString().replace(\"-\", \"\"))";
+            String statement = original.setter() + uuid;
+            String receiver = original.setter().substring(0, original.setter().indexOf('.'));
+            assertThat(looksLikeRollYourOwn(statement)).as(original.file()).isTrue();
+            assertThat(approvedInternalIdentity(file, statement)).as(original.file()).isTrue();
+            assertThat(approvedInternalIdentity(BACKEND.resolve("other/" + original.file()), statement))
+                    .as("The same setter in another source file must remain guarded").isFalse();
+            assertThat(approvedInternalIdentity(file, receiver + ".setOrderNo" + uuid))
+                    .as("Other entity setters in an approved file must remain guarded").isFalse();
+            assertThat(approvedInternalIdentity(file, original.setter()
+                    + "(\"" + original.prefix() + "\" + System.currentTimeMillis())"))
+                    .as("A timestamp cannot replace an opaque original UUID").isFalse();
+            assertThat(approvedInternalIdentity(file, original.setter()
+                    + "(\"OTHER\" + UUID.randomUUID().toString().replace(\"-\", \"\"))"))
+                    .as("The existing identity prefix is part of its protocol").isFalse();
+            assertThat(approvedInternalIdentity(file, receiver + ".setDocumentNo" + uuid))
+                    .as("Human documentNo remains outside every internal identity classification").isFalse();
+        }
     }
 
     @Test void humanNumbersCannotUseRandomEntityOrDigestGenerators() throws IOException {

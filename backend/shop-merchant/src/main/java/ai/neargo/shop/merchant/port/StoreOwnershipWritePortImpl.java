@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.service.impl;
+package ai.neargo.shop.merchant.port;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;

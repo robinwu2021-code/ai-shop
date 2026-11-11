@@ -1,5 +1,10 @@
 package ai.neargo.shop.invbridge;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.trade.stock.IndustryStockOwnerRouter;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
@@ -38,9 +43,9 @@ public class FulfillmentStockIssueConsumer implements OutboxConsumer {
         this.stock=stock; this.json=json; this.children=children; this.parents=parents;
         this.sources=sources; this.items=items; this.inventory=inventory;
     }
-    private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter ownerRouting;
-    @org.springframework.beans.factory.annotation.Autowired
-    public void routeIndustryStock(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.ownerRouting=router;}
+    private IndustryStockOwnerRouter ownerRouting;
+    @Autowired
+    public void routeIndustryStock(IndustryStockOwnerRouter router){this.ownerRouting=router;}
     @Override public boolean externalWorkflow(){return true;}
     @Override public String handlerId() { return "fulfillment-stock-issue"; }
     @Override public boolean supports(String eventType) {
@@ -92,7 +97,7 @@ public class FulfillmentStockIssueConsumer implements OutboxConsumer {
     private void acknowledgeExact(OrdIndustryOrderSource source,OrdSubOrder sub) {
         if(ownerRouting==null||source.getDemandPlanSnapshot()==null||!"ACCEPTED".equals(source.getStatus())
                 ||!Set.of(OrdSubOrder.FULFILLING,OrdSubOrder.COMPLETED).contains(sub.getStatus()))invalid();
-        var plan=ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts.validate(json.readValue(source.getDemandPlanSnapshot(),ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan.class));
+        var plan=InventoryDemandPlanFacts.validate(json.readValue(source.getDemandPlanSnapshot(),InventoryDemandPlanPort.Plan.class));
         if(!plan.planNo().equals(source.getDemandPlanNo())||!plan.planHash().equals(source.getDemandPlanHash())
                 ||!sub.getTenantNo().equals(plan.scope().tenantNo())||!sub.getEntityNo().equals(plan.scope().entityNo())
                 ||plan.branches().stream().anyMatch(b->!sub.getStoreNo().equals(b.storeNo())||!sub.getSubOrderNo().equals(b.fulfillmentRef())))invalid();
@@ -102,7 +107,7 @@ public class FulfillmentStockIssueConsumer implements OutboxConsumer {
                 ||!plan.planHash().equals(proof.planHash())||proof.lifecycleVersion()!=protocol
                 ||!Set.of("ACCEPTED_UNPAID","ALLOCATED").contains(proof.status()))invalid();
         var expected=plan.branches().stream().flatMap(b->b.leaves().stream()).toList();
-        if(proof.lines().size()!=expected.size()||proof.lines().stream().map(ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Progress::leafRef).distinct().count()!=expected.size())invalid();
+        if(proof.lines().size()!=expected.size()||proof.lines().stream().map(InventoryDemandPlanPort.Progress::leafRef).distinct().count()!=expected.size())invalid();
         for(var leaf:expected){var progress=proof.lines().stream().filter(l->leaf.leafRef().equals(l.leafRef())).findFirst().orElseThrow(()->new IllegalStateException("Missing original local leaf"));
             if(!leaf.itemRef().equals(progress.itemRef())||!leaf.unit().equals(progress.unit())||!leaf.definitionHash().equals(progress.definitionHash())
                     ||progress.issuedQty()==null||progress.releasedQty()==null||progress.issuedQty().signum()<0||progress.releasedQty().signum()<0

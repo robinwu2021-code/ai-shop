@@ -1,4 +1,10 @@
-package ai.neargo.shop.promotion;
+package ai.neargo.shop.merchantbridge.impl;
+
+import ai.neargo.shop.merchantbridge.BrandMarketingApplicationService;
+
+import ai.neargo.shop.promotion.BrandMarketingCommandInputs;
+import ai.neargo.shop.promotion.BrandCouponApplicationService;
+import ai.neargo.shop.promotion.BrandOrderMarketingService;
 
 import static ai.neargo.shop.promotion.BrandOrderMarketingService.*;
 import static ai.neargo.shop.merchant.brand.ManagementRepository.str;
@@ -23,8 +29,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /** Account entry for ordinary chain marketing; stored-value finance is a separate application boundary. */
-@Service
-public class BrandMarketingApplicationService {
+@Service("brandMarketingApplicationService")
+public class BrandMarketingApplicationServiceImpl implements BrandMarketingApplicationService {
     private static final Set<String> COUPON_ACTIONS = Set.of("saveCoupon", "publishCoupon", "pauseCoupon",
             "previewAudience", "issueCoupon");
     private final BrandPromotionAuthority authority;
@@ -36,7 +42,7 @@ public class BrandMarketingApplicationService {
     private final BrandPromotionCostService costs;
     private final BrandCouponApplicationService coupons;
     private final ObjectMapper json;
-    public BrandMarketingApplicationService(BrandPromotionAuthority authority, ManagementScopeService scopes,
+    public BrandMarketingApplicationServiceImpl(BrandPromotionAuthority authority, ManagementScopeService scopes,
             ManagementRepository db, BrandPromotionScopePort organization, ActivityPresetService presets,
             BrandOrderMarketingService orders, BrandPromotionCostService costs, BrandCouponApplicationService coupons,
             ObjectMapper json) {
@@ -44,7 +50,7 @@ public class BrandMarketingApplicationService {
         this.presets = presets; this.orders = orders; this.costs = costs; this.coupons = coupons; this.json = json;
     }
 
-    public Map<String,Object> context(Actor a, String m, String b) {
+    @Override public Map<String,Object> context(Actor a, String m, String b) {
         var actor = authority.context(a, m, b);
         var facts = organization.find(a.tenantNo(), m, b, actor.entityNo());
         var actions = new ArrayList<String>();
@@ -89,7 +95,7 @@ public class BrandMarketingApplicationService {
         return result;
     }
 
-    public List<Map<String,Object>> list(Actor a, String m, String b, String kind) {
+    @Override public List<Map<String,Object>> list(Actor a, String m, String b, String kind) {
         return switch (kind) {
             case "activities" -> orders.list(authority.resolve(a, m, b, "promotion.activity.read"));
             case "coupons" -> coupons.list(authority.resolve(a, m, b, "promotion.coupon.read"));
@@ -116,7 +122,7 @@ public class BrandMarketingApplicationService {
         };
     }
 
-    public Map<String,Object> execute(Actor a, String m, String b, String action, Object payload,
+    @Override public Map<String,Object> execute(Actor a, String m, String b, String action, Object payload,
             String expectedRevision, String key) {
         Map<String,Object> p = json.convertValue(payload, new TypeReference<>() { });
         ContractChecks.id(key);
@@ -161,7 +167,7 @@ public class BrandMarketingApplicationService {
         });
     }
 
-    public Map<String,Object> result(Actor a, String m, String b, String key) {
+    @Override public Map<String,Object> result(Actor a, String m, String b, String key) {
         ContractChecks.id(key); scopes.resolve(a, m);
         var row = receipt(a, m, b, receiptId(a, m, b, key));
         if (row != null) {

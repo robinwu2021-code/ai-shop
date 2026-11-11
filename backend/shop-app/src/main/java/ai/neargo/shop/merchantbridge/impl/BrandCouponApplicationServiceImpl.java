@@ -1,10 +1,10 @@
-package ai.neargo.shop.promotion.impl;
+package ai.neargo.shop.merchantbridge.impl;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService.Skip;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService.Snapshot;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort.Skip;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort.Snapshot;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
 import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews.BatchView;
 import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews.CreateBatch;
@@ -29,12 +29,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class BrandCouponApplicationServiceImpl implements BrandCouponApplicationService {
     private final BrandCouponService core;
-    private final BrandAudienceSnapshotService audiences;
+    private final BrandAudienceSnapshotPort audiences;
     private final BrandPromotionCostService costs;
     private final EntitlementManagementAppService templates;
     private final EntitlementBatchAppService batches;
 
-    public BrandCouponApplicationServiceImpl(BrandCouponService core, BrandAudienceSnapshotService audiences,
+    public BrandCouponApplicationServiceImpl(BrandCouponService core, BrandAudienceSnapshotPort audiences,
                                             BrandPromotionCostService costs,
                                             EntitlementManagementAppService templates,
                                             EntitlementBatchAppService batches) {
@@ -250,8 +250,8 @@ public class BrandCouponApplicationServiceImpl implements BrandCouponApplication
         return new CatalogScope(actor.tenantNo(), actor.entityNo(), actor.actorNo(), false);
     }
 
-    private BrandAudienceSnapshotService.Context context(ActivityActor actor) {
-        return new BrandAudienceSnapshotService.Context(actor.tenantNo(), actor.managementNo(), actor.brandNo(),
+    private BrandAudienceSnapshotPort.Context context(ActivityActor actor) {
+        return new BrandAudienceSnapshotPort.Context(actor.tenantNo(), actor.managementNo(), actor.brandNo(),
                 actor.entityNo(), actor.actorNo());
     }
 }

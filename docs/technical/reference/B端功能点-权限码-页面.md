@@ -11,8 +11,8 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 475 个受控功能点**
-（另有 0 个登录即可、21 个「任一权限即可」）。
+统计：**50 个权限码 × 6 个角色 × 484 个受控功能点**
+（另有 0 个登录即可、22 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -21,7 +21,7 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 70 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 79 | ✅ | — | — | — | — | — |
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 40 | ✅ | — | — | — | — | — |
@@ -109,6 +109,15 @@
 | 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | — |
 | 预览期初对齐批次 | POST | `/biz/store/:storeNo/stock-alignment/preview` | `mPreviewStockAlignment` | stock-align |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
+| —（b-app 未接） | — | `/biz/plan/purchases` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/offers` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}/cancel` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}/cash-refunds` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}/claims` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}/evidence` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}/evidence/content` | — | — |
+| —（b-app 未接） | — | `/biz/plan/purchases/{}/evidence/url` | — | — |
 | —（b-app 未接） | — | `/biz/personnel/{}/assignments` | — | — |
 | —（b-app 未接） | — | `/biz/personnel/{}/account-links` | — | — |
 | —（b-app 未接） | — | `/biz/personnel/{}/status-changes` | — | — |
@@ -973,6 +982,15 @@
 | `/biz/personnel/{}/account-links` | `biz:store:admin` | 老板 |
 | `/biz/personnel/{}/assignments` | `biz:store:admin` | 老板 |
 | `/biz/personnel/{}/status-changes` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/offers` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}/cancel` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}/cash-refunds` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}/claims` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}/evidence` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}/evidence/content` | `biz:store:admin` | 老板 |
+| `/biz/plan/purchases/{}/evidence/url` | `biz:store:admin` | 老板 |
 | `/biz/pricing-configs/initialize` | `biz:pricing:config:publish` | 老板 |
 | `/biz/pricing-configs/{}/draft` | `biz:pricing:config:read` | 老板 |
 | `/biz/pricing-configs/{}/preview` | `biz:pricing:config:read` | 老板 |
@@ -1195,6 +1213,7 @@
 - `/biz/express/companies`　本店可选快递公司
 - `/biz/feedback`　提交问题回报（回报号即工单号）
 - `/biz/feedback/mine`　我的回报（最近 50 条，带客服回复）
+- `/biz/merchant/store-creation-context`　
 - `/biz/merchant/store-setup`　
 - `/biz/stores/{}/context`　
 - `/biz/stores/{}/end-access`　

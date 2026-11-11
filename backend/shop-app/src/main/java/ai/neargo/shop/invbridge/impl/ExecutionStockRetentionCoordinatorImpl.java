@@ -1,5 +1,7 @@
 package ai.neargo.shop.invbridge.impl;
 
+import static ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.PURPOSE;
+
 import ai.neargo.shop.invbridge.ExecutionStockRetentionCoordinator;
 import ai.neargo.shop.invbridge.ExecutionStockMirrorEvidenceService;
 

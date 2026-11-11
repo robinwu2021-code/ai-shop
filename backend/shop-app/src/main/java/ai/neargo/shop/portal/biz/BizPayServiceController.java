@@ -1,5 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
+import org.springframework.web.bind.annotation.GetMapping;
+
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.commercebridge.FoundationPaymentAccess;
@@ -46,7 +48,7 @@ public class BizPayServiceController {
 
     /** 申请审核状态（App 收款 Tab 的开通引导据此显示「审核中 / 需补件 / 未通过」） */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
-    @org.springframework.web.bind.annotation.GetMapping("/biz/merchant/pay-service")
+    @GetMapping("/biz/merchant/pay-service")
     public PaySourceLinkApi.Status status(HttpServletRequest request) {
         // 先认人和门店，再看支付服务在不在：顺序反过来时，内嵌部署的测试永远走不到门店校验（2026-11-07 166 上 70006 漏网）
         String entityNo = access.require(request, entities.requireOwned(SecurityUtils.currentUserNo(), null), null).entityNo();

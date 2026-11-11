@@ -13,8 +13,9 @@ import ai.neargo.shop.merchant.paysync.StoreSnapshotReader;
 import ai.neargo.shop.merchant.paysync.StoreSyncProperties;
 import ai.neargo.shop.merchant.service.MerchantPlanService;
 import ai.neargo.shop.merchant.service.impl.MerchantPlanServiceImpl;
-import ai.neargo.shop.merchant.service.impl.StoreOwnershipWritePortImpl;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.merchantbridge.*;
+import ai.neargo.shop.merchantbridge.impl.StoreEntityClaimServiceImpl;
 import ai.neargo.shop.payclient.PayClientConfig;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.platform.port.StoreRelinkHostFactsPortImpl;
@@ -189,7 +190,7 @@ public final class StoreEntityClaimLocalLauncher {
                             mock(ai.neargo.shop.merchant.service.impl.EntityReachability.class)));
             var messages = new org.springframework.context.support.ResourceBundleMessageSource();
             messages.setBasename("i18n/messages"); messages.setDefaultEncoding("UTF-8");
-            var identities = new ai.neargo.shop.merchantbridge.LoginIdentityServiceImpl(
+            var identities = new ai.neargo.shop.merchantbridge.impl.LoginIdentityServiceImpl(
                     f.auth, new ai.neargo.shop.user.service.impl.LoginTicketServiceImpl(f.db.jdbc, f.db.manager, Duration.ofMinutes(5)),
                     f.tokens, mock(ai.neargo.shop.auth.LoginAuditor.class),
                     f.db.mybatis.getMapper(MchAccountMapper.class), f.db.mybatis.getMapper(MchEntityMapper.class),

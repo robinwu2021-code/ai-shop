@@ -10,6 +10,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.port.MerchantPortImpl;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.merchant.service.*;
 import ai.neargo.shop.platform.IndustryService;
 import ai.neargo.shop.platform.MasterDataService;
@@ -18,6 +19,7 @@ import ai.neargo.shop.platform.impl.OpsServiceImpl;
 import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
 import ai.neargo.shop.spi.notify.OpsAlertPort;
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -593,6 +595,11 @@ class BizFoundationAccessMysqlTest {
         // Use real transactions + actual application/membership/store rows. The dictionary,
         // operator recipients and notification hook are independent of target selection.
         services.register(ApplyTransactions.class);
+        services.registerBean(StoreOwnershipWritePort.class, () -> new StoreOwnershipWritePortImpl(f.jdbc));
+        services.registerBean(ai.neargo.shop.platform.MarketPhonePolicyService.class,
+                () -> mock(ai.neargo.shop.platform.MarketPhonePolicyService.class));
+        services.registerBean(ai.neargo.shop.spi.user.MerchantQueryPort.class,
+                () -> mock(ai.neargo.shop.spi.user.MerchantQueryPort.class));
         services.registerBean(DataSourceTransactionManager.class, () -> f.manager);
         services.registerBean(
                 OpsServiceImpl.class,

@@ -2,11 +2,13 @@ package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract.*;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionPort.*;
-import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.AcceptedComponentAuthority;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.AcceptedComponentLookup;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionPreparationObservation;
 
 /** HOST aggregate orchestration and sole bounded continuation owner; no scheduled job. */
-public interface ExecutionStockRetentionCoordinator extends ExecutionStockRetentionIntentPort {
+public interface ExecutionStockRetentionCoordinator {
+    AcceptedComponentAuthority queryAcceptedComponent(AcceptedComponentLookup request);
     AggregateReceiptV2 retainV2(RetainExecutionStock request);
     AggregateReceiptV2 queryOriginalV2(RetentionLookup request);
     AggregateReceiptV2 continueAcceptedRetentionV2(AcceptedRouteLookup request);

@@ -1,7 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.merchantbridge.ManagementAccess;
-import ai.neargo.shop.promotion.BrandMarketingApplicationService;
+import ai.neargo.shop.merchantbridge.BrandMarketingApplicationService;
 import ai.neargo.shop.promotion.BrandMarketingCommandInputs;
 import ai.neargo.shop.promotion.BrandOrderActivityInput;
 import ai.neargo.shop.promotion.dto.BrandCouponModels;

@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.merchant.brand.ManagementModels.Actor;
 import ai.neargo.shop.merchantbridge.ManagementAccess;
-import ai.neargo.shop.promotion.BrandMarketingApplicationService;
+import ai.neargo.shop.merchantbridge.BrandMarketingApplicationService;
 import ai.neargo.shop.promotion.BrandMarketingCommandInputs.GenerateStatement;
 import ai.neargo.shop.promotion.BrandMarketingCommandInputs.SaveRule;
 import ai.neargo.shop.promotion.BrandOrderActivityInput;

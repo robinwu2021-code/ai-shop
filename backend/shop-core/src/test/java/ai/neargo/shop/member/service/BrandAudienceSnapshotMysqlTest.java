@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService.Context;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService.Skip;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort.Context;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort.Skip;
 import ai.neargo.shop.member.service.impl.BrandAudienceSnapshotServiceImpl;
 import ai.neargo.shop.spi.entitlement.EntitlementIssueAudiencePort.Recipient;
 import ai.neargo.shop.spi.marketing.BrandPromotionScopePort;
@@ -231,13 +231,8 @@ class BrandAudienceSnapshotMysqlTest {
             var source = new DriverManagerDataSource(url.replace(":3308/", ":3308/" + database), user, password);
             jdbc = new JdbcTemplate(source);
             try {
-                Path directory = Path.of("../shop-app/src/main/resources/db/migration");
-                Path migrationFile;
-                try (var paths = Files.list(directory)) {
-                    migrationFile = paths.filter(path -> path.getFileName().toString().startsWith("V650__"))
-                            .findFirst().orElseThrow(() -> new IllegalStateException("V650 migration is missing"));
-                }
-                String migration = Files.readString(migrationFile);
+                String migration = Files.readString(
+                        Path.of("../shop-app/src/main/resources/db/migration/V652__brand_promotion.sql"));
                 var ddl = Pattern.compile("(?s)CREATE TABLE mbr_brand_audience_snapshot\\s*\\(.*?;")
                         .matcher(migration);
                 if (!ddl.find()) throw new IllegalStateException("Production snapshot DDL is missing");

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.spi.entitlement.ExternalCertificateConsumptionPort;
 import ai.neargo.shop.spi.entitlement.ExternalCertificateEvidencePort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -188,6 +189,7 @@ class ExternalCertificateConsumptionPortTest {
                         providers,
                         JsonMapper.builder().findAndAddModules().build(),
                         manager);
+        service.setOwnershipWrites(mock(StoreOwnershipWritePort.class));
     }
 
     OrdExternalCertificateUse find(QueryWrapper<OrdExternalCertificateUse> query) {

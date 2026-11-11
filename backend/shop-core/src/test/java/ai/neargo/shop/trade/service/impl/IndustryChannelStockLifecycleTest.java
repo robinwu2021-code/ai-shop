@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
@@ -135,6 +136,7 @@ class IndustryChannelStockLifecycleTest {
                         mock(DocumentNumberCoordinator.class),
                         new DataSourceTransactionManager(dataSource),
                         Clock.fixed(now, ZoneOffset.UTC));
+        store.setOwnershipWrites(mock(StoreOwnershipWritePort.class));
         histories = session.getMapper(ChannelFundingHistoryMapper.class);
         store.fundingHistory(histories);
         var beans = new DefaultListableBeanFactory();

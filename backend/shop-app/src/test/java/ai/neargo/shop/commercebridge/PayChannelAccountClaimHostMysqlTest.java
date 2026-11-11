@@ -11,7 +11,7 @@ import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.config.PayChannelAccountClaimConfiguration;
 import ai.neargo.shop.config.PayBizOnboardingConfiguration;
 import ai.neargo.shop.merchant.paysync.StoreSyncProperties;
-import ai.neargo.shop.merchant.service.impl.StoreOwnershipWritePortImpl;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.payclient.*;
 import ai.neargo.shop.portal.biz.*;
 import ai.neargo.svc.client.*;

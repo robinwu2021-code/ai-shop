@@ -1,5 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.media.MediaRefColumn;
 import ai.neargo.shop.media.MediaRefSource;
 
@@ -28,7 +30,7 @@ public class ShopMallEvidenceMediaRefs implements MediaRefSource {
         this(new JdbcTemplate(database));
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public ShopMallEvidenceMediaRefs(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }

@@ -2,7 +2,7 @@ package ai.neargo.shop.promotion.port;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort;
 import ai.neargo.shop.promotion.dto.BrandCouponModels.Source;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.promotion.service.BrandCouponService;
@@ -18,11 +18,11 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class BrandCouponSourcePortImpl implements BrandCouponSourcePort {
     private final BrandCouponService sources;
-    private final BrandAudienceSnapshotService audiences;
+    private final BrandAudienceSnapshotPort audiences;
     private final BrandPromotionScopePort brands;
     private final ObjectMapper json;
 
-    public BrandCouponSourcePortImpl(BrandCouponService sources, BrandAudienceSnapshotService audiences,
+    public BrandCouponSourcePortImpl(BrandCouponService sources, BrandAudienceSnapshotPort audiences,
                                      BrandPromotionScopePort brands, ObjectMapper json) {
         this.sources = sources;
         this.audiences = audiences;
@@ -59,7 +59,7 @@ public class BrandCouponSourcePortImpl implements BrandCouponSourcePort {
         Source source = exact(tenantNo, issuerEntityNo, definition);
         if (!List.of("ACTIVE", "STOPPED").contains(source.status())
                 || !templateVersionNo.equals(source.nativeVersionNo())) throw BizException.of(ErrorCode.CONFLICT);
-        var context = new BrandAudienceSnapshotService.Context(tenantNo, source.managementNo(), source.brandNo(),
+        var context = new BrandAudienceSnapshotPort.Context(tenantNo, source.managementNo(), source.brandNo(),
                 issuerEntityNo, actorNo);
         var snapshot = audiences.get(context, audienceFactRef, source.sourceNo(), templateVersionNo);
         var original = sources.issuedCommand(tenantNo, issuerEntityNo, actorNo, commandNo);

@@ -10,7 +10,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.common.ratelimit.InMemoryRateLimiter;
 import ai.neargo.shop.common.ratelimit.OtpSendGuard;
-import ai.neargo.shop.platform.MarketPhonePolicyService;
+import ai.neargo.shop.spi.platform.SmsAdmissionPort;
 import ai.neargo.shop.spi.marketing.FissionPort;
 import ai.neargo.shop.spi.notify.SmsPort;
 import ai.neargo.shop.spi.user.WxAuthPort;
@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 class RegionalSmsAdmissionTest {
     @Test void disabledRegionCannotSendOrVerifyEvenWithFixedCodesMocksAndTestWhitelist() {
-        var policy=mock(MarketPhonePolicyService.class);var otp=mock(OtpStore.class);var sms=mock(SmsPort.class);var guard=mock(OtpSendGuard.class);
+        var policy=mock(SmsAdmissionPort.class);var otp=mock(OtpStore.class);var sms=mock(SmsPort.class);var guard=mock(OtpSendGuard.class);
         doThrow(BizException.of(ErrorCode.SMS_VERIFICATION_DISABLED)).when(policy).requireSmsEnabled(anyString());
         var auth=new AuthServiceImpl(mock(UserMapper.class),mock(IdentityMapper.class),mock(WxPhonePort.class),mock(MpSessionService.class),
                 mock(TokenStore.class),otp,guard,sms,mock(WxAuthPort.class),mock(PasswordHasher.class),new InMemoryRateLimiter(),

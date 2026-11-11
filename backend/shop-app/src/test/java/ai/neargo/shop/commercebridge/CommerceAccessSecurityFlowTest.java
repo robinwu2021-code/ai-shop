@@ -29,6 +29,7 @@ import ai.neargo.shop.fulfillment.service.PickupService;
 import ai.neargo.shop.member.service.*;
 import ai.neargo.shop.merchant.api.biz.BizStorePayController;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.merchant.service.*;
 import ai.neargo.shop.merchant.service.impl.*;
 import ai.neargo.shop.message.MessageService;
@@ -551,6 +552,7 @@ class CommerceAccessSecurityFlowTest {
                             "pickupPoints", f.mybatis.getMapper(PickupPointMapper.class));
                     b.registerSingleton("clock", f.clock);
                     b.registerSingleton("dataSource", f.ds);
+                    b.registerSingleton("ownershipWrites", new StoreOwnershipWritePortImpl(f.jdbc));
                     b.registerSingleton("transactionManager", f.manager);
                     b.registerSingleton("uow", new JdbcCommerceUnitOfWork(f.ds, f.manager));
                     b.registerSingleton("resolver", resolver);
@@ -622,6 +624,7 @@ class CommerceAccessSecurityFlowTest {
     private static void verifyDisabledEncodedRequests(AccessMysqlFixture f) throws Exception {
         try (var web = new AnnotationConfigWebApplicationContext()) {
             var entities = mock(MerchantEntityService.class);
+            var review = mock(ai.neargo.shop.merchantbridge.EntityReviewAssembler.class);
             web.setServletContext(new MockServletContext());
             web.getEnvironment().setActiveProfiles("api");
             web.addBeanFactoryPostProcessor(
@@ -631,6 +634,7 @@ class CommerceAccessSecurityFlowTest {
                         b.registerSingleton("resolver", BizIdentityResolver.NONE);
                         b.registerSingleton("tokenStore", f.store);
                         b.registerSingleton("entities", entities);
+                        b.registerSingleton("review", review);
                         b.registerSingleton("portalFilters", portalFilters());
                     });
             web.register(
@@ -647,7 +651,7 @@ class CommerceAccessSecurityFlowTest {
                                             LoginUser.merchantByUser("U", "owner")));
             mvc.perform(get(URI.create("/biz/%73tores/mine")).header("Authorization", bearer))
                     .andExpect(status().isBadRequest());
-            verifyNoInteractions(entities);
+            verifyNoInteractions(entities, review);
         }
     }
 

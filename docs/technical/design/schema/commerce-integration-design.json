@@ -6188,6 +6188,29 @@
             "String READ_PATH = \"/internal/trade/channel-fulfillment-sources/read\"",
             "@PostExchange(READ_PATH) IndustryChannelFulfillmentSourcePort.Facts read(@RequestBody IndustryChannelFulfillmentSourcePort.Query query)"
           ]
+        },
+        {
+          "name": "ai.neargo.shop.spi.member.BrandAudienceSnapshotPort",
+          "source": "backend/shop-base/src/main/java/ai/neargo/shop/spi/member/BrandAudienceSnapshotPort.java",
+          "declarations": [
+            "Snapshot freeze(Context context, String resourceNo, String resourceVersion);",
+            "Snapshot get(Context context, String snapshotNo, String resourceNo, String resourceVersion);",
+            "Snapshot claim(Context context, String snapshotNo, String resourceNo, String resourceVersion, String commandNo);"
+          ]
+        },
+        {
+          "name": "ai.neargo.shop.spi.marketing.BrandCouponCostCapturePort",
+          "source": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/BrandCouponCostCapturePort.java",
+          "declarations": [
+            "void captureCoupon(String tenantNo, String operationNo, UseFact fact);"
+          ]
+        },
+        {
+          "name": "ai.neargo.shop.spi.trade.RefundQuantityFactsPort",
+          "source": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/RefundQuantityFactsPort.java",
+          "declarations": [
+            "List<Fact> succeeded(String tenantNo, String subOrderNo, Instant through, List<String> processed);"
+          ]
         }
       ],
       "migrations": [
@@ -13206,9 +13229,9 @@
           "source": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/DiningChannelFulfillmentService.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.DiningChannelFulfillmentSignalPort",
+          "name": "ai.neargo.shop.food.spi.DiningChannelFulfillmentSignalPort",
           "kind": "interface",
-          "source": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/DiningChannelFulfillmentSignalPort.java"
+          "source": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/spi/DiningChannelFulfillmentSignalPort.java"
         },
         {
           "name": "ai.neargo.shop.food.service.DiningChannelOrderService",
@@ -13251,19 +13274,19 @@
           "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelFulfillmentServiceImpl.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.impl.DiningChannelFulfillmentSignalPortImpl",
+          "name": "ai.neargo.shop.food.port.DiningChannelFulfillmentSignalPortImpl",
           "kind": "class",
-          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelFulfillmentSignalPortImpl.java"
+          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/port/DiningChannelFulfillmentSignalPortImpl.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.impl.DiningChannelModifierDemand",
+          "name": "ai.neargo.shop.food.service.support.DiningChannelModifierDemand",
           "kind": "class",
-          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelModifierDemand.java"
+          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/support/DiningChannelModifierDemand.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.impl.DiningChannelOrderBinder",
+          "name": "ai.neargo.shop.food.service.support.DiningChannelOrderBinder",
           "kind": "class",
-          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelOrderBinder.java"
+          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/support/DiningChannelOrderBinder.java"
         },
         {
           "name": "ai.neargo.shop.food.service.impl.DiningChannelOrderServiceImpl",
@@ -13271,19 +13294,19 @@
           "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelOrderServiceImpl.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.impl.DiningChannelOriginalModifierResolver",
+          "name": "ai.neargo.shop.food.service.support.DiningChannelOriginalModifierResolver",
           "kind": "class",
-          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelOriginalModifierResolver.java"
+          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/support/DiningChannelOriginalModifierResolver.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.impl.DiningChannelProductionPlanBuilder",
+          "name": "ai.neargo.shop.food.service.support.DiningChannelProductionPlanBuilder",
           "kind": "class",
-          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelProductionPlanBuilder.java"
+          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/support/DiningChannelProductionPlanBuilder.java"
         },
         {
-          "name": "ai.neargo.shop.food.service.impl.DiningChannelSourceStore",
+          "name": "ai.neargo.shop.food.service.support.DiningChannelSourceStore",
           "kind": "class",
-          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningChannelSourceStore.java"
+          "source": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/support/DiningChannelSourceStore.java"
         },
         {
           "name": "ai.neargo.shop.food.service.impl.DiningIdentityServiceImpl",
@@ -13361,9 +13384,9 @@
           "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/api/internal/InternalInventoryDemandPlanController.java"
         },
         {
-          "name": "ai.neargo.shop.inventory.mapper.InventoryDemandPlanMapper",
+          "name": "ai.neargo.inventory.domain.mapper.InventoryDemandPlanMapper",
           "kind": "class",
-          "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java"
+          "source": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java"
         },
         {
           "name": "ai.neargo.shop.inventory.port.InventoryAvailabilityPortImpl",
@@ -13971,9 +13994,9 @@
           "source": "backend/shop-app/src/main/java/ai/neargo/shop/svc/client/ExternalCertificateEvidenceClientConfiguration.java"
         },
         {
-          "name": "ai.neargo.shop.svc.client.RemoteExternalCertificateEvidencePort",
+          "name": "ai.neargo.shop.svc.port.RemoteExternalCertificateEvidencePort",
           "kind": "class",
-          "source": "backend/shop-app/src/main/java/ai/neargo/shop/svc/client/RemoteExternalCertificateEvidencePort.java"
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/svc/port/RemoteExternalCertificateEvidencePort.java"
         },
         {
           "name": "ai.neargo.shop.trade.entitlement.entity.OrdExternalCertificateUse",
@@ -14102,7 +14125,7 @@
         },
         {
           "name": "ai.neargo.shop.trade.service.impl.NativeChannelAfterSaleService",
-          "kind": "class",
+          "kind": "interface",
           "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/NativeChannelAfterSaleService.java"
         },
         {
@@ -14174,6 +14197,206 @@
           "name": "ai.neargo.shop.trade.service.impl.ChannelFulfillmentEvidenceStore",
           "kind": "class",
           "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ChannelFulfillmentEvidenceStore.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchant.service.LoginIdentityService",
+          "kind": "interface",
+          "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/LoginIdentityService.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchantbridge.impl.LoginIdentityServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/impl/LoginIdentityServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchant.service.StoreEntityClaimService",
+          "kind": "interface",
+          "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/StoreEntityClaimService.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchantbridge.impl.StoreEntityClaimServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/impl/StoreEntityClaimServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.promotion.cost.BrandPromotionCostService",
+          "kind": "interface",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/cost/BrandPromotionCostService.java"
+        },
+        {
+          "name": "ai.neargo.shop.promotion.cost.impl.BrandPromotionCostServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/cost/impl/BrandPromotionCostServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.inventory.service.FoodStockProjectionQueryService",
+          "kind": "interface",
+          "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/FoodStockProjectionQueryService.java"
+        },
+        {
+          "name": "ai.neargo.shop.inventory.service.impl.FoodStockProjectionQueryServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/FoodStockProjectionQueryServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchantbridge.BrandMarketingApplicationService",
+          "kind": "interface",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/BrandMarketingApplicationService.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchantbridge.impl.BrandMarketingApplicationServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/impl/BrandMarketingApplicationServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.promotion.BrandOrderMarketingService",
+          "kind": "interface",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/promotion/BrandOrderMarketingService.java"
+        },
+        {
+          "name": "ai.neargo.shop.promotion.impl.BrandOrderMarketingServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/promotion/impl/BrandOrderMarketingServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.service.impl.NativeChannelAfterSaleServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/NativeChannelAfterSaleServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.stock.FoodProductionStockService",
+          "kind": "interface",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/stock/FoodProductionStockService.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.stock.impl.FoodProductionStockServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/stock/impl/FoodProductionStockServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.port.FoodProductionStockPortImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/FoodProductionStockPortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.port.IndustryChannelAfterSalePortImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/IndustryChannelAfterSalePortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.spi.member.BrandAudienceSnapshotPort",
+          "kind": "interface",
+          "source": "backend/shop-base/src/main/java/ai/neargo/shop/spi/member/BrandAudienceSnapshotPort.java"
+        },
+        {
+          "name": "ai.neargo.shop.member.service.BrandAudienceSnapshotService",
+          "kind": "interface",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/BrandAudienceSnapshotService.java"
+        },
+        {
+          "name": "ai.neargo.shop.member.service.impl.BrandAudienceSnapshotServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/impl/BrandAudienceSnapshotServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.common.jdbc.JdbcTransactionStore",
+          "kind": "class",
+          "source": "backend/shop-store-mybatis/src/main/java/ai/neargo/shop/common/jdbc/JdbcTransactionStore.java"
+        },
+        {
+          "name": "ai.neargo.shop.member.service.MemberScopeRepository",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/member/service/MemberScopeRepository.java"
+        },
+        {
+          "name": "ai.neargo.shop.promotion.BrandCouponApplicationService",
+          "kind": "interface",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/promotion/BrandCouponApplicationService.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchantbridge.impl.BrandCouponApplicationServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/impl/BrandCouponApplicationServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchant.brand.port.BrandPromotionScopePortImpl",
+          "kind": "class",
+          "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/port/BrandPromotionScopePortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl",
+          "kind": "class",
+          "source": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/StoreOwnershipWritePortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.port.FoodLocalDemandPlanAdapter",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/FoodLocalDemandPlanAdapter.java"
+        },
+        {
+          "name": "ai.neargo.shop.invbridge.port.ExecutionStockMirrorEvidencePortImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/ExecutionStockMirrorEvidencePortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.invbridge.port.ExecutionStockRetentionIntentPortImpl",
+          "kind": "class",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/ExecutionStockRetentionIntentPortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.member.port.BrandAudienceSnapshotPortImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/member/port/BrandAudienceSnapshotPortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.inventory.port.FoodStockProjectionPortImpl",
+          "kind": "class",
+          "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/port/FoodStockProjectionPortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.inventory.service.FoodStockProjectionService",
+          "kind": "interface",
+          "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/FoodStockProjectionService.java"
+        },
+        {
+          "name": "ai.neargo.shop.inventory.service.impl.FoodStockProjectionServiceImpl",
+          "kind": "class",
+          "source": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/FoodStockProjectionServiceImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.port.IndustryChannelFulfillmentSourcePortImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/IndustryChannelFulfillmentSourcePortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.invbridge.ExecutionStockMirrorEvidenceService",
+          "kind": "interface",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/ExecutionStockMirrorEvidenceService.java"
+        },
+        {
+          "name": "ai.neargo.shop.invbridge.ExecutionStockRetentionCoordinator",
+          "kind": "interface",
+          "source": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/ExecutionStockRetentionCoordinator.java"
+        },
+        {
+          "name": "ai.neargo.shop.spi.marketing.BrandCouponCostCapturePort",
+          "kind": "interface",
+          "source": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/BrandCouponCostCapturePort.java"
+        },
+        {
+          "name": "ai.neargo.shop.promotion.port.BrandCouponCostCapturePortImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/port/BrandCouponCostCapturePortImpl.java"
+        },
+        {
+          "name": "ai.neargo.shop.spi.trade.RefundQuantityFactsPort",
+          "kind": "interface",
+          "source": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/RefundQuantityFactsPort.java"
+        },
+        {
+          "name": "ai.neargo.shop.trade.port.RefundQuantityFactsPortImpl",
+          "kind": "class",
+          "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/RefundQuantityFactsPortImpl.java"
         }
       ],
       "featureConditions": [
@@ -14534,7 +14757,8 @@
         "ALL14 original kitchen report source: FOOD/KITCHEN quantities KITCHEN_STARTED_QTY, KITCHEN_READY_QTY, KITCHEN_HANDED_OVER_QTY, KITCHEN_LOSS_QTY and KITCHEN_REWORK_QTY come from original persisted service events and scoped kitchen task/ticket/order-line relationships. Affected-day typed source resolves original event occurrence against original business-day evidence, not transport time. ReportSourceCollectionServiceImpl and ReportCorrectionConsumer use the original facts/affected-day owner. DiningKitchenReportFactsConfiguration is registered by root; source exists, compile/test evidence stays with the final TDD checkpoint. No new public REST, database migration, inventory movement, cost/profit or financial receipt is claimed.",
         "Bottle V29 actual schema: fnb_bottle_custody is the original V1 ledger and is not recreated. V29 adds nullable deposited_qty (old deposited total remains unknown), adds idx_fnb_bottle_owner on tenant_no/entity_no/store_no/owner_ref/id, and creates only fnb_bottle_movement. FnbBottleCustody.customerNo maps to original owner_ref; there is no customer_no column. Original custody states remain ACTIVE/CLOSED. V1 migration is unchanged.",
         "OPS role truth after safe restoration: Perms retains the original HEAD role grants. SYSTEM_COMMERCE_READ and SYSTEM_COMMERCE_UPDATE are new permission constants and exact route checks only; they were not added to default SUPPORT or TECH_OPS grants. Newly added OPS commerce routes are currently available only through the original SUPER_ADMIN wildcard. No new default-role authorization is implied by registry entries, constants, or this source inventory.",
-        "ALL09 RETAIL pickup/handover source: original native CHANNEL/RETAIL exactFinish records locked before-progress, validates original inventory issue receipt, then commits exact positive action deltas and opaque original MAIN allocations into Core V614 ord_channel_fulfillment_evidence in the same primary transaction as the terminal fulfillment row. No historical terminal backfill, UNKNOWN success, cumulative-as-delta or zero-delta receipt. Existing CIM publication API uses the real native fulfillmentNo and sourceRevision=\"1\"; original owner read is available locally or via service-token PLATFORM typed lookup. Only PICKED_UP/HANDED_OVER are supported. SHIPPED/DELIVERED remain unsupported: no fake PAID, carrier package, tracking or delivery proof. Source and test files are coded; integrated compile/native tests are pending root execution."
+        "ALL09 RETAIL pickup/handover source: original native CHANNEL/RETAIL exactFinish records locked before-progress, validates original inventory issue receipt, then commits exact positive action deltas and opaque original MAIN allocations into Core V614 ord_channel_fulfillment_evidence in the same primary transaction as the terminal fulfillment row. No historical terminal backfill, UNKNOWN success, cumulative-as-delta or zero-delta receipt. Existing CIM publication API uses the real native fulfillmentNo and sourceRevision=\"1\"; original owner read is available locally or via service-token PLATFORM typed lookup. Only PICKED_UP/HANDED_OVER are supported. SHIPPED/DELIVERED remain unsupported: no fake PAID, carrier package, tracking or delivery proof. Source and test files are coded; integrated compile/native tests are pending root execution.",
+        "2026-11-11 structural source correction only: the actual inventory records existing service API/implementation splits and implementation/SPI package moves, including the host-owned BrandMarketingApplicationService and BrandCouponApplicationServiceImpl under merchantbridge. Local SPI delegates now separate FoodProductionStockPort, IndustryChannelAfterSalePort, ExecutionStockMirrorEvidencePort, ExecutionStockRetentionIntentPort, BrandAudienceSnapshotPort, InventoryFoodStockProjectionPort and IndustryChannelFulfillmentSourcePort from their original services/coordinators; all delegate to those original owners. The added BrandCouponCostCapturePort delegates to the original transactional cost capture; RefundQuantityFactsPort projects only original successful refund quantities, preserving the CORE datasource, original SQL/order, processed-before-decode skip and sub-order CONFLICT check. No new transaction or substitute refund plan is introduced. JdbcTransactionStore/MemberScopeRepository extraction preserves the existing transaction/retry/JDBC/JSON behavior. Original Spring bean names, qualified transaction manager, immutable audience fields and authorization/stock/refund owner calls remain in source. NativeChannelAfterSaleService is now an interface at its original FQN, with NativeChannelAfterSaleServiceImpl retaining its behavior. Eight older inventory entries point to the actual food spi/port/service.support and independent inventory mapper packages. These entries attest existing source structure only; they do not mark any planned API, candidate class, feature, migration execution, test, supplier capability or deployment accepted."
       ],
       "scopeEvidenceSources": [
         {

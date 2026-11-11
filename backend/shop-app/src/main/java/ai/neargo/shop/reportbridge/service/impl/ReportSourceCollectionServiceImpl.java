@@ -1,5 +1,7 @@
 package ai.neargo.shop.reportbridge.service.impl;
 
+import ai.neargo.shop.spi.food.FoodStockReportFactsPort;
+
 import ai.neargo.shop.reportbridge.service.ReportSourceCollectionService;
 import ai.neargo.shop.spi.report.ReportContracts.Coverage;
 import ai.neargo.shop.spi.report.ReportContracts.Owner;
@@ -23,11 +25,11 @@ public final class ReportSourceCollectionServiceImpl implements ReportSourceColl
     private static final SourceKey FOOD = new SourceKey(Owner.FOOD, "ORDER");
     private static final SourceKey CORE = new SourceKey(Owner.CORE, "ORDER");
     private final Map<SourceKey, ReportSourceFactsPort> ports;
-    private final ai.neargo.shop.spi.food.FoodStockReportFactsPort foodStock;
+    private final FoodStockReportFactsPort foodStock;
     private final boolean localStock;
 
     public ReportSourceCollectionServiceImpl(List<ReportSourceFactsPort> owners) {this(owners,null,false);}
-    public ReportSourceCollectionServiceImpl(List<ReportSourceFactsPort> owners,ai.neargo.shop.spi.food.FoodStockReportFactsPort foodStock,boolean localStock) {
+    public ReportSourceCollectionServiceImpl(List<ReportSourceFactsPort> owners,FoodStockReportFactsPort foodStock,boolean localStock) {
         this.foodStock=foodStock;this.localStock=localStock;
         Map<SourceKey, ReportSourceFactsPort> found = new HashMap<>();
         for (var owner : owners)

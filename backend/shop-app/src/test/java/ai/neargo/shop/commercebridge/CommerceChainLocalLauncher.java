@@ -179,7 +179,7 @@ public final class CommerceChainLocalLauncher {
         var messages = new org.springframework.context.support.ResourceBundleMessageSource();
         messages.setBasename("i18n/messages");
         messages.setDefaultEncoding("UTF-8");
-        var identities = new ai.neargo.shop.merchantbridge.LoginIdentityServiceImpl(
+        var identities = new ai.neargo.shop.merchantbridge.impl.LoginIdentityServiceImpl(
                 fixture.auth, tickets, fixture.tokens, org.mockito.Mockito.mock(ai.neargo.shop.auth.LoginAuditor.class),
                 fixture.db.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper.class),
                 fixture.db.mybatis.getMapper(ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper.class),

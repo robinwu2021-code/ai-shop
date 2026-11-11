@@ -8,7 +8,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
-import ai.neargo.shop.promotion.cost.BrandPromotionCostService;
+import ai.neargo.shop.spi.marketing.BrandCouponCostCapturePort;
 import ai.neargo.shop.spi.entitlement.EntitlementOrderEvents.UseDecided;
 import ai.neargo.shop.spi.entitlement.EntitlementOrderEvents.UsePrepared;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort.UseFact;
@@ -61,12 +61,12 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
     private final EntitlementSourceDecisionService decisions;
     private final OutboxEventBus events;
     private final ObjectMapper json;
-    private final BrandPromotionCostService costs;
+    private final BrandCouponCostCapturePort costs;
     public EntitlementOrderUseServiceImpl(EntitlementOrderUseMapper uses, EntitlementPaymentSealMapper seals,
             EntitlementAuthorizationMapper authorizations, OrderMapper orders, SubOrderMapper subs,
             OrderItemMapper items,
             EntitlementSourceDecisionService decisions, OutboxEventBus events, ObjectMapper json,
-            BrandPromotionCostService costs) {
+            BrandCouponCostCapturePort costs) {
         this.costs = costs;
         this.uses = uses; this.seals = seals; this.authorizations = authorizations; this.orders = orders;
         this.subs = subs; this.items = items; this.decisions = decisions; this.events = events; this.json = json;

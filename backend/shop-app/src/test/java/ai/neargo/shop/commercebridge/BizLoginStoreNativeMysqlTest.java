@@ -1,6 +1,6 @@
 package ai.neargo.shop.commercebridge;
 
-import ai.neargo.shop.platform.MarketPhonePolicyService;
+import ai.neargo.shop.spi.platform.SmsAdmissionPort;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -87,14 +87,14 @@ class BizLoginStoreNativeMysqlTest {
                     db.mybatis.getMapper(IdentityMapper.class), mock(WxPhonePort.class),
                     mock(MpSessionService.class), tokens, otp, guard, mock(SmsPort.class),
                     mock(WxAuthPort.class), new PasswordHasher(), limiter, mock(PersonService.class),
-                    "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(MarketPhonePolicyService.class));
+                    "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(SmsAdmissionPort.class));
             auth.setRegistrationMarkets("CN,TW");
             var stores = new StoreAdminServiceImpl(mock(MerchantStoreCreation.class),
                     mock(StoreCategoryService.class), db.mybatis.getMapper(MchStoreMapper.class),
                     db.mybatis.getMapper(MchStoreRoleMapper.class), db.mybatis.getMapper(MchPaymentMapper.class),
                     mock(MerchantPlanService.class), db.mybatis.getMapper(MchEntityMapper.class),
                     mock(StoreLinkService.class), null, null);
-            stores.setOwnership(new ai.neargo.shop.merchant.service.impl.StoreOwnershipWritePortImpl(db.jdbc));
+            stores.setOwnership(new ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl(db.jdbc));
             realServices.putAll(Map.of(AuthService.class, auth, OtpStore.class, otp,
                     StoreAdminService.class, stores, TokenStore.class, tokens));
             try {

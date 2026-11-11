@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 526 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 535 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,7 +16,7 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 93 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 102 | ✅ | — | — | — | — | — |
 | `STOCK` | 改库存（含门店库存） | 53 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 42 | ✅ | — | — | — | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 40 | ✅ | ✅ | — | — | — | — |
@@ -83,6 +83,15 @@
 - `/biz/personnel/{personnelNo}/assignments`
 - `/biz/personnel/{personnelNo}/status-changes`
 - `/biz/plan`
+- `/biz/plan/purchases`
+- `/biz/plan/purchases/offers`
+- `/biz/plan/purchases/{orderNo}`
+- `/biz/plan/purchases/{orderNo}/cancel`
+- `/biz/plan/purchases/{orderNo}/cash-refunds`
+- `/biz/plan/purchases/{orderNo}/claims`
+- `/biz/plan/purchases/{orderNo}/evidence`
+- `/biz/plan/purchases/{orderNo}/evidence/content`
+- `/biz/plan/purchases/{orderNo}/evidence/url`
 - `/biz/plan/trial`
 - `/biz/resources`
 - `/biz/role-perms`

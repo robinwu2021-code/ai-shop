@@ -1,4 +1,7 @@
 package ai.neargo.shop.reportbridge;
+
+import ai.neargo.shop.spi.food.FoodStockReportFactsPort;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.reportbridge.port.DeferredReportDayPort;
 import ai.neargo.shop.reportbridge.port.ReportRealtimePortAdapter;
 
@@ -31,8 +34,8 @@ import org.springframework.context.annotation.Configuration;
 public class FoodReportConfiguration {
     @Bean ReportSourceFactsPort paymentReportFactsPort(ObjectProvider<InternalHttp> http) { return new RemotePaymentReportFactsPort(http); }
     @Bean ReportSourceCollectionService reportSourceCollectionService(ObjectProvider<ReportSourceFactsPort> ports,
-            ObjectProvider<ai.neargo.shop.spi.food.FoodStockReportFactsPort> local,
-            @org.springframework.beans.factory.annotation.Value("${shop.food.local-stock.enabled:false}")boolean enabled) {
+            ObjectProvider<FoodStockReportFactsPort> local,
+            @Value("${shop.food.local-stock.enabled:false}")boolean enabled) {
         return new ReportSourceCollectionServiceImpl(ports.orderedStream().toList(),local.getIfUnique(),enabled);
     }
     @Bean ReportRealtimePortAdapter reportRealtimePortAdapter(ReportRealtimeService service) {return new ReportRealtimePortAdapter(service);}

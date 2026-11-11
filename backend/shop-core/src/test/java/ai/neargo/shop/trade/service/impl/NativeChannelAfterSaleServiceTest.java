@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
@@ -79,6 +80,8 @@ class NativeChannelAfterSaleServiceTest {
                                 "../shop-app/src/main/resources/db/migration/V611__native_channel_after_sale.sql"))
                 .execute(ds);
         sql = new JdbcTemplate(ds);
+        // The fixture loads only channel tables; retain V618's channel owner column.
+        sql.execute("ALTER TABLE ord_channel_preparation ADD COLUMN inventory_owner VARCHAR(32) NULL");
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         for (Class<?> mapper :
@@ -105,10 +108,11 @@ class NativeChannelAfterSaleServiceTest {
                         mock(DocumentNumberCoordinator.class),
                         new DataSourceTransactionManager(ds),
                         Clock.fixed(now, ZoneOffset.UTC));
+        store.setOwnershipWrites(mock(StoreOwnershipWritePort.class));
         var beans = new DefaultListableBeanFactory();
         beans.registerSingleton("inventory", inventory);
         service =
-                new NativeChannelAfterSaleService(
+                new NativeChannelAfterSaleServiceImpl(
                         store,
                         session.getMapper(ChannelAfterSaleMappers.CaseMapper.class),
                         session.getMapper(ChannelAfterSaleMappers.LineMapper.class),

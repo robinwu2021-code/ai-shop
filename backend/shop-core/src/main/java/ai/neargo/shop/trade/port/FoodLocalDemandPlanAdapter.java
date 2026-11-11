@@ -1,4 +1,6 @@
-package ai.neargo.shop.trade.stock;
+package ai.neargo.shop.trade.port;
+
+import ai.neargo.shop.trade.stock.FoodStockBridgeJournal;
 
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;

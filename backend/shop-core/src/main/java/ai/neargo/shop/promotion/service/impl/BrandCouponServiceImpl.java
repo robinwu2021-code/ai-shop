@@ -1,13 +1,12 @@
 package ai.neargo.shop.promotion.service.impl;
 
-import static ai.neargo.shop.member.service.MemberScopeRepository.n;
-import static ai.neargo.shop.member.service.MemberScopeRepository.s;
+import static ai.neargo.shop.common.jdbc.JdbcTransactionStore.n;
+import static ai.neargo.shop.common.jdbc.JdbcTransactionStore.s;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService;
-import ai.neargo.shop.member.service.MemberScopeRepository;
+import ai.neargo.shop.common.jdbc.JdbcTransactionStore;
 import ai.neargo.shop.promotion.cost.BrandPromotionCostService;
 import ai.neargo.shop.promotion.dto.ActivityActor;
 import ai.neargo.shop.promotion.dto.BrandCouponModels.Completion;
@@ -22,6 +21,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition.Validity;
 import ai.neargo.shop.spi.marketing.BrandPromotionScopePort;
 import ai.neargo.shop.spi.marketing.BrandPromotionScopePort.Store;
+import ai.neargo.shop.spi.member.BrandAudienceSnapshotPort;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -40,15 +41,15 @@ import tools.jackson.databind.ObjectMapper;
 public class BrandCouponServiceImpl implements BrandCouponService {
     private static final List<String> ACTIONS = List.of("saveCoupon", "publishCoupon", "previewAudience",
             "issueCoupon", "pauseCoupon");
-    private final MemberScopeRepository db;
+    private final JdbcTransactionStore db;
     private final BrandPromotionScopePort brands;
-    private final BrandAudienceSnapshotService audiences;
+    private final BrandAudienceSnapshotPort audiences;
     private final BrandPromotionCostService costs;
     private final ObjectMapper json;
 
-    public BrandCouponServiceImpl(MemberScopeRepository db, BrandPromotionScopePort brands,
-                                  BrandAudienceSnapshotService audiences, BrandPromotionCostService costs,
-                                  ObjectMapper json) {
+    public BrandCouponServiceImpl(@Qualifier("jdbcTransactionStore") JdbcTransactionStore db,
+                                  BrandPromotionScopePort brands, BrandAudienceSnapshotPort audiences,
+                                  BrandPromotionCostService costs, ObjectMapper json) {
         this.db = db;
         this.brands = brands;
         this.audiences = audiences;
@@ -135,7 +136,7 @@ public class BrandCouponServiceImpl implements BrandCouponService {
                         reply.put("reachable", eligible);
                         reply.put("skipped", snapshot.plannedCount() - eligible);
                         reply.put("skips", reasons.entrySet().stream()
-                                .map(entry -> new BrandAudienceSnapshotService.Skip(entry.getKey(), entry.getValue()))
+                                .map(entry -> new BrandAudienceSnapshotPort.Skip(entry.getKey(), entry.getValue()))
                                 .toList());
                         reply.put("expiresAt", snapshot.expiresAt().toString());
                         row.put("checkpoint_json", db.encode(Map.of("snapshotNo", snapshot.snapshotNo())));
@@ -342,8 +343,8 @@ public class BrandCouponServiceImpl implements BrandCouponService {
                 actor.managementNo(), actor.brandNo(), key)));
     }
 
-    private BrandAudienceSnapshotService.Context context(ActivityActor actor) {
-        return new BrandAudienceSnapshotService.Context(actor.tenantNo(), actor.managementNo(), actor.brandNo(),
+    private BrandAudienceSnapshotPort.Context context(ActivityActor actor) {
+        return new BrandAudienceSnapshotPort.Context(actor.tenantNo(), actor.managementNo(), actor.brandNo(),
                 actor.entityNo(), actor.actorNo());
     }
 

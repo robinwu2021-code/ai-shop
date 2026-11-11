@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
@@ -15,6 +16,7 @@ import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.trade.RetailChannelFulfillmentSealed;
 import ai.neargo.shop.trade.entity.OrdIndustryFulfillment;
 import ai.neargo.shop.trade.mapper.ChannelFulfillmentEvidenceMapper;
+import ai.neargo.shop.trade.port.IndustryChannelFulfillmentSourcePortImpl;
 import ai.neargo.shop.trade.mapper.TradeMappers;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
@@ -48,6 +50,7 @@ class ChannelFulfillmentEvidenceStoreTest {
     JdbcTemplate sql;
     TransactionTemplate tx;
     ChannelFulfillmentEvidenceStore evidence;
+    IndustryChannelFulfillmentSourcePort reader;
     final IndustryFulfillmentPort.Reference original =
             new IndustryFulfillmentPort.Reference(
                     new PricingSourceFactsPort.Scope("MAIN", "E", "S"),
@@ -136,9 +139,11 @@ class ChannelFulfillmentEvidenceStoreTest {
                         mock(DocumentNumberCoordinator.class),
                         manager,
                         Clock.systemUTC());
+        store.setOwnershipWrites(mock(StoreOwnershipWritePort.class));
         evidence =
                 new ChannelFulfillmentEvidenceStore(
                         store, session.getMapper(ChannelFulfillmentEvidenceMapper.class));
+        reader = new IndustryChannelFulfillmentSourcePortImpl(evidence);
         var allocation =
                 new IndustryChannelOrderPort.Allocation(
                         "REMOTE_LINE",
@@ -177,7 +182,7 @@ class ChannelFulfillmentEvidenceStoreTest {
                                                 inventory(),
                                                 Map.of(10L, BigDecimal.ZERO)))
                         .orElseThrow();
-        var proof = evidence.read(query("EVENT_F"));
+        var proof = reader.read(query("EVENT_F"));
         assertThat(sealed.importRef()).isEqualTo("IMPORT");
         assertThat(proof.data().importRef()).isEqualTo("IMPORT");
         assertThat(sealed.contentHash()).isEqualTo(proof.contentHash());
@@ -228,11 +233,11 @@ class ChannelFulfillmentEvidenceStoreTest {
                                 next,
                                 inventory(),
                                 Map.of(10L, new BigDecimal("0.5"))));
-        var firstProof = evidence.read(query("F1"));
-        var second = evidence.read(query("F2"));
+        var firstProof = reader.read(query("F1"));
+        var second = reader.read(query("F2"));
         assertThat(firstProof.data().lines().getFirst().quantity()).isEqualTo("0.5");
         assertThat(second.data().lines().getFirst().quantity()).isEqualTo("0.75");
-        assertThat(evidence.read(query("F1")).data()).isEqualTo(firstProof.data());
+        assertThat(reader.read(query("F1")).data()).isEqualTo(firstProof.data());
         assertThat(firstProof.data().stage()).isEqualTo("HANDED_OVER");
         assertThat(
                         sql.queryForObject(
@@ -270,7 +275,7 @@ class ChannelFulfillmentEvidenceStoreTest {
                                                     "primary commit failed");
                                         }))
                 .isInstanceOf(RuntimeException.class);
-        assertThatThrownBy(() -> evidence.read(query("F"))).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> reader.read(query("F"))).isInstanceOf(RuntimeException.class);
         assertThat(
                         sql.queryForObject(
                                 "SELECT COUNT(*) FROM ord_channel_fulfillment_evidence",
@@ -280,7 +285,7 @@ class ChannelFulfillmentEvidenceStoreTest {
 
     @Test
     void legacyTerminalWithoutSealedEvidenceAndForeignOriginalScopeRemainUnavailable() {
-        assertThatThrownBy(() -> evidence.read(query("OLD"))).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> reader.read(query("OLD"))).isInstanceOf(RuntimeException.class);
         var c = command("NEW", "0.5");
         tx.executeWithoutResult(
                 status ->
@@ -293,7 +298,7 @@ class ChannelFulfillmentEvidenceStoreTest {
                         "ORDER",
                         "F",
                         "1");
-        assertThatThrownBy(() -> evidence.read(foreign)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> reader.read(foreign)).isInstanceOf(RuntimeException.class);
     }
 
     @Test
@@ -306,6 +311,6 @@ class ChannelFulfillmentEvidenceStoreTest {
                                 c,
                                 inventory(),
                                 Map.of(10L, new BigDecimal("0.5"))));
-        assertThatThrownBy(() -> evidence.read(query("F"))).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> reader.read(query("F"))).isInstanceOf(RuntimeException.class);
     }
 }

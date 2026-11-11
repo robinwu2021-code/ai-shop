@@ -1,6 +1,6 @@
 package ai.neargo.shop.user;
 
-import ai.neargo.shop.platform.MarketPhonePolicyService;
+import ai.neargo.shop.spi.platform.SmsAdmissionPort;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -82,7 +82,7 @@ class ProfileAndPasswordTest {
                 mock(ai.neargo.shop.common.ratelimit.RateLimiter.class),
                 personService, "", fissionPort,
                 mock(ai.neargo.shop.user.service.OtpTestPhoneService.class),
-                mock(ai.neargo.shop.user.service.EmailOtpService.class), mock(MarketPhonePolicyService.class));
+                mock(ai.neargo.shop.user.service.EmailOtpService.class), mock(SmsAdmissionPort.class));
 
         auth.login(new ai.neargo.shop.user.service.AuthService.LoginCommand(
                 "WX_MINI", "code-1", null, null, null, Boolean.TRUE));

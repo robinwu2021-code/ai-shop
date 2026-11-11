@@ -95,7 +95,9 @@ final class AccessMysqlFixture implements AutoCloseable {
                         Pattern.compile("(?s)CREATE TABLE IF NOT EXISTS " + table + "\\s*\\(.*?\n\\);")
                                 .matcher(ddl);
                 assertTrue(m.find(), table);
-                jdbc.execute(m.group());
+                // Start the two ownership columns at their pre-V647 shape, then exercise
+                // the real migration below, including its generated unique claim fences.
+                jdbc.execute(m.group().replaceAll("(?m)^.*ownership_change_no[^\\n]*\\n", ""));
             }
             new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
                     new ClassPathResource("db/migration/V647__store_entity_claim.sql")).execute(ds);

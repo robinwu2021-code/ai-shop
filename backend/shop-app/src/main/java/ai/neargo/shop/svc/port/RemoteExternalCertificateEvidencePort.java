@@ -1,4 +1,4 @@
-package ai.neargo.shop.svc.client;
+package ai.neargo.shop.svc.port;
 
 import ai.neargo.shop.spi.entitlement.ExternalCertificateConsumptionPort;
 import ai.neargo.shop.spi.entitlement.ExternalCertificateEvidenceInternalApi;

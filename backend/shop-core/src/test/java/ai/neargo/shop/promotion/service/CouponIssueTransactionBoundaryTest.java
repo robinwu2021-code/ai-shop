@@ -1,5 +1,6 @@
 package ai.neargo.shop.promotion.service;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -78,10 +79,18 @@ class CouponIssueTransactionBoundaryTest {
         });
         var service = new PmtCouponServiceImpl(coupons, scopes, issued, batches, members, fence);
         service.setDocumentNumbers(numbers);
+        var ownership = mock(StoreOwnershipWritePort.class);
+        doAnswer(call -> {
+            assertTrue(TransactionSynchronizationManager.isActualTransactionActive(),
+                    "Ownership checks must join the source write transaction");
+            return null;
+        }).when(ownership).lockEntityAndCheck("MAIN", "ENTITY");
+        service.setOwnershipWrites(ownership);
 
         assertThrows(BizException.class, () -> service.issue("ENTITY", "COUPON", "ALL", "ACTOR"));
 
         verify(fence, times(2)).requireWritable("MAIN", SourceSystem.PMT, "COUPON", false);
+        verify(ownership, times(2)).lockEntityAndCheck("MAIN", "ENTITY");
         verifyNoInteractions(issued, batches);
     }
 }

@@ -7,7 +7,12 @@ import ai.neargo.inventory.client.InventoryProjection;
 import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.embed.InventoryErrors;
-import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
+import ai.neargo.shop.inventory.service.FoodStockProjectionService;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.Mapping;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.MappingResult;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.Receipt;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.Scope;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.Snapshot;
 import java.util.List;
 import java.util.function.Function;
 import org.springframework.beans.factory.ObjectProvider;
@@ -18,7 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Source mirror adapter: remote service only, with no inventory SQL or embedded fallback. */
 @Service
 @ConditionalOnInventory
-public class FoodStockProjectionServiceImpl implements InventoryFoodStockProjectionPort {
+public class FoodStockProjectionServiceImpl implements FoodStockProjectionService {
     private final ObjectProvider<InventoryReservationClient> clients;
     private final ObjectMapper json;
     public FoodStockProjectionServiceImpl(ObjectProvider<InventoryReservationClient> clients,ObjectMapper json){

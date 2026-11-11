@@ -7,6 +7,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.pay.MarketPort;
 import ai.neargo.shop.platform.impl.MarketPhonePolicyServiceImpl;
+import ai.neargo.shop.platform.port.SmsAdmissionPortImpl;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -27,12 +28,12 @@ class MarketPhonePolicyServiceTest {
         var s=service("CN");assertTrue(s.policy("TW").recordOnly());assertFalse(s.policy("TW").smsVerificationEnabled());
         assertDoesNotThrow(()->s.validateContact("TW","09 1234 5678 / 分机"));
         assertDoesNotThrow(()->s.validateContact("TW",null));
-        assertEquals(ErrorCode.SMS_VERIFICATION_DISABLED,assertThrows(BizException.class,()->s.requireSmsEnabled("+886900001111")).errorCode());
+        assertEquals(ErrorCode.SMS_VERIFICATION_DISABLED,assertThrows(BizException.class,()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+886900001111")).errorCode());
     }
     @Test void mainlandRetainsItsFormatAndSmsRules() {
         var s=service("CN");assertFalse(s.policy("CN").recordOnly());
         assertDoesNotThrow(()->s.validateContact("CN","13800138000"));assertThrows(BizException.class,()->s.validateContact("CN","000"));
-        assertDoesNotThrow(()->s.requireSmsEnabled("13800138000"));assertDoesNotThrow(()->s.requireSmsEnabled("+8613800138000"));
+        assertDoesNotThrow(()->new SmsAdmissionPortImpl(s).requireSmsEnabled("13800138000"));assertDoesNotThrow(()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+8613800138000"));
     }
     @Test void configurationIsRegionalAndCannotEnableAnUnconnectedSmsChannel() {
         var s=service("CN");s.save("TW",false,false,"ops");
@@ -43,10 +44,10 @@ class MarketPhonePolicyServiceTest {
     }
     @Test void aConnectedRegionStillRequiresAnExplicitSmsEnableAndDisablingRevokesIt() {
         var s=service("CN,TW");assertTrue(s.policy("TW").smsChannelReady());assertFalse(s.policy("TW").smsVerificationEnabled());
-        s.save("TW",true,true,"ops");assertDoesNotThrow(()->s.requireSmsEnabled("+886900001111"));
-        s.save("TW",true,false,"ops");assertThrows(BizException.class,()->s.requireSmsEnabled("+886900001111"));
+        s.save("TW",true,true,"ops");assertDoesNotThrow(()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+886900001111"));
+        s.save("TW",true,false,"ops");assertThrows(BizException.class,()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+886900001111"));
     }
     @Test void unknownRegionsAndUnmappedCallingPrefixesDoNotBecomeMainland() {
-        var s=service("CN");assertThrows(BizException.class,()->s.policy("XX"));assertThrows(BizException.class,()->s.requireSmsEnabled("+999123456"));
+        var s=service("CN");assertThrows(BizException.class,()->s.policy("XX"));assertThrows(BizException.class,()->new SmsAdmissionPortImpl(s).requireSmsEnabled("+999123456"));
     }
 }

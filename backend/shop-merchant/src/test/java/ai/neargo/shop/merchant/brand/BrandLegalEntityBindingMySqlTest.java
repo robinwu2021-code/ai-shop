@@ -4,7 +4,7 @@ import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import static org.assertj.core.api.Assertions.*;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.merchant.brand.impl.BrandServiceImpl;
-import ai.neargo.shop.merchant.service.impl.StoreOwnershipWritePortImpl;
+import ai.neargo.shop.merchant.port.StoreOwnershipWritePortImpl;
 import ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort;
 import java.nio.file.Files;
 import java.nio.file.Path;

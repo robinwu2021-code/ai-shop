@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.stock;
 
+import ai.neargo.shop.trade.port.FoodLocalDemandPlanAdapter;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.food.FoodLocalStockPort;

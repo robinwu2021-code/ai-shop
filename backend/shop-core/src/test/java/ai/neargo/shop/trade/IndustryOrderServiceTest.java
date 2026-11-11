@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Fulfillments;
@@ -122,10 +123,12 @@ class IndustryOrderServiceTest {
     @Mock PurchaseLimitGuard limits;
     @Mock CloseRuleService closeRules;
     @Mock PlatformTransactionManager manager;
+    @Mock StoreOwnershipWritePort ownershipWrites;
     @InjectMocks IndustryOrderServiceImpl service;
 
     @BeforeEach
     void authority() {
+        service.setOwnershipWrites(ownershipWrites);
         ReflectionTestUtils.setField(service, "stockAuthority", "INVENTORY");
         lenient().when(intents.updateById(any(OrdCreateIntent.class))).thenReturn(1);
         lenient().when(bindings.updateById(any(OrdIndustryOrderSource.class))).thenReturn(1);

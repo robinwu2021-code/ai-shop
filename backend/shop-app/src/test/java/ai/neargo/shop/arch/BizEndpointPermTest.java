@@ -165,6 +165,16 @@ class BizEndpointPermTest {
     private static final Map<String, String> REQUIRED =
             new LinkedHashMap<>() {
                 {
+                    // Entity-plan purchases keep the existing store-admin guard; resource ownership remains in the service.
+                    put("/biz/plan/purchases", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/offers", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}/cancel", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}/cash-refunds", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}/claims", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}/evidence", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}/evidence/content", BizPerms.STORE_ADMIN);
+                    put("/biz/plan/purchases/{orderNo}/evidence/url", BizPerms.STORE_ADMIN);
                     // Method-specific pricing read/publish guards remain on each handler.
                     put("/biz/inventory/items/{item}/valuation", BizPerms.STOCK);
                     put("/biz/pricing/fee-rules/{ruleNo}", BizPerms.PRICING_CONFIG_PUBLISH);
@@ -1011,18 +1021,18 @@ class BizEndpointPermTest {
      *    每个方法体内调 context.buyer(store, "commerce:…")，宿主按实时会话与门店岗位判权，判不过 403。
      * 下面的 commerceDecisionsAreEnforced 逐条核对代码里真的有这道判权。
      */
-    private static final Map<String, String> FOUNDATION_READS = Map.of(
-            "/biz/merchant/store-setup", "@perm.merchantAccount()",
-            "/biz/business-types", "@perm.merchantAccount()",
-            "/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()",
-            // 问题回报（TDD-商户App问题回报与版本）：账号级，店员一个 biz 码都没有也要能报，「选不了店」本身就是要报的问题
-            "/biz/feedback", "@perm.merchantAccount()",
-            "/biz/feedback/mine", "@perm.merchantAccount()",
-            "/biz/business-types/{typeCode}/feature-matrix", "@perm.merchantAccount()",
-            "/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)",
-            "/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)",
-            "/biz/stores/{storeNo}/entitlements", "@perm.memberOfSelectedStore(#storeNo)",
-            "/biz/stores/{storeNo}/features", "@perm.memberOfSelectedStore(#storeNo)");
+    private static final Map<String, String> FOUNDATION_READS = Map.ofEntries(
+            Map.entry("/biz/merchant/store-setup", "@perm.merchantAccount()"),
+            Map.entry("/biz/merchant/store-creation-context", "@perm.merchantAccount()"),
+            Map.entry("/biz/business-types", "@perm.merchantAccount()"),
+            Map.entry("/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()"),
+            Map.entry("/biz/feedback", "@perm.merchantAccount()"),
+            Map.entry("/biz/feedback/mine", "@perm.merchantAccount()"),
+            Map.entry("/biz/business-types/{typeCode}/feature-matrix", "@perm.merchantAccount()"),
+            Map.entry("/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)"),
+            Map.entry("/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)"),
+            Map.entry("/biz/stores/{storeNo}/entitlements", "@perm.memberOfSelectedStore(#storeNo)"),
+            Map.entry("/biz/stores/{storeNo}/features", "@perm.memberOfSelectedStore(#storeNo)"));
 
     private static final Set<String> END_ENTRY_DUTY =
             Set.of("/biz/stores/{storeNo}/end-sessions", "/biz/stores/{storeNo}/end-access");

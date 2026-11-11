@@ -12,9 +12,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.member.service.BrandAudienceSnapshotService;
 import ai.neargo.shop.member.service.MemberScopeRepository;
 import ai.neargo.shop.member.service.impl.BrandAudienceSnapshotServiceImpl;
+import ai.neargo.shop.member.port.BrandAudienceSnapshotPortImpl;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
 import ai.neargo.shop.pay.entitlement.dto.CatalogViews.PublishedVersionView;
 import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews.BatchView;
@@ -25,7 +25,7 @@ import ai.neargo.shop.payclient.EntitlementBatchAppService;
 import ai.neargo.shop.payclient.EntitlementManagementAppService;
 import ai.neargo.shop.promotion.cost.BrandPromotionCostService;
 import ai.neargo.shop.promotion.dto.ActivityActor;
-import ai.neargo.shop.promotion.impl.BrandCouponApplicationServiceImpl;
+import ai.neargo.shop.merchantbridge.impl.BrandCouponApplicationServiceImpl;
 import ai.neargo.shop.promotion.port.BrandCouponSourcePortImpl;
 import ai.neargo.shop.promotion.service.BrandCouponService;
 import ai.neargo.shop.promotion.service.impl.BrandCouponServiceImpl;
@@ -251,8 +251,8 @@ class BrandCouponApplicationMysqlTest {
                 var users = mock(UserScopeFactsPort.class);
                 when(users.findActive(anyString(), anyString())).thenAnswer(call ->
                         Optional.of(new UserScopeFactsPort.ActiveUser(call.getArgument(1), "Account")));
-                BrandAudienceSnapshotService audiences = new BrandAudienceSnapshotServiceImpl(db, identityPort,
-                        users, brands, json);
+                var audienceService = new BrandAudienceSnapshotServiceImpl(db, identityPort, users, brands, json);
+                var audiences = new BrandAudienceSnapshotPortImpl(audienceService);
                 var costs = mock(BrandPromotionCostService.class);
                 core = new BrandCouponServiceImpl(db, brands, audiences, costs, json);
                 port = new BrandCouponSourcePortImpl(core, audiences, brands, json);

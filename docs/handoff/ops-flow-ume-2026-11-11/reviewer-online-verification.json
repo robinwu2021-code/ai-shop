@@ -1,0 +1,17 @@
+{
+  "environment": "UME 166",
+  "observedOn": "2026-11-11",
+  "surface": "Google Chrome /ops-shop/merchants/",
+  "reviewer": "robin@neargo.ai",
+  "login": "user completed sign-in; authenticated reviewer shown in application",
+  "controlledApplication": "MA261111YV74FRPTR6",
+  "applicantOperator": "ST-NEARA",
+  "actions": [
+    "reviewer accepted controlled application",
+    "reviewer rejected old test-only application to retain history and allow resubmission with complete initial store profile"
+  ],
+  "observedStatus": "REJECTED",
+  "reason": "内部验收旧申请未含完整门店资料，按新模型补齐后重新提交。TEST ONLY，不送真实支付渠道。",
+  "scope": "Independent rejection flow only. Complete profile approval, store provisioning and FREE initialization await the new deployment.",
+  "credentialHandling": "No credential recorded, changed, reset or extracted."
+}

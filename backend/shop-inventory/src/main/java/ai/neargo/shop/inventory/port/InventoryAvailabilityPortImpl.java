@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.port;
 
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.inventory.domain.entity.InvItem;
 import ai.neargo.inventory.domain.entity.InvItemRef;
 import ai.neargo.inventory.domain.entity.InvLocation;
@@ -28,6 +29,7 @@ import java.util.Objects;
  * No projection writes, default locations, missing-row zeros or legacy integer sellable fallbacks.
  */
 @Component
+@ConditionalOnInventory
 public class InventoryAvailabilityPortImpl implements InventoryAvailabilityPort {
     private final InventoryAclService acl;
     private final OwnerMapper owners;

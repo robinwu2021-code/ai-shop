@@ -1,6 +1,6 @@
 package ai.neargo.shop.commercebridge;
 
-import ai.neargo.shop.platform.MarketPhonePolicyService;
+import ai.neargo.shop.spi.platform.SmsAdmissionPort;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -15,7 +15,7 @@ import ai.neargo.shop.common.ratelimit.InMemoryRateLimiter;
 import ai.neargo.shop.common.ratelimit.OtpSendGuard;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
 import ai.neargo.shop.merchant.service.LoginIdentityService;
-import ai.neargo.shop.merchantbridge.LoginIdentityServiceImpl;
+import ai.neargo.shop.merchantbridge.impl.LoginIdentityServiceImpl;
 import ai.neargo.shop.spi.marketing.FissionPort;
 import ai.neargo.shop.spi.notify.*;
 import ai.neargo.shop.spi.user.*;
@@ -65,7 +65,7 @@ class BizIdentityNativeMysqlTest {
             auth = new AuthServiceImpl(db.mybatis.getMapper(UserMapper.class), db.mybatis.getMapper(IdentityMapper.class),
                     mock(WxPhonePort.class), mock(MpSessionService.class), tokens, otp, guard, mock(SmsPort.class),
                     mock(WxAuthPort.class), new PasswordHasher(), limiter, mock(PersonService.class), "",
-                    mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(MarketPhonePolicyService.class));
+                    mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(SmsAdmissionPort.class));
             var ticketService = new LoginTicketServiceImpl(db.jdbc, db.manager, Duration.ofMinutes(5));
             identities = new LoginIdentityServiceImpl(auth, ticketService, tokens, mock(LoginAuditor.class),
                     db.mybatis.getMapper(MchAccountMapper.class), db.mybatis.getMapper(MchEntityMapper.class),

@@ -1,5 +1,7 @@
 package ai.neargo.shop.svc.client;
 
+import ai.neargo.shop.svc.port.RemoteExternalCertificateEvidencePort;
+
 import ai.neargo.shop.spi.entitlement.ExternalCertificateEvidenceInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;

@@ -1,7 +1,7 @@
 package ai.neargo.shop.user.service.impl;
 
 import ai.neargo.shop.spi.notify.SmsPort;
-import ai.neargo.shop.platform.MarketPhonePolicyService;
+import ai.neargo.shop.spi.platform.SmsAdmissionPort;
 import ai.neargo.shop.common.ratelimit.OtpSendGuard;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.MpSessionService;
@@ -110,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final OtpSendGuard sendGuard;
     private final SmsPort smsPort;
-    private final MarketPhonePolicyService phonePolicies;
+    private final SmsAdmissionPort phonePolicies;
     private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
     /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
     private final ai.neargo.shop.user.service.PersonService personService;
@@ -135,7 +135,7 @@ public class AuthServiceImpl implements AuthService {
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
                            OtpTestPhoneService testPhoneService,
                            ai.neargo.shop.user.service.EmailOtpService emailOtpService,
-                           MarketPhonePolicyService phonePolicies) {
+                           SmsAdmissionPort phonePolicies) {
         this.phonePolicies = phonePolicies;
         this.wxPhonePort = wxPhonePort;
         this.mpSessions = mpSessions;

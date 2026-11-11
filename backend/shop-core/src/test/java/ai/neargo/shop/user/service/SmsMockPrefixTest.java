@@ -1,6 +1,6 @@
 package ai.neargo.shop.user.service;
 
-import ai.neargo.shop.platform.MarketPhonePolicyService;
+import ai.neargo.shop.spi.platform.SmsAdmissionPort;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -41,7 +41,7 @@ class SmsMockPrefixTest {
                 mock(WxPhonePort.class), mock(MpSessionService.class),
                 new MemoryTokenStore(Duration.ofHours(1)), store, mock(OtpSendGuard.class), sms,
                 mock(WxAuthPort.class), mock(PasswordHasher.class), limiter, mock(PersonService.class), "",
-                mock(FissionPort.class), mock(OtpTestPhoneService.class), mock(EmailOtpService.class), mock(MarketPhonePolicyService.class));
+                mock(FissionPort.class), mock(OtpTestPhoneService.class), mock(EmailOtpService.class), mock(SmsAdmissionPort.class));
         auth.setMockSmsPrefixes(mockPrefixes);
         return auth;
     }

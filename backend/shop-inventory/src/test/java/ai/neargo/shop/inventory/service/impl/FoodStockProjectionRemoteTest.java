@@ -7,6 +7,7 @@ import ai.neargo.inventory.client.CircuitBreaker;
 import ai.neargo.inventory.client.InventoryProjectionApi;
 import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.inventory.port.FoodStockProjectionPortImpl;
 import ai.neargo.shop.spi.food.FoodStockFingerprint;
 import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.*;
 import java.math.BigDecimal;
@@ -24,7 +25,7 @@ class FoodStockProjectionRemoteTest {
         var json=JsonMapper.builder().build();var api=mock(InventoryProjectionApi.class);
         var client=InventoryReservationClient.of(null,null,null,api,new CircuitBreaker(3,Duration.ofSeconds(5),Clock.systemUTC()));
         var beans=new DefaultListableBeanFactory();beans.registerSingleton("inventoryClient",client);
-        var service=new FoodStockProjectionServiceImpl(beans.getBeanProvider(InventoryReservationClient.class),json);
+        var service=new FoodStockProjectionPortImpl(new FoodStockProjectionServiceImpl(beans.getBeanProvider(InventoryReservationClient.class),json));
         var s=new Scope("E","S");var p=new Snapshot("I","KG","TRACKED","ACTIVE",new BigDecimal("10.000000"),
                 new BigDecimal("2.000000"),1,LocalDateTime.of(2026,10,30,8,0),null,null,null);
         String h=FoodStockFingerprint.sha256(json.writeValueAsString(new Object[]{s,1L,p}));
