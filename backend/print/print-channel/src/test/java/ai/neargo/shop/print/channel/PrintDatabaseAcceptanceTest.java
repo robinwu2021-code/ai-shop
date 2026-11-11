@@ -26,6 +26,7 @@ import ai.neargo.shop.printing.center.support.*;
 import ai.neargo.shop.printing.center.template.PrintSceneRegistry;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -614,6 +615,7 @@ class PrintDatabaseAcceptanceTest {
         var simulator = context.getBean(PrintSimulationFacade.class);
         var jobs = context.getBean(JobMapper.class);
         long before = jobs.selectCount(null);
+        var simulationNos = new ArrayList<String>();
         for (var fixture : SimulationFixtureCode.values()) {
             var result =
                     simulator.create(
@@ -631,36 +633,50 @@ class PrintDatabaseAcceptanceTest {
                                     new PrintOutputOptions(true, PdfOutputProfile.ORIGINAL_ROLL)),
                             actor("sim-" + fixture));
             assertNotNull(result.targetNo());
+            simulationNos.add(result.targetNo());
         }
-        var report =
-                context.getBean(SimulationRunner.class)
-                        .runNext(new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance"));
-        assertEquals(0, report.failed());
-        assertEquals(SimulationFixtureCode.values().length, report.succeeded());
-        int generated = 0;
-        for (int tick = 0;
-                tick < SimulationFixtureCode.values().length
-                        && generated < SimulationFixtureCode.values().length;
-                tick++) {
-            var exported =
-                    context.getBean(PrintExportWorker.class)
-                            .generateNext(
-                                    new PrintWorkerBudget(
-                                            100, Duration.ofSeconds(30), "acceptance"));
-            assertEquals(0, exported.failed());
-            generated += exported.succeeded();
-        }
-        assertEquals(SimulationFixtureCode.values().length, generated);
+        var runner = context.getBean(SimulationRunner.class);
+        var exporter = context.getBean(PrintExportWorker.class);
+        var budget = new PrintWorkerBudget(100, Duration.ofSeconds(30), "acceptance");
+        assertEquals(0, runner.runNext(budget).failed());
+        assertEquals(0, exporter.generateNext(budget).failed());
+
+        // Creation now starts artifact work directly after commit. Recovery reports count only
+        // work left for that scan; the durable outcomes must still cover all nine fixtures.
+        var simulations = context.getBean(PrnSimulationRunMapper.class);
+        var simulationQuery = new QueryWrapper<PrnSimulationRun>()
+                .eq("tenant_no", "T1").in("simulation_no", simulationNos);
+        var completed = simulations.selectList(simulationQuery);
+        assertEquals(SimulationFixtureCode.values().length, completed.size());
+        completed.forEach(row -> assertEquals("PASSED", row.getStatus()));
+
+        var exports = context.getBean(PrnExportTaskMapper.class);
+        var exportQuery = new QueryWrapper<PrnExportTask>()
+                .eq("tenant_no", "T1").eq("source_type", "SIMULATION")
+                .in("source_no", simulationNos);
+        var generated = exports.selectList(exportQuery);
+        assertEquals(SimulationFixtureCode.values().length, generated.size());
+        assertEquals(new HashSet<>(simulationNos),
+                new HashSet<>(generated.stream().map(PrnExportTask::getSourceNo).toList()));
+        generated.forEach(row -> assertEquals("READY", row.getStatus()));
+
+        assertEquals(new PrintWorkReport(0, 0, 0, false), runner.runNext(budget));
+        assertEquals(new PrintWorkReport(0, 0, 0, false), exporter.generateNext(budget));
+        completed.forEach(row -> {
+            var unchanged = simulations.selectById(row.getId());
+            assertEquals("PASSED", unchanged.getStatus());
+            assertEquals(row.getRevision(), unchanged.getRevision());
+            assertEquals(row.getActualResults(), unchanged.getActualResults());
+        });
+        generated.forEach(row -> {
+            var unchanged = exports.selectById(row.getId());
+            assertEquals("READY", unchanged.getStatus());
+            assertEquals(row.getRevision(), unchanged.getRevision());
+            assertEquals(row.getContentHash(), unchanged.getContentHash());
+        });
+        assertEquals((long) SimulationFixtureCode.values().length, simulations.selectCount(simulationQuery));
+        assertEquals((long) SimulationFixtureCode.values().length, exports.selectCount(exportQuery));
         assertEquals(before, jobs.selectCount(null));
-        assertTrue(
-                context
-                        .getBean(PrnExportTaskMapper.class)
-                        .selectList(
-                                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<
-                                                PrnExportTask>()
-                                        .eq("tenant_no", "T1"))
-                        .stream()
-                        .allMatch(e -> "READY".equals(e.getStatus())));
     }
 
     @Test

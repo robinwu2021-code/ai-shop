@@ -87,6 +87,7 @@ class CommerceOfflineWiringTest {
                         CommerceEventPersistencePort.class,
                         () -> unused(CommerceEventPersistencePort.class))
                 .withBean(PlatformPaymentPort.class, () -> unused(PlatformPaymentPort.class))
+                .withBean(OfflineCashRefundPort.class, () -> unused(OfflineCashRefundPort.class))
                 .withBean(HardwareInventoryPort.class, () -> unused(HardwareInventoryPort.class))
                 .withBean(OfflineRepository.class, () -> unused(OfflineRepository.class));
     }
