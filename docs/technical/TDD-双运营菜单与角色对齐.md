@@ -91,3 +91,33 @@ P2：支付未接通的资金结算页按真实后端逐项上线，不能扩大
 - 已保留其他工作区的未提交改动；上述首批范围之外的注册账号、连锁、三业态工作区等仍按§7推进。
 
 完整产品目录、中文短名、英文名称及目标角色矩阵统一见 [双语菜单与角色矩阵](reference/运营端-双语菜单与角色矩阵.md)；本TDD记录实现范围与发布事实。
+
+## 9. 第二批：按菜单权限矩阵-优化版合并菜单（2026-11-11）
+
+依据：[Shop 菜单权限矩阵-优化版](reference/运营端-shop菜单权限矩阵-优化版.md) §2、[支付菜单权限矩阵-优化版](reference/运营端-支付菜单权限矩阵-优化版.md) §2。
+本批只动**菜单结构**（一级归属、分组、名称、排序）；矩阵里的授权调整（新岗位、拆码、收回）不在本批，见两份矩阵的落地清单。
+
+### 9.1 计划与结果
+
+- [x] ai-shop 一级 16 → 13：会员管理、积分运营并入会员营销；消息客服并入内容管理并改名「内容客服」。
+- [x] 经营范围四项（门店行业/行业准入/经营授权/范围开关）由系统设置迁商品资料；准入押金由商户中心迁经营财务「保证金」组；营销广播迁会员营销「活动」组。
+- [x] 撤售后治理下重复的「退款分账」：V658 先把只挂在售后点上的角色授权复制到经营财务同名点，再删售后点（V392 同一做法）。
+- [x] 改名：经营服务「商品分类」→「服务分类」（与商品资料重名）；「当面付禁」→「限付类目」。分组按入驻/档案/信用/展示获客/诊断等重排。
+- [x] V658：按冻结 point_code 更新 MENU 点；ACTION 点按「同名分区优先」重算归属（修正 merchant:* 操作点曾挂在经营服务、commerce/product 操作点挂在系统设置）；三个清空的一级停用。
+- [x] near-pay：ME03、ME04 同归「进件审核」；SY06 请求日志随 SY05 归渠道管理；完整版首页改 TR01。live 白名单不变。
+- [ ] 暂缓：订单履约「收款核对/掉单补偿」（页面内有对账代码，下线需随 near-pay 接管一起做）；消息五个渠道叶合并为页内 Tab（要改页面）；风控改名「审核风控」（审核待办未建前不改名）；near-pay TR04–07 移出支付交易（待定积分事实源）。
+
+### 9.2 约束与守卫
+
+- 不改 perm_code / 门禁 / 就绪度；`nav.test.ts` AC2 逐角色比对可见功能点集合，与合并前基线完全一致（无新增、无丢失）。
+- `nav-migration.test.ts` 改为按 V657→V658 顺序叠加后与 `nav.ts` 逐点对齐；V658 的 DELETE 只允许指向 `OPS_AFTERSALE__TAB_REFUND_BACK`，唯一一条 `sys_role_point` 写入是授权并入且在删除之前。
+- 冻结表只删售后那条，财务那条因 href 已唯一改为按 href 做键，码不变。
+- `gen-perm-seed.mjs` 的 `prefixToFn` 改为同名分区优先；`--matrix`、`--doc`、`gen-ui-catalog.py`、`gen-ops-feature-list.py` 产物已重跑。
+
+### 9.3 验证
+
+- ai-shop ops-web：`tsc --noEmit` 通过；`vitest run` 988 通过、4 失败 —— 4 条（design-tokens ×3、page-copy iam ×1）在基线 `ad86c04f6` 上同样失败，与本批无关。
+- 文档/契约闸：ui-catalog、ops-feature-list、V2 文档、ops-contract、原型总览 `--check` 全过；ops-orphan 与 `gen-test-schema.py`（H2 不支持 JSON_LENGTH）的报错与基线相同。
+- 浏览器（mock，超管）：13 个一级；`/points/budget`→会员营销、`/merchants?tab=admission`→经营财务、`/system?tab=industry`→商品资料、`/messages`→内容客服、`/messages?tab=broadcast`→会员营销、售后治理不再有退款分账。
+- near-pay：`npm run check` 320 通过 / 1 跳过；live 构建仍只导出 7 个业务路由。
+- **未做**：V658 未在 MySQL 9 实库演练；`backend/src/test/resources/schema-test.sql` 因生成器既有报错未重生（它连 V657 也未包含）。发布前按 §7.2 顺序先在隔离库演练 V658 并核对授权快照。

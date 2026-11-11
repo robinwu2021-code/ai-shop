@@ -180,6 +180,14 @@ secs.forEach(s => {
   const fc = `OPS_${s.key.toUpperCase()}`;
   for (const m of s.modules) prefixToFn[m] = fc;
 });
+/*
+ * 一个前缀被多个 section 认领时（跨分区深链要求叶子前缀在本分区 modules 里），
+ * 「后写者胜」会把操作点挂到最后那个借道的分区：merchant:* 的操作点曾因经营服务
+ * 借了 merchant 前缀而落在 OPS_COMMERCE。**同名 section 优先**，没有同名的才按后写者。
+ */
+secs.forEach(s => {
+  if (s.modules.includes(s.key)) prefixToFn[s.key] = `OPS_${s.key.toUpperCase()}`;
+});
 let actionSeq = 0;
 for (const ui of Object.keys(map)) {
   if (menuPerms.has(ui)) continue;

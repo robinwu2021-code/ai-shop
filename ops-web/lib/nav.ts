@@ -101,44 +101,31 @@ export const NAV: NavSection[] = [
     key: "merchant", label: "商户中心", icon: "Store", modules: ["merchant", "store"], href: "/merchants",
     match: ["/merchants", "/stores"],
     children: [
-      { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻资质", matrix: "P-11.1", ready: true },
-      { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻资质", matrix: "P-11.1", ready: true },
-      // 紧挨着商家档案：同一份 merchant:merchant:read，且门店是主体的下一层 ——
-      // 从「这家商家」翻到「他的哪家店」是一次连续动作，中间隔着类目授权会断掉
-      { href: "/merchants?tab=stores", label: "门店档案", perm: "merchant:merchant:read", group: "入驻资质", matrix: "P-11.2" , ready: true },
-      { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "入驻资质", matrix: "P-11.1" , ready: true },
-      // 上架的「资质过期」「类目授权」两个闸门读的就是这张表 ——
-      // 后端三个接口早已实现，此前**前端零调用**，于是表恒空、闸门从不触发
-      { href: "/merchants?tab=qualifications", label: "资质档案", perm: "merchant:category:read", group: "入驻资质", matrix: "P-11.1" , ready: true },
-      // 准入与保证金：页面早就有这个 tab，菜单里一直漏登记 —— 于是它只能靠手改 URL 进去。
-      // 放在本组末尾而不是 verify 后面：同 group 的叶子必须相邻（nav.test.ts 锁这条）
-      // 用专属的 admission 码而不是 merchant:merchant:read：Perms.ROLE_PERMS 把这两个码
-      // 给了**财务**，用商家读权限的话正好反过来 —— 财务看不到，商家运营却看得到。
-      // （该码 2026-08-12 才补进 UI_PERM_MAP；此前未登记，can() 会判所有人无权限）
-      { href: "/merchants?tab=admission", label: "准入押金", perm: "merchant:admission:read", group: "入驻资质", matrix: "P-11.1" , ready: true },
-      // 进件看板（WS-C）：跨商家看「谁卡在收款上」。与准入同一拨人管（都决定这家店
-      // 能不能真正把生意做成），复用 merchant:admission:read，不新增权限码。
-      // 紧挨准入：同 group 的叶子必须相邻（nav.test.ts 锁这条）。
-      { href: "/merchants?tab=onboarding", label: "进件看板", perm: "merchant:admission:read", group: "入驻资质", matrix: "P-11.1", ready: true },
-      // 建平台自营商家：**刻意与「入驻审核」放在同一组、紧挨进件看板**。
-      // 它是入驻链路上的一条岔路（平台自己那条），不是另一件事 ——
-      // 放到别处会让人以为「建自营」和「建商家」是两套模型。
-      // 码单列且不配给任何角色，于是只有超管点得动，见 Perms.MERCHANT_SELFOP_CREATE。
-      { href: "/merchants?tab=self-operated", label: "自营建档", perm: "merchant:selfop:create", group: "入驻资质", matrix: "P-11.1", ready: true },
+      // 2026-11-11 菜单权限矩阵-优化版：按「入驻 → 档案 → 信用 → 展示获客 → 诊断」分组；
+      // 准入押金只有财务看得到，迁到经营财务「保证金」组（深链与 point_code 不变）。
+      { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻", matrix: "P-11.1", ready: true },
       // 代商家进件：BD 在店里替老板填完，落进**同一条审核队列**。
-      // 与上面那条刻意分码：那个回答「平台要不要自己下场经营」（只给超管），
+      // 与「自营建档」刻意分码：那个回答「平台要不要自己下场经营」（只给超管），
       // 这个回答「谁来替第三方录资料」（要给 BD）。合成一个码的话，
       // 要么 BD 顺手拿到建平台自营主体的能力（放宽且不报错），要么这一期等于没做。
-      { href: "/merchants?tab=on-behalf", label: "代办入驻", perm: "merchant:apply:onbehalf", group: "入驻资质", matrix: "P-11.1", ready: true },
-      // 用 mode:read 而不是 merchant:read：这张表答的是「哪些店按自营结算」，
-      // 与门店经营模式读的是同一个字段、同一批人在处置。
-      // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 而这是一张税务表，
-      // 财务本该是主要读者。给 FINANCE 加这个码要动 ROLE_PERMS 与权限矩阵基线，
-      // 属于单独一次改动，不混在本次里做。
-      { href: "/merchants?tab=mode-risk", label: "自营风险", perm: "merchant:mode:read", group: "入驻资质", matrix: "P-11.1" , ready: true },
-      { href: "/merchants?tab=verify", label: "认证管理", perm: "merchant:verify:grant", group: "信用处置", matrix: "P-11.1" , ready: true },
-      { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用处置", matrix: "P-11.1" , ready: true },
-      { href: "/merchants?tab=ban", label: "违规处置", perm: "merchant:merchant:ban", group: "信用处置", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=on-behalf", label: "代办入驻", perm: "merchant:apply:onbehalf", group: "入驻", matrix: "P-11.1", ready: true },
+      // 建平台自营商家：入驻链路上的一条岔路（平台自己那条），不是另一件事。
+      // 码单列且不配给任何角色，于是只有超管点得动，见 Perms.MERCHANT_SELFOP_CREATE。
+      { href: "/merchants?tab=self-operated", label: "自营建档", perm: "merchant:selfop:create", group: "入驻", matrix: "P-11.1", ready: true },
+      // 进件看板（WS-C）：跨商家看「谁卡在收款上」。复用 merchant:admission:read，不新增权限码。
+      { href: "/merchants?tab=onboarding", label: "进件看板", perm: "merchant:admission:read", group: "入驻", matrix: "P-11.1", ready: true },
+      { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "档案", matrix: "P-11.1", ready: true },
+      // 紧挨着商家档案：同一份 merchant:merchant:read，且门店是主体的下一层
+      { href: "/merchants?tab=stores", label: "门店档案", perm: "merchant:merchant:read", group: "档案", matrix: "P-11.2" , ready: true },
+      // 上架的「资质过期」「类目授权」两个闸门读的就是这张表
+      { href: "/merchants?tab=qualifications", label: "资质档案", perm: "merchant:category:read", group: "档案", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "档案", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=verify", label: "认证管理", perm: "merchant:verify:grant", group: "档案", matrix: "P-11.1" , ready: true },
+      // 用 mode:read 而不是 merchant:read：这张表答的是「哪些店按自营结算」。
+      // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 给 FINANCE 加码属于授权改动，不混在菜单调整里。
+      { href: "/merchants?tab=mode-risk", label: "自营风险", perm: "merchant:mode:read", group: "档案", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=ban", label: "违规处置", perm: "merchant:merchant:ban", group: "信用", matrix: "P-11.1" , ready: true },
       // ── 经营诊断 ────────────────────────────────────────────────────────
       // 链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账。
       //
@@ -151,19 +138,19 @@ export const NAV: NavSection[] = [
       //
       // perm 与后端 OpsMerchantChainController 判的是同一个码 ——
       // 界面闸门比后端松就是「菜单点得进、进去一片 403」。
-      { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "经营诊断", matrix: "P-11.1", ready: true , gated: "shop.inventory.enabled"},
+      { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "诊断", matrix: "P-11.1", ready: true , gated: "shop.inventory.enabled"},
 
 
       // ── P-10 门店主页治理（一期主获客路径）──────────────────────────────────
-      { href: "/stores", label: "店招审核", perm: "store:page:audit", group: "展示管理", matrix: "P-10.1", ready: true },
+      { href: "/stores", label: "店招审核", perm: "store:page:audit", group: "展示获客", matrix: "P-10.1", ready: true },
       // 主页模板配置依赖 C 端门店主页（C-ST-01）定稿，先做模板等于两头返工
-      { href: "/stores?tab=template", label: "主页模板", perm: "store:page:read", group: "展示管理", matrix: "P-10.1" },
-      { href: "/stores?tab=qrcode", label: "门店码", perm: "store:qrcode:export", group: "获客", matrix: "P-10.1", ready: true },
+      { href: "/stores?tab=template", label: "主页模板", perm: "store:page:read", group: "展示获客", matrix: "P-10.1" },
+      { href: "/stores?tab=qrcode", label: "门店码", perm: "store:qrcode:export", group: "展示获客", matrix: "P-10.1", ready: true },
       // 用 store:page:audit 而不是同组其余叶子的 store:page:read：后者在 UI_PERM_MAP 里是
       // UNIMPLEMENTED（判所有人无权限，超管也不例外），而这一块 V290 之后后端是真的了。
       // 不把 store:page:read 整个放开，是因为「主页模板配置」还挂在它上面且后端仍然没有 ——
       // 放开会多出一个点进去 404 的死按钮。后端端点判的也是 store:page:audit，两边对齐。
-      { href: "/stores?tab=effect", label: "获客效果", perm: "store:page:audit", group: "获客", matrix: "P-10.1", ready: true },
+      { href: "/stores?tab=effect", label: "获客效果", perm: "store:page:audit", group: "展示获客", matrix: "P-10.1", ready: true },
 
     ],
   },
@@ -171,31 +158,38 @@ export const NAV: NavSection[] = [
 
   // ── P-3 商品与类目 ──────────────────────────────────────────────────────
   {
-    key: "product", label: "商品资料", icon: "Package", modules: ["product"], href: "/products",
+    key: "product", label: "商品资料", icon: "Package", modules: ["product", "system", "commerce"], href: "/products",
     match: ["/products"],
     children: [
       // 属性模板（3.1.2）与类目多语言（3.1.3）是类目行上的字段，在类目详情里看，不单独成页。
-      { href: "/products", label: "商品分类", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
-      // 商品审核（3.2.2）= 商品池按「待审核」筛；多语言文案审核（3.2.5）与多市场定价（3.2.6）
-      // 都在商品抽屉里 —— 审文案时看不到商品本身是没法审的。
-      { href: "/products?tab=skus", label: "商品管理", perm: "product:sku:read", group: "商品", matrix: "P-3.2", ready: true },
-      // 待审队列单独成 tab（页面早有，菜单漏登记）。与「商品池与审核」的区别是
-      // 那边是全量池按状态筛，这边只有待审队列 —— 审核员日常只用这一个
-      { href: "/products?tab=audit", label: "商品审核", perm: "product:sku:audit", group: "商品", matrix: "P-3.2", ready: true },
-      { href: "/products?tab=stock", label: "预售额度", perm: "product:stock:update", group: "预售管理", matrix: "P-3.3", ready: true },
+      { href: "/products", label: "商品分类", perm: "product:category:read", group: "基础资料", matrix: "P-3.1", ready: true },
       // 规格模板（P-3.4 / E27）。**归类目权限不归商品权限**：模板按品类预置，
       // 与类目树、资质码字典是同一拨人在配。此前 B-4.4 商家能选模板而平台没有维护入口 ——
       // 三端联动表把这条记成「❌ 断裂：模板是死的」
-      { href: "/products?tab=templates", label: "规格模板", perm: "product:category:read", group: "规格模板", matrix: "P-3.4", ready: true },
+      { href: "/products?tab=templates", label: "规格模板", perm: "product:category:read", group: "基础资料", matrix: "P-3.4", ready: true },
       // 规格库（V195 四层模型的维护面）。**与类目分成两件事**：类目回答「卖什么」，
       // 这里回答「有哪些规格」，类目 × 规格回答「谁用哪些」——
       // 此前三件事挤在「规格模板维护」一个页面里，而那张模板表已经退化成兜底。
       //
       // 通用与专用分成两页而不是一页两个筛选：通用维度改一条**全站生效**，
       // 专用维度只影响一个类目 —— 混在一起，改的人不知道自己动了多大范围。
-      { href: "/products?tab=spec-common", label: "通用规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
-      { href: "/products?tab=spec-special", label: "专用规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
-      { href: "/products?tab=category-spec", label: "类目规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
+      { href: "/products?tab=spec-common", label: "通用规格", perm: "product:spec:read", group: "基础资料", matrix: "P-3.4", ready: true },
+      { href: "/products?tab=spec-special", label: "专用规格", perm: "product:spec:read", group: "基础资料", matrix: "P-3.4", ready: true },
+      { href: "/products?tab=category-spec", label: "类目规格", perm: "product:spec:read", group: "基础资料", matrix: "P-3.4", ready: true },
+      // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
+      // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
+      // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面
+      { href: "/products?tab=spu-std", label: "标准品库", perm: "product:std:read", group: "基础资料", matrix: "P-3.5", ready: true },
+      // 主题分类（陈列，批 E）。**与商品、类目都分开**：类目是准入门槛、标准品是录入模板，
+      // 而主题只是「这周首页摆什么」—— 改动最频繁、后果最轻的一档，
+      // 挂在类目那个高门槛下面等于让一件运营日常天天找人开权限
+      { href: "/products?tab=topics", label: "主题分类", perm: "product:topic:read", group: "基础资料", matrix: "P-3.6", ready: true },
+      // 禁售词（商品①）。**前置拦在提审之前** —— 此前只有事后驳回：
+      // 带违禁词的标题会进审核队列、占一个审核员的时间、再被驳回，
+      // 而商家隔几天才知道要改哪个字。
+      // 归「类目」组：与类目策略同一批人管（都是「平台定规则」那一类），
+      // 且同 group 的叶子必须相邻。
+      { href: "/products?tab=banned-word", label: "建品规则", perm: "product:category:read", group: "基础资料", matrix: "P-3.1", ready: true },
       // 类目策略两条：权限跟**类目**走不跟规格走 —— 改「能不能当面付」与改规格绑定
       // 不是同一类决定，配规格的人不该顺手拿到改支付方式的权限
       // **改过名（M8）**：原来叫「类目 × 支付方式」，而它一件支付方式的事都不管 ——
@@ -206,29 +200,28 @@ export const NAV: NavSection[] = [
       //
       // 路由 `category-pay-mode` **没跟着改**：它是内部键，改它要动 TAB_KEYS、
       // 迁移里的 href、清单产物，还会让已有的链接失效，而这些换不来任何东西。
-      { href: "/products?tab=category-pay-mode", label: "当面付禁", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
-      // 禁售词（商品①）。**前置拦在提审之前** —— 此前只有事后驳回：
-      // 带违禁词的标题会进审核队列、占一个审核员的时间、再被驳回，
-      // 而商家隔几天才知道要改哪个字。
-      // 归「类目」组：与类目策略同一批人管（都是「平台定规则」那一类），
-      // 且同 group 的叶子必须相邻。
-      { href: "/products?tab=banned-word", label: "建品规则", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
-      // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
-      // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
-      // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面
-      { href: "/products?tab=spu-std", label: "标准品库", perm: "product:std:read", group: "标准品", matrix: "P-3.5", ready: true },
-      // 主题分类（陈列，批 E）。**与商品、类目都分开**：类目是准入门槛、标准品是录入模板，
-      // 而主题只是「这周首页摆什么」—— 改动最频繁、后果最轻的一档，
-      // 挂在类目那个高门槛下面等于让一件运营日常天天找人开权限
-      { href: "/products?tab=topics", label: "主题分类", perm: "product:topic:read", group: "陈列", matrix: "P-3.6", ready: true },
+      { href: "/products?tab=category-pay-mode", label: "限付类目", perm: "product:category:read", group: "基础资料", matrix: "P-3.1", ready: true },
+      // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
+      // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
+      // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。
+      // 用写码的话，有权查看配置但无权改的人在菜单里根本找不到这一页。
+      { href: "/system?tab=storeIndustry", label: "门店行业", perm: "commerce:catalog:read", group: "经营范围", matrix: "P-17.1", ready: true, gated: "commerce.catalog.enabled" },
+      { href: "/system?tab=industry", label: "行业准入", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=authCode", label: "经营授权", perm: "product:category:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      { href: "/system?tab=scope", label: "范围开关", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
+      // 商品审核（3.2.2）= 商品池按「待审核」筛；多语言文案审核（3.2.5）与多市场定价（3.2.6）
+      // 都在商品抽屉里 —— 审文案时看不到商品本身是没法审的。
+      { href: "/products?tab=skus", label: "商品管理", perm: "product:sku:read", group: "商品", matrix: "P-3.2", ready: true },
+      // 待审队列单独成 tab（页面早有，菜单漏登记）。与「商品池与审核」的区别是
+      // 那边是全量池按状态筛，这边只有待审队列 —— 审核员日常只用这一个
+      { href: "/products?tab=audit", label: "商品审核", perm: "product:sku:audit", group: "商品", matrix: "P-3.2", ready: true },
+      { href: "/products?tab=stock", label: "预售额度", perm: "product:stock:update", group: "商品", matrix: "P-3.3", ready: true },
       // ── 统计（M4）────────────────────────────────────────────────────────
       // **此前这个域一个统计数字都没有**，而商品是这个平台的主体。骨架（类目、
       // 规格库、标准品）画得最全，却答不出「画的这些骨架有多少真的被用上了」。
       // 单独成组排在最后：同 group 的叶子必须相邻，且它是唯一一页只读不改的。
       // perm 用 product:sku:read —— 与后端 OpsProductStatsController 同一个码
-      { href: "/products?tab=stats", label: "商品统计", perm: "product:sku:read", group: "统计", matrix: "P-3.2", ready: true },
-
-
+      { href: "/products?tab=stats", label: "商品统计", perm: "product:sku:read", group: "商品", matrix: "P-3.2", ready: true },
     ],
   },
 
@@ -242,7 +235,7 @@ export const NAV: NavSection[] = [
       { href: "/merchants?tab=plans", label: "套餐授予", perm: "merchant:merchant:read", group: "主体套餐", matrix: "P-11.2" , ready: true },
       { href: "/merchants?tab=plan-defs", label: "档位定义", perm: "merchant:merchant:read", group: "主体套餐", matrix: "P-11.2" , ready: true },
       { href: "/mall", label: "套餐管理", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
-      { href: "/mall?tab=categories", label: "商品分类", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=categories", label: "服务分类", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
       { href: "/mall?tab=products", label: "服务商品", perm: "commerce:catalog:read", group: "门店套餐", matrix: "P-11.2", ready: true },
       { href: "/mall?tab=orders", label: "购买订单", perm: "commerce:mall:order:read", group: "门店套餐", matrix: "P-11.2", ready: true },
       { href: "/mall?tab=claims", label: "线下核款", perm: "commerce:mall:offline:review", group: "门店套餐", matrix: "P-11.2", ready: true },
@@ -295,81 +288,69 @@ export const NAV: NavSection[] = [
     // 只是旧断言按 href 反查目标 section 把它绕过去了 —— 改成集合判定之后要显式写出来。
     // ⚠️ 注释放在 key 行**之前**：gen-ui-catalog.py 按行认 section 头
     // （`key: … label: … href: …` 要在同一行），插在中间会让这个域从界面清单里消失
-    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "finance", "ops"], href: "/after-sales",
+    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "ops"], href: "/after-sales",
     children: [
       { href: "/after-sales", label: "售后工单", perm: "aftersale:ticket:read", group: "处置", matrix: "P-6.1", ready: true },
       // 责任判定（6.1.4）并入裁决抽屉：判了责任才谈得上赔付归属，拆成两页会出现
       // 「裁决完了忘了判责」的空档。
       { href: "/after-sales?tab=intervene", label: "平台裁决", perm: "aftersale:ticket:handle", group: "处置", matrix: "P-6.1", ready: true },
       { href: "/after-sales?tab=fastrefund", label: "售后规则", perm: "aftersale:refund:approve", group: "规则", matrix: "P-6.1", ready: true },
-      // 跨 section 深链：E4 的执行面在资金域（P-12 已交付），售后这边只负责打标记。
-      // 保留入口是因为客服/财务是从售后单找过去的，不该让他们自己去猜在哪个菜单里。
-      { href: "/finance?tab=refund-back", label: "退款分账", perm: "finance:settle:execute", group: "规则", matrix: "P-6.1", ready: true },
     ],
   },
 
-  // ── P-7 营销活动 ────────────────────────────────────────────────────────
+  // ── P-7 营销活动（2026-11-11 并入原「会员管理」「积分运营」与营销广播）────────────────────────────────────────────────────────
   {
-    key: "marketing", label: "会员营销", icon: "Ticket", modules: ["marketing", "group", "growth"], href: "/marketing",
-    match: ["/marketing", "/groups", "/growth"],
+    key: "marketing", label: "会员营销", icon: "Ticket", modules: ["marketing", "group", "growth", "member", "finance", "message"], href: "/marketing",
+    match: ["/marketing", "/groups", "/growth", "/members", "/points", "/points/types", "/points/earning-rules", "/points/budget", "/points/accounts", "/points/transactions"],
     children: [
       // 2026-08-06 合并：券的「发放/预算/核销效果」都是**同一行券上的动作与列**，
       // 拆三个菜单会让运营为了看一张券的效果在三页之间跳。四类活动同表（见页面注释）。
       { href: "/marketing", label: "券模板", perm: "marketing:coupon:read", group: "优惠券", matrix: "P-7.1", ready: true },
       { href: "/marketing?tab=issues", label: "发放记录", perm: "marketing:coupon:read", group: "优惠券", matrix: "P-7.1", ready: true },
-      { href: "/marketing?tab=campaigns", label: "活动", perm: "marketing:campaign:update", group: "活动", matrix: "P-7.2", ready: true },
-      { href: "/marketing?tab=slots", label: "首页推荐", perm: "marketing:slot:update", group: "内容位", matrix: "P-7.3", ready: true },
-      { href: "/marketing?tab=member", label: "会员权益", perm: "marketing:member:update", group: "会员", matrix: "P-7.4", phase: 2, ready: true },
       /*
        * 敞口两条：看的是「谁家的券会失控」，是营销的事，权限码也是 marketing:*。
        * 挂到会员 section 下面会让看会员的人顺带拿到营销的入口。
        */
-      { href: "/marketing?tab=promoCoupons", label: "券敞口", perm: "marketing:coupon:read", group: "敞口", matrix: "P-7.1", ready: true },
-      { href: "/marketing?tab=promoActivities", label: "活动敞口", perm: "marketing:campaign:read", group: "敞口", matrix: "P-7.2", ready: true },
+      { href: "/marketing?tab=promoCoupons", label: "券敞口", perm: "marketing:coupon:read", group: "优惠券", matrix: "P-7.1", ready: true },
+      { href: "/marketing?tab=campaigns", label: "活动", perm: "marketing:campaign:update", group: "活动", matrix: "P-7.2", ready: true },
+      { href: "/marketing?tab=promoActivities", label: "活动敞口", perm: "marketing:campaign:read", group: "活动", matrix: "P-7.2", ready: true },
       /*
        * 平台活动（原型 s29 · s30）：平台发起、商家报名、运营审核。建与审是 update，看是 read ——
        * 两条都挂 read，页面里按 marketing:campaign:update 决定能不能点「新建」「通过」。
        */
-      { href: "/marketing?tab=platform", label: "平台活动", perm: "marketing:campaign:read", group: "平台活动", matrix: "P-7.2", ready: true },
-      { href: "/marketing?tab=platformAudit", label: "报名审核", perm: "marketing:campaign:read", group: "平台活动", matrix: "P-7.2", ready: true },
-
-
+      { href: "/marketing?tab=platform", label: "平台活动", perm: "marketing:campaign:read", group: "活动", matrix: "P-7.2", ready: true },
+      { href: "/marketing?tab=platformAudit", label: "报名审核", perm: "marketing:campaign:read", group: "活动", matrix: "P-7.2", ready: true },
+      { href: "/marketing?tab=slots", label: "首页推荐", perm: "marketing:slot:update", group: "活动", matrix: "P-7.3", ready: true },
+      { href: "/messages?tab=broadcast", label: "营销广播", perm: "message:template:read", group: "活动", matrix: "P-14.1", ready: true },
       // ── P-8 团购与求团 ──────────────────────────────────────────────────────
       // 团模板审核与团监控是同一张列表的两种看法（筛状态即可），合并为一个叶子
-      { href: "/groups", label: "商家团", perm: "group:campaign:audit", group: "商家团", matrix: "P-8.1", ready: true },
-      { href: "/groups?tab=demands", label: "需求指派", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
-      { href: "/groups?tab=quotes", label: "改价记录", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
-
-
+      { href: "/groups", label: "商家团", perm: "group:campaign:audit", group: "拼团", matrix: "P-8.1", ready: true },
+      { href: "/groups?tab=demands", label: "需求指派", perm: "group:demand:read", group: "拼团", matrix: "P-8.2", ready: true },
+      { href: "/groups?tab=quotes", label: "改价记录", perm: "group:demand:read", group: "拼团", matrix: "P-8.2", ready: true },
       // ── P-9 增长与归因（B1 未拍板，见矩阵 §九）──────────────────────────────
       // 优先级/窗口期/冲突处置/新客口径都是同一张规则表上的字段，拆四个菜单
       // 会让人以为它们能分别生效 —— 实际改任何一个都影响同一套归因。
-      { href: "/growth", label: "归因规则", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
-      { href: "/growth?tab=traces", label: "归因审计", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
-      { href: "/growth?tab=fission", label: "邀请有礼", perm: "growth:fission:update", group: "裂变活动", matrix: "P-9.2", ready: true },
-
-    ],
-  },
-
-  // ── P-7.5 会员与人档（P8 落地）─────────────────────────────────────────
-  //
-  // **单独一个菜单而不是挂在营销下面**：营销页回答「发了什么」，这一页回答
-  // 「这个人是谁家的会员」「谁家的券会失控」。两者的权限域也不同
-  // （member:* 与 marketing:*），挂在一起会让看会员的人顺带拿到改券的入口。
-  {
-    key: "member", label: "会员管理", icon: "UserCheck", modules: ["member"], href: "/members",
-    children: [
+      { href: "/growth", label: "归因规则", perm: "growth:attribution:read", group: "增长", matrix: "P-9.1", ready: true },
+      { href: "/growth?tab=traces", label: "归因审计", perm: "growth:attribution:read", group: "增长", matrix: "P-9.1", ready: true },
+      { href: "/growth?tab=fission", label: "邀请有礼", perm: "growth:fission:update", group: "增长", matrix: "P-9.2", ready: true },
       { href: "/members", label: "会员名单", perm: "member:member:read", group: "会员", matrix: "P-7.4", ready: true },
       { href: "/members?tab=persons", label: "人档", perm: "member:person:read", group: "会员", matrix: "P-7.4", ready: true },
       { href: "/members?tab=reach", label: "触达概览", perm: "member:member:read", group: "会员", matrix: "P-7.4", ready: true },
+      { href: "/marketing?tab=member", label: "会员权益", perm: "marketing:member:update", group: "会员", matrix: "P-7.4", phase: 2, ready: true },
+      { href: "/points/types", label: "积分设置", perm: "finance:settle:read", group: "积分", matrix: "P-12.1", ready: true },
+      { href: "/points/earning-rules", label: "赠送规则", perm: "finance:settle:read", group: "积分", matrix: "P-12.1", ready: true },
+      { href: "/points/budget", label: "平台预算", perm: "finance:settle:read", group: "积分", matrix: "P-12.1", ready: true },
+      { href: "/points/accounts", label: "积分账户", perm: "finance:settle:read", group: "积分", matrix: "P-12.1", ready: true },
+      { href: "/points/transactions", label: "发放核销", perm: "finance:settle:read", group: "积分", matrix: "P-12.1", ready: true },
     ],
   },
+
 
 
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "经营财务", icon: "Wallet", modules: ["finance", "pay", "sec"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies", "/pay-ops/qr-codes", "/pay-ops/apps", "/pay-ops/request-logs", "/pay-ops/platform-keys"],
+    key: "finance", label: "经营财务", icon: "Wallet", modules: ["finance", "pay", "sec", "merchant"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies", "/pay-ops/qr-codes", "/pay-ops/apps", "/pay-ops/request-logs", "/pay-ops/platform-keys"],
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -377,26 +358,25 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=settle-stats", label: "经营统计", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       // E4：队列由售后单的 refundSplitPending 派生（P-6.1 打标记，这里消费）
       { href: "/finance?tab=refund-back", label: "退款分账", perm: "finance:settle:execute", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=settle-batches", label: "批次放款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=debts", label: "商家欠款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       // 积分资金看板。**是资金表不是营销表** —— 读它的是财务。
       // 服务侧 overview 早就实现了，而运营端此前一个积分接口都没有：
       // 池子对不对得上，只能连数据库看
       { href: "/finance?tab=payables", label: "自营应付", perm: "finance:settle:read", group: "应付发票", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=payout-accounts", label: "供应账户", perm: "finance:payout:execute", group: "应付发票", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=purchase-invoices", label: "进项票", perm: "finance:invoice:read", group: "应付发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=buyer-invoices", label: "开票申请", perm: "finance:invoice:read", group: "应付发票", matrix: "P-12.2", ready: true },
-      { href: "/finance?tab=payout-accounts", label: "供应账户", perm: "finance:payout:execute", group: "应付发票", matrix: "P-12.1", ready: true },
-
-      { href: "/finance?tab=rates", label: "服务费率", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
-      // 与上一条是**两笔钱**：那条是平台向商家收的佣金，这条是通道向我们收的手续费。
-      // 合成一条的话，改了佣金的人会以为通道费率也跟着变了。
-      { href: "/finance?tab=pay-channels", label: "渠道费率", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
-      { href: "/finance?tab=settle-batches", label: "批次放款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
-      { href: "/finance?tab=debts", label: "商家欠款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       /*
        * 「提现审批」2026-10-09 撤掉（TDD-账期推进与放款记录 AC9 / PRD §7）：
        * 商家向平台提现是二清（ADR-011 §2），这个入口从建成到撤掉生产 0 行。
        * 钱出去走「账期批次与放款」。表 stl_withdraw 留着不删，只撤入口与菜单点。
        */
-      { href: "/finance?tab=invoice", label: "发票个税", perm: "finance:invoice:read", group: "发票与税", matrix: "P-12.2", phase: 2, ready: true },
+      { href: "/finance?tab=invoice", label: "发票个税", perm: "finance:invoice:read", group: "应付发票", matrix: "P-12.2", phase: 2, ready: true },
+      { href: "/finance?tab=rates", label: "服务费率", perm: "finance:rate:update", group: "费率对账", matrix: "P-12.1", ready: true },
+      // 与上一条是**两笔钱**：那条是平台向商家收的佣金，这条是通道向我们收的手续费。
+      // 合成一条的话，改了佣金的人会以为通道费率也跟着变了。
+      { href: "/finance?tab=pay-channels", label: "渠道费率", perm: "finance:rate:update", group: "费率对账", matrix: "P-12.1", ready: true },
       /*
        * 渠道报文（O1）。**归财务不归订单**：报文里有通道侧的商户号，
        * 而设计册定的可见范围是财务与技术支持。
@@ -407,57 +387,38 @@ export const NAV: NavSection[] = [
        * 而那个码映射到 order:order:read —— 有订单读权限的人能看见 tab，
        * 却打不通接口（接口要的是 finance:recon:read），于是变成一个死按钮。
        */
-      { href: "/finance?tab=channel-messages", label: "渠道报文", perm: "finance:recon:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=channel-messages", label: "渠道报文", perm: "finance:recon:read", group: "费率对账", matrix: "P-12.1", ready: true },
+      // 准入与保证金：只有财务持有 merchant:admission:read，2026-11-11 自商户中心迁入（深链与 point_code 不变）
+      { href: "/merchants?tab=admission", label: "准入押金", perm: "merchant:admission:read", group: "保证金", matrix: "P-11.1" , ready: true },
       // 支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）：独立页面，挂在「结算与资金」下（L1 已满，不另开域）
       { href: "/pay-ops/orders", label: "支付单", perm: "pay:order:view", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/exceptions", label: "支付异常", perm: "pay:order:view", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/refunds", label: "退款复核", perm: "pay:refund:view", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/notifies", label: "业务通知", perm: "pay:log:view", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/request-logs", label: "请求记录", perm: "pay:log:view", group: "支付运营", matrix: "P-12.1", ready: true },
       // 接入与密钥（开发计划 M5b）：同在「支付运营」组；路由沿用 /pay-ops/*（迁 /pay/* 另做，见 pay-guard TDD §7 M5a.4）
       { href: "/pay-ops/qr-codes", label: "收款码", perm: "pay:qr:manage", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/apps", label: "应用授权", perm: "pay:app:manage", group: "支付运营", matrix: "P-12.1", ready: true },
-      { href: "/pay-ops/request-logs", label: "请求记录", perm: "pay:log:view", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/platform-keys", label: "平台密钥", perm: "sec:key:view", group: "支付运营", matrix: "P-12.1", ready: true },
     ],
   },
 
-  // ── 积分运营：按配置 → 资金 → 账户 → 流水查看的运营顺序排列 ──────────
-  {
-    key: "points", label: "积分运营", icon: "Coins", modules: ["finance"], href: "/points/types", match: ["/points", "/points/types", "/points/earning-rules", "/points/budget", "/points/accounts", "/points/transactions"],
-    children: [
-      { href: "/points/types", label: "积分设置", perm: "finance:settle:read", group: "积分配置", matrix: "P-12.1", ready: true },
-      { href: "/points/earning-rules", label: "赠送规则", perm: "finance:settle:read", group: "积分配置", matrix: "P-12.1", ready: true },
-      { href: "/points/budget", label: "平台预算", perm: "finance:settle:read", group: "积分资金", matrix: "P-12.1", ready: true },
-      { href: "/points/accounts", label: "积分账户", perm: "finance:settle:read", group: "积分账务", matrix: "P-12.1", ready: true },
-      { href: "/points/transactions", label: "发放核销", perm: "finance:settle:read", group: "积分账务", matrix: "P-12.1", ready: true },
-    ],
-  },
 
-  // ── P-13 评价治理 ───────────────────────────────────────────────────────
+  // ── P-13 评价治理 + P-14 消息客服（2026-11-11 合并为「内容客服」）───────────────────────────────────────────────────────
   {
-    key: "review", label: "内容管理", icon: "Star", modules: ["review", "content"], href: "/reviews",
-    match: ["/reviews", "/contents"],
+    key: "review", label: "内容客服", icon: "Star", modules: ["review", "content", "message"], href: "/reviews",
+    match: ["/reviews", "/contents", "/messages"],
     children: [
-      { href: "/reviews", label: "评价审核", perm: "review:review:audit", group: "审核", matrix: "P-13.1", ready: true },
-      { href: "/reviews?tab=appeals", label: "评价申诉", perm: "review:review:audit", group: "审核", matrix: "P-13.1", ready: true },
+      { href: "/reviews", label: "评价审核", perm: "review:review:audit", group: "评价", matrix: "P-13.1", ready: true },
+      { href: "/reviews?tab=appeals", label: "评价申诉", perm: "review:review:audit", group: "评价", matrix: "P-13.1", ready: true },
       // 刷评识别（13.1.5）并入审核队列的筛选项：发现刷评后要做的动作就在那条队列里，
       // 单独一页会变成"看得见但没法处置"的孤岛。
-      { href: "/reviews?tab=score", label: "评分参数", perm: "review:score:update", group: "评分", matrix: "P-13.1", ready: true },
-
-
+      { href: "/reviews?tab=score", label: "评分参数", perm: "review:score:update", group: "评价", matrix: "P-13.1", ready: true },
       // ── P-15 素材与内容 ─────────────────────────────────────────────────────
       // 分发范围是素材行上的字段，不是另一张表：一份素材投给谁，和素材本身是一件事
       { href: "/contents", label: "素材管理", perm: "content:material:read", group: "素材", matrix: "P-15.1", ready: true },
-      { href: "/contents?tab=audit", label: "内容审核", perm: "content:material:audit", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
-      { href: "/contents?tab=rank", label: "榜单问答", perm: "content:material:update", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
-
-    ],
-  },
-
-  // ── P-14 消息与客服 ─────────────────────────────────────────────────────
-  {
-    key: "message", label: "消息客服", icon: "MessageSquare", modules: ["message"], href: "/messages",
-    children: [
+      { href: "/contents?tab=audit", label: "内容审核", perm: "content:material:audit", group: "素材", matrix: "P-15.2", phase: 2, ready: true },
+      { href: "/contents?tab=rank", label: "榜单问答", perm: "content:material:update", group: "素材", matrix: "P-15.2", phase: 2, ready: true },
       /*
        * 触达**按通道拆菜单**（2026-08-14，TDD-运营端触达中心 §3.1）。
        *
@@ -476,11 +437,11 @@ export const NAV: NavSection[] = [
       { href: "/messages?tab=inapp", label: "站内模板", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=routing", label: "场景通道", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=notifyLog", label: "发送记录", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
-      { href: "/messages?tab=broadcast", label: "营销广播", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=tickets", label: "客服工单", perm: "message:ticket:read", group: "客服", matrix: "P-14.2", ready: true },
       { href: "/messages?tab=faq", label: "帮助中心", perm: "message:faq:update", group: "客服", matrix: "P-14.2", ready: true },
     ],
   },
+
 
   // ── P-2 社区与网点 ──────────────────────────────────────────────────────
   {
@@ -524,7 +485,7 @@ export const NAV: NavSection[] = [
 
   // ── P-1 账号与权限 ──────────────────────────────────────────────────────
   {
-    key: "iam", label: "系统设置", icon: "UserCog", modules: ["iam", "system", "ops", "commerce", "product"], href: "/iam",
+    key: "iam", label: "系统设置", icon: "UserCog", modules: ["iam", "system", "ops"], href: "/iam",
     match: ["/iam", "/jobs", "/system", "/printing"],
     children: [
       // 数据域授权（1.1.3）是员工行上的动作，二次校验（1.1.5）是动作上的一层 ——
@@ -537,8 +498,6 @@ export const NAV: NavSection[] = [
       // 复用 iam:role:grant：能配权限的人才该动菜单结构，不为它新增一个码。
       { href: "/iam?tab=menu", label: "菜单顺序", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
       { href: "/iam?tab=audit", label: "审计日志", perm: "iam:audit:read", group: "审计", matrix: "P-1.1", ready: true },
-
-
       // ── P-17.1 定时任务（**独立成一个入口，不做成系统配置的一个 tab**）──────
       //
       // 系统配置那七个 tab 回答的是「平台怎么配」，而这一页回答的是「后台此刻在不在跑」——
@@ -553,8 +512,6 @@ export const NAV: NavSection[] = [
       // 会和市场/货币、开关灰度挤在一个标题下，它是监控页不是配置页
       { href: "/printing", label: "打印运营", perm: "ops:print:read", group: "打印运营", matrix: "P-17.1", ready: true, gated: "shop.print.enabled" },
       { href: "/jobs", label: "任务日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true , gated: "shop.job.enabled"},
-
-
       // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────
       // 皮肤/回落语言/规则文案都是"下发给 C 端的东西"，放同一页；市场与开关各自成 tab
       { href: "/system", label: "外观文案", perm: "system:theme:update", group: "外观语言", matrix: "P-17.1", ready: true },
@@ -582,15 +539,6 @@ export const NAV: NavSection[] = [
        * 抬高最低支持版会让低于它的所有旧包立刻停写，不跟 param:update 一起发给技术运维。
        */
       { href: "/system?tab=appVersion", label: "应用版本", perm: "system:param:read", group: "运行配置", matrix: "P-17.1", ready: true },
-      // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
-      // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
-      // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。
-      // 用写码的话，有权查看配置但无权改的人在菜单里根本找不到这一页。
-      { href: "/system?tab=storeIndustry", label: "门店行业", perm: "commerce:catalog:read", group: "经营范围", matrix: "P-17.1", ready: true, gated: "commerce.catalog.enabled" },
-      { href: "/system?tab=industry", label: "行业准入", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=authCode", label: "经营授权", perm: "product:category:read", group: "经营范围", matrix: "P-17.1", ready: true },
-      { href: "/system?tab=scope", label: "范围开关", perm: "system:industry:read", group: "经营范围", matrix: "P-17.1", ready: true },
-
     ],
   },
 
