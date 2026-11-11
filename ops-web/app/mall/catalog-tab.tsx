@@ -439,31 +439,23 @@ function PlansSection({ c, canEdit, canPublish }: { c: MallCopy; canEdit: boolea
   );
 }
 
-/**
- * 行业发布：三档版本 + 候选 SKU 一起冻结。
- *
- * ⚠️ 契约缺口：发布要带 `expectedCatalogVersion`，而运营目录接口**不回读**行业目录版本
- *  (只在发布回执里出现一次)。首次发布必然是 0；再次发布时只能由运营填，
- * 本页把这一会话里最近一次发布回执的版本预填进去。已记入交接说明，待后端在 overview 里补字段。
- */
+/** 行业发布：三档版本与候选 SKU 一起冻结，乐观锁来自当前目录回读。 */
 function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: string; canPublish: boolean }) {
   const catalog = useQuery({ queryKey: ["mall-catalog"], queryFn: () => api.mallCatalog() });
   const invalidate = useInvalidateCatalog();
-  const { confirm, dialog } = useConfirm();
+  const { confirm, dialog, dismiss } = useConfirm();
   const [picked, setPicked] = React.useState<Record<MallPlanTier, string>>({ FREE: "", PRO: "", CHAIN: "" });
   const [skus, setSkus] = React.useState<string[]>([]);
-  const [lastCatalog, setLastCatalog] = React.useState<number | null>(null);
-  const [catalogInput, setCatalogInput] = React.useState("");
-  const [opNo] = React.useState(() => newOpNo("PUB"));
+  const [opNo, setOpNo] = React.useState(() => newOpNo("PUB"));
 
   const data = catalog.data;
   const defs = (data?.planDefinitions ?? []).filter((d) => d.typeCode === typeCode);
-  const firstPublish = defs.every((d) => !d.currentVersionNo);
+
   const versions = (tier: MallPlanTier) => (data?.planVersions ?? []).filter((v) => v.draft?.typeCode === typeCode && v.draft?.tier === tier);
   const candidates = (data?.skuVersions ?? []).filter((v) => v.draft?.allowedBusinessTypes?.includes(typeCode)
     && (v.draft?.components ?? []).some((x) => x.kind === "PLAN"));
   const chosen = TIERS.map((t) => picked[t] || defs.find((d) => d.tier === t)?.currentVersionNo || "");
-  const expectedCatalog = firstPublish ? 0 : catalogInput.trim() === "" ? null : Number(catalogInput);
+  const expectedCatalog = data?.businessTypes?.find((t) => t.draft?.typeCode === typeCode)?.catalogVersion;
 
   if (!canPublish) return null;
 
@@ -481,15 +473,21 @@ function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: strin
         candidateSkuVersionNos: skus, expectedCatalogVersion: expectedCatalog!, expectedPlanVersions: pv, expectedSkuVersions: sv,
         expectedPlanDefinitionVersions: Object.fromEntries(defs.map((d) => [d.planNo!, d.version!])), expectedSkuDefinitionVersions: sd, reason,
       }).then((r) => {
-        setLastCatalog(r.catalogVersion ?? null);
-        setCatalogInput(String(r.catalogVersion ?? ""));
+        setOpNo(newOpNo("PUB"));
         invalidate();
         notify.success(fill(c.toastPublished, { v: r.catalogVersion ?? "—" }));
+      }).catch((error) => {
+        invalidate();
+        if (error instanceof Error && error.message === "VERSION_CONFLICT") {
+          dismiss();
+          setOpNo(newOpNo("PUB"));
+        }
+        throw error;
       });
     },
   });
 
-  const ready = chosen.every(Boolean) && expectedCatalog !== null && Number.isInteger(expectedCatalog);
+  const ready = chosen.every(Boolean) && expectedCatalog !== undefined && Number.isInteger(expectedCatalog) && !catalog.isFetching;
   return (
     <div className="mt-4 rounded-card border border-border bg-card p-4">
       <SectionHeader title={c.secPublish} desc={c.secPublishDesc} />
@@ -524,14 +522,9 @@ function PublishCard({ c, typeCode, canPublish }: { c: MallCopy; typeCode: strin
         )}
       </div>
       <div className="mt-3 space-y-1">
-        <Label htmlFor="pub-catalog" required>{c.fieldCatalogVersion}</Label>
-        {firstPublish ? <p className="txt-body">{c.catalogFirst}</p> : (
-          <>
-            <Input id="pub-catalog" className="w-40" inputMode="numeric" value={catalogInput} placeholder={lastCatalog == null ? "" : String(lastCatalog)}
-              onChange={(e) => setCatalogInput(e.target.value.replace(/\D/g, ""))} />
-            <Notice tone="warning" className="mt-2">{c.catalogGapNotice}</Notice>
-          </>
-        )}
+        <Label>{c.fieldCatalogVersion}</Label>
+        <p data-testid="catalog-version" className="txt-body">{expectedCatalog ?? "—"}</p>
+        <p className="txt-caption text-muted-foreground">{c.catalogVersionNotice}</p>
       </div>
       <div className="mt-4 flex justify-end">
         <Button disabled={!ready} onClick={publish}>{c.btnPublishIndustry}</Button>

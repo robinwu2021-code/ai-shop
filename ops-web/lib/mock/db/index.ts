@@ -22,7 +22,7 @@ export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";
 export { riskEvents, blacklists, riskRules } from "./risk";
 export { msgTemplates, notifyQuota, tickets, faqs, defaultLang, inAppLogs } from "./message";
 export { materials } from "./content";
-export { appearance, markets, ruleTexts, featureFlags, industries, authCodeAdmins, serviceScopes, otpTestPhones, testIdentities, appVersions } from "./system";
+export { appearance, markets, ruleTexts, featureFlags, industries, storeIndustries, authCodeAdmins, serviceScopes, otpTestPhones, testIdentities, appVersions } from "./system";
 export { mediaStoreUsage, mediaReclaimable, mediaBatches } from "./media";
 export { opsMembers, reachStats, levelPolicy, opsPromoCoupons, opsPromoActivities } from "./member";
 export { sceneChannels } from "./scene-channel";

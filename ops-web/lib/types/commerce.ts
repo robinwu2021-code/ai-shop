@@ -64,6 +64,8 @@ export interface MallBusinessTypeDraft {
 
 /** 经营类型行 */
 export interface MallBusinessTypeView {
+  /** 当前已发布目录版本；0 为尚未发布。 */
+  catalogVersion?: number;
   /** 当前草稿 */
   draft?: MallBusinessTypeDraft;
   /** 乐观锁版本 */
@@ -869,6 +871,11 @@ export interface MallAccessSegment {
 
 /** 门店订阅视图 */
 export interface MallSubscriptionView {
+  businessTypeCode?: string;
+  currency?: string;
+  currentPlanVersionNo?: string;
+  /** 服务器评估当前方案的时间（毫秒） */
+  serverNow?: number;
   /** 门店 */
   store?: MallStoreRef;
   /** 权益版本（撤销时作乐观锁） */
@@ -902,6 +909,9 @@ export interface MallRevokeRequest {
 }
 
 // ── 线下银行转账（Task8）───────────────────────────────────────────────
+
+/** 管理查询包含停用档案；报价仍只使用可用档案。 */
+export interface MallOfflineCollectionProfile extends MallOfflineCollectionTerms { enabled: boolean }
 
 /** 收款档案（按币种；每次修改生成新版本） */
 export interface MallOfflineCollectionTerms {

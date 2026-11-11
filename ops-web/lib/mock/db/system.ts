@@ -12,6 +12,11 @@ export const appearance: AppearanceConfig = {
   updatedBy: "admin",
 };
 
+export const storeIndustries: import("@/lib/types").StoreIndustry[] = [
+  { industryCode: "RETAIL", subIndustryCode: "", businessTypeCode: "RETAIL", nameZh: "零售", nameTw: "零售", nameEn: "Retail", sort: 10, enabled: true, version: 0 },
+  { industryCode: "RETAIL", subIndustryCode: "RETAIL_CVS", businessTypeCode: "RETAIL", nameZh: "便利店", nameTw: "便利商店", nameEn: "Convenience", sort: 10, enabled: true, version: 0 },
+];
+
 export const markets: MarketConfig[] = [
   { code: "CN", name: "中国", currency: "CNY", timezone: "Asia/Shanghai", rate: 1, enabled: true },
   { code: "SG", name: "新加坡", currency: "SGD", timezone: "Asia/Singapore", rate: 5.32, enabled: true },

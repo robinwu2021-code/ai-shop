@@ -212,7 +212,7 @@ class MallOpenApiResponseTest {
                                             case "voidOrder" ->
                                                     new ai.neargo.commerce.api.offline.OfflinePurchaseFacade
                                                             .ActionView("void", "ACCEPTED", null);
-                                            case "profile" -> Optional.of(terms);
+                                            case "profile" -> Optional.of(new ai.neargo.commerce.api.offline.OfflineCollectionProfile(terms, false));
                                             default -> throw new AssertionError(m);
                                         });
         var mvc =
@@ -241,7 +241,7 @@ class MallOpenApiResponseTest {
                                 .content("{\"actionNo\":\"void\",\"reconciliationReference\":\"r\",\"reason\":\"x\","
                                         + "\"evidenceKey\":\"E/S/mallpay/202611/k.jpg\",\"unmatchedDispositions\":{}}"))
                         .andReturn().getResponse().getContentAsString());
-        out.put("OfflineCollectionTerms",
+        out.put("OfflineCollectionProfile",
                 mvc.perform(get("/ops/biz-mall/offline/profile").param("currency", "TWD")).andReturn().getResponse().getContentAsString());
         for (var body : out.values()) assertTrue(body.contains("\"code\":0"), body);
         return out;

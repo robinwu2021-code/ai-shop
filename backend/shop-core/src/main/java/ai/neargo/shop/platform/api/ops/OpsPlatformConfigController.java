@@ -1,5 +1,8 @@
 package ai.neargo.shop.platform.api.ops;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.platform.OpsService;
@@ -121,9 +124,9 @@ public class OpsPlatformConfigController {
 
     @PostMapping("/ops/markets/{code}")
     @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_UPDATE + "')")
-    public List<MarketVO> saveMarketRate(@PathVariable String code, @RequestBody MarketReq req) {
+    public List<MarketVO> saveMarketRate(@PathVariable String code, @Valid @RequestBody MarketReq req) {
         List<MarketVO> all = configService.saveMarketRate(code,
-                req.rate() == null ? 0d : req.rate(), Boolean.TRUE.equals(req.enabled()),
+                req.rate(), req.enabled(),
                 SecurityUtils.currentUserNo());
         // 汇率直接换算价格，改动必须留痕
         opsService.audit("PLATFORM_MARKET_RATE", code, "汇率=" + req.rate() + "｜启用=" + req.enabled());
@@ -142,6 +145,6 @@ public class OpsPlatformConfigController {
     public record RuleTextsReq(String refund, String pickup, String weighDiff) {
     }
 
-    public record MarketReq(Double rate, Boolean enabled) {
+    public record MarketReq(@NotNull @Positive Double rate, @NotNull Boolean enabled) {
     }
 }

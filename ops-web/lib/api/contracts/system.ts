@@ -1,6 +1,6 @@
 // 覆盖范围：系统配置（P-17.1）。
 import type {
-  AppVersionPolicy, SaveAppVersionPolicy,
+  AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
   MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
@@ -73,6 +73,11 @@ export interface SystemApi {
   setServiceScopeEnabled(scope: string, enabled: boolean, reason: string): Promise<ServiceScopeConfig[]>;
 
   // ── 行业主数据（P-17.1 / ADR-010）—— **已接真后端** `/ops/industries/**`
+
+  /** 门店行业配置全量，含停用项；与支付行业分开。 */
+  listStoreIndustries(): Promise<StoreIndustry[]>;
+  /** expectedVersion=null 新建；编辑使用当前 version，冲突不覆盖。 */
+  saveStoreIndustry(v: SaveStoreIndustry): Promise<StoreIndustry>;
 
   listIndustries(): Promise<Industry[]>;
   /**

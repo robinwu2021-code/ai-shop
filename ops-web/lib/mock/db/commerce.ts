@@ -903,11 +903,16 @@ export function assistedPlace(storeNo: string, v: { quoteNo: string; idempotency
   const q = s.quotes[v.quoteNo] ?? mallFail("NOT_FOUND");
   need(q.view.store?.storeNo === storeNo, "NOT_FOUND");
   const replay = s.orders.find((o) => o.storeNo === storeNo && o.idempotencyKey === v.idempotencyKey);
-  if (replay) { need(q.usedBy === replay.orderNo, "IDEMPOTENCY_CONFLICT"); return replay; }
+  if (replay) {
+    need(q.usedBy === replay.orderNo, "IDEMPOTENCY_CONFLICT");
+    const keys = ["recipient", "phone", "countryCode", "region", "city", "addressLine", "postalCode"] as const;
+    need(keys.every((k) => (replay.shippingAddress?.[k] ?? null) === (v.shippingAddress?.[k] ?? null)), "IDEMPOTENCY_CONFLICT");
+    return replay;
+  }
   need(!q.usedBy, "QUOTE_USED");
   need(Date.parse(q.view.expiresAt!) > Date.now(), "QUOTE_EXPIRED");
   const hasHardware = (q.view.components ?? []).some((c) => c.kind === "HARDWARE");
-  if (hasHardware) need(v.shippingAddress && text(v.shippingAddress.recipient, 64) && text(v.shippingAddress.addressLine, 256), "INVALID_REQUEST");
+  if (hasHardware) need(v.shippingAddress && text(v.shippingAddress.recipient, 64) && text(v.shippingAddress.phone, 128) && text(v.shippingAddress.countryCode, 8) && text(v.shippingAddress.addressLine, 256), "INVALID_REQUEST");
   // 同门店同时只能有一笔数字变更单在途（后端「唯一占用」）
   if ((q.view.components ?? []).some((c) => c.kind !== "HARDWARE")) {
     need(!s.orders.some((o) => o.storeNo === storeNo && o.status === "AWAITING_PAYMENT" && o.components.some((c) => c.kind !== "HARDWARE")), "DIGITAL_CHANGE_PENDING");

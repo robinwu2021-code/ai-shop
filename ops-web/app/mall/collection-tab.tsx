@@ -46,7 +46,7 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
     setForm(terms
       ? { profileNo: terms.profileNo, platformMerchantNo: terms.platformMerchantNo, bankCode: terms.instructions.bankCode ?? "",
           bankAccount: terms.instructions.bankAccount ?? "", accountName: terms.instructions.accountName ?? "",
-          paymentWindowVersion: terms.paymentWindowVersion, windowHours: String(terms.paymentWindowMs / HOUR), enabled: true, reason: "" }
+          paymentWindowVersion: terms.paymentWindowVersion, windowHours: String(terms.paymentWindowMs / HOUR), enabled: terms.enabled, reason: "" }
       : { profileNo: "", platformMerchantNo: "", bankCode: "", bankAccount: "", accountName: "", paymentWindowVersion: "", windowHours: "24", enabled: true, reason: "" });
   }, [terms, q.isLoading, q.error]);
 
@@ -69,7 +69,7 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
       {!canWrite && <ReadOnlyNotice what={c.profileWriteWhat} perm="commerce:collection:profile:write" />}
       <div className="flex items-center gap-2">
         <label htmlFor="pf-cur" className="txt-label text-muted-foreground">{c.fieldCurrency}</label>
-        <Select id="pf-cur" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+        <Select id="pf-cur" value={currency} onChange={(e) => { setCurrency(e.target.value); setForm(null); }}>
           {CURRENCIES.map((x) => <option key={x} value={x}>{x}</option>)}
         </Select>
       </div>
@@ -79,7 +79,7 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
         <div className="grid gap-4 lg:grid-cols-2">
           <ConfigCard className="max-w-none" title={terms ? fill(c.profileCardTitle, { v: terms.profileVersion }) : c.profileCardNew}
             notice={terms ? c.profileVersionNotice : c.profileNewNotice} onSave={() => form && save.mutate(form)} saving={save.isPending}
-            canSave={canWrite && !!valid} saveLabel={terms ? c.btnSaveNewVersion : c.btnCreateProfile}>
+            canSave={canWrite && !!valid && !q.isFetching} saveLabel={terms ? c.btnSaveNewVersion : c.btnCreateProfile}>
             {form && (
               <>
                 <div className="space-y-1">
@@ -134,7 +134,7 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
                   <Field label={c.fieldWindowHours}>{fill(c.hoursN, { n: terms.paymentWindowMs / HOUR })}</Field>
                   <Field label={c.fieldWindowVersion}>{terms.paymentWindowVersion}</Field>
                 </FieldGrid>
-                <Notice tone="muted">{c.profileEnabledUnknown}</Notice>
+                <Notice tone={terms.enabled ? "info" : "warning"}>{terms.enabled ? c.profileActive : c.profileDisabled}</Notice>
               </div>
             ) : <Notice tone="warning">{fill(c.profileMissing, { cur: currency })}</Notice>}
           </div>

@@ -163,5 +163,6 @@ export function useConfirm() {
     </Dialog.Root>
   );
 
-  return { confirm, dialog };
+  // A caller may retire a confirmation after a known optimistic-lock conflict.
+  return { confirm, dialog, dismiss: () => close(false) };
 }

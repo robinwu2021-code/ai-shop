@@ -63,6 +63,15 @@ function gatesOfOpsControllers(includeDeferred = false): Map<string, string[]> {
       const prefix = (m[1].match(/prefix\s*=\s*"([^"]+)"/) || [])[1];
       const name = (m[1].match(/\bname\s*=\s*"([^"]+)"/) || [])[1];
       const matchIfMissing = /matchIfMissing\s*=\s*true/.test(m[1]);
+      // 反向查陈旧登记时也识别 name 数组：每个条目确实都是必要开关。
+      // 正向仍只覆盖单开关；复合装配不能仅由一个菜单 gated 完整表达，不扩大旧扫描边界。
+      if (!name && includeDeferred && !matchIfMissing) {
+        const names = m[1].match(/\bname\s*=\s*\{([^}]+)\}/)?.[1] ?? "";
+        for (const value of names.matchAll(/"([^"]+)"/g)) {
+          const prop = prefix ? `${prefix}.${value[1]}` : value[1];
+          out.set(prop, [...(out.get(prop) ?? []), f.split("/").pop()!]);
+        }
+      }
       // 默认开的开关没有「关着」的态，不需要菜单信号
       if (name && !matchIfMissing) gate = prefix ? `${prefix}.${name}` : name;
     }

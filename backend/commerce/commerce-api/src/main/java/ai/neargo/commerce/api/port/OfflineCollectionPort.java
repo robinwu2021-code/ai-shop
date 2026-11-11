@@ -25,6 +25,7 @@ public interface OfflineCollectionPort {
             ai.neargo.commerce.api.offline.OfflinePurchaseFacade.ProfileCommand command) {
         throw new UnsupportedOperationException();
     }
+    default Optional<ai.neargo.commerce.api.offline.OfflineCollectionProfile> profile(String tenant,String profile,String currency) { throw new UnsupportedOperationException(); }
     default Optional<OfflineCollectionTerms> terms(String tenant,String profile,String currency) { return Optional.empty(); }
     default ManualResult confirm(ManualPayment command) { throw new UnsupportedOperationException(); }
     default void reconcile(Reconciliation command) { throw new UnsupportedOperationException(); }

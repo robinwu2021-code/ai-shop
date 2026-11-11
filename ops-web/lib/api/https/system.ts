@@ -19,7 +19,10 @@ export const systemHttp: SystemApi = {
   setTestIdentityEnabled: (id, enabled) => client.post(`/ops/test-identities/${id}/enabled`, { enabled }),
   removeTestIdentity: (id) => client.post(`/ops/test-identities/${id}/remove`, {}),
 
-  // 行业主数据是本文件里**唯一接了真后端**的一组（其余仍走 mock，见 Ops契约对账）
+  listStoreIndustries: () => client.get("/ops/store-industries"),
+  saveStoreIndustry: (v) => client.post("/ops/store-industries", v),
+
+  // 支付行业主数据（与门店行业分开，保持已有通道准入规则）
   listIndustries: () => client.get("/ops/industries"),
   setIndustryMicroAllowed: (industry, payChannel, allowed, remark) =>
     client.post(`/ops/industries/${industry}/micro-allowed`, { payChannel, allowed, remark }),

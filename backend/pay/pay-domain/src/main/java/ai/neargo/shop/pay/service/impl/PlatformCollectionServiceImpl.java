@@ -414,6 +414,9 @@ public class PlatformCollectionServiceImpl implements PlatformCollectionService 
     public Optional<OfflineInstructions> offlineInstructions(String tenant, String profile, String currency) {
         outside(); return offline.current(tenant,profile,currency);
     }
+    public Optional<OfflineProfileView> offlineProfile(String tenant, String profile, String currency) {
+        outside(); return offline.profile(tenant,profile,currency);
+    }
     public ManualReceipt confirmOffline(OfflineProof proof) { outside(); return offline.confirm(proof); }
     public java.util.List<CashReceipt> receipts(String tenant, String orderNo) { outside(); return tx.execute(s -> offline.receipts(tenant,orderNo)); }
     public Receipt reconcileOffline(OfflineVoid decision) { outside(); return offline.reconcile(decision); }

@@ -41,7 +41,22 @@ final class SubscriptionViews {
                             p.lifecycle(),
                             p.revokedDuration()));
         }
-        return new SubscriptionView(
-                store, account.entitlementVersion(), List.copyOf(sources), segments);
+        // The initial FREE period fixes store currency. Only an effective NORMAL fixed Plan
+        // supersedes it; future, independent-end and revoked sources are not the current Plan.
+        ai.neargo.commerce.core.spi.Period free = null, paid = null;
+        for (var p : periods) {
+            if (!p.fixed() || !"NORMAL".equals(p.lifecycle()) || p.start() > at) continue;
+            if ("FREE".equals(p.sourceType()) && "FREE".equals(p.tier()) && p.duration() == null) {
+                if (free != null) throw new IllegalStateException("multiple initial FREE sources");
+                free = p;
+            } else if (p.end() != null && at < p.end()) {
+                if (paid != null) throw new IllegalStateException("overlapping fixed Plan periods");
+                paid = p;
+            }
+        }
+        if (free == null) throw new IllegalStateException("missing initial FREE source");
+        var current = paid == null ? free : paid;
+        return new SubscriptionView(store, account.entitlementVersion(), List.copyOf(sources), segments,
+                account.businessTypeCode(), free.currency(), current.planVersion(), at);
     }
 }

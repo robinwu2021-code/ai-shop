@@ -127,7 +127,7 @@ public final class DefaultSourceManagementFacade implements SourceManagementFaca
                                                     code.equals(s.entitlementCode())
                                                             || ids.contains(s.sourceNo()))
                                     .toList(),
-                            segments);
+                            segments, view.businessTypeCode(), view.currency(), view.currentPlanVersionNo(), view.serverNow());
                 });
     }
 

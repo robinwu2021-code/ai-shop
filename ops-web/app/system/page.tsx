@@ -18,6 +18,7 @@ import { notify } from "@/lib/notify";
 import { C_END_THEMES, type ThemeKey } from "@/lib/stores/theme";
 import { BASE_CURRENCY, type FeatureFlag, type MarketConfig } from "@/lib/types";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { StoreIndustryTab } from "./store-industry-tab";
 import { IndustryTab } from "./industry-tab";
 import { AuthCodeTab } from "./auth-code-tab";
 import { ServiceScopeTab } from "./service-scope-tab";
@@ -38,7 +39,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
-const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "authCode", "scope",
+const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "storeIndustry", "authCode", "scope",
   "testPhone", "appVersion"] as const;
 
 export default function SystemPage() {
@@ -56,7 +57,7 @@ function SystemInner() {
 
   const canTheme = allow("system:theme:update");
   const canEnv = allow("system:env:switch");
-  const canParam = allow("system:param:read");
+  const canParam = allow("system:param:update");
   // 看清单与发起回收是两个码：看是日常查看，删是不可逆操作
   const canMediaPurge = allow("system:media:purge");
 
@@ -274,10 +275,11 @@ function SystemInner() {
 
       {/* 主数据三块都接了真后端（其余 tab 仍走 mock） */}
       {tab === "storage" && <StorageTab c={c} canPurge={canMediaPurge} />}
-      {tab === "industry" && <IndustryTab c={c} canWrite={canEnv} />}
+      {tab === "storeIndustry" && <StoreIndustryTab c={c} canWrite={allow("commerce:catalog:edit")} />}
+      {tab === "industry" && <IndustryTab c={c} canWrite={allow("system:industry:update")} />}
       {/* 授权码字典改的是「一共有哪些门槛」，与类目树同权限（category:manage） */}
       {tab === "authCode" && <AuthCodeTab c={c} canWrite={allow("category:manage")} />}
-      {tab === "scope" && <ServiceScopeTab c={c} canWrite={canEnv} />}
+      {tab === "scope" && <ServiceScopeTab c={c} canWrite={allow("system:industry:update")} />}
       {/*
         * 测试号白名单：读与写各一个独立码，**都不并进 system:param:***
         * —— 这一页把固定验证码明文显示出来，能看它就等于知道那几个号的登录码。

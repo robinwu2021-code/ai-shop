@@ -61,6 +61,13 @@ describe("commerce http", () => {
     await expect(commerceHttp.mallCatalog()).rejects.toBeInstanceOf(ApiError);
   });
 
+  it("管理查询保留停用档案的 enabled 与当前版本", async () => {
+    const profile = { profileNo: "p", profileVersion: 4, enabled: false, currency: "TWD" };
+    const fetch = ok(profile); vi.stubGlobal("fetch", fetch);
+    expect(await commerceHttp.offlineProfile("TWD")).toEqual(profile);
+    expect(fetch.mock.calls[0]![0]).toContain("/ops/biz-mall/offline/profile?currency=TWD");
+  });
+
   it("从未配置的收款档案：data=null 原样返回 null", async () => {
     vi.stubGlobal("fetch", ok(null));
     expect(await commerceHttp.offlineProfile("TWD")).toBeNull();

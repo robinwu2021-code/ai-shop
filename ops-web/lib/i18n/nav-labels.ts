@@ -24,6 +24,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
   商家治理: { en: "Merchants" },
   套餐商城: { en: "Plan mall" },
+  门店行业与子行业: { en: "Store industries & subindustries" },
   经营类型与套餐: { en: "Business types & plans" },
   商城商品分类: { en: "Mall product categories" },
   商城商品与SKU: { en: "Mall products & SKUs" },

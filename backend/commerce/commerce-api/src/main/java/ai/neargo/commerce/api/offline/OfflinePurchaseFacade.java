@@ -76,7 +76,7 @@ public interface OfflinePurchaseFacade {
             long paymentWindowMs, boolean enabled, String reason) {}
     /** Pay-domain collection profile; each change creates a new immutable version. */
     OfflineCollectionTerms configureProfile(ActorContext actor, ProfileCommand command);
-    Optional<OfflineCollectionTerms> profile(ActorContext actor, String currency);
+    Optional<OfflineCollectionProfile> profile(ActorContext actor, String currency);
     /** Read-only durable outcome for an operator; absent means no action has been recorded. */
     Optional<ActionView> action(ActorContext actor, OrderQuery order, String actionNo);
     ActionView confirm(ActorContext actor,ReviewCommand command);

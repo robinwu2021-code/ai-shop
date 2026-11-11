@@ -47,7 +47,7 @@ function MallInner() {
       {tab === "orders" && <OrdersTab c={c} />}
       {tab === "claims" && <ClaimsTab c={c} />}
       {tab === "collection" && <CollectionTab c={c} canWrite={allow("commerce:collection:profile:write")} />}
-      {tab === "assisted" && <AssistedTab c={c} />}
+      {tab === "assisted" && <AssistedTab c={c} canReadSubscription={allow("commerce:subscription:read")} />}
       {tab === "sources" && (
         <SourcesTab c={c} canGrant={allow("commerce:subscription:grant")} canRevoke={allow("commerce:subscription:revoke")} />
       )}
