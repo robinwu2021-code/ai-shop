@@ -7,3 +7,5 @@
 166 已添加 CATERING 与 ENTERPRISE 测试主数据。2026-11-11 已通过商户端上传测试 PNG 并提交原主体，申请号 MA261111RE680NW3YB。API 与数据库回读均为 PENDING，原主体仍为 PENDING_LICENSE。测试提交经过正常运营通知流程。
 
 当前自动化运营身份只有 NP_IT_CONFIG / NP_IT_REVIEW 权限，缺少 merchant:apply:audit，也缺少运营权限管理能力。正式审核需要有该权限的 166 运营会话。
+
+2026-11-11 后续验收：已使用正式运营账号受理并审核通过，原申请 APPROVED，原主体原位 ACTIVE；测试服务范围为 CITY。完整订单与法人绑定验收见上级 README 和 acceptance-166.json。

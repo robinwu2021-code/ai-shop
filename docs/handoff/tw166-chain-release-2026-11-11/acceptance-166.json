@@ -1,0 +1,113 @@
+{
+  "batch": "TW-E2E-20261110-01",
+  "date": "2026-11-11",
+  "environment": "166",
+  "storeNo": "ST2611100C2XNFCXRS",
+  "entityNo": "M261106BF7GK8052W",
+  "source": "78efc45ce",
+  "jarSha256": "7ece70f156aecc37e130a45f571931c523a215417d45969ea91f8558bb4df63a",
+  "onboarding": {
+    "applyNo": "MA261111RE680NW3YB",
+    "status": "APPROVED",
+    "serviceScope": "CITY",
+    "entityStatus": "ACTIVE"
+  },
+  "legalBinding": {
+    "brandNo": "BR261110Z2FRZ2DHE5",
+    "legalEntityNo": "M261106BF7GK8052W",
+    "commandReadback": true,
+    "preservedStoreBindingNo": "BRB2611100VN7QPQSAZ"
+  },
+  "activity": {
+    "activityNo": "PT261111TVW6WJ7MM0",
+    "status": "DRAFT",
+    "templateCode": "AP023",
+    "currency": "TWD",
+    "published": false
+  },
+  "testOnly": true,
+  "realTransfers": false,
+  "orders": [
+    {
+      "system": "FOOD",
+      "scenario": "APP",
+      "orderNo": "4b89a2d7d3924ad7a0e3d66c3f7da0de",
+      "status": "COMPLETED",
+      "paymentStatus": "PAID",
+      "fulfillmentStatus": "COMPLETED",
+      "receiptCount": 1,
+      "amountMinor": 1300
+    },
+    {
+      "system": "FOOD",
+      "scenario": "OPS",
+      "orderNo": "0f87ce2a871a40b5ace6e6882dd55916",
+      "status": "COMPLETED",
+      "paymentStatus": "PAID",
+      "fulfillmentStatus": "COMPLETED",
+      "receiptCount": 1,
+      "amountMinor": 1300
+    },
+    {
+      "system": "ENTITY",
+      "scenario": "APP",
+      "orderNo": "EQb17f14201a2d46288a6054db7f730e26",
+      "status": "APPLIED",
+      "paymentStatus": null,
+      "fulfillmentStatus": null,
+      "receiptCount": 1,
+      "amountMinor": 1000
+    },
+    {
+      "system": "ENTITY",
+      "scenario": "OPS",
+      "orderNo": "EQb10d49965eac4ae09fec443edabb6221",
+      "status": "APPLIED",
+      "paymentStatus": null,
+      "fulfillmentStatus": null,
+      "receiptCount": 1,
+      "amountMinor": 1000
+    }
+  ],
+  "exceptions": [
+    {
+      "system": "MALL",
+      "orderNo": "56b70c177eb84a028dbc4c73d2a8c8f9",
+      "incomingStatus": "UNMATCHED",
+      "prematureRelease": {
+        "code": 10400,
+        "message": "OFFLINE_CASH_NOT_REFUNDED"
+      },
+      "refundNo": "cash-TW166-MALL-EXC-20261111",
+      "refundStatus": "REFUNDED",
+      "refundReplayVerified": true,
+      "refundedMinor": 100,
+      "closeStatus": "CLOSED",
+      "occupancyRelease": "RELEASED"
+    },
+    {
+      "system": "ENTITY",
+      "orderNo": "EQ79c3d18d49214ea89b56d0c07d08b4f3",
+      "incomingStatus": "UNMATCHED",
+      "prematureRelease": {
+        "code": 10400,
+        "message": "请求参数有误"
+      },
+      "refundNo": "cash-TW166-ENTITY-EXC-20261111",
+      "refundStatus": "REFUNDED",
+      "refundReplayVerified": true,
+      "refundedMinor": 100,
+      "closeStatus": "REFUNDED",
+      "occupancyRelease": "open_entity=NULL"
+    }
+  ],
+  "merchantReadback": {
+    "currentPlan": "PRO",
+    "paidSourceCount": 2,
+    "paidSourceDays": [
+      30,
+      30
+    ],
+    "activeEntitlement": "END_BIZ_APP"
+  }
+}
