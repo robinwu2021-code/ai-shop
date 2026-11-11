@@ -191,6 +191,36 @@ class MallOrderConcurrencyMysqlTest {
         }
     }
 
+
+    @Test
+    void assistedReplayFindsPersistedStoreBuyerAndKeepsOperatorIsolation() {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var f = new Fixture(db);
+            var terms = new ai.neargo.commerce.api.offline.OfflineCollectionTerms(
+                    "test", 1, "platform", "CNY", "test-only", "w1", 86400000, Map.of("bank", "test-only"));
+            var command = new QuoteCommand(STORE, List.of(new QuoteLine("sku-1", 1)), "CNY");
+            var other = new ActorContext("tenant-a", SubjectKind.OPERATOR, "other-operator", "trusted");
+            var q = f.api.quoteOffline(f.c.ops, command, terms);
+            var otherQuote = f.api.quoteOffline(other, command, terms);
+            var place = new PlaceOrderCommand(q.quoteNo(), "assisted-replay", Optional.empty(), STORE);
+            var created = f.api.placeOrder(f.c.ops, place);
+            assertEquals(created, f.api.placeOrder(f.c.ops, place));
+            assertEquals(1, db.jdbc.queryForObject("SELECT COUNT(*) FROM mall_order", Integer.class));
+            assertEquals(created.orderNo(), db.jdbc.queryForObject(
+                    "SELECT pending_change_order_no FROM mch_subscription_account", String.class));
+            f.c.uow.required(() -> {
+                new JdbcSubscriptionAccountRepository(db.ds).lockSubscriptionAccount(STORE);
+                var repo = new JdbcMallRepository(db.ds, new JdbcCommerceEventPersistence(db.ds));
+                var frozen = repo.quote("tenant-a", otherQuote.quoteNo()).orElseThrow();
+                assertTrue(repo.byIdempotency(frozen, "assisted-replay").isEmpty());
+                return null;
+            });
+            assertEquals("NOT_FOUND", assertThrows(MallException.class,
+                    () -> f.api.placeOrder(other, place)).code());
+        }
+    }
+
     @Test
     void twoIndependentTransactionsHaveOnlyOneDigitalOccupancyAndExactFifoReservations()
             throws Exception {
