@@ -122,6 +122,8 @@ const zh = {
   obWarning:
     "这不是「建商家」—— 提交之后队列里多一张待审的单，库里不会多一个主体。"
     + "而且你审不了自己填的那一张：核验必须是另一个人，否则代填等于没人把关。",
+  obMarket: "经营地区", obOwnerEmail: "店主已注册邮箱",
+  obRecordPhoneHint: "该地区手机号只作联系方式记录，不校验号码，不建立手机号登录身份。店主使用已注册的邮箱账号；短信验证尚未开放。",
   obPhone: "商户本人手机号",
   obPhoneHint: "它决定这张单最终挂给谁。填错就是把一家店挂到别人名下，而两边都不会报错。这个号还没有账号的话会新建一个 —— 本人当时并不知道，所以他首次登录时会看到「你的资料由谁在什么时候代为提交」。",
   obName: "主体名称",
@@ -790,6 +792,8 @@ const en: typeof zh = {
   obWarning:
     "This does not create a merchant — it adds one pending application to the queue; no entity appears in the database. "
     + "You also cannot review the application you filled in yourself: verification must be someone else, or filling in on their behalf checks nothing.",
+  obMarket: "Operating region", obOwnerEmail: "Owner's registered email",
+  obRecordPhoneHint: "Phone numbers are contact records only and create no phone login identity. Use the owner's registered email account. SMS verification is not available yet.",
   obPhone: "Merchant's own mobile number",
   obPhoneHint: "It decides who the application ends up belonging to. Get it wrong and the shop is filed under someone else, with no error on either side. If the number has no account yet, one is created — the person does not know at the time, so on their first sign-in they are shown who submitted their details and when.",
   obName: "Entity name",

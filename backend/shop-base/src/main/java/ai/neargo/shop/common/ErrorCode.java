@@ -92,6 +92,7 @@ public enum ErrorCode {
      * 而页面其余文案是端上 i18n 的中文，**同一屏两种语言**。
      */
     OTP_INVALID(10455, "err.otp.invalid"),
+    SMS_VERIFICATION_DISABLED(10515, "err.sms.verification_disabled"),
 
     /**
      * 这个手机号<b>已经绑在你自己账号上了</b>。

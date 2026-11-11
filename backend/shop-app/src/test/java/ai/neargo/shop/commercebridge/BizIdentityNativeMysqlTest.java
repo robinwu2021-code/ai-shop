@@ -1,5 +1,7 @@
 package ai.neargo.shop.commercebridge;
 
+import ai.neargo.shop.platform.MarketPhonePolicyService;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -63,7 +65,7 @@ class BizIdentityNativeMysqlTest {
             auth = new AuthServiceImpl(db.mybatis.getMapper(UserMapper.class), db.mybatis.getMapper(IdentityMapper.class),
                     mock(WxPhonePort.class), mock(MpSessionService.class), tokens, otp, guard, mock(SmsPort.class),
                     mock(WxAuthPort.class), new PasswordHasher(), limiter, mock(PersonService.class), "",
-                    mock(FissionPort.class), mock(OtpTestPhoneService.class), email);
+                    mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(MarketPhonePolicyService.class));
             var ticketService = new LoginTicketServiceImpl(db.jdbc, db.manager, Duration.ofMinutes(5));
             identities = new LoginIdentityServiceImpl(auth, ticketService, tokens, mock(LoginAuditor.class),
                     db.mybatis.getMapper(MchAccountMapper.class), db.mybatis.getMapper(MchEntityMapper.class),

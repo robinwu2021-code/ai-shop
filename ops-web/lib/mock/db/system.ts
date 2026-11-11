@@ -103,3 +103,8 @@ export const appVersions: AppVersionPolicy[] = [
   { appCode: "MERCHANT", platform: "IOS", latest: "", minSupported: "", notes: {}, storeUrl: null,
     updatedBy: null, updatedAt: null, revision: 0 },
 ];
+
+export const marketPhonePolicies: import("@/lib/types").MarketPhonePolicy[] = [
+  { market: "CN", callingPrefix: "+86", recordOnly: false, smsVerificationEnabled: true, smsChannelReady: true, marketEnabled: true },
+  { market: "TW", callingPrefix: "+886", recordOnly: true, smsVerificationEnabled: false, smsChannelReady: false, marketEnabled: true },
+];

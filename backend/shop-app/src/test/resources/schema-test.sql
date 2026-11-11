@@ -1576,6 +1576,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
 
 CREATE TABLE IF NOT EXISTS mch_entity_apply
 (
+    market_code VARCHAR(8) DEFAULT NULL,
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     apply_no VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NOT NULL,

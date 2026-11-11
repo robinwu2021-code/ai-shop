@@ -1,12 +1,14 @@
 // 覆盖范围：系统配置（P-17.1）。
 import type {
-  AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
+  MarketPhonePolicy, SaveMarketPhonePolicy, AppVersionPolicy, SaveAppVersionPolicy, StoreIndustry, SaveStoreIndustry,
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
   MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page, TestIdentity, TestIdentityList,
 } from "@/lib/types";
 
 export interface SystemApi {
+  marketPhonePolicies(): Promise<MarketPhonePolicy[]>;
+  saveMarketPhonePolicy(market: string, v: SaveMarketPhonePolicy): Promise<MarketPhonePolicy>;
   // ── App 版本策略（TDD-商户App问题回报与版本 V6）—— 真后端 `/ops/app-versions/**`
   /** 每个平台一行，没配过的也列出来（revision=0） */
   listAppVersions(): Promise<AppVersionPolicy[]>;

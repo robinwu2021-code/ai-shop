@@ -358,7 +358,7 @@ components:
           description: "联系人姓名。审核要打电话找人"
         contactPhone:
           type: "string"
-          description: "联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号**"
+          description: "联系方式；仅记录地区不建立手机号登录身份，店主归属沿已注册账号。"
         referrerPhone:
           type: "string"
           description: "推荐人手机号（V353，选填）。**奖励靠它人工发** —— 小程序里不能出现「邀请商家入驻得 X 元」（拉人头 + 奖励会被判平台型经营）， 所以规则只在官网与企微里，运营在这一栏看到号之后自己去发券 （TDD-C 端裂变与商家招募 §8.3）。\n\n可选：绝大多数申请没有推荐人，那时这一栏整个不渲染。"
@@ -12716,6 +12716,46 @@ components:
         - "expectedRevision"
       additionalProperties: false
       description: "保存一行策略"
+    MarketPhonePolicy:
+      type: "object"
+      properties:
+        market:
+          type: "string"
+        callingPrefix:
+          type:
+            - "string"
+            - "null"
+        recordOnly:
+          type: "boolean"
+        smsVerificationEnabled:
+          type: "boolean"
+        smsChannelReady:
+          type: "boolean"
+        marketEnabled:
+          type: "boolean"
+      required:
+        - "market"
+        - "callingPrefix"
+        - "recordOnly"
+        - "smsVerificationEnabled"
+        - "smsChannelReady"
+        - "marketEnabled"
+      additionalProperties: false
+      description: "Region-specific contact recording. SMS can open only after the deployment declares a ready channel."
+    SaveMarketPhonePolicy:
+      type: "object"
+      properties:
+        recordOnly:
+          type: "boolean"
+        smsVerificationEnabled:
+          type: "boolean"
+        reason:
+          type: "string"
+      required:
+        - "recordOnly"
+        - "smsVerificationEnabled"
+        - "reason"
+      additionalProperties: false
     JobStatus:
       type: "string"
       enum:
@@ -35631,6 +35671,72 @@ paths:
                   - "data"
       parameters:
         - name: "templateNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/market-phone-policies":
+    get:
+      operationId: "marketPhonePolicies"
+      summary: "marketPhonePolicies"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/MarketPhonePolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/market-phone-policies/{market}":
+    post:
+      operationId: "saveMarketPhonePolicy"
+      summary: "saveMarketPhonePolicy"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MarketPhonePolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "market"
           in: "path"
           required: true
           schema:

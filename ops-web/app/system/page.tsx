@@ -18,6 +18,7 @@ import { notify } from "@/lib/notify";
 import { C_END_THEMES, type ThemeKey } from "@/lib/stores/theme";
 import { BASE_CURRENCY, type FeatureFlag, type MarketConfig } from "@/lib/types";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { MarketPhonePolicyCard } from "./market-phone-policy-card";
 import { StoreIndustryTab } from "./store-industry-tab";
 import { IndustryTab } from "./industry-tab";
 import { AuthCodeTab } from "./auth-code-tab";
@@ -270,6 +271,7 @@ function SystemInner() {
             rowKey={(m) => m.code}
             empty={c.marketEmpty}
           />
+          <MarketPhonePolicyCard c={c} canWrite={canParam} />
         </>
       )}
 

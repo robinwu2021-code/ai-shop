@@ -189,6 +189,10 @@ const zh = {
 
   toastSkinSaved: "已下发外观配置",
   toastTextsSaved: "规则文案已保存",
+  phonePolicyTitle: "地区手机号与短信策略",
+  phonePolicyNotice: "台湾默认仅记录手机号，不校验号码、不以号码建立登录身份。短信通道接入并配置就绪后才可开放验证。",
+  phonePolicyRegion: "地区", phoneRecordOnly: "手机号仅作记录（不做格式校验）", phoneSmsEnabled: "开放短信验证码",
+  phoneSmsUnavailable: "该地区短信通道尚未开放；保持关闭，使用邮箱登录。", phonePolicyReason: "变更原因", phonePolicySaved: "已保存地区手机号策略",
   toastMarketSaved: "已保存市场配置",
   toastFlagSaved: "已保存开关",
 
@@ -498,6 +502,10 @@ const en: typeof zh = {
 
   toastSkinSaved: "Appearance settings pushed",
   toastTextsSaved: "Policy copy saved",
+  phonePolicyTitle: "Regional phone and SMS policy",
+  phonePolicyNotice: "Taiwan records contact numbers without format validation or phone login identity. SMS verification can open after a channel is connected and configured.",
+  phonePolicyRegion: "Region", phoneRecordOnly: "Record contact phone only (no format validation)", phoneSmsEnabled: "Enable SMS verification",
+  phoneSmsUnavailable: "SMS is not available in this region. Keep it off and use email sign-in.", phonePolicyReason: "Reason", phonePolicySaved: "Regional phone policy saved",
   toastMarketSaved: "Market settings saved",
   toastFlagSaved: "Flag saved",
 

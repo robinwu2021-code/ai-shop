@@ -400,3 +400,14 @@ export interface SaveAppVersionPolicy {
   storeUrl: string | null;
   expectedRevision: number;
 }
+
+/** Region-specific contact recording. SMS can open only after the deployment declares a ready channel. */
+export interface MarketPhonePolicy {
+  market: string;
+  callingPrefix: string | null;
+  recordOnly: boolean;
+  smsVerificationEnabled: boolean;
+  smsChannelReady: boolean;
+  marketEnabled: boolean;
+}
+export interface SaveMarketPhonePolicy { recordOnly: boolean; smsVerificationEnabled: boolean; reason: string }

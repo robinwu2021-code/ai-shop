@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { can } from "./permissions";
 const state = vi.hoisted(() => ({ tab: "market", perms: ["system:param:read"] as string[], list: vi.fn(), save: vi.fn(), types: vi.fn() }));
 vi.mock("@/lib/api", () => ({ api: {
+  marketPhonePolicies: async () => [{market:"TW",callingPrefix:"+886",recordOnly:true,smsVerificationEnabled:false,smsChannelReady:false,marketEnabled:true}],
   listMarkets: async () => [{ code: "TW", name: "台湾", currency: "TWD", timezone: "Asia/Taipei", rate: 4.4, enabled: true }],
   listIndustries: async () => [{ industry: "RETAIL", name: "零售", sort: 1, enabled: true, wechatMicroAllowed: true, alipayMicroAllowed: true, pointsForced: false }],
   listStoreIndustries: state.list, saveStoreIndustry: state.save, mallBusinessTypes: state.types,

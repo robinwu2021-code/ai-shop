@@ -1,3 +1,4 @@
+import { marketPhonePolicies } from "@/lib/mock/db/system";
 // 覆盖范围：系统配置（P-17.1）。
 import * as db from "@/lib/mock/db";
 import { mall } from "@/lib/mock/db/commerce";
@@ -34,6 +35,14 @@ function normIdentity(type: string, value: string): string | null {
 }
 
 export const systemMock: SystemApi = {
+  marketPhonePolicies: async () => wait(structuredClone(marketPhonePolicies)),
+  saveMarketPhonePolicy: async (market, v) => {
+    const row=marketPhonePolicies.find((x)=>x.market===market);
+    if (!row) return notFound("市场", "Market", market);
+    if(v.smsVerificationEnabled && !row.smsChannelReady) return fail("该地区短信通道尚未开放", "SMS verification is not available in this region");
+    Object.assign(row,{recordOnly:v.recordOnly,smsVerificationEnabled:v.smsVerificationEnabled});
+    return wait(structuredClone(row));
+  },
   listStoreIndustries: async () => wait(db.storeIndustries.map((r) => ({ ...r }))),
   saveStoreIndustry: async (v) => {
     const sub = v.subIndustryCode || "";

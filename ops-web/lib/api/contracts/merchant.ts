@@ -98,6 +98,8 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    * BD 同时持有审核码与代填码，光靠权限配置挡不住。
    */
   applyOnBehalf(v: {
+    market?: string;
+    ownerEmail?: string;
     /** 商户本人手机号。**它决定这张单最终挂给谁** —— 填错就是挂到别人名下 */
     phone: string;
     name: string;

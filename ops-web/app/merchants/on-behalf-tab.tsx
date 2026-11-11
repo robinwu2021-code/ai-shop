@@ -27,7 +27,7 @@ import { notify } from "@/lib/notify";
 import type { ApplyOnBehalfResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
-import { Input } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -37,6 +37,13 @@ import type { MerchantsCopy } from "./copy";
 const PHONE = /^1[3-9]\d{9}$/;
 
 export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boolean }) {
+  const [selectedMarket, setMarket] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const policies = useQuery({queryKey:["market-phone-policies"],queryFn:()=>api.marketPhonePolicies()});
+  const enabledMarkets=(policies.data??[]).filter((x)=>x.marketEnabled);
+  const market=enabledMarkets.find((x)=>x.market===selectedMarket)?.market ?? enabledMarkets.find((x)=>x.market==="TW")?.market ?? enabledMarkets[0]?.market ?? "";
+  const policy=policies.data?.find((x)=>x.market===market);
+  const phoneOwner=market==="CN" && policy?.recordOnly===false;
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("ENTERPRISE");
@@ -56,7 +63,8 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
 
   const submit = useMutation({
     mutationFn: () => api.applyOnBehalf({
-      phone: phone.trim(),
+      market, ownerEmail: phoneOwner?undefined:ownerEmail.trim(),
+      phone: policy?.recordOnly ? phone : phone.trim(),
       name: name.trim(),
       subject,
       contactName: contactName.trim() || undefined,
@@ -79,9 +87,9 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
     onError: (e: Error) => notify.error(e.message),
   });
 
-  const phoneOk = PHONE.test(phone.trim());
+  const phoneOk = policy?.recordOnly === true || (market === "CN" ? PHONE.test(phone.trim()) : /^\+?\d{3,20}$/.test(phone.trim()));
   // 执照是这一页与自营那一页的分水岭，所以它进 ready 而不是靠后端回一个 400
-  const ready = phoneOk && name.trim().length > 0 && licenseUrl.trim().length > 0;
+  const ready = !!policy?.marketEnabled && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && name.trim().length > 0 && licenseUrl.trim().length > 0;
 
   return (
     <div className="space-y-4">
@@ -92,26 +100,32 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
       <ConfigCard title={c.obTitle} notice={c.obDesc}>
         <div className="max-w-xl space-y-4">
           <div>
-            <Label>{c.obPhone}</Label>
+            <Label htmlFor="ob-market">{c.obMarket}</Label>
+            <Select id="ob-market" value={market} onChange={(e)=>setMarket(e.target.value)}>{enabledMarkets.map((x)=><option key={x.market} value={x.market}>{x.market}</option>)}</Select>
+            {!phoneOwner&&<><Label htmlFor="ob-owner-email">{c.obOwnerEmail}</Label><Input id="ob-owner-email" type="email" value={ownerEmail} disabled={!canSubmit} onChange={(e)=>setOwnerEmail(e.target.value)}/><Notice tone="muted">{c.obRecordPhoneHint}</Notice></>}
+          </div>
+          <div>
+            <Label htmlFor="ob-phone">{phoneOwner?c.obPhone:c.obContactPhone}</Label>
             <Input
               className="mt-1"
+              id="ob-phone" maxLength={32}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder={c.soPhonePlaceholder}
+              placeholder={phoneOwner?c.soPhonePlaceholder:undefined}
               disabled={!canSubmit}
             />
             {/* 号码没填完就报错会一路红着，只在填够 11 位之后判 */}
-            {phone.trim().length >= 11 && !phoneOk && (
+            {policy?.recordOnly===false && phone.trim().length >= 11 && !phoneOk && (
               <Notice tone="danger" className="mt-2">{c.soPhoneBad}</Notice>
             )}
-            <p className="mt-1 txt-caption text-muted-foreground">{c.obPhoneHint}</p>
+            <p className="mt-1 txt-caption text-muted-foreground">{phoneOwner?c.obPhoneHint:c.obRecordPhoneHint}</p>
           </div>
 
           <div>
-            <Label>{c.obName}</Label>
+            <Label htmlFor="ob-name">{c.obName}</Label>
             <Input
               className="mt-1"
-              value={name}
+              id="ob-name" value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={c.soNamePlaceholder}
               disabled={!canSubmit}
@@ -133,10 +147,10 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
           </div>
 
           <div>
-            <Label>{c.obLicense}</Label>
+            <Label htmlFor="ob-license">{c.obLicense}</Label>
             <Input
               className="mt-1"
-              value={licenseUrl}
+              id="ob-license" value={licenseUrl}
               onChange={(e) => setLicenseUrl(e.target.value)}
               disabled={!canSubmit}
             />

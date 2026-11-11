@@ -2,7 +2,11 @@ package ai.neargo.shop.platform.api.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.common.Phones;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.platform.MarketPhonePolicyService;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.user.UserProvisionPort;
@@ -40,17 +44,20 @@ public class OpsMerchantApplyController {
     private final OpsService opsService;
     private final UserProvisionPort userProvision;
     private final AuditLogPort auditLog;
+    private final MarketPhonePolicyService phones;
 
     public OpsMerchantApplyController(OpsService opsService,
                                       UserProvisionPort userProvision,
-                                      AuditLogPort auditLog) {
+                                      AuditLogPort auditLog, MarketPhonePolicyService phones) {
+        this.phones=phones;
         this.opsService = opsService;
         this.userProvision = userProvision;
         this.auditLog = auditLog;
     }
 
     /**
-     * 代商户提交进件申请。
+     * 代商户提交进件申请。仅记录地区使用已注册邮箱定位店主，手机号只保存到联系方式。
+     * 下述按手机号自动建号只适用于保持历史手机号策略的大陆请求。
      *
      * <p><b>会给这个手机号建一个账号</b>（{@code ensureUserByPhone}，与自营入口同一条路），
      * 而<b>本人当时并不知道</b>。不建的话审核通过时没有 owner 可挂，所以只能建 ——
@@ -64,16 +71,20 @@ public class OpsMerchantApplyController {
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "')")
     public ApplyOnBehalfVO applyOnBehalf(@Valid @RequestBody OnBehalfReq req) {
         String operator = SecurityUtils.currentUserNo();
-        String ownerUserNo = userProvision.ensureUserByPhone(req.phone());
+        String market=req.market()==null?"CN":req.market();
+        var policy=phones.validateContact(market,req.phone());
+        boolean phoneOwner="CN".equals(market) && !policy.recordOnly();
+        String ownerUserNo=phoneOwner?userProvision.ensureUserByPhone(req.phone()):userProvision.registeredUserByEmail(req.ownerEmail())
+                .orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
         String applyNo = opsService.createApplyOnBehalf(new OpsService.SubmitApplyCommand(
                 ownerUserNo, req.name(), req.subject(),
                 // 推荐人传 null：这条是 BD 代填，来源已由 submitted_by 记下，不是「谁推荐的」
-                req.contactName(), req.contactPhone(), null, req.category(), req.description(),
+                req.contactName(), req.contactPhone()==null?req.phone():req.contactPhone(), null, req.category(), req.description(),
                 req.serviceScope(), req.communityNos(), req.qualifications(),
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 // 手填行业传 null：代填的是 BD，他按运营口径直接选了行业码（V360）
                 null,
-                req.qualificationItems()), operator);
+                req.qualificationItems(), market), operator);
         /*
          * 审计里写「进队列待审」而不是「已创建」。
          * 代填最容易被误解成「运营把这家店开出来了」—— 而它只是录了一张表，
@@ -97,7 +108,7 @@ public class OpsMerchantApplyController {
      *              填错就是把一家店挂到别人名下，而两边都不会报错
      */
     public record OnBehalfReq(
-            @NotBlank @Pattern(regexp = Phones.CN_MOBILE, message = Phones.MESSAGE) String phone,
+            @Size(max=32) String phone,
             @NotBlank String name,
             @NotBlank String subject,
             String contactName,
@@ -109,6 +120,8 @@ public class OpsMerchantApplyController {
             List<String> qualifications,
             Boolean asPickupPoint,
             String industry,
-            List<OpsService.QualificationItem> qualificationItems) {
+            List<OpsService.QualificationItem> qualificationItems,
+            @Pattern(regexp="[A-Z]{2}") String market,
+            @Email @Size(max=254) String ownerEmail) {
     }
 }

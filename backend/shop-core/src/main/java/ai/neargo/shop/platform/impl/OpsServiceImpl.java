@@ -598,6 +598,7 @@ public class OpsServiceImpl implements OpsService {
         requireLicenseIfNeeded(cmd);
 
         MchEntityApply apply = new MchEntityApply();
+        apply.setMarketCode(cmd.marketCode());
         apply.setApplyNo(BizKey.next(BizKey.MERCHANT_APPLY));
         apply.setUserNo(cmd.userNo());
         apply.setName(cmd.name());

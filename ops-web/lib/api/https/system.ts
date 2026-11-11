@@ -3,6 +3,8 @@ import { client } from "../http-client";
 import type { SystemApi } from "../contracts/system";
 
 export const systemHttp: SystemApi = {
+  marketPhonePolicies: () => client.get("/ops/market-phone-policies"),
+  saveMarketPhonePolicy: (market, v) => client.post(`/ops/market-phone-policies/${encodeURIComponent(market)}`, v),
   // ── App 版本策略 ──
   listAppVersions: () => client.get("/ops/app-versions"),
   saveAppVersion: (appCode, platform, v) => client.put(`/ops/app-versions/${appCode}/${platform}`, v),
