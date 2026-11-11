@@ -19932,6 +19932,7 @@ INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updat
 SELECT 'SUPER_ADMIN','OPS_SYSTEM__TAB_STOREINDUSTRY','OPS',NOW(),NOW()
 WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_SYSTEM__TAB_STOREINDUSTRY' AND end_code='OPS');
 UPDATE sys_function_point SET gated_by='commerce.catalog.enabled' WHERE point_code='OPS_SYSTEM__TAB_STOREINDUSTRY';
+UPDATE stl_payment_operation SET evidence_ref = REPLACE(evidence_ref, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE evidence_ref LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

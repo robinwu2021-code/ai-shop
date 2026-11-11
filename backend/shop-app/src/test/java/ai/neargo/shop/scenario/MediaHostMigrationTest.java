@@ -53,7 +53,8 @@ class MediaHostMigrationTest {
     private static final List<String> MIGRATIONS = List.of(
             "V347__media_host_img.sql",
             "V369__media_host_store_banner.sql",
-            "V586__media_host_brand_logo.sql");
+            "V586__media_host_brand_logo.sql",
+            "V661__media_host_payment_evidence.sql");
 
     @Autowired ApplicationContext ctx;
     @Autowired JdbcTemplate jdbc;

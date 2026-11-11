@@ -63,6 +63,8 @@ class MemberAudienceFlowTest {
     private CouponService couponService;
     @Autowired
     private PersonService personService;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private static int seq = 7400;
 
@@ -352,6 +354,9 @@ class MemberAudienceFlowTest {
         String t = tag(e, "只要土鸡蛋");
         tagOne(e, b.memberNo(), t);
         memberService.enroll(e, "1371199" + (++seq), null, List.of(t), "ST-1", "OP");
+        // Coupon writes lock the real owning entity (StoreOwnershipWritePort); a bare entity number is not an owner.
+        jdbc.update("INSERT INTO mch_entity(entity_no,name,status,tenant_no,created_at,updated_at)"
+                + " VALUES(?,?,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", e, "Audience " + e);
         String couponNo = couponService.save(e, new CouponSaveCmd(null, "满减券" + seq, PmtCoupon.CASH,
                 500L, null, null, 0L, null, PmtCoupon.SCOPE_ALL, List.of(), null,
                 PmtCoupon.RELATIVE, null, null, 7,

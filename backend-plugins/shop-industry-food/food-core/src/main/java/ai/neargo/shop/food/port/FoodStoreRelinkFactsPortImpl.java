@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 
 /** All original rows count, including cancelled and archived business history. */
 @Component
+// Reads food history through foodSqlSessionTemplate, which exists only when food persistence is enabled.
+@org.springframework.context.annotation.Conditional(ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnabled.class)
 public final class FoodStoreRelinkFactsPortImpl implements StoreRelinkIndustryFactsPort {
     private final JdbcTemplate jdbc;
     private ai.neargo.shop.spi.user.StoreOwnershipWritePort ownershipWrites;

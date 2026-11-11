@@ -82,7 +82,7 @@ class InventoryDualWriteTest {
     @Test
     @DisplayName("★★★ 装配的是双写口 —— 拿到 StockPortImpl 就说明这一档整个没生效")
     void dualWritePortIsWired() {
-        assertThat(stockPort.getClass().getSimpleName())
+        assertThat(org.springframework.util.ClassUtils.getUserClass(stockPort).getSimpleName())
                 .as("stock-authority=DUAL 时交易域该拿到 DualWriteStockPort")
                 .isEqualTo("DualWriteStockPort");
     }

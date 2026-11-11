@@ -225,13 +225,14 @@ class InventoryOriginalRestoreFlowTest {
         String entity = "E-" + ref;
         String sku = "SKU-" + ref;
         String owner = acl.ownerIdOf(entity);
-        String location = acl.locationIdOf(entity, "STORE-" + ref);
+        String location = acl.locationIdOf(entity, store(ref));
         String item = acl.upsertItem(entity, sku, "original stock", "unit", null, null, "BAG");
         inbound.postDirectly(new InboundService.Draft(owner, location, InvEnums.InboundSource.PURCHASE,
                 null, null, "supplier", LocalDateTime.now(), null,
                 List.of(new InboundService.Line(item, 10, "BAG", 4200L))), "TEST");
         reservations.reserve(owner, ref,
-                List.of(new ReservationService.Line(item, location, committed, "SUB-" + ref)), 900, lifecycleVersion);
+                List.of(new ReservationService.Line(item, location, committed, "SUB-" + ref, sku, store(ref))),
+                900, lifecycleVersion);
         if (lifecycleVersion == 2) {
             reservations.allocatePaidByRef(ref);
             reservations.issueByFulfillmentRef("SUB-" + ref, "TEST");
@@ -243,8 +244,13 @@ class InventoryOriginalRestoreFlowTest {
         return f;
     }
 
+    /** Real store numbers fit inv_reservation_line.source_store_no VARCHAR(32). */
+    private static String store(String ref) {
+        return "ST-" + ref.replace("-", "").substring(0, 24);
+    }
+
     private List<StockPort.SkuQty> needs(Fixture f, int qty) {
-        return List.of(new StockPort.SkuQty(f.sku(), qty, "STORE-" + f.ref()));
+        return List.of(new StockPort.SkuQty(f.sku(), qty, store(f.ref())));
     }
 
     private int onHand(Fixture f, String location) {
