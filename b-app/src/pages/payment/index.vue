@@ -9,7 +9,7 @@ const merchant = useMerchantStore();
 // 它与入驻审核是两条独立的链路：入驻过了店就能开、货能上架，
 // 但通道没批就收不了钱。此前 B 端完全看不到这个状态 ——
 // 商家开完店、上完架，第一笔订单才发现收不了款，而那时只能打电话给运营。
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -114,9 +114,12 @@ async function loadPayService() {
   payServiceKey.value = key;
   payService.value = null;
   payServiceState.value = "hidden";
-  if (!storeNo || !merchant.can("biz:finance")) return;
+  if (!storeNo) return;
   payServiceState.value = "loading";
   try {
+    // switchStore 先赋 storeNo，再同步写 HTTP 读取的存储；旧结果立即失效，请求等写完。
+    await nextTick();
+    if (!isCurrent()) return;
     const scope = await api.mBizScope();
     if (!isCurrent()) return;
     if (!scope.owner || scope.currentStoreNo !== storeNo

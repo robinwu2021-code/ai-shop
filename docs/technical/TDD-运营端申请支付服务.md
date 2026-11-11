@@ -76,5 +76,6 @@ near-pay 的平台商户由来源系统「申请支付服务」时建立：`POST
 | B2 | 依照后端 `requireOwned`，每次先读取现有 `mBizScope` 的真实 `owner/currentStoreNo/merchantNo/perms`，仅属主且持财务权限、当前门店匹配、显式 entity 匹配时请求；不将财务成员权限推断为属主，不新增权限缓存。`payment-service-page.test.ts` 覆盖非属主、跨 entity、门店不匹配和无财务权限。 |
 | B3 | `NONE/PENDING/NEED_MORE/REJECTED/APPROVED` 显示资料审核结果，保留支付平台关联、资料状态和审核意见；资料审核通过明确不等于门店可收款，收款能力继续取原通道 `canReceiveMoney`。页面测试覆盖五种结果与原因，不改原通道申请链。 |
 | B4 | 查询失败提供独立重试，不转换为 `NONE`；切店或显式 entity 改变立即清除旧结果，以请求代次和范围键丢弃过期响应。页面测试使用真实 `sh-scaffold`，覆盖失败后重试、S1→S2→S1 旧响应迟到、旧通道加载失败时资料卡仍显示且通道可独立恢复。 |
+| B5 | 本地权限冷启为空仍读取真实 `mBizScope`，状态请求只按其属主与财务权限判断；外壳仍按真实 finance 权限裁剪。切店同步作废旧结果，等 `nextTick` 后读取已写入存储的请求头，过期调度不发请求。`payment-service-store-http.test.ts` 贯通真实 merchant store、API、HTTP 与同步存储，覆盖冷启、切店请求头和连续切店取消过期调度。 |
 
-接口形状未改后端；OpenAPI B 端投影、API 详情和索引及相关派生矩阵从现有生成器同步。定向 Vitest 13 条与 `vue-tsc --noEmit` 通过。
+接口形状未改后端；OpenAPI B 端投影、API 详情和索引及相关派生矩阵从现有生成器同步。定向 Vitest 15 条与 `vue-tsc --noEmit` 通过。
