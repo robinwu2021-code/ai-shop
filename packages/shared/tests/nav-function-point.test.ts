@@ -115,7 +115,14 @@ function seededPoints() {
    * 于是同一个 href 在 `out` 里有两条 —— 只减掉新码那条，旧码那条还会把 href 报成「只在库里」。
    */
   const removedHrefs = new Set(out.filter((p) => removed.has(p.pointCode)).map((p) => p.href));
-  return out.filter((p) => !removed.has(p.pointCode) && !removedFunctions.has(p.functionCode) && !(p.href && removedHrefs.has(p.href)));
+  /*
+   * 连带清理**只针对 V62 那批顺序编号旧码**（OPS_XXX_05 这种）。
+   * 按 href 派生的现行码不连带：V658 撤售后治理下重复的「退款分账」（OPS_AFTERSALE__TAB_REFUND_BACK），
+   * 经营财务那条 OPS_FINANCE__TAB_REFUND_BACK 与它同 href 却仍在用 —— 一并减掉就成了「只在 nav 里」。
+   */
+  const legacySequential = (code: string) => /^OPS_[A-Z]+_\d+$/.test(code);
+  return out.filter((p) => !removed.has(p.pointCode) && !removedFunctions.has(p.functionCode)
+    && !(p.href && removedHrefs.has(p.href) && legacySequential(p.pointCode)));
 }
 
 /** nav.ts 里的叶子（有 href + label 的那些） */
