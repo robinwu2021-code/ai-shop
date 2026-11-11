@@ -2,6 +2,8 @@ package ai.neargo.shop.promotion.service;
 
 import ai.neargo.shop.promotion.dto.ActivityActor;
 import ai.neargo.shop.promotion.entity.PmtActivity;
+import ai.neargo.shop.promotion.dto.UnifiedActivityDefinition;
+import java.util.List;
 
 /** Original P5 business contract; implementation retains its authorization and transaction boundaries. */
 public interface BrandActivityOwnershipService {
@@ -10,4 +12,9 @@ public interface BrandActivityOwnershipService {
 
     /** Join the existing Core activity transaction when recording its brand owner. */
     void register(ActivityActor actor,String activity);
+    /** Verify ordinary ORDER participation against current organization facts. */
+    default boolean ordinaryScope(ActivityActor actor,UnifiedActivityDefinition definition){return false;}
+    default boolean participates(PmtActivity activity,String consumerEntityNo,String storeNo){return false;}
+    default List<String> ordinaryActivities(String tenantNo,String consumerEntityNo,String storeNo){return List.of();}
+
 }

@@ -72,8 +72,11 @@ public final class EntitlementRuleValidator {
         }
         var scope = d.redemptionScope();
         require(scope != null && scope.mode() != null && scope.refs() != null);
-        require(Set.of("ALL", "STORES", "GOODS", "CATEGORIES").contains(scope.mode()));
+        require(Set.of("ALL", "STORES", "GOODS", "CATEGORIES", "BRAND_STORES").contains(scope.mode()));
         require("ALL".equals(scope.mode()) ? scope.refs().isEmpty() : !scope.refs().isEmpty());
+        if ("BRAND_STORES".equals(scope.mode())) {
+            require("ORDER_COUPON".equals(d.kind()) && scope.refs().size() == 1);
+        }
         require(scope.refs().stream().allMatch(ref -> text(ref, 64)));
         require(scope.refs().stream().distinct().count() == scope.refs().size());
     }

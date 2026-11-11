@@ -34,6 +34,10 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.promotion.service.BrandActivityOwnershipService;
 import java.util.Objects;
 
 /** Unified order discounts use published facts, never mutable drafts or legacy group/flash-price paths. */
@@ -43,6 +47,8 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
     private static final String CHECKOUT_TENANT = "MAIN";
     private final ActivityMapper heads;
     private final PmtActivityVersionMapper versions;
+    @Autowired private ObjectProvider<BrandActivityOwnershipService> brandOwners;
+    @Autowired(required = false) private ai.neargo.shop.promotion.cost.BrandPromotionCostService costs;
     private final PmtActivityBudgetMapper budgets;
     private final PmtActivityParticipantMapper people;
     private final UnifiedOrderActivityAccountingMapper accounting;
@@ -69,11 +75,17 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
             List<CampaignPort.AppliedActivity> result = new ArrayList<>();
             for (var group : groups) {
                 if (group.storeNo() == null) continue; // new protocol requires an actual fulfillment store
-                for (var head : heads.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                var candidates=new ArrayList<>(heads.selectList(Wrappers.<PmtActivity>lambdaQuery()
                         .eq(PmtActivity::getTenantNo,CHECKOUT_TENANT)
                         .eq(PmtActivity::getEntityNo, group.merchantNo()).eq(PmtActivity::getScene,"ORDER")
                         .eq(PmtActivity::getStatus,"RUNNING").isNotNull(PmtActivity::getCurrentVersionNo)
-                        .isNotNull(PmtActivity::getDraftSnapshot).isNull(PmtActivity::getArchivedAt))) {
+                        .isNotNull(PmtActivity::getDraftSnapshot).isNull(PmtActivity::getArchivedAt)));
+                var owner=brandOwners==null?null:brandOwners.getIfAvailable();
+                var shared=owner==null?List.<String>of():owner.ordinaryActivities(CHECKOUT_TENANT,group.merchantNo(),group.storeNo());
+                if(!shared.isEmpty())candidates.addAll(heads.selectList(Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getTenantNo,CHECKOUT_TENANT).in(PmtActivity::getActivityNo,shared).eq(PmtActivity::getScene,"ORDER").eq(PmtActivity::getStatus,"RUNNING").isNotNull(PmtActivity::getCurrentVersionNo).isNotNull(PmtActivity::getDraftSnapshot).isNull(PmtActivity::getArchivedAt)));
+                var seen=new HashSet<String>();
+                for (var head : candidates) {
+                    if(!seen.add(head.getActivityNo()) || !participates(head,group.merchantNo(),group.storeNo()))continue;
                     var snapshot = snapshot(head);
                     long off = discount(snapshot.definition(), group, Instant.now());
                     if (off > 0 && audience(snapshot, head.getEntityNo(), userNo) && capacity(head, userNo, off)) {
@@ -93,13 +105,13 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
             var preflight = head(selected.activityNo(), false);
             if (preflight == null || preflight.getDraftSnapshot() == null) return false;
             var snapshot=snapshot(preflight);
-            var sub=orders.find(preflight.getTenantNo(),orderNo,preflight.getEntityNo(),selected.storeNo());
+            var sub=orders.find(preflight.getTenantNo(),orderNo,selected.merchantNo(),selected.storeNo());
             boolean audienceMatches=audience(snapshot,preflight.getEntityNo(),userNo);
             // Cross-owner reads finish before taking promotion resource locks.
             var head = head(selected.activityNo(), true);
             if (head==null || !Objects.equals(head.getCurrentVersionNo(),preflight.getCurrentVersionNo())
                     || !Objects.equals(head.getEntityNo(),preflight.getEntityNo())) unavailable();
-            if (!"ORDER".equals(head.getScene()) || !Objects.equals(head.getEntityNo(),selected.merchantNo())
+            if (!"ORDER".equals(head.getScene()) || !participates(head,selected.merchantNo(),selected.storeNo())
                     || selected.storeNo()==null || selected.qty()!=1 || selected.platformMinor()!=0
                     || selected.enrollmentNo()!=null) unavailable();
             // The head lock serializes retries, including a retry after a cancellation.
@@ -133,7 +145,11 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
             row.setAmountMinor(off); row.setRedeemMode(PmtCoupon.REDEEM_ORDER);
             row.setFunder(PmtCoupon.BY_MERCHANT); row.setAppliedAt(System.currentTimeMillis());
             changed(applies.insert(row));
-            effects.recordOrderDiscount(head.getTenantNo(),head.getActivityNo(),row.getApplyNo(),head.getEntityNo(),
+            if ("BRAND".equals(head.getOwner())) {
+                if (costs == null) unavailable();
+                costs.captureActivity(head.getTenantNo(), row.getApplyNo(), head.getCurrentVersionNo());
+            }
+            effects.recordOrderDiscount(head.getTenantNo(),head.getActivityNo(),row.getApplyNo(),selected.merchantNo(),
                     selected.storeNo(),off,snapshot.definition().currency(),Instant.ofEpochMilli(row.getAppliedAt()));
             return true;
         });
@@ -197,6 +213,11 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
         return p==null || b.getPerUserLimit()-p.getHeldCount()-p.getUsedCount()>0;
     }
     /** Existing checkout has no currency context; only its actual CNY fixed-cut contract is executable. */
+    private boolean participates(PmtActivity head,String entity,String store){
+        if(!"BRAND".equals(head.getOwner()))return Objects.equals(head.getEntityNo(),entity);
+        var owner=brandOwners==null?null:brandOwners.getIfAvailable();return owner!=null&&owner.participates(head,entity,store);
+    }
+
     public static boolean supportsDefinition(UnifiedActivityDefinition definition) {
         return "ORDER".equals(definition.scene()) && "CNY".equals(definition.currency())
                 && definition.rule().tiers().isEmpty() && !definition.rule().benefits().isEmpty()

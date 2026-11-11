@@ -272,14 +272,17 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
 
     private boolean ownerVisible(ActivityActor actor,PmtActivity row){if(!"BRAND".equals(row.getOwner()))return actor.brandNo()==null;var owner=brandOwners.getIfAvailable();return owner!=null&&owner.visible(actor,row);}
     private boolean visible(ActivityActor actor, UnifiedActivityDefinition d) {
-        if(actor.brandNo()!=null)return "RECHARGE".equals(d.scene())&&"ALL".equals(d.storeParticipationScope().mode())&&d.rule().benefits().isEmpty()&&d.rule().tiers().stream().allMatch(t->"ALL".equals(t.redemptionScope().mode()));
+        if(actor.brandNo()!=null){
+            if("ORDER".equals(d.scene())){var owner=brandOwners.getIfAvailable();return owner!=null&&owner.ordinaryScope(actor,d);}
+            return "RECHARGE".equals(d.scene())&&"ALL".equals(d.storeParticipationScope().mode())&&d.rule().benefits().isEmpty()&&d.rule().tiers().stream().allMatch(t->"ALL".equals(t.redemptionScope().mode()));
+        }
         return actor.allowedStores() == null || ("STORES".equals(d.storeParticipationScope().mode())
                 && actor.allowedStores().containsAll(d.storeParticipationScope().refs()));
     }
 
     private void references(ActivityActor actor, UnifiedActivityDefinition d) {
         if (!visible(actor, d)) throw BizException.of(ErrorCode.FORBIDDEN);
-        scopeValidation.validate(actor.tenantNo(), actor.entityNo(), d.storeParticipationScope());
+        if(actor.brandNo()==null || !"ORDER".equals(d.scene()))scopeValidation.validate(actor.tenantNo(), actor.entityNo(), d.storeParticipationScope());
         for (var tier : d.rule().tiers()) {
             scopeValidation.validate(actor.tenantNo(), actor.entityNo(), tier.redemptionScope());
         }

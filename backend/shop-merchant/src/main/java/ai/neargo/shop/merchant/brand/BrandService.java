@@ -3,16 +3,23 @@ package ai.neargo.shop.merchant.brand;
 import ai.neargo.shop.merchant.brand.ManagementModels.Actor;
 import ai.neargo.shop.merchant.brand.ManagementModels.BrandCreate;
 import ai.neargo.shop.merchant.brand.ManagementModels.BrandEdit;
+import ai.neargo.shop.merchant.brand.ManagementModels.BrandLegalEntity;
 import ai.neargo.shop.merchant.brand.ManagementModels.ChangeCheck;
 import ai.neargo.shop.merchant.brand.ManagementModels.ChangeDecision;
 import ai.neargo.shop.merchant.brand.ManagementModels.ChangeSubmit;
 import ai.neargo.shop.merchant.brand.ManagementModels.StatusChange;
 import java.util.Map;
+import java.util.List;
 
 /** Brand lifecycle and atomic organization binding; authorization remains live and customer funds never move here. */
 public interface BrandService {
     /** Read the resource only after current identity and scope checks. */
     Map<String,Object> detail(Actor a,String no);
+
+    List<Map<String,Object>> legalEntityCandidates(Actor a,String brand);
+ Map<String,Object> bindLegalEntity(Actor a,String brand,BrandLegalEntity command,String key);
+ Map<String,Object> legalEntityResult(Actor a,String brand,String key);
+ Map<String,Object> editResult(Actor a,String no,String key);
 
     /** Create under verified authority while preserving the original idempotent result. */
     Map<String,Object> create(Actor a,BrandCreate c,String key);

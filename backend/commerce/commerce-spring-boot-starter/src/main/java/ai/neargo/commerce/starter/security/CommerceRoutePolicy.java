@@ -98,6 +98,12 @@ public final class CommerceRoutePolicy {
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
     // P1 management resources have their own actor/scope authorization, independent of store selection.
     private static final List<HostRoute> MANAGEMENT_ACCOUNT = List.of(
+            HostRoute.of("GET", "/biz/management/brands/" + ID + "/marketing/(?:context|activities|coupons|coupon-issues|cost-rules|cost-statements|commands)"),
+            HostRoute.of("POST", "/biz/management/brands/" + ID + "/marketing/commands"),
+            HostRoute.of("GET", "/biz/management/brands/" + ID + "/commands"),
+            HostRoute.of("GET", "/biz/management/brands/" + ID + "/legal-entity-candidates"),
+            HostRoute.of("PUT", "/biz/management/brands/" + ID + "/legal-entity"),
+            HostRoute.of("GET", "/biz/management/brands/" + ID + "/legal-entity/commands"),
             HostRoute.of("GET", "/biz/merchant/store-creation-context"),
             HostRoute.of("GET", "/biz/app/legal-subjects"),
             HostRoute.of("GET,POST", "/biz/app/operating-entities"),

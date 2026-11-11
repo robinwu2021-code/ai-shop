@@ -17,6 +17,8 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateVersionMapper;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
+import org.springframework.beans.factory.ObjectProvider;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.nio.charset.StandardCharsets;
@@ -40,21 +42,25 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     private final EntitlementCommandDeduplicator deduplicator;
     private final ObjectMapper json;
     private final PayEntitlementFeatureGate features;
+    private final ObjectProvider<BrandCouponSourcePort> brandSources;
     private final EntitlementRuleValidator rules = new EntitlementRuleValidator();
 
     public EntitlementCatalogServiceImpl(EntTemplateMapper heads, EntTemplateVersionMapper versions,
                                          EntitlementCommandDeduplicator deduplicator, ObjectMapper json,
-                                         PayEntitlementFeatureGate features) {
+                                         PayEntitlementFeatureGate features,
+                                         ObjectProvider<BrandCouponSourcePort> brandSources) {
         this.heads = heads;
         this.versions = versions;
         this.deduplicator = deduplicator;
         this.json = json;
         this.features = features;
+        this.brandSources = brandSources;
     }
 
     @Override
-    @Transactional("payTxManager")
     public TemplateView create(CatalogScope scope, EntitlementDefinition draft, String requestKey) {
+        var replay = deduplicator.replay(scope, "CATALOG_CREATE", requestKey, draft, TemplateView.class);
+        if (replay.isPresent()) return replay.get();
         validate(scope, draft);
         String no = BizKey.next(BizKey.ENTITLEMENT_TEMPLATE);
         return deduplicator.execute(scope, "CATALOG_CREATE", requestKey, draft, no, TemplateView.class, () -> {
@@ -74,11 +80,13 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     }
 
     @Override
-    @Transactional("payTxManager")
     public TemplateView saveDraft(CatalogScope scope, String templateNo, long expectedRevision,
                                    EntitlementDefinition draft, String requestKey) {
+        var payload = List.of(templateNo, expectedRevision, draft);
+        var replay = deduplicator.replay(scope, "CATALOG_DRAFT", requestKey, payload, TemplateView.class);
+        if (replay.isPresent()) return replay.get();
         validate(scope, draft);
-        return deduplicator.execute(scope, "CATALOG_DRAFT", requestKey, List.of(templateNo, expectedRevision, draft),
+        return deduplicator.execute(scope, "CATALOG_DRAFT", requestKey, payload,
                 templateNo, TemplateView.class, () -> {
                     features.requireCatalog();
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
@@ -96,17 +104,23 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     }
 
     @Override
-    @Transactional("payTxManager")
     public PublishedVersionView publish(CatalogScope scope, String templateNo, long expectedRevision,
                                          String requestKey) {
+        var payload = List.of(templateNo, expectedRevision);
+        var replay = deduplicator.replay(scope, "CATALOG_PUBLISH", requestKey, payload, PublishedVersionView.class);
+        if (replay.isPresent()) return replay.get();
+        var candidate = get(scope, templateNo);
+        var definition = candidate.draft();
+        validate(scope, definition);
+        rules.validatePublicationTime(definition, Instant.now());
         return deduplicator.execute(scope, "CATALOG_PUBLISH", requestKey,
-                List.of(templateNo, expectedRevision), templateNo,
+                payload, templateNo,
                 PublishedVersionView.class, () -> {
                     features.requireCatalog();
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
-                    EntitlementDefinition definition = view(head).draft();
-                    validate(scope, definition);
-                    rules.validatePublicationTime(definition, Instant.now());
+                    if (candidate.revision() != head.getVersion() || !definition.equals(view(head).draft())) {
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    }
                     EntTemplateVersion version = snapshot(scope, head, definition);
                     versions.insert(version);
                     changed(heads.publish(scope.tenantNo(), scope.entityNo(), templateNo, expectedRevision,
@@ -187,6 +201,11 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
 
     private void validate(CatalogScope scope, EntitlementDefinition definition) {
         rules.validate(definition);
+        if ("BRAND_STORES".equals(definition.redemptionScope().mode())) {
+            var source = brandSources.getIfAvailable();
+            if (source == null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+            source.validateTemplate(scope.tenantNo(), scope.entityNo(), definition);
+        }
         if ("PLATFORM".equals(definition.funder()) && !scope.platformActor()) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }

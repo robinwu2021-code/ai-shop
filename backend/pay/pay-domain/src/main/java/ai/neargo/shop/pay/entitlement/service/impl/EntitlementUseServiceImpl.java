@@ -28,6 +28,8 @@ import ai.neargo.shop.pay.mapper.entitlement.EntPeriodBucketMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntUseIntentMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntUseProposalMapper;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
+import ai.neargo.shop.spi.entitlement.BrandCouponSourcePort;
+import ai.neargo.shop.pay.entitlement.policy.BrandCouponUseProof;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
@@ -76,6 +78,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     private final EntitlementReversalService reversals;
     private final EntitlementSourceFence fences;
     private final ObjectMapper json;
+    private final ObjectProvider<BrandCouponSourcePort> brandSources;
     private final ObjectProvider<StoredValueRedemptionService> storedValue;
     private StoredValueRedemptionService money() {
         var service = storedValue.getIfAvailable();
@@ -87,7 +90,8 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
             ObjectProvider<EntitlementUseSourcePort> sources, ObjectProvider<SourceDecisionPort> decisions,
             PayEntitlementFeatureGate features, EntitlementUseWriter writer, EntitlementSourceFence fences,
             EntitlementReversalService reversals, ObjectProvider<StoredValueRedemptionService> storedValue,
-            ObjectMapper json) {
+            ObjectMapper json, ObjectProvider<BrandCouponSourcePort> brandSources) {
+        this.brandSources = brandSources;
         this.instances = instances;
         this.intents = intents;
         this.proposals = proposals;
@@ -277,8 +281,9 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         List<CouponAllocation> allocations = List.of();
         long revision = 0;
         if (!c.selectedInstanceNos().isEmpty()) {
-            var asset = owned(context, c.userNo(), c.entityNo(), c.selectedInstanceNos().getFirst());
+            var asset = couponOwned(context, c.userNo(), c.selectedInstanceNos().getFirst());
             var d = json.readValue(asset.getRuleSnapshot(), EntitlementDefinition.class);
+            brandScope(context, asset, d, c.entityNo(), c.storeNo());
             if (!d.currency().equals(c.currency()) || !"ORDER_COUPON".equals(asset.getKind())
                     || !"ACTIVE".equals(asset.getStatus()) || asset.getEffectiveFrom() == null
                     || Instant.now().isBefore(instant(asset.getEffectiveFrom()))
@@ -306,8 +311,9 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     }
 
     private HoldView prepareCoupon(EntitlementContext context, UseCommand c) {
-        var asset = owned(context, c.userNo(), c.entityNo(), c.instanceNo());
+        var asset = couponOwned(context, c.userNo(), c.instanceNo());
         var d = json.readValue(asset.getRuleSnapshot(), EntitlementDefinition.class);
+        var brandProof = brandScope(context, asset, d, c.entityNo(), c.storeNo());
         var proposal = proposals.selectOne(Wrappers.<EntUseProposal>lambdaQuery()
                 .eq(EntUseProposal::getTenantNo, context.tenantNo()).eq(EntUseProposal::getProposalNo, c.quoteRef())
                 .eq(EntUseProposal::getProposalKind, "QUOTE").eq(EntUseProposal::getUserNo, c.userNo())
@@ -340,7 +346,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
                 || !Instant.now().isBefore(auth.expiresAt())) conflict();
         return writer.prepare(context, new Prepared(c, source, d, auth, proposal.getSnapshotHash(),
                 day(d, null, source), quoted.view().discountMinor(), quoted.assetRevision(),
-                        quoted.view().allocations()));
+                        quoted.view().allocations()), brandProof);
     }
 
     @Override
@@ -351,6 +357,25 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     @Override
     public UseReceipt reverse(EntitlementContext context, OrderBenefitReverse command) {
         return reversals.reverse(context, command);
+    }
+
+    private EntInstance couponOwned(EntitlementContext context, String user, String no) {
+        var asset = instances.selectOne(Wrappers.<EntInstance>lambdaQuery()
+                .eq(EntInstance::getTenantNo, context.tenantNo()).eq(EntInstance::getInstanceNo, no)
+                .eq(EntInstance::getUserNo, user));
+        if (asset == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        return asset;
+    }
+
+    private BrandCouponUseProof brandScope(EntitlementContext context, EntInstance asset, EntitlementDefinition d,
+                                           String consumerEntity, String store) {
+        if (!"ORDER_COUPON".equals(asset.getKind()) || !"ORDER_COUPON".equals(d.kind())) conflict();
+        if ("BRAND_STORES".equals(d.redemptionScope().mode())) {
+            return BrandCouponUseProof.authorize(brandSources.getIfAvailable(), context.tenantNo(),
+                    asset.getEntityNo(), d, asset.getTemplateVersionNo(), consumerEntity, store);
+        }
+        if (!consumerEntity.equals(asset.getEntityNo())) throw BizException.of(ErrorCode.NOT_FOUND);
+        return null;
     }
 
     private EntInstance owned(EntitlementContext context, String user, String entity, String no) {

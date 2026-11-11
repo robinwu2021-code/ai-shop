@@ -1,6 +1,9 @@
 package ai.neargo.shop.merchant.brand;
 
 import ai.neargo.shop.common.*;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.time.*;
 import java.util.*;
 
@@ -16,6 +19,7 @@ public final class ManagementModels {
  }
  public record BrandCreate(String managementNo,String name,String logo,String status) {}
  public record BrandEdit(String name,String logo,long expectedRevision) {}
+ public record BrandLegalEntity(@Pattern(regexp="[A-Za-z0-9_-]{1,64}") @NotNull String entityNo,@PositiveOrZero long expectedRevision) {}
  public record StatusChange(String targetStatus,String reason,long expectedRevision) {}
  public record ChangeCheck(String managementNo,String toBrandNo) {}
  public record ChangeSubmit(String managementNo,String toBrandNo,String checkToken,long expectedStoreRevision,

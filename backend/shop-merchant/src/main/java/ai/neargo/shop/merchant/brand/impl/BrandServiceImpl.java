@@ -31,18 +31,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.HashSet;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
+import ai.neargo.shop.merchant.brand.ManagementModels.BrandLegalEntity;
 
 /** Brand lifecycle and atomic organization binding. This class never moves customer money. */
 @Service("brandService")
 public class BrandServiceImpl implements BrandService {
  private final ManagementRepository db;private final ManagementScopeService scopes;
+ private StoreOwnershipWritePort entityWrites;
+ @Autowired public void setEntityWrites(StoreOwnershipWritePort entityWrites){this.entityWrites=entityWrites;}
  private final ManagementTokenCodec tokens;private final BrandChangeImpactPort impacts;private final DocumentNumberCoordinator numbers;
  public BrandServiceImpl(ManagementRepository db,ManagementScopeService scopes,ManagementTokenCodec tokens,BrandChangeImpactPort impacts,
      @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers){this.db=db;this.scopes=scopes;this.tokens=tokens;this.impacts=impacts;this.numbers=numbers;}
  Map<String,Object> raw(Actor a,String no){var row=db.one("SELECT * FROM mch_brand WHERE tenant_no=? AND brand_no=? AND deleted=0",a.tenantNo(),no);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);return row;}
- public Map<String,Object> detail(Actor a,String no){var row=raw(a,no);var m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.read");var result=db.view(row);result.put("storeCount",num(db.one("SELECT COUNT(*) AS total FROM mch_brand_store_binding WHERE tenant_no=? AND brand_no=? AND status='ACTIVE' AND deleted=0",a.tenantNo(),no),"total"));result.put("actions",List.of("brand.read","brand.manage","brand.audit.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.brand.activity.read","sv.brand.activity.manage","sv.brand.activity.publish","sv.brand.activity.approve","sv.brand.report").stream().filter(p->scopes.can(a,m,"BRAND",no,p)).toList());return result;}
+ public Map<String,Object> detail(Actor a,String no){var row=raw(a,no);var m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",no,"brand.read");var result=db.view(row);result.put("storeCount",num(db.one("SELECT COUNT(*) AS total FROM mch_brand_store_binding WHERE tenant_no=? AND brand_no=? AND status='ACTIVE' AND deleted=0",a.tenantNo(),no),"total"));result.put("actions",List.of("brand.read","brand.manage","brand.audit.read","brand.change.decide","sv.issuer.read","sv.issuer.configure","sv.brand.activity.read","sv.brand.activity.manage","sv.brand.activity.publish","sv.brand.activity.approve","sv.brand.report","promotion.activity.read","promotion.activity.manage","promotion.activity.publish","promotion.coupon.read","promotion.coupon.manage","promotion.coupon.issue","promotion.cost.rule.manage").stream().filter(p->scopes.can(a,m,"BRAND",no,p)).toList());return result;}
  public Map<String,Object> create(Actor a,BrandCreate c,String key){
   var name=Normalizer.normalize(text(c.name(),100),Normalizer.Form.NFC);var status=c.status()==null?"DRAFT":c.status();
   if(!Set.of("DRAFT","ACTIVE").contains(status))throw BizException.of(ErrorCode.BAD_REQUEST);validateLogo(c.logo());text(key,64);
@@ -58,6 +66,30 @@ public class BrandServiceImpl implements BrandService {
  }
  private static void validateLogo(String logo){if(logo!=null&&!logo.isBlank()&&(!logo.startsWith("/")||logo.startsWith("//")||logo.contains("..")||logo.length()>512))throw BizException.of(ErrorCode.BAD_REQUEST);}
  public Map<String,Object> edit(Actor a,String no,BrandEdit c,String key){validateLogo(c.logo());var name=Normalizer.normalize(text(c.name(),100),Normalizer.Form.NFC);return mutate(a,no,"BRAND_EDIT",key,db.encode(c),c.expectedRevision(),()->db.update("UPDATE mch_brand SET name=?,name_key=?,logo=?,version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND brand_no=? AND version=?",name,name,c.logo(),Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,c.expectedRevision()));}
+ public Map<String,Object> editResult(Actor a,String no,String key){
+  var m=str(raw(a,no),"management_no");scopes.require(a,m,"SPACE",m,"management.enter");scopes.require(a,m,"BRAND",no,"brand.manage");
+  return db.command(a,no,"BRAND_EDIT",key);
+ }
+ public List<Map<String,Object>> legalEntityCandidates(Actor a,String no){
+  var m=str(raw(a,no),"management_no");scopes.require(a,m,"SPACE",m,"management.enter");scopes.require(a,m,"BRAND",no,"brand.manage");
+  var candidates=new TreeSet<String>();scopes.ownerAccounts(a).forEach(r->candidates.add(str(r,"entity_no")));
+  for(var g:db.rows("SELECT * FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='ENTITY' AND permission_code='promotion.sponsor.authorize' AND deleted=0",a.tenantNo(),m,a.actorKey()))if(scopes.valid(a,g,new HashSet<>()))candidates.add(str(g,"resource_no"));
+  var result=new ArrayList<Map<String,Object>>();
+  for(var entity:candidates){var row=db.one("SELECT entity_no,name FROM mch_entity WHERE tenant_no=? AND entity_no=? AND status='ACTIVE' AND ownership_change_no IS NULL AND deleted=0",a.tenantNo(),entity);if(row!=null)result.add(Map.of("entityNo",entity,"name",str(row,"name")));}
+  return List.copyOf(result);
+ }
+ public Map<String,Object> bindLegalEntity(Actor a,String no,BrandLegalEntity c,String key){
+  return mutate(a,no,"BRAND_LEGAL_ENTITY",key,db.encode(c),c.expectedRevision(),()->{
+   String m=str(raw(a,no),"management_no");entityWrites.lockEntityAndCheck(a.tenantNo(),c.entityNo());
+   var entity=db.one("SELECT entity_no FROM mch_entity WHERE tenant_no=? AND entity_no=? AND status='ACTIVE' AND deleted=0 FOR SHARE",a.tenantNo(),c.entityNo());
+   if(entity==null)throw BizException.of(ErrorCode.NOT_FOUND);
+   if(scopes.ownerAccounts(a).stream().noneMatch(r->c.entityNo().equals(str(r,"entity_no")))&&!scopes.can(a,m,"ENTITY",c.entityNo(),"promotion.sponsor.authorize"))throw BizException.of(ErrorCode.FORBIDDEN);
+   return db.update("UPDATE mch_brand SET legal_entity_no=?,version=version+1,updated_at=?,updated_by=? WHERE tenant_no=? AND brand_no=? AND version=? AND legal_entity_no IS NULL",c.entityNo(),Timestamp.from(Instant.now()),a.actorKey(),a.tenantNo(),no,c.expectedRevision());
+  });
+ }
+ public Map<String,Object> legalEntityResult(Actor a,String no,String key){
+  var m=str(raw(a,no),"management_no");scopes.require(a,m,"SPACE",m,"management.enter");scopes.require(a,m,"BRAND",no,"brand.manage");return db.command(a,no,"BRAND_LEGAL_ENTITY",key);
+ }
  public Map<String,Object> status(Actor a,String no,StatusChange c,String key){
   if(!Set.of("ACTIVE","INACTIVE").contains(c.targetStatus()))throw BizException.of(ErrorCode.BAD_REQUEST);text(c.reason(),255);
   return mutate(a,no,"BRAND_STATUS",key,db.encode(c),c.expectedRevision(),()->{

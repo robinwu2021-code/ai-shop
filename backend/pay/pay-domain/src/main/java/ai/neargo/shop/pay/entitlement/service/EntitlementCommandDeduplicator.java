@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Stable command replies join the owner's pay transaction; no PENDING command may commit on its own. */
+/** Stable command replies and local writes share one Pay transaction, joining an existing owner transaction. */
 @Component
 public class EntitlementCommandDeduplicator {
     private final PayEntCommandDedupMapper commands;
@@ -35,7 +35,7 @@ public class EntitlementCommandDeduplicator {
      * Replay uses tenant + operation + opaque key; identity and the complete logical payload are fingerprinted.
      * The caller includes target IDs in payload, but not newly generated IDs that differ on each retry.
      */
-    @Transactional(transactionManager = "payTxManager", propagation = Propagation.MANDATORY)
+    @Transactional(transactionManager = "payTxManager", propagation = Propagation.REQUIRED)
     public <T> T execute(CatalogScope scope, String operation, String key, Object payload, String resourceNo,
                           Class<T> responseType, Supplier<T> work) {
         if (!id(operation) || !id(key) || !id(resourceNo) || scope == null || payload == null

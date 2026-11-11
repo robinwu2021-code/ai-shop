@@ -206,6 +206,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
         return switch (d.redemptionScope().mode()) {
             case "ALL" -> "该商家适用门店";
             case "STORES" -> "指定门店";
+            case "BRAND_STORES" -> "品牌参与门店";
             case "GOODS" -> "指定商品或服务";
             case "CATEGORIES" -> "指定类别";
             default -> throw new IllegalStateException("Invalid stored redemption scope");

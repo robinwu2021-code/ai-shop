@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
+import jakarta.validation.Valid;
 
 @Profile("api") @RestController @PreAuthorize("@managementAccess.authenticated()")
 public class BizBrandController {
@@ -14,6 +15,10 @@ public class BizBrandController {
  @GetMapping("/biz/management/brands") public Page list(@RequestParam String managementNo,@RequestParam(required=false) String status,@RequestParam(required=false) String keyword,@RequestParam(required=false) String cursor,@RequestParam(defaultValue="20") int size){return queries.list(access.actor(),managementNo,"BRAND",null,keyword,status,cursor,size);}
  @PostMapping("/biz/management/brands") public Map<String,Object> create(@RequestBody BrandCreate c,@RequestHeader("Idempotency-Key") String key){return brands.create(access.actor(),c,key);}
  @GetMapping("/biz/management/brands/{brandNo}") public Map<String,Object> detail(@PathVariable String brandNo){return brands.detail(access.actor(),brandNo);}
+ @GetMapping("/biz/management/brands/{brandNo}/commands") public Map<String,Object> editResult(@PathVariable String brandNo,@RequestParam String operationId){return brands.editResult(access.actor(),brandNo,operationId);}
+ @GetMapping("/biz/management/brands/{brandNo}/legal-entity-candidates") public List<Map<String,Object>> legalEntityCandidates(@PathVariable String brandNo){return brands.legalEntityCandidates(access.actor(),brandNo);}
+ @PutMapping("/biz/management/brands/{brandNo}/legal-entity") public Map<String,Object> bindLegalEntity(@PathVariable String brandNo,@Valid @RequestBody BrandLegalEntity c,@RequestHeader("Idempotency-Key")String key){return brands.bindLegalEntity(access.actor(),brandNo,c,key);}
+ @GetMapping("/biz/management/brands/{brandNo}/legal-entity/commands") public Map<String,Object> legalEntityResult(@PathVariable String brandNo,@RequestParam String operationId){return brands.legalEntityResult(access.actor(),brandNo,operationId);}
  @PutMapping("/biz/management/brands/{brandNo}") public Map<String,Object> edit(@PathVariable String brandNo,@RequestBody BrandEdit c,@RequestHeader("Idempotency-Key") String key){return brands.edit(access.actor(),brandNo,c,key);}
  @PostMapping("/biz/management/brands/{brandNo}/status-changes") public Map<String,Object> status(@PathVariable String brandNo,@RequestBody StatusChange c,@RequestHeader("Idempotency-Key") String key){return brands.status(access.actor(),brandNo,c,key);}
  @GetMapping("/biz/management/brands/{brandNo}/stores") public Page stores(@PathVariable String brandNo,@RequestParam(required=false) String cursor,@RequestParam(defaultValue="20") int size){var detail=brands.detail(access.actor(),brandNo);return queries.list(access.actor(),(String)detail.get("managementNo"),"STORE",brandNo,null,null,cursor,size);}

@@ -19,7 +19,7 @@ public record EntitlementDefinition(String title, String kind, String funder, St
                            String startBasis, String periodBasis, String zone) {
     }
 
-    /** Participation scope belongs to activities; this scope limits use of the acquired rights. */
+    /** BRAND_STORES refs contain one immutable Core source number, never a caller-supplied store list. */
     public record RedemptionScope(String mode, List<String> refs) {
         public RedemptionScope {
             refs = refs == null ? null : List.copyOf(refs);
