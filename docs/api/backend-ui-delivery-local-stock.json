@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "I04-A 已完成三行业 LOCAL 只读能力预检；App 策略选择及零售正式入口按统一 TDD 的 D2-04/05 后续交付，预检不代表已授权切换库存。",
+  "reason": "I04-A 已完成三行业 LOCAL 只读能力预检；D2-04 起仅对已实际开启补货接入的零售门店发布 REPLENISH 预检。零售补货本身已有 App 页面；App 端策略选择尚未接入，预检不代表已授权切换库存。",
   "plan": "docs/technical/design/TDD-三行业简单库存与进销存统一对接方案.md",
   "contract": "docs/api/local-stock-control.openapi.json",
   "entries": [

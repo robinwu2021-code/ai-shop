@@ -27,7 +27,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 # **加页面时这里也要加**：这份列表是写死的，漏一页的症状是清单少一节而
 # 「跑一遍输出没变」照样成立 —— 闸门绿着，清单却不完整。suppliers 就这么漏过一轮。
 PAGES = ["stock","stock-cross","stock-detail","stock-docs","purchase-edit","stock-check",
-         "stock-out","transfer","stock-report","stock-sync-records","suppliers","locations","stock-settings","stock-align","stock-replenishments"]
+         "stock-out","transfer","stock-report","stock-sync-records","suppliers","locations","stock-settings","stock-align","stock-replenishments","retail-replenishments"]
 
 # 进销存页面的路径前缀。**只用来发现漏登记的新页**（见 check_scope）——
 # 不用它直接生成 PAGES：清单的顺序是有意排的（枢纽在前、配置在后），

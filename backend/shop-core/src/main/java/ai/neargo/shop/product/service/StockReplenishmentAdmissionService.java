@@ -32,5 +32,6 @@ public interface StockReplenishmentAdmissionService {
     Original recoverRegistration(Scope scope, String actor, String key, String document, int line, Mapping mapping);
     Original getRetail(Scope scope, String originalNo);
     Connection configureRetail(Scope scope, String actor, String key, @Valid Change change, Checkpoint source);
+    Connection recoverConfiguration(Scope scope, String actor, String key, Change change);
     Connection connection(Scope scope);
 }

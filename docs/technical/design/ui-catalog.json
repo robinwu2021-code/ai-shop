@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 125,
+      "count": 126,
       "domains": [
         {
           "name": "其它",
@@ -634,6 +634,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stock-replenishments/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/retail-replenishments/index",
+              "title": "零售补货",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/retail-replenishments/index"
             }
           ]
         },
@@ -4192,5 +4203,5 @@
       ]
     }
   ],
-  "total": 335
+  "total": 336
 }

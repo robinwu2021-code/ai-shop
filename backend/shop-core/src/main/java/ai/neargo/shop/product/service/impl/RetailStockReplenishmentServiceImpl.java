@@ -23,12 +23,14 @@ import ai.neargo.shop.spi.product.LocalStockControlPort.Scope;
 import ai.neargo.shop.spi.product.RetailReplenishmentTargetPort;
 import ai.neargo.shop.spi.product.RetailReplenishmentTargetPort.Target;
 import ai.neargo.shop.spi.product.StockReplenishmentClaim;
+import ai.neargo.shop.spi.product.StockReplenishmentSourcePort;
 import ai.neargo.shop.spi.product.StockReplenishmentSourcePort.Inbound;
 import ai.neargo.shop.spi.product.StockReplenishmentSourcePort.Outbound;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -49,18 +51,77 @@ public class RetailStockReplenishmentServiceImpl implements RetailStockReplenish
     private final StockReplenishmentCommands commands;
     private final RetailStockReplenishmentLedger ledger;
     private final RetailReplenishmentTargetPort targets;
+    private final StockReplenishmentAdmissionService admissions;
+    private final ObjectProvider<StockReplenishmentSourcePort> sources;
     private final ObjectMapper json;
     private final TransactionTemplate reads;
 
     public RetailStockReplenishmentServiceImpl(StockReplenishmentMapper originals,
             StockReplenishmentMovementMapper movements, StockReplenishmentManualMapper manuals,
             StockReplenishmentReturnMapper returns, StockReplenishmentCommands commands,
-            RetailStockReplenishmentLedger ledger, RetailReplenishmentTargetPort targets, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            RetailStockReplenishmentLedger ledger, RetailReplenishmentTargetPort targets,
+            StockReplenishmentAdmissionService admissions, ObjectProvider<StockReplenishmentSourcePort> sources,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.originals=originals;this.movements=movements;this.manuals=manuals;this.returns=returns;
-        this.commands=commands;this.ledger=ledger;this.targets=targets;this.json=json;
+        this.commands=commands;this.ledger=ledger;this.targets=targets;this.admissions=admissions;this.sources=sources;
+        this.json=json;
         reads=new TransactionTemplate(manager);
         reads.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+    }
+
+    @Override public StockReplenishmentAdmissionService.Connection connection(Scope s){return admissions.connection(s);}
+
+    @Override public StockReplenishmentAdmissionService.Connection configure(Scope s,String actor,String key,
+            StockReplenishmentAdmissionService.Change change) {
+        var old=admissions.recoverConfiguration(s,actor,key,change);if(old!=null)return old;
+        var proof=change.enabled()&&!admissions.connection(s).enabled()?source().checkpoint(s,actor):null;
+        return admissions.configureRetail(s,actor,key,change,proof);
+    }
+
+    @Override public Page list(Scope s,String after,int size,boolean attentionOnly) {
+        boundary(s);
+        return DataScopeContext.executeWithoutScope(()->{
+            long from=after==null||after.isEmpty()?0:head(s,after,false).getId();
+            var query=Wrappers.<PrdStockReplenishment>lambdaQuery().eq(PrdStockReplenishment::getTenantNo,"MAIN")
+                    .eq(PrdStockReplenishment::getEntityNo,s.entityNo()).eq(PrdStockReplenishment::getStoreNo,s.storeNo())
+                    .eq(PrdStockReplenishment::getTargetOwner,"PLATFORM").gt(PrdStockReplenishment::getId,from);
+            if(attentionOnly)query.and(q->q.apply("received_quantity + difference_quantity < expected_quantity")
+                    .or().apply("return_accepted_quantity < returned_quantity").or().gt(PrdStockReplenishment::getDifferenceQuantity,BigDecimal.ZERO));
+            var rows=originals.selectList(query.orderByAsc(PrdStockReplenishment::getId).last("LIMIT "+(size+1)));
+            boolean more=rows.size()>size;var selected=more?rows.subList(0,size):rows;
+            return new Page(selected.stream().map(this::view).toList(),more?selected.getLast().getOriginalNo():null);
+        });
+    }
+
+    @Override public View register(Scope s,String actor,String key,String document,int line,Mapping mapping) {
+        var original=admissions.recoverRegistration(s,actor,key,document,line,mapping);
+        if(original==null)original=admissions.registerRetail(s,actor,key,source().outbound(s,actor,document,line),mapping);
+        return get(s,original.originalNo());
+    }
+
+    @Override public View ackReturn(Scope s,String actor,String key,String no,String document,int line) {
+        var old=commands.findCompleted(s,"RETURN_ACK",key,returnAck(actor,no,document,line),View.class);
+        if(old!=null)return old;
+        get(s,no);var fact=source().inbound(s,actor,document,line);
+        if(!document.equals(fact.documentNo())||line!=fact.lineNo())throw conflict();
+        return ackReturn(s,actor,key,no,fact);
+    }
+
+    @Override public AdjustmentResult adjust(Scope s,String actor,String key,String item,String unit,int delta,String reason) {
+        var old=commands.evidence(s,"ADJUST",key,AdjustmentResult.class);
+        Target target;
+        if(old!=null)target=old.target();
+        else{
+            var observed=targets.inspect(s,new RetailReplenishmentTargetPort.Mapping(item,unit,
+                    BigDecimal.valueOf(Math.abs((long)delta)),BigDecimal.ONE));
+            if(!observed.ready())throw conflict();target=observed.target();
+        }
+        return adjust(s,actor,key,new Adjustment(item,unit,delta,target,reason));
+    }
+
+    @Override public Reconciliation reconcile(Scope s,String actor,String no) {
+        var source=get(s,no).original().source();var port=sources.getIfUnique();
+        return reconcile(s,no,port==null?null:port.outbound(s,actor,source.documentNo(),source.lineNo()));
     }
 
     @Override public View get(Scope s,String no) {
@@ -102,8 +163,7 @@ public class RetailStockReplenishmentServiceImpl implements RetailStockReplenish
     }
 
     @Override public View ackReturn(Scope s,String actor,String key,String no,Inbound source) {
-        String hash=IdempotencyScope.requestHash(actor,"RETURN_ACK",no,source.documentNo(),Integer.toString(source.lineNo()));
-        return commands.execute(s,actor,"RETURN_ACK",key,hash,View.class,writer->{
+        return commands.execute(s,actor,"RETURN_ACK",key,returnAck(actor,no,source.documentNo(),source.lineNo()),View.class,writer->{
             var h=head(s,no,true);var outbound=json.readValue(h.getSourceSnapshot(),Outbound.class);
             if(!h.getSourceSystem().equals(source.sourceSystem())||!h.getSourceOwner().equals(source.sourceOwner())
                     ||!no.equals(source.sourceRef())||!outbound.itemNo().equals(source.itemNo())
@@ -212,6 +272,12 @@ public class RetailStockReplenishmentServiceImpl implements RetailStockReplenish
                 json.readValue(h.getSourceSnapshot(),Outbound.class),mapping(h),target(h),h.getExpectedQuantity(),
                 h.getReceivedQuantity(),h.getStatus());
         return new View(original,h.getDifferenceQuantity(),h.getReturnedQuantity(),h.getReturnAcceptedQuantity(),h.getCloseReason());
+    }
+    private StockReplenishmentSourcePort source() {
+        var port=sources.getIfUnique();if(port==null)throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);return port;
+    }
+    private static String returnAck(String actor,String no,String document,int line) {
+        return IdempotencyScope.requestHash(actor,"RETURN_ACK",no,document,Integer.toString(line));
     }
     private static void local(PrdStockWriter writer){if(!"REPLENISH".equals(writer.getMode()))throw conflict();}
     private static int converted(BigDecimal quantity,BigDecimal factor) {

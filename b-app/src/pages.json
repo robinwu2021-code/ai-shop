@@ -1293,6 +1293,14 @@
         "app-plus": {"navigationStyle": "custom"},
         "h5": {"navigationStyle": "custom"}
       }
+    },
+    {
+      "path": "pages/retail-replenishments/index",
+      "style": {
+        "navigationBarTitleText": "零售补货",
+        "app-plus": {"navigationStyle": "custom"},
+        "h5": {"navigationStyle": "custom"}
+      }
     }
   ],
   "globalStyle": {

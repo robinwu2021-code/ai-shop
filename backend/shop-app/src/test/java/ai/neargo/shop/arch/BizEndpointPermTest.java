@@ -155,6 +155,34 @@ class BizEndpointPermTest {
                 {
                     // Method-specific pricing read/publish guards remain on each handler.
                     put("/biz/inventory/items/{item}/valuation", BizPerms.STOCK);
+                    // Local stock preflight and FOOD/RETAIL replenishment: class-level biz:stock, scope from BizContext.
+                    put("/biz/stock-control/preflight", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/commands/{action}", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/commands/{action}/cancel", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/commands/{action}/state", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/connection", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/connection/command", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/context", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/manual", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}/close", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}/manual-receipt", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}/receive", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}/reconciliation", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}/return-ack", BizPerms.STOCK);
+                    put("/biz/stock-control/replenishments/{no}/return-dispatch", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/adjustments", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/connection", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/context", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}/close", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}/manual-receipt", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}/receive", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}/reconciliation", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}/return-ack", BizPerms.STOCK);
+                    put("/biz/stock-control/retail-replenishments/{no}/return-dispatch", BizPerms.STOCK);
                     put("/biz/pricing/fee-rules/{ruleNo}", BizPerms.PRICING_CONFIG_PUBLISH);
                     put(
                             "/biz/pricing/fee-scopes/{scopeNo}/adjustments",

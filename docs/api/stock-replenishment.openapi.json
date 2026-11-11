@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "FOOD physical replenishment and MAIN source admission",
-    "version": "2026-11-11-I04-D2-03",
-    "description": "Simple business stock remains independent. All cumulative quantities are local frozen base units, never deltas. Preserve original request parameters (including BigDecimal representation) under a repeated key. Source line identity excludes connection generation. ACK is the committed queryable local receipt, not a claim of additional source push acknowledgment. Return-ack only verifies source actual receipt, does not mean source available stock/clearance. Stable source instance must be configured by shop.inventory.replenishment.source-system; no activation, source posting, automatic sync or writer switch is performed. I04-C: OFF stops unfamiliar new originals while accepted ones finish; generation excludes logistics dedupe. Stable source identity cannot be switched by reconnect. Local 17 stays 17. Actual source late low-sequence originals use manual evidence only. A CANCELLED original is a permanent source-action/key tombstone, preventing late execution without reversing committed effects. Remote client transport no longer requires embedded inventory feature. Existing mirror DISABLING/DEACTIVATE/OFF barrier remains independent. D2-01/02: MAIN owns one immutable source-line claim across FOOD and retail. Host commits the claim before signed FOOD registration; EXTERNAL is an intent, not a FOOD stock receipt. Existing FOOD originals are queried including archived source identities; missing history transport is not absence. Old internal registration recovers existing sources only. Deploy that FOOD gate before the new host; no mixed unregistered writers may use the host signing credential. Retail registration remains internal PENDING only: no retail public API, quantity writer or App is enabled."
+    "version": "2026-11-11-I04-D2-04",
+    "description": "Simple business stock remains independent. All cumulative quantities are local frozen base units, never deltas. Preserve original request parameters (including BigDecimal representation) under a repeated key. Source line identity excludes connection generation. ACK is the committed queryable local receipt, not a claim of additional source push acknowledgment. Return-ack only verifies source actual receipt, does not mean source available stock/clearance. Stable source instance must be configured by shop.inventory.replenishment.source-system; no activation, source posting, automatic sync or writer switch is performed. I04-C: OFF stops unfamiliar new originals while accepted ones finish; generation excludes logistics dedupe. Stable source identity cannot be switched by reconnect. Local 17 stays 17. Actual source late low-sequence originals use manual evidence only. A CANCELLED original is a permanent source-action/key tombstone, preventing late execution without reversing committed effects. Remote client transport no longer requires embedded inventory feature. Existing mirror DISABLING/DEACTIVATE/OFF barrier remains independent. D2-01/02: MAIN owns one immutable source-line claim across FOOD and retail. Host commits the claim before signed FOOD registration; EXTERNAL is an intent, not a FOOD stock receipt. Existing FOOD originals are queried including archived source identities; missing history transport is not absence. Old internal registration recovers existing sources only. Deploy that FOOD gate before the new host; no mixed unregistered writers may use the host signing credential. Retail registration remains internal PENDING only: no retail public API, quantity writer or App is enabled. D2-04: RETAIL public paths under /biz/stock-control/retail-replenishments are published (biz:stock, server-resolved scope). Integer counts only; FOOD and RETAIL entries are separate and a FOOD store cannot open RETAIL intake."
   },
   "paths": {
     "/biz/stock-control/replenishments": {
@@ -1888,6 +1888,1049 @@
           }
         }
       }
+    },
+    "/biz/stock-control/retail-replenishments/context": {
+      "get": {
+        "operationId": "getRetailReplenishmentContext",
+        "summary": "Server-resolved entity/store/actor and RETAIL intake connection",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailContextResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/connection": {
+      "post": {
+        "operationId": "configureRetailReplenishment",
+        "summary": "Open/close new RETAIL source intake; enabling takes the trusted source watermark and the PLATFORM writer",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailConnectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments": {
+      "get": {
+        "operationId": "listRetailReplenishments",
+        "summary": "Originals needing receipt/difference/return attention",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "attentionOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailPageResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        }
+      },
+      "post": {
+        "operationId": "registerRetailReplenishment",
+        "summary": "Claim a POSTED source outbound line into the actual PLATFORM pool (pending receipt)",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetailRegister"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/adjustments": {
+      "post": {
+        "operationId": "adjustRetailStock",
+        "summary": "Formal signed adjustment with immutable movement; same key replays on the original target",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailAdjustmentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetailAdjust"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}": {
+      "get": {
+        "operationId": "getRetailReplenishment",
+        "summary": "Current progress of one original",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}/reconciliation": {
+      "get": {
+        "operationId": "reconcileRetailReplenishment",
+        "summary": "Read-only check of this original; SOURCE_UNVERIFIED when the source is not reachable",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailReconciliationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}/receive": {
+      "post": {
+        "operationId": "receiveRetailReplenishment",
+        "summary": "Cumulative integer receipt; only the delta increases the original pool",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetailQuantity"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}/close": {
+      "post": {
+        "operationId": "closeRetailReplenishment",
+        "summary": "Close and record the remaining difference; no stock change",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reason"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}/return-dispatch": {
+      "post": {
+        "operationId": "dispatchRetailReplenishmentReturn",
+        "summary": "Cumulative return to source; only the delta decreases the original pool",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetailReturnQuantity"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}/return-ack": {
+      "post": {
+        "operationId": "ackRetailReplenishmentReturn",
+        "summary": "Accept a trusted source RETURN line referencing this original; no local stock change",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Ack"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/retail-replenishments/{no}/manual-receipt": {
+      "post": {
+        "operationId": "adoptRetailManualReceipt",
+        "summary": "Link an existing ADJUST_IN movement once; no additional stock",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compared with the actual server entity; never selects an owner or grants access."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Original raw key. RETAIL commands commit atomically with their receipt, so an unknown result is recovered by resending the same scope, key and body."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetailViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input, fraction or injected owner/target"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original not found in this RETAIL PLATFORM scope"
+          },
+          "409": {
+            "description": "Same key different body/actor, non-RETAIL store, closed intake, target pool changed, or quantity outside the original"
+          },
+          "503": {
+            "description": "Trusted source service unavailable; no local effect"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualReceipt"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2973,6 +4016,378 @@
           }
         },
         "description": "Existing recovery contract extended compatibly: absent movementNo selects normal REGISTER; non-null original movementNo selects MANUAL_REGISTER. Actor/action/doc/line/mapping/movement must match the stored original snapshot, including old source JSON without postingSequence. A sealed key is rejected before source RPC or MAIN source claim."
+      },
+      "RetailRegister": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentNo",
+          "lineNo",
+          "mapping"
+        ],
+        "properties": {
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          }
+        }
+      },
+      "RetailQuantity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cumulativeQuantity"
+        ],
+        "properties": {
+          "cumulativeQuantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Integer local base units; fractions are rejected, never truncated."
+          }
+        }
+      },
+      "RetailReturnQuantity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cumulativeQuantity",
+          "reason"
+        ],
+        "properties": {
+          "cumulativeQuantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Integer local base units; fractions are rejected, never truncated."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "RetailAdjust": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "itemNo",
+          "baseUnit",
+          "delta",
+          "reason"
+        ],
+        "properties": {
+          "itemNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "delta": {
+            "type": "integer",
+            "minimum": -2147483647,
+            "maximum": 2147483647,
+            "description": "Signed integer; the server resolves the actual PLATFORM pool, the client never sends a target."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "RetailTarget": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "skuNo": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string",
+            "nullable": true
+          },
+          "baseUnit": {
+            "type": "string"
+          },
+          "quantityScope": {
+            "type": "string",
+            "enum": [
+              "ENTITY",
+              "STORE"
+            ]
+          },
+          "poolRef": {
+            "type": "string"
+          },
+          "identity": {
+            "type": "string",
+            "description": "Opaque accounting-row fingerprint, never a database id."
+          }
+        }
+      },
+      "RetailOriginal": {
+        "type": "object",
+        "properties": {
+          "originalNo": {
+            "type": "string"
+          },
+          "targetOwner": {
+            "type": "string",
+            "enum": [
+              "PLATFORM"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/OutboundFact"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          },
+          "target": {
+            "$ref": "#/components/schemas/RetailTarget"
+          },
+          "expectedQuantity": {
+            "type": "number"
+          },
+          "receivedQuantity": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PARTIAL",
+              "RECEIVED",
+              "CLOSED"
+            ]
+          }
+        }
+      },
+      "RetailView": {
+        "type": "object",
+        "properties": {
+          "original": {
+            "$ref": "#/components/schemas/RetailOriginal"
+          },
+          "differenceQuantity": {
+            "type": "number"
+          },
+          "returnedQuantity": {
+            "type": "number"
+          },
+          "returnAcceptedQuantity": {
+            "type": "number"
+          },
+          "closeReason": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "RetailPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetailView"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Last original number of this page; database ids never leave the server."
+          }
+        }
+      },
+      "RetailContext": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": "string"
+          },
+          "storeNo": {
+            "type": "string"
+          },
+          "actorNo": {
+            "type": "string"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/Connection"
+          }
+        }
+      },
+      "RetailAdjustment": {
+        "type": "object",
+        "properties": {
+          "movementNo": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/RetailTarget"
+          },
+          "delta": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onHandBefore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onHandAfter": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reservedQuantity": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RetailReconciliation": {
+        "type": "object",
+        "properties": {
+          "original": {
+            "$ref": "#/components/schemas/RetailView"
+          },
+          "receivedLedgerQuantity": {
+            "type": "number"
+          },
+          "manualQuantity": {
+            "type": "number"
+          },
+          "returnedLedgerQuantity": {
+            "type": "number"
+          },
+          "acceptedReturnQuantity": {
+            "type": "number"
+          },
+          "current": {
+            "type": "object",
+            "nullable": true
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "RECEIPT_LEDGER_MISMATCH",
+                "RETURN_LEDGER_MISMATCH",
+                "RETURN_ACK_MISMATCH",
+                "SOURCE_UNVERIFIED",
+                "SOURCE_CHANGED",
+                "TARGET_UNAVAILABLE",
+                "RECEIPT_PENDING",
+                "RECEIPT_DIFFERENCE",
+                "RETURN_PENDING"
+              ]
+            }
+          }
+        }
+      },
+      "RetailViewResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RetailView"
+          }
+        }
+      },
+      "RetailPageResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RetailPage"
+          }
+        }
+      },
+      "RetailContextResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RetailContext"
+          }
+        }
+      },
+      "RetailAdjustmentResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RetailAdjustment"
+          }
+        }
+      },
+      "RetailReconciliationResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RetailReconciliation"
+          }
+        }
+      },
+      "RetailConnectionResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Connection"
+          }
+        }
       }
     }
   },
@@ -3003,7 +4418,7 @@
   },
   "x-retail-local-effects": {
     "contract": "ai.neargo.shop.product.service.RetailStockReplenishmentService",
-    "publication": "Internal Java service only; no retail HTTP/App paths published in D2-03. D2-04 will publish authorized ai-shop endpoints.",
+    "publication": "Published by BizRetailStockReplenishmentController under /biz/stock-control/retail-replenishments (D2-04). Source RPC precedes the local transaction; completed original keys replay before any source call.",
     "methods": [
       "get",
       "receive",

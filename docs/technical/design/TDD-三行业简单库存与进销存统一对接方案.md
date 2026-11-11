@@ -750,3 +750,20 @@ MerchantGoods既有写入口先取得同实体围栏。REPLENISH下saveStock/sav
 日志：`/tmp/i04d3-compile.log`、`/tmp/i04d3-tests.log`。测试夹具抽为`RetailStockReplenishmentNativeFixture`共同运行实际V659/V660；原18项准入/互斥用例在共用命令提取后全通过。此次未重复无关全仓检查，未部署、未签发凭据、未切实际writer、未提交混杂工作区。
 
 下一批D2-04：正式零售入口、实际能力发布、源查询/回执恢复编排，以及新连接/认领历史接入门店改挂预检；然后D2-05 App、D2-06本地闭环、H真实商家App/166验收。完整盘点业务与跨池迁移仍待后续，SHARED_SYNC/DELEGATED及非库存任务保持暂停。
+
+### 17.12 D2-04/05/06实施计划（2026-11-11）
+
+档位：1（新增零售公开端点、App页面/i18n与预检能力发布；无新库表、无新权限码、无新配置）。依据进销存需求§十四、本TDD §17.4—17.6与ADR-057；幂等沿[幂等设计规范](../reference/幂等设计规范.md)，不新增执行器。
+
+| 参数 | 数据库 | 服务端 |
+|---|---|---|
+| App只传原请求键（`Idempotency-Key`）、原件号、源单号/行号、本地SKU/单位/换算、整数累计量、有符号调整量和原因；主体/门店/操作人由登录与门店头解析，`X-Stock-Entity-No`只作旧意图校验 | 复用V659/V660原件、连接、永久回执、流水、人工关联与源验收表；无新迁移 | `RetailStockReplenishmentService`新增来源编排重载：先按原键恢复已完成回执，再在本地事务外调用可信`StockReplenishmentSourcePort`，最后交给D2-01/03既有事务；零售命令全部原子提交，没有“已认领未执行”中间态，因此App超时恢复=原范围原键原body重发，不另建封存/状态机 |
+
+实施清单：
+
+- [ ] D2-04 `ai.neargo.shop.product.api.biz.BizRetailStockReplenishmentController`，路径`/biz/stock-control/retail-replenishments`，权限复用`biz:stock`，范围复用`LocalStockAccessPolicy`；context/connection/list/register/get/receive/close/return-dispatch/return-ack/adjustments/manual-receipt/reconciliation。与FOOD路径分离，FOOD门店调用零售入口因无PLATFORM原件/非RETAIL开启而拒绝。
+- [ ] D2-04 `RetailStockReplenishmentService`编排：register（恢复→源出库→registerRetail）、configure（恢复→仅开启时取源水位→configureRetail）、ackReturn（恢复→源入库→原服务）、reconcile（源出库；未装源客户端报SOURCE_UNVERIFIED）、adjust（同键回执沿原Target重放，新调整按当前实际池观察，客户端不传Target）、list（游标分页，attention=待收/差异/待验收）。`StockReplenishmentAdmissionService.recoverConfiguration`补配置原键恢复。
+- [ ] D2-04 预检发布：`LocalStockStrategyPolicy`仅对RETAIL+SKU放开REPLENISH→PLATFORM；`LocalStockControlServiceImpl`要求该门店零售连接实际开启，否则STRATEGY_NOT_ENABLED；能力加RECEIVE/ADJUST。FOOD/美业REPLENISH仍拒绝。
+- [ ] D2-04 改挂预检：`StoreRelinkHostFactsPortImpl`把prd_stock_replenishment及connection/command/movement/manual/return（主体或门店）与prd_stock_writer（主体）计入历史，空商品目录也不放过。
+- [ ] D2-05 b-app `pages/retail-replenishments/index`、`api/retail-replenishment*.ts`、`shared/retail-replenishment-command.ts`：显示实际主体池/门店池、待收/差异/退仓/验收；未完成操作按`实体:门店:账号`保存原键原body，切换范围不重发；无mock成功。
+- [ ] D2-06 验证：编排单测、MVC权限/范围/字段、预检与改挂单测、MySQL9原生端到端（开启→登记→实收→退仓→验收→调整→关联→核对，FOOD范围隔离）、App vitest + vue-tsc、合同/UI清单闸门。

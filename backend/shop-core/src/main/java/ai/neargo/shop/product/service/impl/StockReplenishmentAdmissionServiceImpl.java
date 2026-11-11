@@ -153,8 +153,7 @@ public class StockReplenishmentAdmissionServiceImpl implements StockReplenishmen
 
     @Override public Connection configureRetail(Scope scope,String actor,String key,Change change,Checkpoint source) {
         boundary(scope);
-        String hash=IdempotencyScope.requestHash(actor,"CONFIG",json.writeValueAsString(change));
-        return commands.execute(scope,actor,"CONFIG",key,hash,Connection.class,writer->{
+        return commands.execute(scope,actor,"CONFIG",key,configuration(actor,change),Connection.class,writer->{
             var row=connectionRow(scope,true);
             if(row==null){row=new PrdStockReplenishmentConnection();audit(row,actor);row.setEntityNo(scope.entityNo());
                 row.setStoreNo(scope.storeNo());row.setEnabled(0);row.setGeneration(0L);row.setPostingWatermark(0L);connections.insert(row);}
@@ -175,6 +174,10 @@ public class StockReplenishmentAdmissionServiceImpl implements StockReplenishmen
             row.setEnabled(change.enabled()?1:0);row.setUpdatedBy(actor);
             if(connections.updateById(row)!=1)throw conflict();return connectionView(row);
         });
+    }
+
+    @Override public Connection recoverConfiguration(Scope scope,String actor,String key,Change change) {
+        boundary(scope);return commands.findCompleted(scope,"CONFIG",key,configuration(actor,change),Connection.class);
     }
 
     @Override public Connection connection(Scope scope) {
@@ -220,6 +223,9 @@ public class StockReplenishmentAdmissionServiceImpl implements StockReplenishmen
     private static Connection connectionView(PrdStockReplenishmentConnection r) {
         return new Connection(Integer.valueOf(1).equals(r.getEnabled()),r.getGeneration(),r.getVersion(),
                 r.getSourceSystem(),r.getSourceOwner(),r.getPostingWatermark());
+    }
+    private String configuration(String actor,Change change) {
+        return IdempotencyScope.requestHash(actor,"CONFIG",json.writeValueAsString(change));
     }
     private static String registration(String actor,String document,int line,Mapping m) {
         return IdempotencyScope.requestHash(actor,"REGISTER",document,Integer.toString(line),m.itemNo(),m.baseUnit(),

@@ -14,7 +14,9 @@ import ai.neargo.shop.product.service.impl.RetailStockReplenishmentServiceImpl;
 import ai.neargo.shop.product.service.support.RetailStockReplenishmentLedger;
 import ai.neargo.shop.product.service.support.StockReplenishmentCommands;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.spi.product.StockReplenishmentSourcePort;
 import ai.neargo.shop.spi.product.StockReplenishmentSourcePort.Inbound;
+import ai.neargo.shop.spi.product.StockReplenishmentSourcePort.Outbound;
 import ai.neargo.shop.spi.user.StoreOwnershipWritePort;
 import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
 import java.math.BigDecimal;
@@ -91,7 +93,7 @@ class RetailStockReplenishmentEffectsNativeMysqlTest extends RetailStockReplenis
         effects.dispatchReturn(S,"A","return3",no,3,"damaged");
         effects.dispatchReturn(S,"A","return5",no,5,"damaged");
         effects.dispatchReturn(S,"A","repeat5",no,5,"damaged");assertThat(stock()).isEqualTo(20);
-        assertThat(effects.reconcile(S,no,null).issues()).contains("SOURCE_UNVERIFIED","RECEIPT_DIFFERENCE","RETURN_PENDING");
+        assertThat(effects.reconcile(S,no,(Outbound)null).issues()).contains("SOURCE_UNVERIFIED","RECEIPT_DIFFERENCE","RETURN_PENDING");
         effects.ackReturn(S,"A","ack",no,inbound(no,"BACK",5));
         effects.ackReturn(S,"A","ack-again",no,inbound(no,"BACK",5));
         assertThat(stock()).isEqualTo(20);assertThat(count("prd_stock_replenishment_return")).isEqualTo(1);
@@ -140,7 +142,7 @@ class RetailStockReplenishmentEffectsNativeMysqlTest extends RetailStockReplenis
         var ledger=proxy(new RetailStockReplenishmentLedger(target,sessions.getMapper(SkuMapper.class),sessions.getMapper(StoreStockMapper.class),
                 sessions.getMapper(StockReplenishmentMovementMapper.class),json),RetailStockReplenishmentLedger.class);
         var service=new RetailStockReplenishmentServiceImpl(sessions.getMapper(StockReplenishmentMapper.class),sessions.getMapper(StockReplenishmentMovementMapper.class),
-                sessions.getMapper(StockReplenishmentManualMapper.class),sessions.getMapper(StockReplenishmentReturnMapper.class),failing,ledger,target,json,manager);
+                sessions.getMapper(StockReplenishmentManualMapper.class),sessions.getMapper(StockReplenishmentReturnMapper.class),failing,ledger,target,admissions,beans.getBeanProvider(StockReplenishmentSourcePort.class),json,manager);
         assertThatThrownBy(()->service.receive(S,"A","failure",no,5)).isInstanceOf(IllegalStateException.class);
         assertThat(stock()).isEqualTo(17);assertThat(count("prd_stock_replenishment_movement")).isZero();
         assertThat(effects.get(S,no).original().receivedQuantity()).isEqualByComparingTo("0");
