@@ -146,6 +146,38 @@
         "48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4",
         "3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905"
       ]
+    },
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V649__service_execution_start_ack.sql",
+      "sourceSha256": "211e932156ec3f53c994fd6a775edfc2406258d2e0a11ff86934a6bf7b3b51e0",
+      "descriptor": "backend/shop-core/src/main/resources/META-INF/shop/service-execution-start-schema.json",
+      "descriptorSha256": "084da3f83e452d7cb9b69e9848bdbbd4b32461de460220947b9aec7060398151",
+      "datasource": "PRIMARY",
+      "mode": "NATIVE_OWNER_ABSENT_UPGRADE",
+      "capability": "manual-service-execution",
+      "guardClass": "ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier",
+      "absentTables": [
+        "ord_service_execution",
+        "ord_service_execution_action",
+        "ord_service_execution_unit"
+      ],
+      "retainedStatementHashes": []
+    },
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V651__service_execution_completion.sql",
+      "sourceSha256": "cac52242fc1417370b8a70c41c42de86562b391f77e32a12eb78a5f100c51813",
+      "descriptor": "backend/shop-core/src/main/resources/META-INF/shop/service-execution-completion-schema.json",
+      "descriptorSha256": "09c754b7c1ebcb3f277fe2fc321e323e1a3c40ade3e3b5734e0494206058b473",
+      "datasource": "PRIMARY",
+      "mode": "NATIVE_OWNER_ABSENT_UPGRADE",
+      "capability": "manual-service-execution",
+      "guardClass": "ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier",
+      "absentTables": [
+        "ord_service_execution",
+        "ord_service_execution_action",
+        "ord_service_execution_unit"
+      ],
+      "retainedStatementHashes": []
     }
   ]
 }
