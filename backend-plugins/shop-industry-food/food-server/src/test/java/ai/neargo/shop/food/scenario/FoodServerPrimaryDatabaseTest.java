@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.food.config.FoodSchemaReady;
+import ai.neargo.shop.food.config.FoodSchemaValidator;
 import ai.neargo.shop.food.dto.ArchiveTableReq;
 import ai.neargo.shop.food.dto.ClearCheckReq;
 import ai.neargo.shop.food.dto.CombineTablesReq;
@@ -821,7 +822,7 @@ class FoodServerPrimaryDatabaseTest {
                                                         Integer.class))
                                         .isZero();
                                 assertThat(context.getBean(FoodSchemaReady.class).version())
-                                        .isEqualTo("37");
+                                        .isEqualTo(FoodSchemaValidator.EXPECTED_VERSION);
                                 var extraTables = new ArrayList<String>();
                                 for (String code : List.of("T03", "T04"))
                                     extraTables.add(

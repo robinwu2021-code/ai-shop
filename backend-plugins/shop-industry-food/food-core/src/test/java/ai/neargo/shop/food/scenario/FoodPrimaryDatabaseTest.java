@@ -139,7 +139,7 @@ class FoodPrimaryDatabaseTest {
                     + " fnb_bottle_custody(tenant_no,entity_no,store_no,custody_no,owner_ref,sku_no,unit,remaining_qty,expires_at,status,created_at,created_by,updated_at,updated_by)"
                     + " VALUES('MAIN','E','S','OLD','ORIGINAL_CUSTOMER','SKU','PIECE',2,'2099-01-01','ACTIVE','2026-10-29','A','2026-10-29','A')");
         assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version())
-                .isEqualTo("37");
+                .isEqualTo(FoodSchemaValidator.EXPECTED_VERSION);
         var row =
                 sql.queryForMap(
                         "SELECT owner_ref,remaining_qty,deposited_qty,status FROM"
@@ -343,7 +343,7 @@ class FoodPrimaryDatabaseTest {
                     + " fnb_option_group_item(entity_no,created_at,created_by,updated_at,updated_by,option_item_no,group_no,source_kind,spec_value_no,min_qty,max_qty,default_qty,sort_no)"
                     + " VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM','OLD','OG','SPEC_VALUE','OLD_VALUE',0,1,0,0)");
         assertThat(validator.initialize(source, FoodProperties.MigrationMode.MIGRATE).version())
-                .isEqualTo("37");
+                .isEqualTo(FoodSchemaValidator.EXPECTED_VERSION);
         assertThat(
                         sql.queryForObject(
                                 "SELECT spec_value_no FROM fnb_option_group_item", String.class))
@@ -392,7 +392,7 @@ class FoodPrimaryDatabaseTest {
                     + " VALUES('E',NOW(),'SYSTEM',NOW(),'SYSTEM',"
                     + "'OLD_OCC','OLD_TABLE','OLD_CHECK',4,NOW())");
         var result = validator.initialize(source, FoodProperties.MigrationMode.MIGRATE);
-        assertThat(result.version()).isEqualTo("37");
+        assertThat(result.version()).isEqualTo(FoodSchemaValidator.EXPECTED_VERSION);
         assertThat(sql.queryForObject("SELECT sharing_mode FROM fnb_table_occupancy", String.class))
                 .isEqualTo("EXCLUSIVE");
         assertThat(
@@ -434,7 +434,7 @@ class FoodPrimaryDatabaseTest {
                                 "SELECT COUNT(*) FROM information_schema.tables WHERE"
                                         + " table_schema=DATABASE() AND table_name LIKE 'fnb\\_%'",
                                 Integer.class))
-                .isEqualTo(126);
+                .isEqualTo(143);
         assertThat(columnExists("fnb_bottle_custody", "owner_ref")).isTrue();
         assertThat(columnExists("fnb_bottle_custody", "deposited_qty")).isTrue();
         assertThat(columnExists("fnb_bottle_custody", "customer_no")).isFalse();
