@@ -435,6 +435,11 @@ public interface MerchantQueryPort {
         return Optional.empty();
     }
 
+    /** Actual operating type, not the catalog industry code. Missing implementations confer no authority. */
+    default Optional<String> storeBusinessTypeOf(String storeNo) {
+        return Optional.empty();
+    }
+
     /** 门店号 → 支付单要冻结的门店身份；门店不存在为空。不论营业状态（关单、退款时门店可能已停用） */
     default Optional<PayStore> payStoreOf(String storeNo) {
         return Optional.empty();

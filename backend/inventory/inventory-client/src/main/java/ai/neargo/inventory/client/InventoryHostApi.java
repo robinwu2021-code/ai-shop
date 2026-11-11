@@ -1,5 +1,7 @@
 package ai.neargo.inventory.client;
 
+import ai.neargo.inventory.api.replenishment.ReplenishmentContracts;
+
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -221,6 +223,24 @@ public interface InventoryHostApi {
     /** 系统级：多账本批量余额（只认系统凭证） */
     @PostExchange("/system/balances/query")
     List<OwnerBalances> balancesAcross(@RequestBody BalancesQuery body);
+
+    @GetExchange("/replenishment-facts/checkpoint")
+    ReplenishmentContracts.Checkpoint replenishmentCheckpoint(
+            @RequestHeader(value=OWNER_REF,required=false) String ownerRef,
+            @RequestHeader(value=OWNER_TYPE,required=false) String ownerType,
+            @RequestHeader(value=ACTOR,required=false) String actor);
+    @GetExchange("/replenishment-facts/outbounds/{no}/lines/{line}")
+    ReplenishmentContracts.Outbound replenishmentOutbound(
+            @RequestHeader(value=OWNER_REF,required=false) String ownerRef,
+            @RequestHeader(value=OWNER_TYPE,required=false) String ownerType,
+            @RequestHeader(value=ACTOR,required=false) String actor,
+            @PathVariable("no") String no,@PathVariable("line") int line);
+    @GetExchange("/replenishment-facts/inbounds/{no}/lines/{line}")
+    ReplenishmentContracts.Inbound replenishmentInbound(
+            @RequestHeader(value=OWNER_REF,required=false) String ownerRef,
+            @RequestHeader(value=OWNER_TYPE,required=false) String ownerType,
+            @RequestHeader(value=ACTOR,required=false) String actor,
+            @PathVariable("no") String no,@PathVariable("line") int line);
 
     // ── 请求 / 响应 ───────────────────────────────────────────────────────
 

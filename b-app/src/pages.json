@@ -1285,7 +1285,15 @@
     {"path": "pages/stored-value-policy/index", "style": {"navigationBarTitleText": "储值管控", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
     {"path": "pages/stored-value-approval/index", "style": {"navigationBarTitleText": "储值活动审批", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
     {"path": "pages/stored-value-activity/index", "style": {"navigationBarTitleText": "本店储值活动", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
-    {"path": "pages/stored-value-activity-edit/index", "style": {"navigationBarTitleText": "储值活动", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}}
+    {"path": "pages/stored-value-activity-edit/index", "style": {"navigationBarTitleText": "储值活动", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {
+      "path": "pages/stock-replenishments/index",
+      "style": {
+        "navigationBarTitleText": "餐饮补货",
+        "app-plus": {"navigationStyle": "custom"},
+        "h5": {"navigationStyle": "custom"}
+      }
+    }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

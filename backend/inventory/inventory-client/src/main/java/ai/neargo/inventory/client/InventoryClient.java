@@ -1,5 +1,7 @@
 package ai.neargo.inventory.client;
 
+import ai.neargo.inventory.api.replenishment.ReplenishmentContracts;
+
 import ai.neargo.inventory.client.InventoryHostApi.Balance;
 import ai.neargo.inventory.client.InventoryHostApi.BalancesQuery;
 import ai.neargo.inventory.client.InventoryHostApi.Claim;
@@ -175,6 +177,16 @@ public final class InventoryClient {
 
         public void cancelOutbound(String key, String outboundNo) {
             call(() -> api.cancelOutbound(ownerRef, ownerType, key, actor, outboundNo));
+        }
+
+        public ReplenishmentContracts.Checkpoint replenishmentCheckpoint(){
+            return call(()->api.replenishmentCheckpoint(ownerRef,ownerType,actor));
+        }
+        public ReplenishmentContracts.Outbound replenishmentOutbound(String no,int line) {
+            return call(() -> api.replenishmentOutbound(ownerRef,ownerType,actor,no,line));
+        }
+        public ReplenishmentContracts.Inbound replenishmentInbound(String no,int line) {
+            return call(() -> api.replenishmentInbound(ownerRef,ownerType,actor,no,line));
         }
 
         public JsonNode outbound(String outboundNo) {

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "I04-A 已完成三行业 LOCAL 只读能力预检；App 策略选择及零售正式入口按统一 TDD 的 D2-04/05 后续交付，预检不代表已授权切换库存。",
+  "plan": "docs/technical/design/TDD-三行业简单库存与进销存统一对接方案.md",
+  "contract": "docs/api/local-stock-control.openapi.json",
+  "entries": [
+    { "app": "b-app", "method": "POST", "path": "/biz/stock-control/preflight" }
+  ]
+}

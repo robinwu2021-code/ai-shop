@@ -1,5 +1,11 @@
 package ai.neargo.shop.product.service.impl;
 
+import java.util.Objects;
+
+import ai.neargo.shop.product.entity.PrdStockWriter;
+
+import ai.neargo.shop.product.policy.StockReplenishmentWriterGuard;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.auth.BizContext;
@@ -90,9 +96,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.ownershipWrites = ownershipWrites;
     }
 
-    private void lockOwnership(String entityNo, String storeNo) {
+    private StockReplenishmentWriterGuard stockWriters;
+
+    @Autowired
+    public void setStockWriters(StockReplenishmentWriterGuard stockWriters) {
+        this.stockWriters = stockWriters;
+    }
+
+    private PrdStockWriter lockOwnership(String entityNo, String storeNo) {
         if (storeNo == null || storeNo.isBlank()) ownershipWrites.lockEntityAndCheck("MAIN", entityNo);
         else ownershipWrites.lockAndCheck("MAIN", entityNo, storeNo);
+        return stockWriters.lock(entityNo);
     }
 
     private final GoodsMapper goodsMapper;
@@ -954,7 +968,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO save(String merchantNo, SaveCommand cmd) {
-        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
+        var stockWriter = lockOwnership(merchantNo, BizContext.current().currentStoreNo());
         if (cmd.title() == null || cmd.title().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -1202,7 +1216,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
         }
         publishSkuUpserted(
-                merchantNo, g, saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
+                merchantNo, g, saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups(),
+                        "REPLENISH".equals(stockWriter.getMode())));
         /*
          * 记一笔。**放在这里是因为它是单点**：下面三个 return（换版收尾 / 免审直通 /
          * 强制下架）都在它后面经过，挨个 return 前面写一遍迟早漏一条，
@@ -1963,7 +1978,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * @return 本次真正落库的 SKU 行。**新建时 skuNo 是这里生成的**，命令里没有
      */
     private List<PrdSku> saveSkus(
-            String merchantNo, String goodsNo, List<Sku> skus, List<SpecGroup> groups) {
+            String merchantNo, String goodsNo, List<Sku> skus, List<SpecGroup> groups, boolean replenishment) {
         List<PrdSku> saved = new java.util.ArrayList<>();
         /*
          * **SKU 数量上限**。端上限制 3 个规格维度，但那是界面的事 ——
@@ -2156,13 +2171,22 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 row.setBarcode(blankToNull(sku.barcode(), row.getBarcode()));
                 row.setMerchantSkuCode(
                         blankToNull(sku.merchantSkuCode(), row.getMerchantSkuCode()));
+                String oldSaleUnit = row.getSaleUnit();
                 row.setSaleUnit(blankToNull(sku.saleUnit(), row.getSaleUnit()));
+                if (replenishment) {
+                    if (fresh && (stockOfExisting != null || sku.stock() != 0 || prices.size() != 1)) {
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    }
+                    if (!fresh && !Objects.equals(row.getSaleUnit(), oldSaleUnit)) {
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    }
+                }
                 PrdSku toSave = row;
                 int changed = DataScopeContext.executeWithoutScope(() ->
                         fresh ? skuMapper.insert(toSave) : skuMapper.updateCatalogMetadata(toSave));
                 if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
                 if (!fresh) toSave.setVersion(Math.addExact(toSave.getVersion(), 1));
-                stockChanges.put(skuNo, sku.stock());
+                if (!replenishment) stockChanges.put(skuNo, sku.stock());
                 saved.add(toSave);
                 kept.add(key);
             }
@@ -2210,6 +2234,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (keptSkuNos.contains(skuNo)) {
                 continue;
             }
+            if (replenishment) throw BizException.of(ErrorCode.CONFLICT);
             var removal = e.getValue();
             int changed = DataScopeContext.executeWithoutScope(() -> skuMapper.retireUnencumbered(
                     removal.getId(), merchantNo, goodsNo, removal.getVersion()));
@@ -2220,7 +2245,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                 skuNo, merchantNo, goodsNo, replacedBy));
             }
         }
-        ensureStoreStockRows(merchantNo, keptSkuNos);
+        ensureStoreStockRows(merchantNo, keptSkuNos, replenishment,
+                existing.stream().map(PrdSku::getSkuNo).collect(java.util.stream.Collectors.toSet()));
         // groups 已写在 goods 上，这里只用于生成 spec 文案，不再单独落库
         return saved;
     }
@@ -2290,7 +2316,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * <p>做法是给每家已经管过这件商品的门店补一行 {@code stock=0}： <b>少卖可恢复，超卖不可</b>（与 {@code hasStoreStock} 的注释同一条判据）。
      * 商家在编辑页看到新规格库存是 0，是正确的提示 —— 他确实还没给任何一家店备货。
      */
-    private void ensureStoreStockRows(String merchantNo, Set<String> skuNos) {
+    private void ensureStoreStockRows(String merchantNo, Set<String> skuNos, boolean replenishment,
+            Set<String> existingSkuNos) {
         if (skuNos.isEmpty()) {
             return;
         }
@@ -2318,6 +2345,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             for (String storeNo : stores) {
                 if (have.contains(skuNo + "@" + storeNo)) {
                     continue;
+                }
+                if (replenishment && existingSkuNos.contains(skuNo)
+                        && rows.stream().noneMatch(r -> skuNo.equals(r.getSkuNo()))) {
+                    throw BizException.of(ErrorCode.CONFLICT);
                 }
                 PrdStoreStock row = new PrdStoreStock();
                 row.setStoreNo(storeNo);
@@ -3284,7 +3315,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Override
     @Transactional
     public GoodsVO saveStock(String merchantNo, String goodsNo, String skuNo, int stock) {
-        lockOwnership(merchantNo, BizContext.current().currentStoreNo());
+        if (!"LEGACY".equals(lockOwnership(merchantNo, BizContext.current().currentStoreNo()).getMode())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         PrdGoods g = mine(merchantNo, goodsNo);
         if (stock < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -3351,7 +3384,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     @Transactional
     public GoodsVO saveStoreStock(
             String merchantNo, String storeNo, String goodsNo, String skuNo, int stock) {
-        lockOwnership(merchantNo, storeNo);
+        if (!"LEGACY".equals(lockOwnership(merchantNo, storeNo).getMode())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         PrdGoods g = mine(merchantNo, goodsNo);
         if (stock < 0 || storeNo == null || storeNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

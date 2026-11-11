@@ -185,7 +185,11 @@
         "fnb_stock_sync_item_state",
         "fnb_stock_sync_reconciliation",
         "fnb_stock_sync_difference",
-        "fnb_return_stock_disposition"
+        "fnb_return_stock_disposition",
+        "fnb_stock_replenishment",
+        "fnb_stock_replenishment_return",
+        "fnb_stock_replenishment_connection",
+        "fnb_stock_replenishment_manual"
       ],
       "apis": [
         "FOOD-API-024",
@@ -19495,7 +19499,8 @@
       ],
       "domain": "C",
       "rules": [
-        "按实际追加迁移与Service守卫实施；本批未编译、测试或部署。"
+        "按实际追加迁移与Service守卫实施；本批未编译、测试或部署。",
+        "REPLENISH_*原请求可留下CANCELLED永久封存，晚到同键禁止执行；已有COMPLETED只查回真实结果，不撤销库存。"
       ],
       "deployment": "MIGRATION_V33",
       "introducedIn": "V33",
@@ -21585,6 +21590,859 @@
       "owner": "共享能力候选，非餐饮私有表",
       "deployment": "PLANNED",
       "implementationStatus": "DEFERRED_SHARED_REPORT_OWNER"
+    },
+    {
+      "name": "fnb_stock_replenishment",
+      "label": "本地补货交接",
+      "existing": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "label": "id",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "label": "tenant_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN'"
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "label": "entity_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "entity_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "store_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "store_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "label": "created_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "created_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(32)",
+          "label": "created_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "created_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "label": "updated_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "updated_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(32)",
+          "label": "updated_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "updated_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "label": "version",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "version BIGINT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "label": "deleted",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "deleted INT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "replenishment_no",
+          "type": "varchar(32)",
+          "label": "replenishment_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "replenishment_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_system",
+          "type": "varchar(32)",
+          "label": "source_system",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_system VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_owner",
+          "type": "varchar(32)",
+          "label": "source_owner",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_owner VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_document",
+          "type": "varchar(32)",
+          "label": "source_document",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_document VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_line",
+          "type": "int",
+          "label": "source_line",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_line INT NOT NULL"
+        },
+        {
+          "name": "source_item",
+          "type": "varchar(32)",
+          "label": "source_item",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_item VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_unit",
+          "type": "varchar(16)",
+          "label": "source_unit",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_unit VARCHAR(16) NOT NULL"
+        },
+        {
+          "name": "source_quantity",
+          "type": "decimal(24,6)",
+          "label": "source_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_quantity DECIMAL(24,6) NOT NULL"
+        },
+        {
+          "name": "item_no",
+          "type": "varchar(32)",
+          "label": "item_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "item_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "base_unit",
+          "type": "varchar(16)",
+          "label": "base_unit",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "base_unit VARCHAR(16) NOT NULL"
+        },
+        {
+          "name": "factor",
+          "type": "decimal(24,6)",
+          "label": "factor",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "factor DECIMAL(24,6) NOT NULL"
+        },
+        {
+          "name": "expected_quantity",
+          "type": "decimal(24,6)",
+          "label": "expected_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "expected_quantity DECIMAL(24,6) NOT NULL"
+        },
+        {
+          "name": "received_quantity",
+          "type": "decimal(24,6)",
+          "label": "received_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "received_quantity DECIMAL(24,6) NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "difference_quantity",
+          "type": "decimal(24,6)",
+          "label": "difference_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "difference_quantity DECIMAL(24,6) NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "returned_quantity",
+          "type": "decimal(24,6)",
+          "label": "returned_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "returned_quantity DECIMAL(24,6) NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "return_accepted_quantity",
+          "type": "decimal(24,6)",
+          "label": "return_accepted_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "return_accepted_quantity DECIMAL(24,6) NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "status",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "status VARCHAR(16) NOT NULL"
+        },
+        {
+          "name": "close_reason",
+          "type": "varchar(256)",
+          "label": "close_reason",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "close_reason VARCHAR(256) NULL"
+        },
+        {
+          "name": "admission_generation",
+          "type": "bigint",
+          "label": "admission_generation",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "admission_generation BIGINT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "admission_mode",
+          "type": "varchar(16)",
+          "label": "admission_mode",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "admission_mode VARCHAR(16) NOT NULL DEFAULT 'LEGACY'"
+        },
+        {
+          "name": "source_posting_sequence",
+          "type": "bigint",
+          "label": "source_posting_sequence",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "source_posting_sequence BIGINT NULL"
+        }
+      ],
+      "unique": [
+        [
+          "replenishment_no"
+        ],
+        [
+          "tenant_no",
+          "source_system",
+          "source_owner",
+          "source_document",
+          "source_line"
+        ]
+      ],
+      "domain": "C",
+      "rules": [
+        "永久原源行唯一，不含接入代次；交接计数不是第三份库存余额。",
+        "实收按累计量只记增量；退仓确认只读取实际已过账源入库，不重复扣本地。",
+        "MySQL9独立夹具已验证；正式迁移、App和目标环境另验。"
+      ],
+      "deployment": "MIGRATION_V38",
+      "introducedIn": "V38",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V38__food_stock_replenishment.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "physicalFields": true,
+      "usesBaseEntity": true,
+      "sourceImplementation": {
+        "table": "fnb_stock_replenishment",
+        "introducedIn": "V38",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V38__food_stock_replenishment.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStockReplenishment",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbStockReplenishment.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.StockReplenishmentMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.port.FoodStockReplenishmentPortImpl"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      },
+      "implementationStatus": "LOCAL_VERIFIED_NOT_DEPLOYED"
+    },
+    {
+      "name": "fnb_stock_replenishment_return",
+      "label": "补货源行验收",
+      "existing": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "label": "id",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "label": "tenant_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN'"
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "label": "entity_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "entity_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "store_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "store_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "label": "created_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "created_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(32)",
+          "label": "created_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "created_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "label": "updated_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "updated_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(32)",
+          "label": "updated_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "updated_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "label": "version",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "version BIGINT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "label": "deleted",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "deleted INT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "replenishment_no",
+          "type": "varchar(32)",
+          "label": "replenishment_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "replenishment_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_system",
+          "type": "varchar(32)",
+          "label": "source_system",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_system VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_owner",
+          "type": "varchar(32)",
+          "label": "source_owner",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_owner VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_document",
+          "type": "varchar(32)",
+          "label": "source_document",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_document VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "source_line",
+          "type": "int",
+          "label": "source_line",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "source_line INT NOT NULL"
+        },
+        {
+          "name": "accepted_quantity",
+          "type": "decimal(24,6)",
+          "label": "accepted_quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V38",
+          "sqlDeclaration": "accepted_quantity DECIMAL(24,6) NOT NULL"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "source_system",
+          "source_owner",
+          "source_document",
+          "source_line"
+        ]
+      ],
+      "domain": "C",
+      "rules": [
+        "永久原源行唯一，不含接入代次；交接计数不是第三份库存余额。",
+        "实收按累计量只记增量；退仓确认只读取实际已过账源入库，不重复扣本地。",
+        "MySQL9独立夹具已验证；正式迁移、App和目标环境另验。"
+      ],
+      "deployment": "MIGRATION_V38",
+      "introducedIn": "V38",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V38__food_stock_replenishment.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "physicalFields": true,
+      "usesBaseEntity": true,
+      "sourceImplementation": {
+        "table": "fnb_stock_replenishment_return",
+        "introducedIn": "V38",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V38__food_stock_replenishment.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStockReplenishmentReturn",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbStockReplenishmentReturn.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.StockReplenishmentReturnMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.port.FoodStockReplenishmentPortImpl"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      },
+      "implementationStatus": "LOCAL_VERIFIED_NOT_DEPLOYED"
+    },
+    {
+      "name": "fnb_stock_replenishment_connection",
+      "label": "补货接入",
+      "existing": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "label": "id",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "label": "tenant_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN'"
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "label": "entity_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "entity_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "store_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "store_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "label": "created_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "created_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(32)",
+          "label": "created_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "created_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "label": "updated_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "updated_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(32)",
+          "label": "updated_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "updated_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "label": "version",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "version BIGINT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "label": "deleted",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "deleted INT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "status",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "status VARCHAR(16) NOT NULL"
+        },
+        {
+          "name": "generation",
+          "type": "bigint",
+          "label": "generation",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "generation BIGINT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "source_system",
+          "type": "varchar(32)",
+          "label": "source_system",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "source_system VARCHAR(32) NULL"
+        },
+        {
+          "name": "source_owner",
+          "type": "varchar(32)",
+          "label": "source_owner",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "source_owner VARCHAR(32) NULL"
+        },
+        {
+          "name": "posting_watermark",
+          "type": "bigint",
+          "label": "posting_watermark",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "posting_watermark BIGINT NOT NULL DEFAULT 0"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no"
+        ]
+      ],
+      "domain": "C",
+      "rules": [
+        "连接不改余额；人工凭据只关联已有入账，永久去重。",
+        "启停只管新交接准入；既有原件继续收尾；不改本地余额。",
+        "MySQL9已验证，正式迁移/设备及目标环境仍待验收。"
+      ],
+      "deployment": "MIGRATION_V39",
+      "introducedIn": "V39",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V39__food_stock_replenishment_recovery.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "physicalFields": true,
+      "usesBaseEntity": true,
+      "sourceImplementation": {
+        "table": "fnb_stock_replenishment_connection",
+        "introducedIn": "V39",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V39__food_stock_replenishment_recovery.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStockReplenishmentConnection",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbStockReplenishmentConnection.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.StockReplenishmentConnectionMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.port.FoodStockReplenishmentPortImpl"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      },
+      "implementationStatus": "LOCAL_VERIFIED_NOT_DEPLOYED"
+    },
+    {
+      "name": "fnb_stock_replenishment_manual",
+      "label": "人工到货关联",
+      "existing": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "label": "id",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "label": "tenant_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN'"
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "label": "entity_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "entity_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "store_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "store_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "label": "created_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "created_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(32)",
+          "label": "created_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "created_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "label": "updated_at",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "updated_at DATETIME(3) NOT NULL"
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(32)",
+          "label": "updated_by",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "updated_by VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "label": "version",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "version BIGINT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "label": "deleted",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "deleted INT NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "replenishment_no",
+          "type": "varchar(32)",
+          "label": "replenishment_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "replenishment_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "movement_no",
+          "type": "varchar(32)",
+          "label": "movement_no",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "movement_no VARCHAR(32) NOT NULL"
+        },
+        {
+          "name": "quantity",
+          "type": "decimal(24,6)",
+          "label": "quantity",
+          "nullable": false,
+          "ref": null,
+          "introducedIn": "V39",
+          "sqlDeclaration": "quantity DECIMAL(24,6) NOT NULL"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "movement_no"
+        ]
+      ],
+      "domain": "C",
+      "rules": [
+        "连接不改余额；人工凭据只关联已有入账，永久去重。",
+        "启停只管新交接准入；既有原件继续收尾；不改本地余额。",
+        "MySQL9已验证，正式迁移/设备及目标环境仍待验收。"
+      ],
+      "deployment": "MIGRATION_V39",
+      "introducedIn": "V39",
+      "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V39__food_stock_replenishment_recovery.sql",
+      "primaryKey": [
+        "id"
+      ],
+      "physicalFields": true,
+      "usesBaseEntity": true,
+      "sourceImplementation": {
+        "table": "fnb_stock_replenishment_manual",
+        "introducedIn": "V39",
+        "migrationFile": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V39__food_stock_replenishment_recovery.sql",
+        "entityClass": "ai.neargo.shop.food.entity.FnbStockReplenishmentManual",
+        "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbStockReplenishmentManual.java",
+        "mapperClasses": [
+          "ai.neargo.shop.food.mapper.FoodMappers.StockReplenishmentManualMapper"
+        ],
+        "serviceClasses": [
+          "ai.neargo.shop.food.port.FoodStockReplenishmentPortImpl"
+        ],
+        "persistenceStyle": "MYBATIS_ENTITY"
+      },
+      "implementationStatus": "LOCAL_VERIFIED_NOT_DEPLOYED"
     }
   ],
   "apis": [
@@ -27436,7 +28294,9 @@
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V34__food_local_stock_lifecycle.sql",
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V35__food_stock_optional_sync.sql",
       "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V36__food_stock_frozen_tracking.sql",
-      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V37__food_return_stock_disposition.sql"
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V37__food_return_stock_disposition.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V38__food_stock_replenishment.sql",
+      "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V39__food_stock_replenishment_recovery.sql"
     ],
     "targetSchemaVersion": 25,
     "note": "历史证据仅V1/73张本机业务表；additionalMigrations表示提供的后续迁移，不表示已应用到该经营库。当前Java五模块及部分后端端点已实现，验收以CAT-ALL记录为准。",
@@ -140914,7 +141774,7 @@
       }
     ],
     "sourceSchema": {
-      "food": 37,
+      "food": 39,
       "core": 628,
       "inventory": 27
     }

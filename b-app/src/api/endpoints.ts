@@ -15,6 +15,22 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mRpState:{method:"GET",path:"/biz/stock-control/replenishments/commands/:action/state",auth:true,summary:"原补货请求真实终态"},
+  mRpCancel:{method:"POST",path:"/biz/stock-control/replenishments/commands/:action/cancel",auth:true,summary:"封存未提交的原补货请求"},
+  mRpContext:{method:"GET",path:"/biz/stock-control/replenishments/context",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpList:{method:"GET",path:"/biz/stock-control/replenishments",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpOriginal:{method:"GET",path:"/biz/stock-control/replenishments/:no",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpReconciliation:{method:"GET",path:"/biz/stock-control/replenishments/:no/reconciliation",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpConfigurationCommand:{method:"GET",path:"/biz/stock-control/replenishments/connection/command",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpCommand:{method:"GET",path:"/biz/stock-control/replenishments/commands/:action",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpConfigure:{method:"POST",path:"/biz/stock-control/replenishments/connection",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpRegister:{method:"POST",path:"/biz/stock-control/replenishments",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpManualRegister:{method:"POST",path:"/biz/stock-control/replenishments/manual",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpReceive:{method:"POST",path:"/biz/stock-control/replenishments/:no/receive",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpClose:{method:"POST",path:"/biz/stock-control/replenishments/:no/close",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpReturnDispatch:{method:"POST",path:"/biz/stock-control/replenishments/:no/return-dispatch",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpReturnAck:{method:"POST",path:"/biz/stock-control/replenishments/:no/return-ack",auth:true,summary:"餐饮补货与原号恢复"},
+  mRpManualReceipt:{method:"POST",path:"/biz/stock-control/replenishments/:no/manual-receipt",auth:true,summary:"餐饮补货与原号恢复"},
  mSvFinancialBrandOriginal:{method:"GET",path:"/biz/management/stores/:store/stored-value/financial-brand-change-original",auth:true,summary:"核对金融品牌变更原请求"},
  mSvPrepareFinancePermissions:{method:"POST",path:"/biz/management/entities/:entity/stored-value/financial-permissions",auth:true,summary:"准备所有人结算权限"},
   mSvFinancialBrandStart:{method:"POST",path:"/biz/management/stores/:store/stored-value/financial-brand-changes",auth:true,summary:"金融品牌门店变更"},

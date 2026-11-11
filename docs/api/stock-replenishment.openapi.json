@@ -1,0 +1,3025 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "FOOD physical replenishment and MAIN source admission",
+    "version": "2026-11-11-I04-D2-03",
+    "description": "Simple business stock remains independent. All cumulative quantities are local frozen base units, never deltas. Preserve original request parameters (including BigDecimal representation) under a repeated key. Source line identity excludes connection generation. ACK is the committed queryable local receipt, not a claim of additional source push acknowledgment. Return-ack only verifies source actual receipt, does not mean source available stock/clearance. Stable source instance must be configured by shop.inventory.replenishment.source-system; no activation, source posting, automatic sync or writer switch is performed. I04-C: OFF stops unfamiliar new originals while accepted ones finish; generation excludes logistics dedupe. Stable source identity cannot be switched by reconnect. Local 17 stays 17. Actual source late low-sequence originals use manual evidence only. A CANCELLED original is a permanent source-action/key tombstone, preventing late execution without reversing committed effects. Remote client transport no longer requires embedded inventory feature. Existing mirror DISABLING/DEACTIVATE/OFF barrier remains independent. D2-01/02: MAIN owns one immutable source-line claim across FOOD and retail. Host commits the claim before signed FOOD registration; EXTERNAL is an intent, not a FOOD stock receipt. Existing FOOD originals are queried including archived source identities; missing history transport is not absence. Old internal registration recovers existing sources only. Deploy that FOOD gate before the new host; no mixed unregistered writers may use the host signing credential. Retail registration remains internal PENDING only: no retail public API, quantity writer or App is enabled."
+  },
+  "paths": {
+    "/biz/stock-control/replenishments": {
+      "post": {
+        "operationId": "registerFoodReplenishment",
+        "summary": "Pull verified posted source line and freeze pending handover; do not add stock",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Register"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listFoodReplenishments",
+        "summary": "Seek bounded local originals needing receipt/difference/return attention",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "through",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "attentionOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}": {
+      "get": {
+        "operationId": "getFoodReplenishment",
+        "summary": "Read actual current receipt, difference and return progress",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}/receive": {
+      "post": {
+        "operationId": "receiveFoodReplenishment",
+        "summary": "Receive cumulative local base-unit quantity; only delta increases FOOD_LOCAL",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Quantity"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}/close": {
+      "post": {
+        "operationId": "closeFoodReplenishment",
+        "summary": "Close outstanding quantity as recorded difference; no inventory adjustment",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reason"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}/return-dispatch": {
+      "post": {
+        "operationId": "dispatchFoodReplenishmentReturn",
+        "summary": "Dispatch cumulative return quantity from free local stock; does not post source inbound",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnQuantity"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}/return-ack": {
+      "post": {
+        "operationId": "ackFoodReplenishmentReturn",
+        "summary": "Verify actual posted source RETURN line; acknowledge without deducting local stock again",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Ack"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/commands/{action}": {
+      "get": {
+        "operationId": "findFoodReplenishmentCommand",
+        "summary": "Read permanent original receipt without source service; data null means no committed local result",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Must match the authenticated selected store and real authorized directory scope."
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "REPLENISH_REGISTER",
+                "REPLENISH_RECEIVE",
+                "REPLENISH_CLOSE",
+                "REPLENISH_RETURN",
+                "REPLENISH_RETURN_ACK",
+                "REPLENISH_MANUAL",
+                "REPLENISH_MANUAL_REGISTER"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable original result. Replaying an older key returns its original snapshot; GET by number returns current progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input or injected identity"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "FOOD entitlement, STOCK permission or actual store scope rejected"
+          },
+          "404": {
+            "description": "Original replenishment not found in this scope"
+          },
+          "409": {
+            "description": "Original mismatch, changed replay, quantity overflow, unavailable local stock or invalid state"
+          },
+          "503": {
+            "description": "Required source/FOOD capability is unavailable; no fallback or new receipt"
+          }
+        }
+      }
+    },
+    "/api/inventory/v1/replenishment-facts/outbounds/{no}/lines/{line}": {
+      "get": {
+        "operationId": "observeReplenishmentOutbounds",
+        "summary": "Read immutable physical posting facts from authenticated owner",
+        "security": [
+          {
+            "inventoryBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "line",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-Inventory-Owner-Ref",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "System credential selects its own merchant ledger; host resolves from trusted entity, never App body."
+          },
+          {
+            "name": "X-Inventory-Owner-Type",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Inventory-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posted immutable line unit/quantity. Outbound INTERNAL with unique STORE destination and no serial/paired transfer; inbound RETURN with original sourceRef. No source mutation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboundFact"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Owner outside authenticated system"
+          },
+          "404": {
+            "description": "Original not found in owner"
+          },
+          "409": {
+            "description": "Not an eligible posted physical original"
+          }
+        }
+      }
+    },
+    "/api/inventory/v1/replenishment-facts/inbounds/{no}/lines/{line}": {
+      "get": {
+        "operationId": "observeReplenishmentInbounds",
+        "summary": "Read immutable physical posting facts from authenticated owner",
+        "security": [
+          {
+            "inventoryBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "line",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-Inventory-Owner-Ref",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "System credential selects its own merchant ledger; host resolves from trusted entity, never App body."
+          },
+          {
+            "name": "X-Inventory-Owner-Type",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Inventory-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posted immutable line unit/quantity. Outbound INTERNAL with unique STORE destination and no serial/paired transfer; inbound RETURN with original sourceRef. No source mutation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboundFact"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Owner outside authenticated system"
+          },
+          "404": {
+            "description": "Original not found in owner"
+          },
+          "409": {
+            "description": "Not an eligible posted physical original"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/context": {
+      "get": {
+        "operationId": "replenishmentContext",
+        "summary": "Get actual entity/store/actor and connection for App original-request recovery",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/connection": {
+      "get": {
+        "operationId": "replenishmentConnection",
+        "summary": "Read connection; missing configuration is OFF",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        }
+      },
+      "post": {
+        "operationId": "configureReplenishmentConnection",
+        "summary": "Enable from source watermark or explicitly stop; each accepted new key fences older revisions, balances unchanged",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/connection/command": {
+      "get": {
+        "operationId": "originalConnectionCommand",
+        "summary": "Read original control receipt; source service is not required",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/manual": {
+      "post": {
+        "operationId": "registerManualReplenishment",
+        "summary": "Link historical actual manual entry, close remainder difference; never authorize auto receipt",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualRegister"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}/manual-receipt": {
+      "post": {
+        "operationId": "adoptManualReplenishment",
+        "summary": "Associate one existing actual ADJUST_IN and completed ADJUST; never add stock again",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualReceipt"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/{no}/reconciliation": {
+      "get": {
+        "operationId": "reconcileOriginalReplenishment",
+        "summary": "Read immutable source proof then local ledger/counter differences; no automatic repair",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/commands/{action}/state": {
+      "get": {
+        "operationId": "originalReplenishmentCommandState",
+        "summary": "NOT_COMMITTED is current absence, not a terminal cancellation or proof no request is in flight",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "REPLENISH_CONFIG",
+                "REPLENISH_REGISTER",
+                "REPLENISH_RECEIVE",
+                "REPLENISH_CLOSE",
+                "REPLENISH_RETURN",
+                "REPLENISH_RETURN_ACK",
+                "REPLENISH_MANUAL",
+                "REPLENISH_MANUAL_REGISTER"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandStateResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        }
+      }
+    },
+    "/biz/stock-control/replenishments/commands/{action}/cancel": {
+      "post": {
+        "operationId": "sealOriginalReplenishmentCommand",
+        "summary": "Seal an uncommitted original key permanently or return actual completed result; never undo committed stock",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Stock-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "Compare against actual server entity; never selects an owner or grants access. App always sends original trusted context to fence store ownership changes."
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "REPLENISH_CONFIG",
+                "REPLENISH_REGISTER",
+                "REPLENISH_RECEIVE",
+                "REPLENISH_CLOSE",
+                "REPLENISH_RETURN",
+                "REPLENISH_RETURN_ACK",
+                "REPLENISH_MANUAL",
+                "REPLENISH_MANUAL_REGISTER"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual result. No balance is reset by control/recovery/check operations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandStateResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Framework input validation rejected"
+          },
+          "403": {
+            "description": "Actual actor/store/FOOD/STOCK or entity precondition rejected"
+          },
+          "404": {
+            "description": "Scoped original not found"
+          },
+          "409": {
+            "description": "Original mismatch, closed/fenced/cancelled command or stale revision"
+          },
+          "503": {
+            "description": "Required remote capability unavailable; do not infer absence"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/v1/replenishment-facts/checkpoint": {
+      "get": {
+        "operationId": "replenishmentSourceCheckpoint",
+        "summary": "Read authenticated owner actual ledger highwater; conservative ID boundary, not global commit ordering",
+        "security": [
+          {
+            "inventoryBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Inventory-Owner-Ref",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Inventory-Owner-Type",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "X-Inventory-Actor",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read only, empty ledger watermark 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkpoint"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/food/local-stock/replenishments/source": {
+      "post": {
+        "operationId": "findFoodSourceIdentity",
+        "description": "Global immutable source lookup including archived identities; a source owned by another scope is rejected, not returned as absent.",
+        "deprecated": false,
+        "security": [
+          {
+            "foodScopeSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceIdentityQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw signed-internal DTO, without public ApiResponse wrapper",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodSourceLookup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or business conflict; no automatic fallback to unclaimed registration"
+          },
+          "403": {
+            "description": "Invalid signature or actual scope mismatch"
+          }
+        }
+      }
+    },
+    "/internal/food/local-stock/replenishments/register/claimed": {
+      "post": {
+        "operationId": "registerClaimedFoodSource",
+        "description": "Create/recover using trusted MAIN claim, then retain existing FOOD transaction and request hash semantics.",
+        "deprecated": false,
+        "security": [
+          {
+            "foodScopeSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimedFoodRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw signed-internal DTO, without public ApiResponse wrapper",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or business conflict; no automatic fallback to unclaimed registration"
+          },
+          "403": {
+            "description": "Invalid signature or actual scope mismatch"
+          }
+        }
+      }
+    },
+    "/internal/food/local-stock/replenishments/manual/register/claimed": {
+      "post": {
+        "operationId": "registerClaimedManualFoodSource",
+        "description": "Associate actual existing manual receipt; movementNo is required by the manual business contract. Host uses explicit manual admission mode, not connected-watermark admission.",
+        "deprecated": false,
+        "security": [
+          {
+            "foodScopeSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimedFoodRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw signed-internal DTO, without public ApiResponse wrapper",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or business conflict; no automatic fallback to unclaimed registration"
+          },
+          "403": {
+            "description": "Invalid signature or actual scope mismatch"
+          }
+        }
+      }
+    },
+    "/internal/food/local-stock/replenishments/register": {
+      "post": {
+        "operationId": "recoverLegacyFoodSource",
+        "description": "Existing source only. An unfamiliar source is rejected; cannot bypass MAIN registry.",
+        "deprecated": true,
+        "security": [
+          {
+            "foodScopeSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyFoodRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw signed-internal DTO, without public ApiResponse wrapper",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or business conflict; no automatic fallback to unclaimed registration"
+          },
+          "403": {
+            "description": "Invalid signature or actual scope mismatch"
+          }
+        }
+      }
+    },
+    "/internal/food/local-stock/replenishments/manual/register": {
+      "post": {
+        "operationId": "recoverLegacyManualFoodSource",
+        "description": "Existing source only; cannot establish an unfamiliar manual-only source without MAIN claim.",
+        "deprecated": true,
+        "security": [
+          {
+            "foodScopeSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyFoodRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw signed-internal DTO, without public ApiResponse wrapper",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or business conflict; no automatic fallback to unclaimed registration"
+          },
+          "403": {
+            "description": "Invalid signature or actual scope mismatch"
+          }
+        }
+      }
+    },
+    "/internal/food/local-stock/replenishments/register/recover": {
+      "post": {
+        "operationId": "recoverOriginalFoodRegistration",
+        "security": [
+          {
+            "foodScopeSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FoodRegistrationRecovery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw lookup result; null only if original command is not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodSourceLookup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Original differs or is sealed; no new source claim"
+          },
+          "403": {
+            "description": "Invalid actual signed scope"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "inventoryBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Existing system credential appKey:appSecret or owner credential; humans access through ai-shop."
+      },
+      "foodScopeSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Food-Scope",
+        "description": "Existing method/path/body digest and actual host actor/entity/store scope signature. No direct App access."
+      }
+    },
+    "schemas": {
+      "Mapping": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "itemNo",
+          "baseUnit",
+          "factor"
+        ],
+        "properties": {
+          "itemNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "factor": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 1000000000000000000,
+                "exclusiveMaximum": true,
+                "multipleOf": 1e-06
+              },
+              {
+                "type": "string",
+                "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,6})?$",
+                "description": "Exact positive decimal text, never all zeros; App retains original text."
+              }
+            ]
+          }
+        }
+      },
+      "Register": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentNo",
+          "lineNo",
+          "mapping"
+        ],
+        "properties": {
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          }
+        }
+      },
+      "Quantity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cumulativeQuantity"
+        ],
+        "properties": {
+          "cumulativeQuantity": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 1000000000000000000,
+                "exclusiveMaximum": true,
+                "multipleOf": 1e-06
+              },
+              {
+                "type": "string",
+                "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,6})?$",
+                "description": "Exact positive decimal text, never all zeros; App retains original text."
+              }
+            ]
+          }
+        }
+      },
+      "Reason": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "ReturnQuantity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cumulativeQuantity",
+          "reason"
+        ],
+        "properties": {
+          "cumulativeQuantity": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 1000000000000000000,
+                "exclusiveMaximum": true,
+                "multipleOf": 1e-06
+              },
+              {
+                "type": "string",
+                "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,6})?$",
+                "description": "Exact positive decimal text, never all zeros; App retains original text."
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "Ack": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentNo",
+          "lineNo"
+        ],
+        "properties": {
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "View": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "replenishmentNo",
+          "sourceSystem",
+          "sourceOwner",
+          "sourceDocument",
+          "sourceItem",
+          "itemNo",
+          "sourceLine",
+          "sourceUnit",
+          "baseUnit",
+          "sourceQuantity",
+          "factor",
+          "expectedQuantity",
+          "receivedQuantity",
+          "differenceQuantity",
+          "returnedQuantity",
+          "returnAcceptedQuantity",
+          "status"
+        ],
+        "properties": {
+          "replenishmentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "sourceSystem": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "sourceOwner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "sourceDocument": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "sourceItem": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "itemNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "sourceLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "sourceQuantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "factor": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "receivedQuantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "differenceQuantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "returnedQuantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "returnAcceptedQuantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMaximum": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PARTIAL",
+              "RECEIVED",
+              "CLOSED"
+            ]
+          }
+        }
+      },
+      "OutboundFact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ownerId",
+          "documentNo",
+          "lineNo",
+          "itemId",
+          "baseUnit",
+          "quantity",
+          "targetStoreNo",
+          "postingSequence"
+        ],
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "itemId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMinimum": true,
+            "exclusiveMaximum": true
+          },
+          "targetStoreNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "postingSequence": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        }
+      },
+      "InboundFact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ownerId",
+          "documentNo",
+          "lineNo",
+          "itemId",
+          "baseUnit",
+          "quantity",
+          "sourceRef"
+        ],
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "itemId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000000,
+            "multipleOf": 1e-06,
+            "exclusiveMinimum": true,
+            "exclusiveMaximum": true
+          },
+          "sourceRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        }
+      },
+      "Result": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/View"
+          }
+        }
+      },
+      "CommandResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/View"
+              }
+            ]
+          }
+        }
+      },
+      "Checkpoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ownerId",
+          "postingSequence"
+        ],
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "postingSequence": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "Connection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "enabled",
+          "generation",
+          "revision",
+          "sourceSystem",
+          "sourceOwner",
+          "postingWatermark"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "generation": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sourceSystem": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "nullable": true
+          },
+          "sourceOwner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "nullable": true
+          },
+          "postingWatermark": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ConnectionChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "enabled",
+          "expectedVersion",
+          "reason"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "Context": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "entityNo",
+          "storeNo",
+          "actorNo",
+          "connection"
+        ],
+        "properties": {
+          "entityNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "storeNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "actorNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "connection": {
+            "$ref": "#/components/schemas/Connection"
+          }
+        }
+      },
+      "ManualRegister": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentNo",
+          "lineNo",
+          "mapping",
+          "movementNo"
+        ],
+        "properties": {
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          },
+          "movementNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        }
+      },
+      "ManualReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "movementNo"
+        ],
+        "properties": {
+          "movementNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        }
+      },
+      "Page": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor",
+          "throughId"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/View"
+            }
+          },
+          "nextCursor": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "throughId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "Reconciliation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "original",
+          "receivedLedgerQuantity",
+          "manualQuantity",
+          "returnedLedgerQuantity",
+          "acceptedReturnQuantity",
+          "issues"
+        ],
+        "properties": {
+          "original": {
+            "$ref": "#/components/schemas/View"
+          },
+          "receivedLedgerQuantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "manualQuantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "returnedLedgerQuantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "acceptedReturnQuantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SOURCE_MISMATCH",
+                "RECEIPT_LEDGER_MISMATCH",
+                "RETURN_LEDGER_MISMATCH",
+                "RETURN_ACK_MISMATCH",
+                "RECEIPT_PENDING",
+                "RECEIPT_DIFFERENCE",
+                "RETURN_PENDING"
+              ]
+            }
+          }
+        }
+      },
+      "CommandState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "original",
+          "connection"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_COMMITTED",
+              "COMPLETED",
+              "CANCELLED",
+              "UNKNOWN"
+            ]
+          },
+          "original": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/View"
+              }
+            ]
+          },
+          "connection": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Connection"
+              }
+            ]
+          }
+        }
+      },
+      "CancelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "reason"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "PageResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Page"
+          }
+        }
+      },
+      "ContextResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Context"
+          }
+        }
+      },
+      "ConnectionResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Connection"
+              }
+            ]
+          }
+        }
+      },
+      "ViewResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/View"
+          }
+        }
+      },
+      "ReconciliationResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        }
+      },
+      "CommandStateResult": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CommandState"
+          }
+        }
+      },
+      "FoodLedgerScope": {
+        "type": "object",
+        "required": [
+          "entityNo",
+          "storeNo"
+        ],
+        "properties": {
+          "entityNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "storeNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        }
+      },
+      "SignedBusinessOutbound": {
+        "type": "object",
+        "required": [
+          "sourceSystem",
+          "sourceOwner",
+          "documentNo",
+          "lineNo",
+          "itemNo",
+          "baseUnit",
+          "quantity",
+          "targetStoreNo",
+          "postingSequence"
+        ],
+        "properties": {
+          "sourceSystem": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "sourceOwner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "documentNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "itemNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "targetStoreNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Exact BigDecimal from actual posted source fact; never an App-chosen balance."
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "postingSequence": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "SourceIdentityQuery": {
+        "type": "object",
+        "required": [
+          "scope",
+          "system",
+          "owner",
+          "document",
+          "line"
+        ],
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/FoodLedgerScope"
+          },
+          "system": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "document": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "StockSourceClaim": {
+        "type": "object",
+        "required": [
+          "originalNo",
+          "targetOwner",
+          "bindingHash"
+        ],
+        "description": "Trusted-host attestation inside the existing full-body signature. Only produced after durable MAIN claim; not a public bearer token or permission. Binding uses REPLENISH_SOURCE_V1 canonical source/mapping/scope, not posting sequence.",
+        "properties": {
+          "originalNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "targetOwner": {
+            "type": "string",
+            "enum": [
+              "FOOD_LOCAL",
+              "PLATFORM"
+            ]
+          },
+          "bindingHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "ClaimedFoodRegistration": {
+        "type": "object",
+        "required": [
+          "scope",
+          "actorNo",
+          "key",
+          "source",
+          "mapping",
+          "claim"
+        ],
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/FoodLedgerScope"
+          },
+          "actorNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source": {
+            "$ref": "#/components/schemas/SignedBusinessOutbound"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/StockSourceClaim"
+          },
+          "movementNo": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 32
+          }
+        }
+      },
+      "FoodSourceLookup": {
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "properties": {
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/View"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "description": "Outer protocol response must exist. A null result means no source original; transport failure must never be mapped to null."
+      },
+      "LegacyFoodRegistration": {
+        "type": "object",
+        "required": [
+          "scope",
+          "actorNo",
+          "key",
+          "source",
+          "mapping"
+        ],
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/FoodLedgerScope"
+          },
+          "actorNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source": {
+            "$ref": "#/components/schemas/SignedBusinessOutbound"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          },
+          "movementNo": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 32
+          }
+        }
+      },
+      "FoodRegistrationRecovery": {
+        "type": "object",
+        "required": [
+          "scope",
+          "actorNo",
+          "key",
+          "documentNo",
+          "lineNo",
+          "mapping"
+        ],
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/FoodLedgerScope"
+          },
+          "actorNo": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "documentNo": {
+            "type": "string"
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          },
+          "movementNo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "description": "Existing recovery contract extended compatibly: absent movementNo selects normal REGISTER; non-null original movementNo selects MANUAL_REGISTER. Actor/action/doc/line/mapping/movement must match the stored original snapshot, including old source JSON without postingSequence. A sealed key is rejected before source RPC or MAIN source claim."
+      }
+    }
+  },
+  "x-internal-food-transport": {
+    "contract": "FoodStockReplenishmentInternalApi",
+    "root": "/internal/food/local-stock/replenishments",
+    "methods": {
+      "register": "POST /register",
+      "receive": "POST /receive",
+      "close": "POST /close",
+      "dispatchReturn": "POST /return-dispatch",
+      "ackReturn": "POST /return-ack",
+      "get": "POST /get",
+      "findCommand": "POST /command",
+      "connection": "POST /connection/get",
+      "configure": "POST /connection/configure",
+      "recoverConfiguration": "POST /connection/recover",
+      "findConfigurationCommand": "POST /connection/command",
+      "recoverRegistration": "POST /register/recover",
+      "registerManual": "POST /manual/register",
+      "adoptManual": "POST /manual/adopt",
+      "list": "POST /list",
+      "reconcile": "POST /reconcile",
+      "commandState": "POST /command/state",
+      "cancelCommand": "POST /command/cancel"
+    },
+    "authentication": "Existing InternalHttp FOOD token + signed full body and entity/store/actorNo scope. No direct App access."
+  },
+  "x-retail-local-effects": {
+    "contract": "ai.neargo.shop.product.service.RetailStockReplenishmentService",
+    "publication": "Internal Java service only; no retail HTTP/App paths published in D2-03. D2-04 will publish authorized ai-shop endpoints.",
+    "methods": [
+      "get",
+      "receive",
+      "close",
+      "dispatchReturn",
+      "ackReturn",
+      "adjust",
+      "adoptManual",
+      "reconcile"
+    ],
+    "transactions": "Existing PLATFORM counters + effect + original cumulative totals + permanent successful command receipt commit atomically. Source RPC precedes transaction.",
+    "replay": "Original raw request key, actor and stable payload digest; existing completed reply wins before current state validation. Same key with another payload conflicts.",
+    "receipt": "receive and dispatchReturn take integer cumulative targets and apply only delta. ackReturn and adoptManual never change local counters.",
+    "sourceReturn": "Verified source RETURN must reference SRP original; exact frozen conversion, globally unique source line.",
+    "manual": "Only real ADJUST_IN movement with matching successful command, scope and frozen target; one whole movement belongs to one original.",
+    "reconciliation": "Read-only evidence totals; never infer whole current stock from one replenishment or repair discrepancies.",
+    "legacyFence": "REPLENISH forbids old absolute setters, unsupported existing SKU unit/market/retirement/pool changes; metadata edits preserve actual counters."
+  }
+}

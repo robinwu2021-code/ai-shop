@@ -68,44 +68,76 @@ public class StoreStockReader {
      */
     private static final int CHUNK = 500;
 
+    /** Actual business-stock observation. Scoped callers distinguish missing/unknown from a real zero. */
+    public record Observation(String skuNo, String entityNo, String goodsNo, String baseUnit,
+                              int variants, boolean storeManaged, Integer onHand, Integer reserved) { }
+
+    public Observation observe(String entityNo, String skuNo, String storeNo) {
+        return observations(List.of(skuNo), storeNo, entityNo).get(skuNo);
+    }
+
+    /** Internal accounting rows, never returned by an HTTP API. Lock order matches product editing. */
+    public record LockedPool(List<PrdSku> skus, List<PrdStoreStock> stores, Observation observation) { }
+
+    public LockedPool lockPool(String skuNo, String storeNo) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Current stock rows require an existing transaction");
+        return DataScopeContext.executeWithoutScope(() -> {
+            var skus = skuMapper.lockSkuCurrent(skuNo).stream()
+                    .filter(row -> Integer.valueOf(0).equals(row.getDeleted())).toList();
+            var stores = storeStockMapper.lockSkuStoresCurrent(skuNo).stream()
+                    .filter(row -> Integer.valueOf(0).equals(row.getDeleted())).toList();
+            Observation original = skus.isEmpty() ? null : fromSku(skus.getFirst(), skus.size());
+            return new LockedPool(skus, stores, withStorePool(original, stores, storeNo));
+        });
+    }
+
+    private static Observation fromSku(PrdSku sku, int variants) {
+        return new Observation(sku.getSkuNo(), sku.getEntityNo(), sku.getGoodsNo(), sku.getSaleUnit(),
+                variants, false, sku.getStock(), sku.getLockedStock());
+    }
+
+    /** Shared by normal reads and current locking reads: a missing store row never falls back. */
+    private static Observation withStorePool(Observation original, List<PrdStoreStock> rows, String storeNo) {
+        if (storeNo == null || storeNo.isBlank() || rows.isEmpty()) return original;
+        PrdStoreStock here = null;
+        for (var row : rows) if (storeNo.equals(row.getStoreNo())) here = row;
+        var first = rows.getFirst();
+        return new Observation(first.getSkuNo(), original == null ? first.getEntityNo() : original.entityNo(),
+                original == null ? null : original.goodsNo(), original == null ? null : original.baseUnit(),
+                original == null ? 0 : original.variants(), true,
+                here == null ? 0 : here.getStock(), here == null ? 0 : here.getLockedStock());
+    }
+
     private Map<String, Integer> read(List<String> skuNos, String storeNo, boolean minusLocked) {
         Map<String, Integer> out = new HashMap<>();
-        if (skuNos == null || skuNos.isEmpty()) {
-            return out;
-        }
-        List<PrdSku> skus = new java.util.ArrayList<>();
+        observations(skuNos, storeNo, null).forEach((sku, state) -> out.put(sku,
+                Math.max(nz(state.onHand()) - (minusLocked ? nz(state.reserved()) : 0), 0)));
+        return out;
+    }
+
+    private Map<String, Observation> observations(List<String> skuNos, String storeNo, String entityNo) {
+        Map<String, Observation> out = new HashMap<>();
+        if (skuNos == null || skuNos.isEmpty()) return out;
         for (List<String> chunk : chunks(skuNos)) {
-            skus.addAll(DataScopeContext.executeWithoutScope(() ->
-                    skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, chunk))));
-        }
-        for (PrdSku s : skus) {
-            out.put(s.getSkuNo(), Math.max(nz(s.getStock()) - (minusLocked ? nz(s.getLockedStock()) : 0), 0));
-        }
-        if (storeNo == null || storeNo.isBlank()) {
-            return out;
-        }
-        /*
-         * 一次取回这批 SKU 的**全部**店级行（不只是本店的）—— 因为判据是
-         * 「这个 SKU 有没有被按店管理」，只查本店的话分不出
-         * 「没按店管理」与「按店管理但本店没设」，而这两者的答案相反（主体总量 vs 0）。
-         */
-        List<PrdStoreStock> rows = new java.util.ArrayList<>();
-        for (List<String> chunk : chunks(skuNos)) {
-            rows.addAll(DataScopeContext.executeWithoutScope(() ->
-                    storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
-                            .in(PrdStoreStock::getSkuNo, chunk))));
-        }
-        Map<String, Integer> here = new HashMap<>();
-        java.util.Set<String> managed = new java.util.HashSet<>();
-        for (PrdStoreStock r : rows) {
-            managed.add(r.getSkuNo());
-            if (storeNo.equals(r.getStoreNo())) {
-                here.put(r.getSkuNo(), Math.max(nz(r.getStock()) - (minusLocked ? nz(r.getLockedStock()) : 0), 0));
+            var query = Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, chunk);
+            if (entityNo != null) query.eq(PrdSku::getEntityNo, entityNo).eq(PrdSku::getTenantNo, "MAIN");
+            for (var s : DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(query))) {
+                var prior = out.get(s.getSkuNo());
+                out.put(s.getSkuNo(), fromSku(s, prior == null ? 1 : prior.variants() + 1));
             }
         }
-        for (String skuNo : managed) {
-            out.put(skuNo, here.getOrDefault(skuNo, 0));
+        if (storeNo == null || storeNo.isBlank()) return out;
+        // Read all store rows: an absent row in a store-managed SKU is zero, never the entity balance.
+        Map<String, List<PrdStoreStock>> bySku = new HashMap<>();
+        for (List<String> chunk : chunks(skuNos)) {
+            var query = Wrappers.<PrdStoreStock>lambdaQuery().in(PrdStoreStock::getSkuNo, chunk);
+            if (entityNo != null) query.eq(PrdStoreStock::getEntityNo, entityNo).eq(PrdStoreStock::getTenantNo, "MAIN");
+            for (var row : DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectList(query))) {
+                bySku.computeIfAbsent(row.getSkuNo(), key -> new java.util.ArrayList<>()).add(row);
+            }
         }
+        bySku.forEach((sku, rows) -> out.put(sku, withStorePool(out.get(sku), rows, storeNo)));
         return out;
     }
 

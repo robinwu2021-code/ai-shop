@@ -1,0 +1,33 @@
+Parent: c58020fa3
+Check: python3 scripts/check-app-backend-orphan.py --check
+Parent baseline-outside records: 27
+Inventory submission records: 27
+Added: 0; removed: 0; identical set: yes
+
+NEW b-app GET /biz/auth/identities/mine
+NEW b-app GET /biz/auth/session
+NEW b-app GET /biz/merchant/store-claims/*
+NEW b-app GET /biz/merchant/store-claims/by-request/*
+NEW b-app GET /biz/pay/v2/capability-progress
+NEW b-app GET /biz/pay/v2/memberships
+NEW b-app GET /biz/pay/v2/onboardings
+NEW b-app GET /biz/pay/v2/onboardings/*
+NEW b-app GET /biz/pay/v2/onboardings/*/draft
+NEW b-app GET /biz/pay/v2/onboardings/*/draft/commands/*
+NEW b-app GET /biz/pay/v2/onboardings/*/files
+NEW b-app GET /biz/pay/v2/onboardings/*/files/*
+NEW b-app GET /biz/pay/v2/onboardings/*/readiness
+NEW b-app GET /biz/review/*
+NEW b-app GET /biz/review/appeals
+NEW b-app GET /biz/store/*/entity/relink-check
+NEW b-app POST /biz/auth/identities
+NEW b-app POST /biz/auth/identities/enter
+NEW b-app POST /biz/merchant/onboarding
+NEW b-app POST /biz/merchant/store-claims/*/resume
+NEW b-app POST /biz/pay/v2/onboardings
+NEW b-app POST /biz/pay/v2/onboardings/*/cancel
+NEW b-app POST /biz/pay/v2/onboardings/*/draft/confirm
+NEW b-app POST /biz/pay/v2/onboardings/*/files
+NEW b-app POST /biz/pay/v2/onboardings/*/newebpay-materials
+NEW b-app POST /biz/store/*/entity
+NEW b-app PUT /biz/pay/v2/onboardings/*/draft

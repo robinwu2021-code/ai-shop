@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">本地库存与独立库存服务：按业主选择唯一写入方</title>
+  <desc id="desc">商家App始终访问ai-shop。ai-shop鉴权后按system和owner路由，选择本地内嵌库存或经inventory-client调用独立库存服务。两侧互斥执行预留及出入库。本地读模型只用于展示；迁移不生成补货单。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1200" height="760" rx="18" fill="#f8fafc"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#0f172a">
+    <text x="600" y="40" text-anchor="middle" font-size="25" font-weight="700">同一库存账本，只由当前 writer 扣减</text>
+    <rect x="405" y="65" width="390" height="70" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="600" y="108" text-anchor="middle" font-size="22" font-weight="600">商家 App：统一库存操作入口</text>
+    <path d="M600 135V170" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="250" y="175" width="700" height="115" rx="12" fill="#fff" stroke="#64748b" stroke-width="2"/>
+    <text x="600" y="209" text-anchor="middle" font-size="22" font-weight="600">ai-shop /biz/inventory/* 与业务 Port</text>
+    <text x="600" y="240" text-anchor="middle" font-size="18">登录 · 商家与门店权限 · 商品、订单及售后关联</text>
+    <text x="600" y="267" text-anchor="middle" font-size="17" fill="#475569">本地展示投影可保留；它不获得库存写入权</text>
+    <path d="M600 290V325" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="350" y="330" width="500" height="90" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="600" y="365" text-anchor="middle" font-size="21" font-weight="600">按 system + owner 的统一路由</text>
+    <text x="600" y="395" text-anchor="middle" font-size="18">EMBEDDED / FLIPPING / SVC</text>
+    <path d="M350 375H290V480" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M850 375H910V480" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="185" y="451" font-size="17" fill="#475569">EMBEDDED</text>
+    <text x="890" y="451" font-size="17" fill="#047857">SVC</text>
+    <rect x="40" y="485" width="500" height="145" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <text x="290" y="523" text-anchor="middle" font-size="22" font-weight="600">本地内嵌库存（过渡）</text>
+    <text x="290" y="558" text-anchor="middle" font-size="18">ai-shop 内调用 inventory-domain</text>
+    <text x="290" y="589" text-anchor="middle" font-size="18">原库存库：原子预留、出入库、余额与流水</text>
+    <rect x="660" y="485" width="500" height="145" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text x="910" y="523" text-anchor="middle" font-size="22" font-weight="600">独立库存服务（目标）</text>
+    <text x="910" y="558" text-anchor="middle" font-size="18">inventory-client → inventory-svc</text>
+    <text x="910" y="589" text-anchor="middle" font-size="18">服务账本：原子预留、出入库、余额与流水</text>
+    <text x="600" y="661" text-anchor="middle" font-size="19" font-weight="600" fill="#b45309">FLIPPING：该业主两侧拒绝库存写入；业务请求可原号恢复</text>
+    <text x="600" y="698" text-anchor="middle" font-size="18">切换交接同一账本的写入权，不生成“服务出库 → 本地入库”</text>
+    <text x="600" y="730" text-anchor="middle" font-size="17" fill="#475569">真实仓库向门店补货另走调拨 / 收货；它与部署切换无关</text>
+  </g>
+</svg>

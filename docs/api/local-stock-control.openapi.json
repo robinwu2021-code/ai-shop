@@ -1,0 +1,322 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "三行业本地库存能力预检（I04-A）",
+    "version": "1.0.0",
+    "description": "只读诊断；仅LOCAL开放，其他策略明确拒绝且不回退。行业参数仅为能力画像，不改门店行业或历史订单来源。复用ApiResult响应包装与biz:stock权限。"
+  },
+  "paths": {
+    "/biz/stock-control/preflight": {
+      "post": {
+        "operationId": "preflightLocalBusinessStock",
+        "security": [
+          {
+            "merchantBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "description": "省略时使用已鉴权当前门店；显式值须匹配真实门店范围，不能伪造或静默切换。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "能力预检结果，allowed=false仍返回原问题；没有库存写入或策略启用。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入绑定/校验失败，沿统一错误响应"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "无库存权限、错realm/tenant/门店范围或当前归属失效"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "merchantBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Industry": {
+        "type": "string",
+        "enum": [
+          "RETAIL",
+          "FOOD",
+          "BEAUTY"
+        ]
+      },
+      "Strategy": {
+        "type": "string",
+        "enum": [
+          "LOCAL",
+          "REPLENISH",
+          "SHARED_SYNC",
+          "DELEGATED"
+        ]
+      },
+      "ItemKind": {
+        "type": "string",
+        "enum": [
+          "SKU",
+          "MATERIAL",
+          "CONSUMABLE",
+          "SERVICE_RIGHT",
+          "RESOURCE_CAPACITY"
+        ]
+      },
+      "Action": {
+        "type": "string",
+        "enum": [
+          "QUERY",
+          "RESERVE",
+          "ACCEPT",
+          "ISSUE_HANDOVER",
+          "ISSUE_PRODUCTION",
+          "ISSUE_SERVICE_USE",
+          "RELEASE",
+          "RETURN",
+          "RECEIVE",
+          "ADJUST"
+        ]
+      },
+      "QuantityScope": {
+        "type": "string",
+        "enum": [
+          "ENTITY",
+          "STORE"
+        ]
+      },
+      "StockStatus": {
+        "type": "string",
+        "enum": [
+          "TRACKED",
+          "UNTRACKED",
+          "UNCONFIGURED",
+          "DISABLED",
+          "UNKNOWN"
+        ]
+      },
+      "Issue": {
+        "type": "string",
+        "enum": [
+          "STRATEGY_NOT_ENABLED",
+          "NOT_PHYSICAL_STOCK",
+          "ITEM_KIND_UNSUPPORTED",
+          "SCOPE_UNSUPPORTED",
+          "EXECUTOR_UNAVAILABLE",
+          "EXECUTOR_AMBIGUOUS",
+          "ITEM_NOT_FOUND",
+          "ITEM_NOT_READY",
+          "UNIT_UNCONFIGURED",
+          "UNIT_MISMATCH",
+          "AMBIGUOUS_STOCK",
+          "QUANTITY_PRECISION_UNSUPPORTED",
+          "CAPABILITY_UNSUPPORTED",
+          "NOT_TRACKED",
+          "INSUFFICIENT_STOCK"
+        ]
+      },
+      "Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "industry",
+          "strategy",
+          "itemKind",
+          "itemNo",
+          "baseUnit",
+          "quantity",
+          "actions"
+        ],
+        "properties": {
+          "industry": {
+            "$ref": "#/components/schemas/Industry"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/Strategy"
+          },
+          "itemKind": {
+            "$ref": "#/components/schemas/ItemKind"
+          },
+          "itemNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 1000000000000000000,
+            "exclusiveMaximum": true,
+            "multipleOf": 1e-06,
+            "description": "大于0，整数至多18位、小数至多6位；不进行截断或单位猜测。"
+          },
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          }
+        }
+      },
+      "Route": {
+        "type": "object",
+        "nullable": true,
+        "required": [
+          "industry",
+          "strategy",
+          "owner"
+        ],
+        "properties": {
+          "industry": {
+            "$ref": "#/components/schemas/Industry"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/Strategy"
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "PLATFORM",
+              "FOOD_LOCAL"
+            ]
+          }
+        }
+      },
+      "Observation": {
+        "type": "object",
+        "nullable": true,
+        "required": [
+          "itemNo",
+          "baseUnit",
+          "quantityScope",
+          "scopeRef",
+          "status",
+          "availableQuantity"
+        ],
+        "properties": {
+          "itemNo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "baseUnit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "quantityScope": {
+            "$ref": "#/components/schemas/QuantityScope"
+          },
+          "scopeRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "status": {
+            "$ref": "#/components/schemas/StockStatus"
+          },
+          "availableQuantity": {
+            "type": "number",
+            "nullable": true,
+            "description": "实际观察值；未知或不跟踪为null，不能当0或无限。"
+          }
+        }
+      },
+      "Preflight": {
+        "type": "object",
+        "required": [
+          "route",
+          "stock",
+          "capabilities",
+          "issues",
+          "allowed"
+        ],
+        "properties": {
+          "route": {
+            "$ref": "#/components/schemas/Route"
+          },
+          "stock": {
+            "$ref": "#/components/schemas/Observation"
+          },
+          "capabilities": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          },
+          "allowed": {
+            "type": "boolean",
+            "description": "只读能力及当前数量检查结果，不是库存预留、绑定发布或写入授权。"
+          }
+        }
+      },
+      "Result": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Preflight"
+          }
+        }
+      }
+    }
+  }
+}

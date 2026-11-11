@@ -19437,3 +19437,96 @@ CREATE TABLE mch_store_entity_claim (
  UNIQUE KEY uk_store_claim_active_source(tenant_no,active_source_no),
  KEY idx_store_claim_recovery(state,updated_at)
 );
+
+-- I04-D2 admission metadata; MySQL-specific CHECK semantics are tested using V659 on MySQL9.
+CREATE TABLE IF NOT EXISTS prd_stock_writer
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ entity_no VARCHAR(32) NOT NULL, mode VARCHAR(16) NOT NULL,
+ CONSTRAINT uk_prd_stock_writer UNIQUE (tenant_no,entity_no)
+);
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ original_no VARCHAR(32) NOT NULL, entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
+ target_owner VARCHAR(16) NOT NULL, source_system VARCHAR(32) NOT NULL, source_owner VARCHAR(32) NOT NULL,
+ source_document VARCHAR(32) NOT NULL, source_line INT NOT NULL, binding_hash CHAR(64) NOT NULL,
+ source_snapshot LONGTEXT NOT NULL, mapping_snapshot LONGTEXT NOT NULL, target_snapshot LONGTEXT NULL,
+ admission_generation BIGINT NOT NULL DEFAULT 0, expected_quantity DECIMAL(24,6) NOT NULL,
+ received_quantity DECIMAL(24,6) NOT NULL DEFAULT 0, difference_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
+ returned_quantity DECIMAL(24,6) NOT NULL DEFAULT 0, return_accepted_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
+ status VARCHAR(16) NOT NULL, close_reason VARCHAR(256) NULL,
+ CONSTRAINT uk_prd_replenishment_no UNIQUE (original_no),
+ CONSTRAINT uk_prd_replenishment_source UNIQUE (tenant_no,source_system,source_owner,source_document,source_line)
+);
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_connection
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL, enabled INT NOT NULL DEFAULT 0,
+ generation BIGINT NOT NULL DEFAULT 0, source_system VARCHAR(32) NULL, source_owner VARCHAR(32) NULL,
+ posting_watermark BIGINT NOT NULL DEFAULT 0,
+ CONSTRAINT uk_prd_replenishment_connection UNIQUE (tenant_no,entity_no,store_no)
+);
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_command
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL, action VARCHAR(32) NOT NULL,
+ operation_key VARCHAR(128) NOT NULL, request_hash CHAR(64) NOT NULL, result_json LONGTEXT NOT NULL,
+ CONSTRAINT uk_prd_replenishment_command UNIQUE (tenant_no,entity_no,store_no,action,operation_key)
+);
+
+-- I04-D2-03 local effects. Native CHECK/NO PAD semantics are exercised using V660 on MySQL9.
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_movement
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ movement_no VARCHAR(32) NOT NULL, original_no VARCHAR(32) NULL,
+ command_action VARCHAR(32) NOT NULL, operation_key VARCHAR(128) NOT NULL,
+ kind VARCHAR(24) NOT NULL, item_no VARCHAR(32) NOT NULL, base_unit VARCHAR(16) NOT NULL,
+ target_identity CHAR(64) NOT NULL, target_snapshot LONGTEXT NOT NULL,
+ delta INT NOT NULL, on_hand_before INT NOT NULL, on_hand_after INT NOT NULL,
+ reserved_before INT NOT NULL, reserved_after INT NOT NULL, reason VARCHAR(256) NULL,
+ CONSTRAINT uk_prd_repl_movement UNIQUE (movement_no),
+ CONSTRAINT uk_prd_repl_effect UNIQUE (tenant_no,entity_no,store_no,command_action,operation_key)
+);
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_manual
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ original_no VARCHAR(32) NOT NULL, movement_no VARCHAR(32) NOT NULL, quantity INT NOT NULL,
+ CONSTRAINT uk_prd_repl_manual_movement UNIQUE (tenant_no,movement_no)
+);
+CREATE TABLE IF NOT EXISTS prd_stock_replenishment_return
+(
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
+ created_at DATETIME(3) NOT NULL, created_by VARCHAR(64) NOT NULL,
+ updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(64) NOT NULL,
+ version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+ original_no VARCHAR(32) NOT NULL, source_system VARCHAR(32) NOT NULL, source_owner VARCHAR(32) NOT NULL,
+ source_document VARCHAR(32) NOT NULL, source_line INT NOT NULL, accepted_quantity INT NOT NULL,
+ proof_hash CHAR(64) NOT NULL, source_snapshot LONGTEXT NOT NULL,
+ CONSTRAINT uk_prd_repl_return_source UNIQUE (tenant_no,source_system,source_owner,source_document,source_line)
+);
