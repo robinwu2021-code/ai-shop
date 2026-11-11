@@ -1,0 +1,64 @@
+{
+  "ai-shop-api": {
+    "health": "UP",
+    "jarSha256": "5cb4147d5f6ed781a240c5cfa63eda35f394ad9b01422797ac0c77339f8a55ab",
+    "changedEnvironmentKeys": [
+      "SHOP_CORS_EXTRA_ORIGINS"
+    ],
+    "allowedExtraOrigins": [
+      "https://twpay.umeshop.ai",
+      "https://nearshop.umeshop.ai"
+    ],
+    "hostConfigPreserved": true
+  },
+  "ai-shop-ops": {
+    "health": "UP",
+    "jarSha256": "5cb4147d5f6ed781a240c5cfa63eda35f394ad9b01422797ac0c77339f8a55ab",
+    "changedEnvironmentKeys": [
+      "SHOP_CORS_EXTRA_ORIGINS"
+    ],
+    "allowedExtraOrigins": [
+      "https://twpay.umeshop.ai",
+      "https://nearshop.umeshop.ai"
+    ],
+    "hostConfigPreserved": true
+  },
+  "nearpay-prod": {
+    "containerUnchanged": true
+  },
+  "inventory-test": {
+    "containerUnchanged": true
+  },
+  "nginx": {
+    "twpayPreserved": true,
+    "nearshopSha256": "351e10883841c723589ed8d107e6d1f4a7bed45a8bd587c09bfcf8e90141c373",
+    "lockReleased": true
+  },
+  "environment": "ume-166",
+  "newDomain": "nearshop.umeshop.ai",
+  "preservedDomain": "twpay.umeshop.ai",
+  "publicMatrixChecks": 46,
+  "realOperatorLoginAndReadback": true,
+  "existingSignedEvidenceBothDomains": true,
+  "unsignedEvidenceRejectedBothDomains": true,
+  "rollbackModelCasesPassed": [
+    "stop_failed",
+    "rename_failed",
+    "create_failed",
+    "start_failed",
+    "health_failed"
+  ],
+  "productionRollbackDrilled": false,
+  "backups": {
+    "166": "/data0/app/ai-shop/releases/nearshop-dual-domain-20261111",
+    "201": "/usr/local/nginx/conf/.nearshop-backups/nearshop-dual-domain-20261111"
+  },
+  "realMerchantLoginAndStoreContext": true,
+  "twpayEdgeConfigPreserved": true,
+  "edgeNearshopSha256": "f9d5ac8fac6025edc9c2124c7398e821139a9ba3525da50a44ebc288689228a5",
+  "certificate": {
+    "reusedWildcard": "*.umeshop.ai",
+    "hostnameVerified": true,
+    "notAfter": "2026-12-24T23:59:59Z"
+  }
+}
