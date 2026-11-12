@@ -101,7 +101,17 @@ DELETE FROM ai_shop_ume.sys_role_point WHERE created_by='STORE_REVIEW_TEST';
 
 `IndustryService` 新增 `registered(industry)`（内部接口，含停用行）。测试：`M9aOpsFlowTest` 新增 `unknownSubjectIsRejected`、`unknownIndustryIsRejected`、`missingSubjectMasterRowFailsClosed`（把 `NATURAL_PERSON` 行临时改名，模拟 166 缺行），修复前三条全红（均返回 0），修复后全绿；`MerchantApplyIntentIndustryFlowTest`（停用行业照收）、`QualificationChainFlowTest`、`OnBehalfMerchantFlowTest`、`MerchantApplyEditFlowTest`、`CommerceStoreCreationFlowTest`（原生 MySQL）通过。`CommerceStoreCreationFlowTest` 用反射构造 `OpsServiceImpl` 时 `MasterDataService` 是空替身，已改为认得 `NATURAL_PERSON` 的替身（夹具随规则调整，规则未放宽）。
 
-**166 尚未部署此代码**：线上未知主体仍会被受理（门禁验证中误收的单 `MA261112X5B80KMSTC` 已驳回）。
+**166 已部署（2026-11-12 15:49）**：制品来自 `9f44771a1`（相对上次运行版 `649057db0` 只改 3 个 Java 文件，无迁移，库仍为 V662），JAR SHA256 `e8c2c19136c2cf6cca1ec46860d4e9c039fbd02c5d911782bd5aa98037e703eb`；原 JAR 备份 `shop-app.jar.before-9f44771a1-20261112-154918`。`ai-shop-api`、`ai-shop-ops` 重启后 UP。部署前验证中误收的未知主体单 `MA261112X5B80KMSTC` 已驳回。
+
+部署后线上复验（测试邮箱 id 9，验后停用）：
+
+| 用例 | 结果 |
+|---|---|
+| 自然人 + 线上 | 70001 ✅ |
+| 未知主体 `NO_SUCH_FORM` | 10400 ✅（部署前被受理） |
+| 自然人 + 未知行业 | 70060 ✅ |
+| 企业 + 未知行业（不经小微门禁） | 70060 ✅ |
+| 自然人 + 零售 | 受理 ✅（验证单 `MA26111252N9FCC14C` 已驳回） |
 
 ### 2. 数据：166 主数据补齐
 
@@ -114,5 +124,4 @@ TW166 夹具说明写明 166 原本没有主体与行业主数据，只补了 `C
 
 ### 3. 仍待处理
 
-- 166 部署 `08f719868`，之后未知主体、未知行业才会在线上被拒。
 - 场景 A 的主体 `M261112SMSE46Y54G` 是在门禁失效时以「自然人 + 线上」通过的测试主体，保留作为证据，不应用于收款。
