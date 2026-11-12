@@ -7,6 +7,7 @@
 // ⚠️ 覆盖范围仅到**导航与框架**。页面正文（表头、说明条、空态文案）仍是中文硬编码 ——
 // 这是 §九 M7「运营界面仅中文」那条决定的遗留，切到 EN 时正文不会跟着变。
 // `nav.test.ts` 会断言这张表覆盖 nav.ts 的全部 label，漏一条就红。
+import { NAV_ZH_TW } from "./nav-zh-TW";
 import type { Locale } from "@/lib/stores/locale";
 
 /** label → { locale: 译文 }。zh 不入表（源串即中文）。 */
@@ -415,6 +416,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
 export function tNav(label: string, locale: Locale): string {
   if (locale === "zh") return label;
+  if (locale === "zh-TW") return NAV_ZH_TW[label] ?? label;
   return OVERLAY[label]?.[locale] ?? label;
 }
 

@@ -4,6 +4,10 @@
 import { describe, expect, it } from "vitest";
 import { MERCHANT_TRANSITIONS } from "@/lib/types";
 import { zh } from "./messages/zh";
+import { zhTW } from "./messages/zh-TW";
+import { tNav, NAV_OVERLAY_KEYS } from "./nav-labels";
+import { NAV_ZH_TW } from "./nav-zh-TW";
+import { parseLocale } from "../stores/locale";
 import { en } from "./messages/en";
 import { DIR, LOCALES, LOCALE_TAG, translate } from "./index";
 
@@ -15,7 +19,22 @@ function keys(obj: Record<string, unknown>, prefix = ""): string[] {
 }
 
 describe("catalog", () => {
-  it("中 / EN 两种界面语言", () => expect([...LOCALES]).toEqual(["zh", "en"]));
+  it("registers Simplified Chinese, Traditional Chinese and English", () => expect([...LOCALES]).toEqual(["zh", "zh-TW", "en"]));
+  it("Traditional Chinese catalog has complete keys and translated shell labels", () => {
+    expect(keys(zhTW).sort()).toEqual(keys(zh).sort());
+    expect(translate("zh-TW", "login.password")).toBe("密碼");
+    expect(translate("zh-TW", "nav.paymentOps")).toBe("支付運營");
+    expect(tNav("经营看板", "zh-TW")).toBe("經營看板");
+  });
+  it("covers the deployed baseline navigation in Traditional Chinese", () => {
+    expect(Object.keys(NAV_ZH_TW).sort()).toEqual([...NAV_OVERLAY_KEYS].sort());
+  });
+  it("maps cross-app locale query values", () => {
+    expect(parseLocale("zh-CN")).toBe("zh");
+    expect(parseLocale("zh-TW")).toBe("zh-TW");
+    expect(parseLocale("en")).toBe("en");
+    expect(parseLocale("evil")).toBeNull();
+  });
 
   it("en 与 zh 的 key **完全齐平** —— 少一条就会在界面上漏出中文", () => {
     // 回退机制会让缺失的 key 静默显示中文，肉眼很难发现，所以要在这里挡住

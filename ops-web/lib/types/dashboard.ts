@@ -30,6 +30,7 @@ export interface LoginResp {
   merchantNo?: string;
   /** 受限角色的社区数据域 */
   communityNo?: string;
+  pickupNo?: string;
 }
 
 /** KPI 卡（金额为最小货币单位整数）。 */
