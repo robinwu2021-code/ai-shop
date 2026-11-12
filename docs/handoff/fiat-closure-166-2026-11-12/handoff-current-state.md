@@ -8,15 +8,16 @@
 
 - **从注册到开通支付的闭环**：在 UME 166 上跑通到「蓝新进件平台审核通过」，按约定**未派发**真实蓝新；该测试进件已取消。
 - **门店创建审核**：166 线上测试 37 项、35 项符合预期；不符合的 2 项是同一个缺陷「主体与业态门禁失效」，**已修复、过完整门禁、已部署 166 并复验**。
+- **NearPay进件看板已部署**：按来源主体读取真实渠道进件事实，Chrome已验证同商户精确跳转；来源资料通过与渠道取消分别展示，未派发真实渠道。
 - **仍有 3 个已知缺陷未修**（§五），若干场景未覆盖（§六）。
 
 ## 二、代码与分支
 
 | 仓库 | 分支 | 位置 | 说明 |
 |---|---|---|---|
-| ai-shop | `codex/ai-shop-codex`（主开发分支） | 最后一次代码改动 `9f44771a1`，之后只有文档提交 | 含合并、门禁修复、主体业态门禁修复与全部交接文档 |
-| ai-shop | `codex/ops-fiat-local-closure` | 同上 | 本工作的闭环分支，已与主开发分支对齐 |
-| near-pay | `develop/s1` | `6e1f0bdee` | 合入 `codex/pay-ops-menu-matrix` |
+| ai-shop | `codex/ai-shop-codex`（主开发分支） | 最新代码 `39a38a751`（后端源码止于 `c495d7631`） | 含NearPay进件看板、门禁修复与待审文案；部署及证据见§十一 |
+| ai-shop | `codex/ops-fiat-local-closure` | `cea901ada` | 历史闭环分支，未随本次看板增量前移 |
+| near-pay | `develop/s1` | `4d1e5b813`（本次后端） | 来源进件只读API；保留其他会话已有前端部署 |
 | near-pay | `codex/ops-fiat-local-closure` | `a72f53aa4` | 仅本地闭环启动器草稿 |
 
 本轮代码提交（ai-shop）：
@@ -34,12 +35,12 @@
 
 | 项 | 值 |
 |---|---|
-| 后端制品 | `9f44771a1`，JAR SHA256 `e8c2c19136c2cf6cca1ec46860d4e9c039fbd02c5d911782bd5aa98037e703eb`，`ai-shop-api` / `ai-shop-ops` 共用 `/data0/app/ai-shop/shop-app.jar` |
+| 后端制品 | `c495d7631`，JAR SHA256 `591381e6971a9988fc33cf1428c299a16b5ab23c0da32e714b595ab2f16dd26b`，`ai-shop-api` / `ai-shop-ops` 共用 `/data0/app/ai-shop/shop-app.jar` |
 | 数据库 `ai_shop_ume` | V662，无失败迁移 |
-| 运营前端 | `/data/www/ai-shop-ops/current → …/fiat-closure-202611112106/ai-shop-web` |
-| near-pay | 本批未改动 |
+| 运营前端 | `/data/www/ai-shop-ops/current → …/source-board-labels-20261112-39a38a751`（根下保留 `ops-shop/`） |
+| near-pay | 后端 `4d1e5b813`，SHA256 `3f1dd0823fa1f6ba5f64c30029297cecc3d68ebf12bbc1b95e3450f57fb4e5c7`，数据库V94；本次无新迁移 |
 
-## 四、本轮对 166 的全部改动与回退
+## 四、前批对 166 的改动与回退（本次看板发布见§十一）
 
 | # | 改动 | 回退 |
 |---|---|---|
@@ -82,7 +83,7 @@
 
 ## 八、安全与凭据
 
-- 166 自动化票据私钥已换新：`~/work/env/ume/automation-ume-ed25519.pem`（本机，0600，仓库外）。其他机器或云端会话跑 166 自动化须用 `AUTOMATION_KEY` 指向新私钥；本机的 `~/work/env/ai-shop/automation-ed25519.pem` 不是 166 的钥匙。
+- 历史记录的166票据私钥路径 `~/work/env/ume/automation-ume-ed25519.pem` 在本次机器上不存在；默认ai-shop和NearPay本机密钥也不匹配当前ai-shop公钥。本次没有轮换公钥，Chrome沿用neara现有会话；不要据旧路径声称自动化票据可用。
 - 票据登录端点 `/common/auth/automation` 只能经 166 本机 18081（SSH 隧道）访问。
 - 测试身份验证码只在 166 `ai-shop.env` 中，不得复制出主机。
 - 旧商城访问密钥 `UME1` 曾在会话输出中泄露，已作废；它仍留在 166 的旧 env 备份与旧容器中，清理旧容器时一并删除。
@@ -96,7 +97,7 @@
 5. 清理 166 旧容器与旧 env 备份（含已作废的 UME1）。
 6. `codex/food-next01`、`fix/food-p0-schema-scope` 的 V657/V659/V660 合入主开发分支前改号。
 
-## 十、NearPay进件看板接入增量（2026-11-12，本地已验证，未部署）
+## 十、NearPay进件看板接入增量（2026-11-12，已部署并只读验收）
 
 用户确定进件对接为优先任务后，已补齐：
 
@@ -107,6 +108,17 @@
 
 验证：ai-shop13项、NearPay10项、OPS相关17项及文案70项通过；两侧类型检查及变更lint通过。受限财务角色的真实Spring测试已证明只查M0001，关键词M0002不能越域；目的页参数消费回归1项通过。详见原TDD§9。
 
-本批未部署，前述166线上版本与历史验收不代表新看板已上线。先发布NearPay只读API，再发布ai-shop服务端及OPS页面，随后用现有受限角色执行线上只读联调；不要用临时超管掩盖权限配置缺口。真实蓝新新增商店仍须完整真实材料及合法未使用MID，未在本批执行。
+本批已按NearPay → ai-shop服务端 → OPS页面发布。线上Chrome以neara既有会话完成列表、主体过滤及精确商户跳转；受限财务角色的数据域由本地真实Spring测试验证，未把它写成robin线上验收。本次未改角色、令牌、公钥或渠道开关。真实蓝新新增商店仍须完整真实材料及合法未使用MID，未在本批执行。
 
-静态守卫仍有基线问题：四个系统维护端点的权限细化登记缺失、四张C1保护表的H2结构缺失；本批未修改相关业务或扩大欠账登记。
+发布前已修复四个系统维护端点的权限映射登记，以及G3将V621原生专属C1表误判为H2缺表的问题；复用原生成器策略和双hash校验，未修改历史SQL、H2策略、C2开关或提高欠账。另修复看板分页与链接色，并删除两条已解决的shared失败登记（16→14）。
+
+## 十一、UME166发布与线上验收（2026-11-12）
+
+- 代码：ai-shop `5cc834da7`、`c495d7631`、`aa5a78cd3`、`39a38a751`；NearPay `4d1e5b813`。均走正常推送，未使用跳过门禁参数。主批完整门禁：shared728断言（14条既有登记）、OPS1016/0、后端7564项/2条既有失败、餐饮1264/0、美业282项/4条既有失败，无新增失败。待审标签补丁另走正常前端门禁：OPS1018/0，shared仍为728断言/14条既有登记；后端文件与已通过全量版本相同，hook按上游差异正常跳过后端。
+- 运行发布号 `source-board-20261112-aa5a78cd3-r2`。备份和发布脚本位于 `/data0/app/ai-shop/releases/source-board-20261112-aa5a78cd3-r2`，原JAR、env及容器配置在其 `before/`，仅服务器root可读。持久配置仅增加OPS公开地址 `SHOP_PAY_OPS_PUBLIC_BASE_URL=https://twpay.umeshop.ai/oms`，NearPay云配置hash未变，两个JAR迁移集合与旧版完全相同；进销存运行实例未动。
+- 首次切换将静态导出误放在根目录，公开入口404；自动恢复两个JAR、原容器及静态链接成功，`rollbackErrors=[]`。已改为线上所需的 `根/ops-shop/` 布局后重新发布成功。保留原哈希静态资源，避免旧页面加载失效。
+- 后续标签发布号 `source-board-labels-20261112-39a38a751`，仅更新OPS静态目录；后端不重启。回退此次文案可将 `current` 原子切回 `…/source-board-20261112-aa5a78cd3-r2`。整批回退须在部署锁下使用上述 `before/` 的JAR/env及对应旧容器配置，先恢复NearPay，再恢复ai-shop两服务和旧静态链接；不要直接执行已完成的发布脚本。
+- 保留其他会话的NearPay前端 `/data/www/nearpay-oms-releases/channel-config-live-20261112-74f885d9`，本次未替换它。
+- 在线真实回读：`M261112N1B45EVMKE → PM4183D38BDC47421E → OB010C12DDF672422A`；来源资料`APPROVED`，进件`CANCELLED`，平台复核`APPROVED`独立展示。Chrome从ai-shop点击进入NearPay，精确显示同一商户和同一进件单。此结论不等于渠道开户或可收款。
+- 隔离与认证：无来源主体、其他scope均为NONE/无商户；缺内部令牌401、未登记caller403；匿名OPS接口401（业务码10401）。公共首页与25个JS/CSS资源的字节SHA匹配本次制品，NearPay目的页200。
+- 证据：[source-onboarding-deployment.json](source-onboarding-deployment.json)。私有原始日志保留于执行机 `/tmp/nearpay-source-board-release-20261112/`；不将容器inspect、环境或凭据日志提交仓库。真实渠道送件、开户、产品、凭据、门店绑定和可收款验收仍属后续工作。
