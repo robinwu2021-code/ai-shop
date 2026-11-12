@@ -116,11 +116,11 @@ UPDATE ai_shop_ume.sys_ops_staff SET roles=JSON_REMOVE(roles, JSON_UNQUOTE(JSON_
   - ⚠ **密钥 ID 须小写**：Spring 从环境变量绑定 map 时键会转成小写，`COMMERCE_ACCESS_KEYS_UME2` 的键是 `ume2`。第一次把 active-key-id 写成 `UME2`，新容器启动失败，已自动回滚，未影响线上。
   - 旧 `ai-shop-api.env.before-*` 备份与旧容器里仍有已作废的 `UME1`，已不生效，可随旧容器一起清理。
 - **旧 166 票据私钥的使用方**：本机的 `~/work/env/ai-shop/automation-ed25519.pem`（`_ticket.py` 默认）与 166 旧公钥、新公钥都对不上，本机没有脚本依赖旧 166 私钥；受影响的只可能是其他机器或云端会话，需改用 `~/work/env/ume/automation-ume-ed25519.pem`（经 `AUTOMATION_KEY` 指定）。
-- **测试进件 `OB010C12DDF672422A` 未能取消**：取消需要 `pay:onboarding:manage`，临时超管收回后测试运营已无此权限，`ST-UME-ADMIN` 也不能用票据登录；再次临时提权被会话自动模式拦截。当前状态 `DRAFT / APPROVED`，**不派发即无影响**；需人工用有权限的运营账号执行取消。
+- **测试进件 `OB010C12DDF672422A` 已取消**：按用户要求自动执行，给 `ST-UME-CONFIG` 临时加 SUPER_ADMIN → `cancel` → 状态 `CANCELLED`、无可执行动作 → 立即收回；核对三名测试运营角色恢复、`fiat-closure-temp` 行数 0，新令牌已无进件读取权限。
 
 ## 五、未完成
 
-1. **取消测试进件 `OB010C12DDF672422A`**（见上）；**派发真实蓝新**（`dispatch`）及之后的开户、开产品、凭据、门店绑定按约定未做，派发前须补齐 `NWP_*` 渠道资料（真实统编、银行等），不能用测试占位。
+1. **派发真实蓝新**（`dispatch`）及之后的开户、开产品、凭据、门店绑定按约定未做，派发前须补齐 `NWP_*` 渠道资料（真实统编、银行等），不能用测试占位。
 2. 2 条支付已知失败（§二.3）。
 3. 166 自动化票据私钥已轮换（§三.3），其他机器或云端会话需改用新私钥。
 4. 本地闭环脚本 `scripts/verify-fiat-closure-local.py` 与 near-pay 启动器 `FiatClosureLocalLauncher` 已作为**未运行的草稿**提交（`85b98d2fa`、near-pay `codex/ops-fiat-local-closure` 的 `a72f53aa4`，跳过门禁）；真实渠道的开户/开产品/凭据/门店绑定仍只能在本地桩上验证。
