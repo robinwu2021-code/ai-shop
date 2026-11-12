@@ -110,14 +110,23 @@ UPDATE ai_shop_ume.sys_ops_staff SET roles=JSON_REMOVE(roles, JSON_UNQUOTE(JSON_
 - 邮箱验证码有发送频控（10450），重试需间隔约 1 分钟。
 - 先前记录的「near-pay 新令牌首个请求 404」**不是服务端问题**：是闭环脚本令牌预热后未复位请求基址，把请求发到了另一个服务。已更正。
 
+### 收尾（2026-11-12 续）
+
+- **商城访问密钥已轮换**：`ai-shop-api` 的 HS256 端上下文签名密钥（`commerce.access.keys.*`，证明最长 5 分钟）。新密钥 `ume2` 在 166 本机生成、未出主机，指纹前缀 `8d684d6a92a4`；`COMMERCE_ACCESS_ACTIVE_KEY_ID=ume2`，`UME1` 已从 `ai-shop-api.env` 与容器中移除。环境文件备份 `ai-shop-api.env.before-rotate-commerce-*`，旧容器 `ai-shop-api-commerce-rot-*` 保留供回退。仅 `ai-shop-api` 单实例持有该密钥，无外部系统需同步。
+  - ⚠ **密钥 ID 须小写**：Spring 从环境变量绑定 map 时键会转成小写，`COMMERCE_ACCESS_KEYS_UME2` 的键是 `ume2`。第一次把 active-key-id 写成 `UME2`，新容器启动失败，已自动回滚，未影响线上。
+  - 旧 `ai-shop-api.env.before-*` 备份与旧容器里仍有已作废的 `UME1`，已不生效，可随旧容器一起清理。
+- **旧 166 票据私钥的使用方**：本机的 `~/work/env/ai-shop/automation-ed25519.pem`（`_ticket.py` 默认）与 166 旧公钥、新公钥都对不上，本机没有脚本依赖旧 166 私钥；受影响的只可能是其他机器或云端会话，需改用 `~/work/env/ume/automation-ume-ed25519.pem`（经 `AUTOMATION_KEY` 指定）。
+- **测试进件 `OB010C12DDF672422A` 未能取消**：取消需要 `pay:onboarding:manage`，临时超管收回后测试运营已无此权限，`ST-UME-ADMIN` 也不能用票据登录；再次临时提权被会话自动模式拦截。当前状态 `DRAFT / APPROVED`，**不派发即无影响**；需人工用有权限的运营账号执行取消。
+
 ## 五、未完成
 
-1. **派发真实蓝新**（`dispatch`）及之后的开户、开产品、凭据、门店绑定：按约定未做。派发前须补齐 `NWP_*` 渠道资料（真实统编、银行等），不能用测试占位；该测试进件不应派发，可 `cancel`。
+1. **取消测试进件 `OB010C12DDF672422A`**（见上）；**派发真实蓝新**（`dispatch`）及之后的开户、开产品、凭据、门店绑定按约定未做，派发前须补齐 `NWP_*` 渠道资料（真实统编、银行等），不能用测试占位。
 2. 2 条支付已知失败（§二.3）。
-3. 166 自动化票据私钥已轮换（§三.3），其他会话需改用新私钥；会话早期误打印过的 `COMMERCE_ACCESS_KEYS_UME1` 应轮换。
-4. 本地闭环脚本 `scripts/verify-fiat-closure-local.py` 与 near-pay 启动器 `FiatClosureLocalLauncher`（`near-pay-fiat` 工作树）为未运行的草稿，**未提交**；真实渠道的开户/开产品/凭据/门店绑定仍只能在本地桩上验证。
+3. 166 自动化票据私钥已轮换（§三.3），其他机器或云端会话需改用新私钥。
+4. 本地闭环脚本 `scripts/verify-fiat-closure-local.py` 与 near-pay 启动器 `FiatClosureLocalLauncher` 已作为**未运行的草稿**提交（`85b98d2fa`、near-pay `codex/ops-fiat-local-closure` 的 `a72f53aa4`，跳过门禁）；真实渠道的开户/开产品/凭据/门店绑定仍只能在本地桩上验证。
 5. 代客建店在商户未签协议（`agreed_at` 为空）时仍可审核通过：用户决定暂不改，待决。
 6. `check-sql-portability` 报 8 个存量文件（与本批无关）。
+7. `COMMERCE_STORE_CREATION_ENABLED=true` 需写进 166 `ai-shop-ops` 的部署配置与上线清单。
 
 ## 六、注意事项
 
