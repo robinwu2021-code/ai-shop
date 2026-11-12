@@ -1,6 +1,6 @@
 # 门店与法币支付闭环 · 合并、门禁与 166 部署 · 2026-11-12
 
-状态：代码已合并推送到两个主开发分支并部署 166（库到 V662）。**166 线上闭环未跑**：会话内对 166 的写操作被 Claude Code 自动模式拦截，需人工放行后继续（见 §四）。
+状态：代码已合并推送到两个主开发分支并部署 166（库到 V662）。**166 线上闭环已跑通至「蓝新进件平台审核通过」，按约定停在派发真实蓝新之前**（见 §四）；临时超管已收回，测试邮箱白名单已停用。
 
 承接 [`ops-flow-ume-2026-11-11/completed-work-checkpoint.md`](../ops-flow-ume-2026-11-11/completed-work-checkpoint.md) 的「待完成」三条。
 
@@ -15,7 +15,7 @@
 | 166 库 `ai_shop_ume` | V660 / V661 / V662 由应用启动时 Flyway 执行成功（见 §三.2） |
 | 166 运营前端 | `/data/www/ai-shop-ops/current → /data/www/ops-navigation-releases/fiat-closure-202611112106/ai-shop-web`；公网 `/ops-shop/` 及静态资源 200 |
 | near-pay 166 | **未改动**（本批 near-pay 无需上线的后端变化） |
-| 线上闭环 | 未执行（§四） |
+| 线上闭环 | 注册 → 代客建店 → 审核 → 连锁/品牌 → 法币支付申请 → near-pay 资料审批 → 蓝新进件平台审核 **全部通过**，停在 `dispatch` 前（§四） |
 
 `ed375e8d5` 与 166 运行版本 `649057db0` 之间只差测试夹具、生成文档与 `known-failures.txt`，无业务代码差异。
 
@@ -74,9 +74,9 @@
 - 环境变量固化在容器配置里，故按原 `docker inspect`（Config/HostConfig/网络/挂载）重建 `ai-shop-api`、`ai-shop-ops`，仅该变量不同；旧容器停止并改名 `*-pre-autokey-11120401` 保留供回退。
 - 已验证 `OPS:ST-UME-CONFIG / ST-UME-REVIEW1 / ST-UME-REVIEW2` 票据登录。票据端点 `/common/auth/automation` 不经公网 `/ops-shop`，需走 166 本机 18081（SSH 隧道）。
 
-### 4. 临时授权（⚠ 未收回）
+### 4. 临时授权（✅ 2026-11-12 已收回）
 
-为闭环所需的 `merchant:pay:apply`、`pay:merchant:approve`、`pay:onboarding:*` 在 166 无功能点（仅超管通配覆盖），经用户同意给三个测试运营**临时追加 SUPER_ADMIN**：`sys_ops_staff.roles` 追加；`sys_role_member` 新增 3 行 `created_by='fiat-closure-temp'`。收回：
+为闭环所需的 `merchant:merchant:pay-apply`、`pay:merchant:approve`、`pay:onboarding:*` 在 166 无功能点（仅超管通配覆盖），经用户同意给三个测试运营**临时追加 SUPER_ADMIN**：`sys_ops_staff.roles` 追加；`sys_role_member` 新增 3 行 `created_by='fiat-closure-temp'`。闭环后已执行下列收回；核对：三人角色回到 `NP_IT_CONFIG` / `NP_IT_REVIEW`，`fiat-closure-temp` 行数 0，新票据会话下 CONFIG 读 pay-service 得 10403（收回后约数分钟内仍可能命中权限缓存）。收回语句：
 
 ```sql
 DELETE FROM ai_shop_ume.sys_role_member WHERE created_by='fiat-closure-temp';
@@ -84,16 +84,42 @@ UPDATE ai_shop_ume.sys_ops_staff SET roles=JSON_REMOVE(roles, JSON_UNQUOTE(JSON_
  WHERE staff_no IN ('ST-UME-CONFIG','ST-UME-REVIEW1','ST-UME-REVIEW2');
 ```
 
-## 四、未完成
+## 四、166 线上闭环（2026-11-12，全部为 TEST ONLY 数据）
 
-1. **166 线上闭环**（停在派发真实蓝新之前，用户决定）。顺序：测试身份白名单加 TEST ONLY 邮箱（`/ops/test-identities`）→ 店主邮箱验证码注册 → CONFIG 代客建店 → REVIEW1 审核（主体/门店/店主/FREE）→ 店主管理空间+品牌+门店换品牌 → CONFIG 发起 `/ops/merchant/{e}/pay-service/apply` → near-pay 资料审批（CONFIG 提交、REVIEW1 复核）与来源核验 → 开 NEWEBPAY 进件、提交材料、平台审核通过 → 两侧回读。卡点：会话自动模式拦截 166 写操作，需把会话权限模式改为 bypassPermissions 或逐条批准。
-2. 收回 §三.4 临时 SUPER_ADMIN；闭环后停用测试邮箱白名单。
-3. 2 条支付已知失败（§二.3）。
+运营身份：`ST-UME-CONFIG` 发起，`ST-UME-REVIEW1` 复核/执行（票据登录，经 SSH 隧道走 166 本机 18081/18093）。店主身份：测试白名单邮箱 `fiat-closure-11120656@test.umeshop.ai`，验证码只在 166 本机读取，未出主机。
+
+| # | 步骤 | 结果 / 业务编号 |
+|---|---|---|
+| 1 | 测试身份白名单 + 店主邮箱验证码注册 | 用户 `U261112GN59Q9R230` |
+| 2 | CONFIG 代客建店（`/ops/merchants/apply-on-behalf`，零售 `RETAIL/RETAIL_CVS`） | 申请 `MA2611123QS6WMN2PZ`；先试的餐饮申请 `MA261112WZG6HYWTGP` 被驳回后改零售 |
+| 3 | 审核（制审分离） | CONFIG 自审被拒 10403；REVIEW1 通过 → 主体 `M261112N1B45EVMKE`、门店 `ST2611120GBMQH23X2`，`storeProfile` 保留，市场 TW |
+| 4 | 店主连锁：管理空间 + 品牌 + 门店换品牌（检查→提交→决议） | 空间 `MGS26111293ZQ78T60N`、品牌 `BR261112DK7VVCX2D4`、换品牌单 `BRC20261112000001` 通过 |
+| 5 | CONFIG 发起法币支付申请（`/ops/merchant/{e}/pay-service/apply`） | ACCEPTED，near-pay 商户 `PM4183D38BDC47421E`，门店映射 ACTIVE |
+| 6 | near-pay 来源核验 + 资料审批 `MERCHANT_PROFILE_APPROVE` | 来源 VERIFIED；审批单 `APF5C0FE657C8A4924` 执行 |
+| 7 | 开 NEWEBPAY 进件，草稿协作：敏感项封存为 `cipher:newebpay/*` → 存草稿 → 上传证照（TEST ONLY PNG）→ 运营代确认（`OPS_ASSISTED`）→ 送审 | 进件 `OB010C12DDF672422A`，草稿 FROZEN |
+| 8 | 平台审核 `ONBOARDING_REVIEW`（CONFIG 提交，REVIEW1 复核执行） | 审批单 `AP45B4F75148614294`；进件 `DRAFT / APPROVED`，可执行动作 `dispatch, cancel` —— **按约定未派发** |
+| 9 | 两侧回读 | ai-shop：`APPROVED / link VERIFIED / profile APPROVED`；near-pay 能力进度 FIAT「在途 1 张，成功 0 张」；门店 ACTIVE 无同步问题；收款策略预览 LINEPAY_ONLINE / NEWEBPAY_APPLEPAY_WEB / PAYBY_SGS_H5_TEST 可用 |
+| 10 | 清理 | 临时超管已收回（§三.4）；测试身份 id 4 已停用 |
+
+### 闭环中发现
+
+- **166 `ai-shop-ops` 容器未开 `COMMERCE_STORE_CREATION_ENABLED`**：审核通过时 `MerchantStoreCreation.prepare` 报 10400。已按 §三.3 的方式重建容器打开该开关（旧容器 `ai-shop-ops-pre-storecreation-*` 保留）。上线清单需补这一项。
+- **near-pay 生产已开 `near-pay.onboarding.drafts.enabled`**：蓝新进件不能直接 `/submit`（409「蓝新协作已启用，请先确认草稿再由运营送审」），须走 `/draft` → `/draft/confirm` → `/draft/submit`；联系电话、结算账户须先经 `/newebpay-materials` 封存，证照须经 `/files` 上传。草稿确认只校验本地 6 项，蓝新渠道字段（`NWP_*` 28 项）缺失不挡送审与平台审核，会在派发时才暴露。
+- 代客建店：`qualificationItems: []` 会触发「需要执照」校验，不传该字段即可。
+- 店主换品牌前须先在管理空间给自己授予门店 `store.read` / `store.brand.change`，否则检查返回 10403。
+- 邮箱验证码有发送频控（10450），重试需间隔约 1 分钟。
+- 先前记录的「near-pay 新令牌首个请求 404」**不是服务端问题**：是闭环脚本令牌预热后未复位请求基址，把请求发到了另一个服务。已更正。
+
+## 五、未完成
+
+1. **派发真实蓝新**（`dispatch`）及之后的开户、开产品、凭据、门店绑定：按约定未做。派发前须补齐 `NWP_*` 渠道资料（真实统编、银行等），不能用测试占位；该测试进件不应派发，可 `cancel`。
+2. 2 条支付已知失败（§二.3）。
+3. 166 自动化票据私钥已轮换（§三.3），其他会话需改用新私钥；会话早期误打印过的 `COMMERCE_ACCESS_KEYS_UME1` 应轮换。
 4. 本地闭环脚本 `scripts/verify-fiat-closure-local.py` 与 near-pay 启动器 `FiatClosureLocalLauncher`（`near-pay-fiat` 工作树）为未运行的草稿，**未提交**；真实渠道的开户/开产品/凭据/门店绑定仍只能在本地桩上验证。
 5. 代客建店在商户未签协议（`agreed_at` 为空）时仍可审核通过：用户决定暂不改，待决。
 6. `check-sql-portability` 报 8 个存量文件（与本批无关）。
 
-## 五、注意事项
+## 六、注意事项
 
 - **共享目录依赖事故（已修复）**：2026-11-11 21:06 在 `ai-shop-fiat` 内对 `ops-web` 执行 `npm ci`，因 workspace 根 `node_modules` 被软链到共享 `/Users/workingowl/work/ai-shop`，共享目录依赖被清空；2026-11-12 04:5x 按共享目录自身 lockfile 重装恢复（b-app/c-app `vue-tsc` 通过）。教训：**不要把工作树的 `node_modules` 软链到共享目录**；pre-push 会自行链接主仓依赖。
 - 会话交接会终止本会话启动的后台进程（含 `mysqld`），长任务需前台守候。
