@@ -133,11 +133,11 @@ class FoodServerProducerOutboxTest {
             var tx = new TransactionTemplate(c.getBean(PlatformTransactionManager.class));
             var jdbc = new JdbcTemplate(c.getBean(DataSource.class));
             tx.executeWithoutResult(t -> {
-                for (String type : java.util.List.of("FOOD_MENU_CHANGED", "FOOD_MENU_DISABLED", "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER"))
+                for (String type : java.util.List.of("FOOD_MENU_CHANGED", "FOOD_MENU_DISABLED", "FOOD_MENU_CHANNEL_BINDING_CHANGED", "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER"))
                     facade.publisher("PLATFORM").publish(new Event(type, type), new PublishOptions(type, 1));
             });
             assertThat(jdbc.queryForList("SELECT e.event_type FROM sys_outbox_delivery d JOIN sys_outbox e ON e.event_no=d.event_no WHERE d.handler_id='commerce-food-source-events-v1'", String.class))
-                    .containsExactly("FOOD_MENU_DISABLED");
+                    .containsExactlyInAnyOrder("FOOD_MENU_DISABLED", "FOOD_MENU_CHANNEL_BINDING_CHANGED");
             assertThat(jdbc.queryForList("SELECT e.event_type FROM sys_outbox_delivery d JOIN sys_outbox e ON e.event_no=d.event_no WHERE d.handler_id='commerce-food-fulfillment-events-v1'", String.class))
                     .containsExactly("DINING_CUSTODY_HANDOVER");
             assertThat(jdbc.queryForList("SELECT e.event_type FROM sys_outbox_delivery d JOIN sys_outbox e ON e.event_no=d.event_no WHERE d.handler_id='food-report-correction-v1'", String.class))

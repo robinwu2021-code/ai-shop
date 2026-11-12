@@ -591,6 +591,12 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                     || !inStore(current, store)) throw BizException.of(ErrorCode.CONFLICT);
             validateFrozen(current);
         }
+        requireLiveChannelBindings(entity, store, captured, lock);
+    }
+
+    /** A frozen ACTIVE channel binding only stays sellable while its local row is still that ACTIVE binding. */
+    private void requireLiveChannelBindings(String entity, String store, MenuPublicationSnapshot.Captured captured,
+            boolean lock) {
         for (var expected : captured.channelBindings()) {
             if (channelBindings == null) throw BizException.of(ErrorCode.CONFLICT);
             var query = Wrappers.<FnbMenuChannelBinding>lambdaQuery()
@@ -850,6 +856,13 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                         }
                     }
                     validateFrozen(row);
+                    if (query.mode() == Mode.CURRENT)
+                        requireLiveChannelBindings(
+                                query.entityNo(),
+                                query.storeNo(),
+                                json.readValue(row.getDefinitionSnapshot(), MenuPublicationSnapshot.class)
+                                        .menu(),
+                                false);
                     var content =
                             new ConfigRevisionContentVO(view(row, at), row.getDefinitionSnapshot());
                     var resource = MenuSourcePolicy.project(json, query, content);

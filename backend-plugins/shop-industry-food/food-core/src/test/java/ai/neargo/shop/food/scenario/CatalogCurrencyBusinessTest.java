@@ -23,6 +23,7 @@ import ai.neargo.shop.food.dto.PublishConfigReq;
 import ai.neargo.shop.food.dto.RepublishConfigReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ConfigRevisionMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.MenuChannelBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ModifierComponentMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ModifierMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
@@ -61,6 +62,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.mybatis.spring.SqlSessionTemplate;
+
 import tools.jackson.databind.ObjectMapper;
 
 /** Original foreign identities must reach real command SQL, frozen publications and rollback guards. */
@@ -122,12 +125,17 @@ class CatalogCurrencyBusinessTest {
     }
 
     static ConfigRevisionServiceImpl publications(AssertableApplicationContext c, Sources source) {
+        return publications(c, source, null);
+    }
+
+    static ConfigRevisionServiceImpl publications(AssertableApplicationContext c, Sources source,
+            MenuChannelBindingMapper bindings) {
         return new ConfigRevisionServiceImpl(c.getBean(ConfigRevisionMapper.class), c.getBean(ModifierMapper.class),
                 c.getBean(ModifierComponentMapper.class), c.getBean(OptionGroupMapper.class),
                 c.getBean(OptionGroupItemMapper.class), c.getBean(ActionLogMapper.class),
                 c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
                 c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
-                (e, ids) -> List.of(), source.clock, null, null, null, null, null, () -> null, null,
+                (e, ids) -> List.of(), source.clock, null, null, null, null, null, () -> null, bindings,
                 source.currencies);
     }
 
@@ -160,7 +168,19 @@ class CatalogCurrencyBusinessTest {
             MenuSourceVerificationTest.insert(f.sql(), json, "R1", 1,
                     ConfigRevisionServiceTest.NOW.minusDays(1), document);
             f.sql().update("UPDATE fnb_config_revision SET content_schema=6 WHERE revision_no='R1'");
-            var service = publications(c, source);
+            f.sql().execute("CREATE TABLE fnb_menu_channel_binding (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                    + "tenant_no VARCHAR(32) DEFAULT 'MAIN',entity_no VARCHAR(32),created_at DATETIME(3),"
+                    + "created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),version BIGINT DEFAULT 0,"
+                    + "deleted INT DEFAULT 0,binding_no VARCHAR(32),menu_no VARCHAR(32),store_no VARCHAR(32),"
+                    + "provider VARCHAR(32),channel_account_ref VARCHAR(64),external_store_ref VARCHAR(64),"
+                    + "status VARCHAR(16))");
+            f.sql().update("INSERT INTO fnb_menu_channel_binding(entity_no,binding_no,menu_no,store_no,provider,"
+                    + "channel_account_ref,external_store_ref,status) "
+                    + "VALUES ('E','BIND','M','A','keeta','ACCOUNT','EXTERNAL','ACTIVE')");
+            var template = c.getBean(SqlSessionTemplate.class);
+            if (!template.getConfiguration().hasMapper(MenuChannelBindingMapper.class))
+                template.getConfiguration().addMapper(MenuChannelBindingMapper.class);
+            var service = publications(c, source, template.getMapper(MenuChannelBindingMapper.class));
             var query = new Query("E", "A", "M", "R1", Kind.MENU, "M", null, null, Mode.CURRENT);
             var proof = service.verifyMenuResource(query);
             MenuSourcePolicy.validateProof(json, query, proof, ConfigRevisionServiceTest.NOW);

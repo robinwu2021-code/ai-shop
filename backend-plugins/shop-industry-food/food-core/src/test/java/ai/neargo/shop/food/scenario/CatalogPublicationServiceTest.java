@@ -20,6 +20,7 @@ import ai.neargo.shop.food.dto.MenuConfigResultVO;
 import ai.neargo.shop.food.dto.MenuContextInput;
 import ai.neargo.shop.food.dto.MenuItemInput;
 import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
+import ai.neargo.shop.food.dto.MenuSourceContracts;
 import ai.neargo.shop.food.dto.MenuScheduleVO;
 import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.WeekScheduleInput;
@@ -135,6 +136,27 @@ class CatalogPublicationServiceTest {
             t.sql().update("UPDATE fnb_menu_channel_binding SET status='ACTIVE',external_store_ref='OTHER' "
                     +"WHERE binding_no='BIND'");
             denied(t,"rebound");
+        });
+    }
+    @Test void currentChannelProofRejectsDisabledOrReboundLocalBindingWhileHistoryStaysReadable() {
+        menu(false,true,t -> {
+            var current=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
+                    "MENU",null,null,MenuSourceContracts.Mode.CURRENT);
+            var history=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
+                    "MENU",null,null,MenuSourceContracts.Mode.HISTORICAL);
+            assertThat(t.service().verifyMenuResource(current).publication().publication().revisionNo())
+                    .isEqualTo("SOURCE");
+            t.sql().update("UPDATE fnb_menu_channel_binding SET status='DISABLED' WHERE binding_no='BIND'");
+            assertThatThrownBy(() -> t.service().verifyMenuResource(current))
+                    .isInstanceOfSatisfying(BizException.class,
+                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            assertThat(t.service().verifyMenuResource(history).publication().publication().revisionNo())
+                    .isEqualTo("SOURCE");
+            t.sql().update("UPDATE fnb_menu_channel_binding SET status='ACTIVE',external_store_ref='OTHER' "
+                    +"WHERE binding_no='BIND'");
+            assertThatThrownBy(() -> t.service().verifyMenuResource(current))
+                    .isInstanceOfSatisfying(BizException.class,
+                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
         });
     }
     @Test void historicalMenuRechecksLocalChannelAfterExternalAuthorityRead() {

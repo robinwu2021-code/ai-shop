@@ -82,4 +82,49 @@ class FoodCatalogWithdrawalEventTest {
         assertThatThrownBy(() -> consumer.handle(envelope("DISABLE_MENU", "DISABLED")))
                 .isInstanceOf(IllegalStateException.class);
     }
+    @Test
+    void channelBindingChangeRequestsAMenuRecaptureWithoutClaimingWithdrawal() {
+        var binding =
+                new ai.neargo.shop.food.dto.MenuChannelBindingVO(
+                        "B", "M", "S", "TEST", "ACC", "EXT", "DISABLED", 3L);
+        var event =
+                new ai.neargo.shop.spi.food.MenuChannelBindingChanged(
+                        "E", "S", "B", "UPDATE_MENU_CHANNEL_BINDING", 3L, "ACTION", binding);
+        assertThat(consumer.supports("FOOD_MENU_CHANNEL_BINDING_CHANGED")).isTrue();
+        consumer.handle(
+                new OutboxEnvelope(
+                        "O",
+                        "PLATFORM",
+                        "BINDING_EVENT",
+                        "FOOD_MENU_CHANNEL_BINDING",
+                        "B",
+                        "FOOD_MENU_CHANNEL_BINDING_CHANGED",
+                        1,
+                        "FOOD_MENU_CHANNEL_BINDING:B",
+                        1,
+                        json.writeValueAsString(event),
+                        Instant.now()));
+        var captured = ArgumentCaptor.forClass(SourceNoticeContracts.Notice.class);
+        verify(notices).receive(captured.capture());
+        assertThat(captured.getValue().sourceRef()).isEqualTo("M");
+        assertThat(captured.getValue().storeNo()).isEqualTo("S");
+        assertThat(captured.getValue().eventNo()).isEqualTo("BINDING_EVENT");
+        assertThat(captured.getValue().kind()).isNull();
+        assertThatThrownBy(
+                        () ->
+                                consumer.handle(
+                                        new OutboxEnvelope(
+                                                "O2",
+                                                "PLATFORM",
+                                                "BINDING_EVENT_2",
+                                                "FOOD_MENU_CHANNEL_BINDING",
+                                                "OTHER",
+                                                "FOOD_MENU_CHANNEL_BINDING_CHANGED",
+                                                1,
+                                                "FOOD_MENU_CHANNEL_BINDING:OTHER",
+                                                1,
+                                                json.writeValueAsString(event),
+                                                Instant.now())))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
