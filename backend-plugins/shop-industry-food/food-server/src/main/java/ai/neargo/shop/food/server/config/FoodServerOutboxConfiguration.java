@@ -71,7 +71,8 @@ public class FoodServerOutboxConfiguration {
                             "FOOD_CONFIG_PUBLISHED",
                             "FOOD_DISH_CHANGED",
                             "FOOD_STORE_POLICY_PUBLISHED",
-                            "FOOD_SERVICE_CALENDAR_SAVED")) {
+                            "FOOD_SERVICE_CALENDAR_SAVED",
+                            "FOOD_MENU_CHANNEL_BINDING_CHANGED")) {
                 archive.remove("PLATFORM:" + type);
                 targets.put(type, Map.of("commerce-food-source-events-v1", true));
             }

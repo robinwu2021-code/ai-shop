@@ -479,6 +479,16 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     }
 
     @Override
+    public String headStatus(String entity, String store, String number) {
+        try {
+            return head(entity, store, number, false).getStatus();
+        } catch (BizException missing) {
+            if (missing.errorCode() == ErrorCode.NOT_FOUND) return null;
+            throw missing;
+        }
+    }
+
+    @Override
     public void advance(String entity, String store, String number, long version, FnbConfigRevision revision) {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Menu publication advance requires an owning local transaction");

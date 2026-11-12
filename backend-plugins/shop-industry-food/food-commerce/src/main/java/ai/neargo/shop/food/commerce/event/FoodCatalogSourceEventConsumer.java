@@ -9,6 +9,7 @@ import ai.neargo.shop.event.outbox.OutboxRouteContribution;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 import ai.neargo.shop.spi.food.ConfigPublished;
 import ai.neargo.shop.spi.food.DishChanged;
+import ai.neargo.shop.spi.food.MenuChannelBindingChanged;
 import ai.neargo.shop.spi.food.MenuChanged;
 import ai.neargo.shop.spi.food.ServiceCalendarSaved;
 import ai.neargo.shop.spi.food.StorePolicyPublished;
@@ -32,7 +33,8 @@ public final class FoodCatalogSourceEventConsumer
                     "FOOD_DISH_CHANGED",
                     "FOOD_STORE_POLICY_PUBLISHED",
                     "FOOD_SERVICE_CALENDAR_SAVED",
-                    "FOOD_MENU_DISABLED");
+                    "FOOD_MENU_DISABLED",
+                    "FOOD_MENU_CHANNEL_BINDING_CHANGED");
     private final SourceNoticeService service;
     private final ObjectMapper json;
 
@@ -102,6 +104,18 @@ public final class FoodCatalogSourceEventConsumer
                 if (publication.effectiveAt() == null)
                     throw new IllegalArgumentException("Missing source effective date");
                 effective = publication.effectiveAt().toInstant();
+            }
+            case "FOOD_MENU_CHANNEL_BINDING_CHANGED" -> {
+                var event = json.readValue(envelope.payload(), MenuChannelBindingChanged.class);
+                match(envelope, "FOOD_MENU_CHANNEL_BINDING", event.bindingNo());
+                if (event.after() == null
+                        || !event.bindingNo().equals(event.after().bindingNo())
+                        || !event.storeNo().equals(event.after().storeNo())
+                        || event.after().menuNo() == null)
+                    throw new IllegalArgumentException("Missing original channel binding");
+                entity = event.entityNo();
+                store = event.storeNo();
+                ref = event.after().menuNo();
             }
             case "FOOD_DISH_CHANGED" -> {
                 var event = json.readValue(envelope.payload(), DishChanged.class);

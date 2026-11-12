@@ -4,11 +4,13 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.OpenHours;
 import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
+import ai.neargo.shop.food.dto.MenuVO;
 import ai.neargo.shop.food.dto.MenuSourceContracts.Kind;
 import ai.neargo.shop.food.dto.MenuSourceContracts.Mode;
 import ai.neargo.shop.food.dto.MenuSourceContracts.Proof;
 import ai.neargo.shop.food.dto.StoreCalendarSourceContracts.Facts;
 import ai.neargo.shop.food.dto.StoreCalendarSourceContracts.Query;
+import ai.neargo.shop.food.policy.MenuExclusivePolicy;
 import ai.neargo.shop.food.policy.MenuSchedulePolicy;
 import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.policy.StoreCalendarSourcePolicy;
@@ -101,6 +103,28 @@ public final class FoodCatalogAvailabilityPolicy {
         require(until.isAfter(observed));
         return new Compiled(new CatalogAvailability(start, end,
                 List.of(new SourceWindow(menu.query().menuNo(), menu.query().revisionNo(), windows))), until);
+    }
+
+    /** A compiled channel source with the frozen menu header that decides its exclusive group. */
+    public record Ranked(MenuVO config, SourceWindow source) { }
+
+    /** Same rule as the local catalog: within one exclusive group only the higher priority menu sells. */
+    public static List<SourceWindow> exclusive(List<Ranked> sources) {
+        var members = new ArrayList<MenuExclusivePolicy.Member<Integer>>();
+        for (int n = 0; n < sources.size(); n++) {
+            var ranked = sources.get(n);
+            members.add(new MenuExclusivePolicy.Member<>(n, ranked.config().exclusiveGroup(),
+                    ranked.config().priority(), ranked.source().effectiveWindows().stream()
+                            .map(w -> new MenuExclusivePolicy.Window(w.fromInclusive(), w.toExclusive())).toList()));
+        }
+        var effective = MenuExclusivePolicy.effective(members);
+        var result = new ArrayList<SourceWindow>();
+        for (int n = 0; n < sources.size(); n++) {
+            var source = sources.get(n).source();
+            result.add(new SourceWindow(source.sourceRef(), source.selectionRevision(), effective.get(n).stream()
+                    .map(w -> new UtcWindow(w.fromInclusive(), w.toExclusive())).toList()));
+        }
+        return List.copyOf(result);
     }
 
     private static void local(TreeSet<Instant> points, LocalDateTime local, ZoneId zone, Instant start, Instant end) {

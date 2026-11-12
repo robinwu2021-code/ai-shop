@@ -29,6 +29,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.GuestSessionMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuStoreMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
+import ai.neargo.shop.food.policy.MenuExclusivePolicy;
 import ai.neargo.shop.food.policy.CatalogPolicy;
 import ai.neargo.shop.food.policy.DiningMeasurementPolicy;
 import ai.neargo.shop.food.policy.MenuDefinitionPolicy;
@@ -74,7 +75,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -594,23 +594,12 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     private ArrayList<Selected> exclusive(List<Selected> all) {
-        var winners = new LinkedHashMap<String, Selected>();
-        var result = new ArrayList<Selected>();
-        for (var s : all) {
-            var h = s.body().menu().definition().config();
-            if (h.exclusiveGroup() == null) {
-                result.add(s);
-                continue;
-            }
-            var old = winners.get(h.exclusiveGroup());
-            if (old != null
-                    && h.priority().equals(old.body().menu().definition().config().priority())) {
-                throw BizException.of(ErrorCode.CONFLICT);
-            }
-            if (old == null || h.priority() > old.body().menu().definition().config().priority())
-                winners.put(h.exclusiveGroup(), s);
-        }
-        result.addAll(winners.values());
+        var result =
+                new ArrayList<>(
+                        MenuExclusivePolicy.winners(
+                                all,
+                                s -> s.body().menu().definition().config().exclusiveGroup(),
+                                s -> s.body().menu().definition().config().priority()));
         result.sort(Comparator.comparing(s -> s.body().configNo()));
         return result;
     }

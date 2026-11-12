@@ -14,7 +14,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.commerce.dto.FoodCatalogBindingContracts.Query;
 import ai.neargo.shop.food.commerce.service.impl.FoodCatalogBindingServiceImpl;
+import ai.neargo.shop.food.dto.MenuChannelBindingVO;
 import ai.neargo.shop.food.dto.MenuSourceContracts;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 
 import org.junit.jupiter.api.Test;
@@ -27,13 +29,30 @@ class FoodCatalogBindingServiceTest {
     final FoodCatalogBindingFixtures.MutableClock clock = new FoodCatalogBindingFixtures.MutableClock();
     final ConfigRevisionService menus = mock(ConfigRevisionService.class);
     final ChannelCatalogAuthorityService authorities = mock(ChannelCatalogAuthorityService.class);
+    final MenuChannelBindingService bindings = mock(MenuChannelBindingService.class);
     final FoodCatalogBindingServiceImpl service =
-            new FoodCatalogBindingServiceImpl(f.json, menus, authorities, clock);
+            new FoodCatalogBindingServiceImpl(f.json, menus, authorities, bindings, clock);
     final Query query = FoodCatalogBindingFixtures.QUERY;
 
     void valid() {
         when(menus.verifyMenuResource(query.menu())).thenReturn(f.menu());
         when(authorities.capture(query.connection())).thenReturn(f.authority());
+        live("ACTIVE");
+    }
+
+    void live(String status) {
+        when(bindings.getBinding("E", "S", "B")).thenReturn(new MenuChannelBindingVO(
+                "B", "M", "S", "TEST", "REMOTE_ACCOUNT", "REMOTE_STORE", status, 1L));
+    }
+
+    @Test
+    void rejectsAFrozenBindingWhoseLocalRowWasDisabledOrReboundAfterPublication() {
+        valid();
+        live("DISABLED");
+        conflict(() -> service.capture(query));
+        when(bindings.getBinding("E", "S", "B")).thenReturn(new MenuChannelBindingVO(
+                "B", "M", "S", "TEST", "REMOTE_ACCOUNT", "OTHER_STORE", "ACTIVE", 2L));
+        conflict(() -> service.capture(query));
     }
 
     @Test

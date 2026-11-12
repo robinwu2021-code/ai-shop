@@ -186,6 +186,10 @@ public final class MenuPublicationSource {
     public long currentVersion(String entity, String store, String number, boolean lock) {
         return working.currentVersion(entity, store, number, lock);
     }
+    /** Live head status; null when the menu is not bound to the store. */
+    public String headStatus(String entity, String store, String number) {
+        return DataScopeContext.executeWithoutScope(() -> working.headStatus(entity, store, number));
+    }
     public void advance(String entity,String store,String number,long version,FnbConfigRevision revision) {
         working.advance(entity,store,number,version,revision);
     }

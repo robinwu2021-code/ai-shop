@@ -591,6 +591,12 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                     || !inStore(current, store)) throw BizException.of(ErrorCode.CONFLICT);
             validateFrozen(current);
         }
+        requireLiveChannelBindings(entity, store, captured, lock);
+    }
+
+    /** A frozen ACTIVE channel binding only stays sellable while its local row is still that ACTIVE binding. */
+    private void requireLiveChannelBindings(String entity, String store, MenuPublicationSnapshot.Captured captured,
+            boolean lock) {
         for (var expected : captured.channelBindings()) {
             if (channelBindings == null) throw BizException.of(ErrorCode.CONFLICT);
             var query = Wrappers.<FnbMenuChannelBinding>lambdaQuery()
@@ -850,6 +856,15 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                         }
                     }
                     validateFrozen(row);
+                    if (query.mode() == Mode.CURRENT
+                            && menus != null
+                            && "DISABLED".equals(
+                                    menus.headStatus(
+                                            query.entityNo(), query.storeNo(), query.menuNo())))
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    // Channel bindings are per connection: channel capture and price binding check
+                    // their own binding's live row, so one disabled binding never voids this proof
+                    // for the menu's other channels.
                     var content =
                             new ConfigRevisionContentVO(view(row, at), row.getDefinitionSnapshot());
                     var resource = MenuSourcePolicy.project(json, query, content);

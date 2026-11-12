@@ -21,7 +21,9 @@ import ai.neargo.shop.food.policy.MenuSelectionFeasibilityPolicy;
 import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.policy.SelectionFeasibility;
 import ai.neargo.shop.food.policy.StoreCalendarSourcePolicy;
+import ai.neargo.shop.food.commerce.policy.FoodLiveChannelBinding;
 import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.service.StoreCalendarSourceService;
 import ai.neargo.shop.spi.commerce.CatalogAvailability;
 import ai.neargo.shop.spi.commerce.CatalogTaxBasis;
@@ -68,6 +70,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
     private final StoreCalendarSourceService calendars;
     private final GoodsCatalogQueryPort goods;
     private final MediaPublicSourcePort media;
+    private final MenuChannelBindingService bindings;
     private final ObjectMapper json;
     private final Clock clock;
     private boolean withdrawalEnabled;
@@ -94,6 +97,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
             StoreCalendarSourceService calendars,
             GoodsCatalogQueryPort goods,
             MediaPublicSourcePort media,
+            MenuChannelBindingService bindings,
             ObjectMapper json,
             Clock clock) {
         this.menus = menus;
@@ -102,6 +106,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
         this.calendars = calendars;
         this.goods = goods;
         this.media = media;
+        this.bindings = bindings;
         this.json = json;
         this.clock = clock;
     }
@@ -160,7 +165,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
         var budget = SelectionFeasibility.Budget.catalog();
         var sections = new ArrayList<Section>();
         var offers = new ArrayList<ChannelCatalogDetails.Offer>();
-        var windows = new ArrayList<CatalogAvailability.SourceWindow>();
+        var windows = new ArrayList<FoodCatalogAvailabilityPolicy.Ranked>();
         var taxes = new LinkedHashMap<String, CatalogTaxBasis>();
         CatalogAvailability horizon = null;
         String currency = null;
@@ -210,16 +215,27 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
                                                             .externalStoreRef()
                                                             .equals(b.externalStoreRef()))
                             .toList();
-            require(bindings.size() == 1);
+            require(bindings.size() <= 1);
+            // A menu no longer bound to this connection (binding disabled, before or after
+            // republishing) sells nothing here: it is captured closed and empty instead of blocking
+            // the store, and the menu's other connections are unaffected.
+            boolean bound =
+                    !bindings.isEmpty()
+                            && FoodLiveChannelBinding.live(
+                                    this.bindings,
+                                    command.entityNo(),
+                                    command.storeNo(),
+                                    bindings.getFirst());
             var contexts =
                     body.menu().definition().contexts().stream()
                             .filter(
                                     c ->
-                                            bindings.getFirst()
-                                                    .bindingNo()
-                                                    .equals(c.channelBindingNo()))
+                                            bound
+                                                    && bindings.getFirst()
+                                                            .bindingNo()
+                                                            .equals(c.channelBindingNo()))
                             .toList();
-            require(contexts.size() == 1);
+            require(contexts.size() == (bound ? 1 : 0));
             var timed =
                     FoodCatalogAvailabilityPolicy.compile(
                             proof, calendarQuery, calendar, clock, json);
@@ -228,10 +244,20 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
                         horizon.horizonStart().equals(timed.availability().horizonStart())
                                 && horizon.horizonEnd().equals(timed.availability().horizonEnd()));
             horizon = timed.availability();
-            windows.addAll(horizon.sources());
+            for (var compiled : horizon.sources())
+                windows.add(
+                        new FoodCatalogAvailabilityPolicy.Ranked(
+                                body.menu().definition().config(),
+                                bound
+                                        ? compiled
+                                        : new CatalogAvailability.SourceWindow(
+                                                compiled.sourceRef(),
+                                                compiled.selectionRevision(),
+                                                List.of())));
             deadlines.add(timed.validUntil());
             boolean originallyEmpty =
-                    body.menu().definition().composition().categories().stream()
+                    !bound
+                            || body.menu().definition().composition().categories().stream()
                             .flatMap(category -> category.items().stream())
                             .noneMatch(item -> Boolean.TRUE.equals(item.enabled()));
             if (originallyEmpty) {
@@ -323,7 +349,10 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
         var until = deadlines.stream().min(Instant::compareTo).orElseThrow();
         require(until.isAfter(clock.instant()));
         var availability =
-                new CatalogAvailability(horizon.horizonStart(), horizon.horizonEnd(), windows);
+                new CatalogAvailability(
+                        horizon.horizonStart(),
+                        horizon.horizonEnd(),
+                        FoodCatalogAvailabilityPolicy.exclusive(windows));
         var document =
                 new Document(
                         Owner.FOOD,

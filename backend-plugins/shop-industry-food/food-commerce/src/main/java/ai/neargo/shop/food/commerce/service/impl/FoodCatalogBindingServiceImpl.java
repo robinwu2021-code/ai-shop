@@ -5,6 +5,7 @@ import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.commerce.dto.FoodCatalogBindingContracts.Facts;
+import ai.neargo.shop.food.commerce.policy.FoodLiveChannelBinding;
 import ai.neargo.shop.food.commerce.dto.FoodCatalogBindingContracts.Query;
 import ai.neargo.shop.food.commerce.service.FoodCatalogBindingService;
 import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
@@ -12,6 +13,7 @@ import ai.neargo.shop.food.dto.MenuSourceContracts.Kind;
 import ai.neargo.shop.food.dto.MenuSourceContracts.Mode;
 import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -28,6 +30,7 @@ public final class FoodCatalogBindingServiceImpl implements FoodCatalogBindingSe
     private final ObjectMapper json;
     private final ConfigRevisionService menus;
     private final ChannelCatalogAuthorityService authorities;
+    private final MenuChannelBindingService bindings;
     private final Clock clock;
 
     /** Inject original readers and a clock so evidence freshness does not depend on deployment shape. */
@@ -35,10 +38,12 @@ public final class FoodCatalogBindingServiceImpl implements FoodCatalogBindingSe
             ObjectMapper json,
             ConfigRevisionService menus,
             ChannelCatalogAuthorityService authorities,
+            MenuChannelBindingService bindings,
             Clock clock) {
         this.json = json;
         this.menus = menus;
         this.authorities = authorities;
+        this.bindings = bindings;
         this.clock = clock;
     }
 
@@ -82,7 +87,9 @@ public final class FoodCatalogBindingServiceImpl implements FoodCatalogBindingSe
                 || !"LOCAL".equals(connection.catalogAuthority())
                 || !"INSTANT".equals(connection.fulfillmentProfile())
                 || !"CHANNEL".equals(context.orderSource())
-                || !"DELIVERY".equals(context.fulfillment())) {
+                || !"DELIVERY".equals(context.fulfillment())
+                || !FoodLiveChannelBinding.live(
+                        this.bindings, query.menu().entityNo(), query.menu().storeNo(), binding)) {
             throw conflict();
         }
         var until = earliest(started.plusSeconds(30), first.validUntil().toInstant());

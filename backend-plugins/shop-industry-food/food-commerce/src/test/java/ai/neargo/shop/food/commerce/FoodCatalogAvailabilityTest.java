@@ -20,6 +20,7 @@ import ai.neargo.shop.food.policy.MenuSchedulePolicy;
 import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.policy.StoreCalendarSourcePolicy;
+import ai.neargo.shop.spi.commerce.CatalogAvailability.SourceWindow;
 import ai.neargo.shop.spi.commerce.CatalogAvailability.UtcWindow;
 import java.time.Clock;
 import java.time.Instant;
@@ -82,6 +83,23 @@ class FoodCatalogAvailabilityTest {
         assertThat(result.validUntil()).isEqualTo(now.plusSeconds(15));
         assertThat(result.availability().horizonStart()).isEqualTo(now.truncatedTo(ChronoUnit.DAYS));
         return result.availability().sources().getFirst().effectiveWindows();
+    }
+
+    @Test void sameExclusiveGroupLetsOnlyTheHigherPriorityChannelMenuSellDuringOverlap() {
+        var special = new ai.neargo.shop.food.dto.MenuVO("M1", "S", "午市特价", "REGULAR", "UTC", 10, "LUNCH",
+                "ACTIVE", 1L, 1L);
+        var allDay = new ai.neargo.shop.food.dto.MenuVO("M2", "S", "全天菜单", "REGULAR", "UTC", 5, "LUNCH",
+                "ACTIVE", 1L, 1L);
+        var lunch = new SourceWindow("M1", "R1", List.of(new UtcWindow(at("2026-10-28T11:00:00Z"),
+                at("2026-10-28T14:00:00Z"))));
+        var all = new SourceWindow("M2", "R2", List.of(new UtcWindow(at("2026-10-28T08:00:00Z"),
+                at("2026-10-28T22:00:00Z"))));
+        var result = FoodCatalogAvailabilityPolicy.exclusive(List.of(
+                new FoodCatalogAvailabilityPolicy.Ranked(allDay, all),
+                new FoodCatalogAvailabilityPolicy.Ranked(special, lunch)));
+        assertThat(result).containsExactly(new SourceWindow("M2", "R2", List.of(
+                new UtcWindow(at("2026-10-28T08:00:00Z"), at("2026-10-28T11:00:00Z")),
+                new UtcWindow(at("2026-10-28T14:00:00Z"), at("2026-10-28T22:00:00Z")))), lunch);
     }
 
     @Test void dailyCalendarIntersectionPreservesMinuteWindowsWithoutHourSampling() {
