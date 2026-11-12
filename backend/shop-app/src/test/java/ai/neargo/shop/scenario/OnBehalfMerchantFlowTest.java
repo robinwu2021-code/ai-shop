@@ -238,6 +238,9 @@ class OnBehalfMerchantFlowTest {
     void submitterWithAuditPermissionCanAuditOwnApply() {
         String owner = userProvision.ensureUserByPhone(phone(9));
         String applyNo = opsService.createApplyOnBehalf(full(owner, "Self reviewed"), "OPS_TEST");
+        var reviewer = new LoginUser(Realm.OPERATOR, SubjectKind.OPS, "OPS_TEST", "reviewer",
+                List.of(), List.of("merchant:apply:audit"), null, null);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(reviewer, null, List.of()));
         var result = opsController.auditApply(applyNo, new OpsPlatformController.AuditReq(
                 true, null, "COMMUNITY", List.of("CMT-OB-1"), null));
         assertThat(result.status()).isEqualTo("APPROVED");
