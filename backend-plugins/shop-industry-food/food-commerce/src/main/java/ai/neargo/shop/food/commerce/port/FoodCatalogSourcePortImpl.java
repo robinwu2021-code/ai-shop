@@ -210,16 +210,20 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
                                                             .externalStoreRef()
                                                             .equals(b.externalStoreRef()))
                             .toList();
-            require(bindings.size() == 1);
+            require(bindings.size() <= 1);
+            // A menu no longer bound to this connection (binding disabled and menu republished)
+            // sells nothing here: it is captured closed and empty instead of blocking the store.
+            boolean bound = !bindings.isEmpty();
             var contexts =
                     body.menu().definition().contexts().stream()
                             .filter(
                                     c ->
-                                            bindings.getFirst()
-                                                    .bindingNo()
-                                                    .equals(c.channelBindingNo()))
+                                            bound
+                                                    && bindings.getFirst()
+                                                            .bindingNo()
+                                                            .equals(c.channelBindingNo()))
                             .toList();
-            require(contexts.size() == 1);
+            require(contexts.size() == (bound ? 1 : 0));
             var timed =
                     FoodCatalogAvailabilityPolicy.compile(
                             proof, calendarQuery, calendar, clock, json);
@@ -231,10 +235,17 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
             for (var compiled : horizon.sources())
                 windows.add(
                         new FoodCatalogAvailabilityPolicy.Ranked(
-                                body.menu().definition().config(), compiled));
+                                body.menu().definition().config(),
+                                bound
+                                        ? compiled
+                                        : new CatalogAvailability.SourceWindow(
+                                                compiled.sourceRef(),
+                                                compiled.selectionRevision(),
+                                                List.of())));
             deadlines.add(timed.validUntil());
             boolean originallyEmpty =
-                    body.menu().definition().composition().categories().stream()
+                    !bound
+                            || body.menu().definition().composition().categories().stream()
                             .flatMap(category -> category.items().stream())
                             .noneMatch(item -> Boolean.TRUE.equals(item.enabled()));
             if (originallyEmpty) {
