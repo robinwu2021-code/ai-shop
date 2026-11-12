@@ -49,7 +49,7 @@ cd b-app && ../node_modules/.bin/vitest run --config vitest.config.mts tests/ret
 
 | 顺序 | 任务 | 完成条件 | 状态 |
 |---|---|---|---|
-| R1 | 模拟器闭环验收 | `codex/ai-shop-codex`+本分支本地合并包、真实独立 inventory-svc（已过账调拨出库/退货入库）、MySQL9；`pos_phone` 上用 Flutter App 走开启→登记→实收→调整关联→退仓→验收→核对，记录截图与库存流水 | 进行中 |
+| R1 | 模拟器闭环验收（2026-11-12 本地完成，见第 6 节） | `codex/ai-shop-codex`+本分支本地合并包、真实独立 inventory-svc（已过账调拨出库/退货入库）、MySQL9；`pos_phone` 上用 Flutter App 走开启→登记→实收→调整关联→退仓→验收→核对，记录截图与库存流水 | 本地完成 |
 | R2 | 后端分支汇合 | 本分支正式合入 `codex/ai-shop-codex`；冲突 2 处（`schema-test.sql` 需合并两边夹具、`ui-catalog.json` 重新生成）；合并后重跑零售原生/接口测试 | 待做 |
 | R3 | 门店路由闸门自动化证据 | 修好 `StoreScopedDailyRoutesFlowTest` 上下文（缺 `commerceMigrationInitializer`），让新增 `stockControlRoutesPassAdmission` 真跑 | 待做 |
 | R4 | Flutter 分支收口 | bapp 分支推送到其 origin；在 bapp 功能矩阵/接口对接记录登记零售补货；入口只对零售门店、`biz:stock` 可见的 widget 测试 | 待做（R1 后） |
@@ -58,3 +58,33 @@ cd b-app && ../node_modules/.bin/vitest run --config vitest.config.mts tests/ret
 | I04-H | 目标环境验收 | 166 执行 V659/V660、配置 `shop.inventory.replenishment.source-system` 与源客户端凭据，选定测试商家走真实 App→ai-shop→独立进销存 | 待 R1–R4 |
 | 既有欠账 | 餐饮补货复数路径/胖控制器、`generated-docs` 闸门、其他域 5 条权限缺口 | 各自负责人处理，不在零售批次内改名已发布接口 | 记录 |
 | 后置 | I04-F SHARED_SYNC、I04-G DELEGATED、I04-E 美业、完整盘点与跨池迁移 | 按总计划 | 暂停 |
+
+## 6. R1 模拟器闭环验收记录（2026-11-12）
+
+环境全部为一次性本机环境：`codex/ai-shop-codex`+本分支的**临时本地合并包**（不提交、不推送），MySQL 9.7.4 临时实例（127.0.0.1:3308，独立数据目录），当前源码构建的独立 inventory-svc（18086），Flutter 商户 App 零售构建（bapp 分支 `codex/retail-replenishment`，cc7cf0b）装在新建的零售专用模拟器 `retail_phone`（emulator-5590），没有使用其他会话正在用的 `pos_phone`。合并包为了能启动，只在临时目录内做了三处与零售无关的调整（见下方“发现”），任何分支、共享库、166 均未改动。
+
+| 步骤（App 实际操作） | 结果 |
+|---|---|
+| 新账号登录 → 新模型三步建店（零售·便利店，FREE） | 门店 `ST261112K9ND8228KM`，零售首页出现「進銷存」，中心里「零售補貨」不受独立进销存“未開放”影响（[截图](./emulator/01-stock-hub.png)） |
+| 开启补货接入 | 后端向真实 inventory-svc 取来源水位（6），writer 进入 REPLENISH |
+| 登记开启前过账的调拨单 | 正确拒绝（10409：序号 ≤ 水位，按设计只能走人工凭据）；App 将明确拒绝移出待确认 |
+| 登记开启后过账的调拨单 `OUT…22943`（2 箱×10） | 交接单 `SRP261112GHWCBWGTMB` 待收 0/20、主体库存池；库存仍 17（[截图](./emulator/02-registered.png)） |
+| 累计实收 18 | 17→35，RECEIVE +18 |
+| 正式调整 +2 → 关联到交接单 | 35→37（ADJUST_IN +2）；关联后累计实收 20「已收齊」，库存仍 37（不重复入账） |
+| 累计退仓 10 | 37→27，RETURN −10 |
+| 源仓过账 RETURN 入库（1 箱，sourceRef=SRP 号）→ App 核对验收 | 换算为 10 件，已验收 10；库存仍 27（验收不再扣本地） |
+| 核对本单 | 「本單與本地記錄一致」（用真实源单核对，无差异）（[截图](./emulator/03-reconciled.png)） |
+
+最终流水：RECEIVE +18（17→35）、ADJUST_IN +2（35→37）、RETURN −10（37→27），锁定量全程 0；7 类命令各一条永久回执（CONFIG/REGISTER/RECEIVE/ADJUST/MANUAL/RETURN/RETURN_ACK）。
+
+### 发现（均未在分支上修改，待决定）
+
+| # | 问题 | 影响 | 建议 |
+|---|---|---|---|
+| F1 | 两分支迁移撞号：`food-next01` 的工单/服务业迁移 V649、V651、V657 与 `ai-shop-codex` 的同号迁移冲突 | R2 汇合时 Flyway 拒绝启动 | 由服务业负责人决定重新编号；验收时仅在临时目录改为 V649_1/V651_1/V657_1 |
+| F2 | 餐饮 `FoodSchemaValidator` 仍要求迁移版本 37，但本分支已有餐饮 V38/V39 | **餐饮组件执行完 V38/V39 后启动失败**（内嵌与 food-server） | 餐饮负责人确认后改为 39；验收时仅在临时目录修改 |
+| F3 | 零售登记新来源须能查询餐饮来源历史（设计内），未部署餐饮组件时返回 10505 | 零售上线的部署前置条件 | 写入发布前置；或决定零售单独部署时的历史查询方式 |
+| F4 | `LocalStockAccessPolicy` 经 `StoreDirectoryPort.cards` 只认主体 ACTIVE 的门店，待补证照门店的零售/餐饮补货与预检均 10404 | 新开店到证照审核通过前不能补货 | 产品决定口径；验收时临时库内把主体置为 ACTIVE |
+| F5 | Flutter 页面：关单/退仓/调整共用接入卡片里的“操作原因”框，且校验提示在页顶、滚动后看不到 | 在下方操作时看似“点了没反应” | 各操作卡片各自放原因框，错误就近显示（零售自有代码，可直接修） |
+| F6 | Flutter 页面：未确认的原请求只存在页面内存，App 被系统结束后丢失 | 与“未知结果保留原键原参数”不完全一致（服务端原子回执仍保证不重复入账） | 持久化待确认命令（按门店+账号隔离），零售自有代码，可直接修 |
+| F7 | 临时环境需要 `commerce.enabled`、`commerce.store-creation.enabled`、db 令牌存储、发布的零售目录与权益码映射才能走新模型建店 | 仅本地验收配置 | 记录在本节，供 I04-H 复用 |
