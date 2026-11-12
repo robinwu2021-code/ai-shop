@@ -625,7 +625,7 @@ class BizFoundationAccessMysqlTest {
                                 json,
                                 json,
                                 mock(IndustryService.class),
-                                mock(MasterDataService.class),
+                                knownSubjects(),
                                 null,
                                 null,
                                 null,
@@ -667,5 +667,13 @@ class BizFoundationAccessMysqlTest {
                 null,
                 null,
                 store);
+    }
+
+    /** 主体门禁对查不到的主体 fail-closed：替身须认得本类提交的 PERSONAL（标准码 NATURAL_PERSON）。 */
+    private static MasterDataService knownSubjects() {
+        MasterDataService master = mock(MasterDataService.class);
+        org.mockito.Mockito.when(master.canonicalSubject("PERSONAL")).thenReturn("NATURAL_PERSON");
+        org.mockito.Mockito.when(master.enabledSubjects()).thenReturn(java.util.List.of("NATURAL_PERSON"));
+        return master;
     }
 }

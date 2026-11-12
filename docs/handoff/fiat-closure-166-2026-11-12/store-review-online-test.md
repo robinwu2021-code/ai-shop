@@ -83,3 +83,36 @@ DELETE FROM ai_shop_ume.sys_role_point WHERE created_by='STORE_REVIEW_TEST';
 - 测试身份 id 5/6/7 已停用；166 本机店主令牌文件与测试脚本已删除。
 - 三个 TEST ONLY 主体（A/B/D）保留，作为测试样本。
 - 长期功能点保留（用户决定），撤销语句见 §一。
+
+## 五、修复：主体与业态门禁（2026-11-12）
+
+**档位 0**（不改契约：复用已有 `BAD_REQUEST` 与 `INDUSTRY_NOT_FOUND` 70060，依据 `docs/requirements/商户主数据与门店-需求.md` B-1.3.1 / B-1.3.3）。
+
+### 1. 代码：`08f719868`
+
+`OpsServiceImpl.requireSubjectAllowedByIndustry`（三条申请路径共用：自填新建、代客新建、待审修改）改为 fail-closed：
+
+| 输入 | 修复前 | 修复后 |
+|---|---|---|
+| 传了主体，但主数据里没有或已停用 | 跳过全部门禁，受理 | 拒绝 `10400` |
+| 不传主体（C 端入驻意向） | 受理 | 受理（不变） |
+| 行业码不在 `sys_industry` | 受理（非受限主体）| 拒绝 `70060` |
+| 行业已停用 | 受理 | 受理（不变，意向口径） |
+
+`IndustryService` 新增 `registered(industry)`（内部接口，含停用行）。测试：`M9aOpsFlowTest` 新增 `unknownSubjectIsRejected`、`unknownIndustryIsRejected`、`missingSubjectMasterRowFailsClosed`（把 `NATURAL_PERSON` 行临时改名，模拟 166 缺行），修复前三条全红（均返回 0），修复后全绿；`MerchantApplyIntentIndustryFlowTest`（停用行业照收）、`QualificationChainFlowTest`、`OnBehalfMerchantFlowTest`、`MerchantApplyEditFlowTest`、`CommerceStoreCreationFlowTest`（原生 MySQL）通过。`CommerceStoreCreationFlowTest` 用反射构造 `OpsServiceImpl` 时 `MasterDataService` 是空替身，已改为认得 `NATURAL_PERSON` 的替身（夹具随规则调整，规则未放宽）。
+
+**166 尚未部署此代码**：线上未知主体仍会被受理（门禁验证中误收的单 `MA261112X5B80KMSTC` 已驳回）。
+
+### 2. 数据：166 主数据补齐
+
+TW166 夹具说明写明 166 原本没有主体与行业主数据，只补了 `CATERING` 与 `ENTERPRISE`。按仓库种子（V2/V22/V87/V93，之后无迁移改动）补齐缺行，已有两行不动，新行 `created_by='SEED-RESTORE-20261112'`：
+
+- `sys_legal_form`：+ `NATURAL_PERSON`（受行业限制、免执照）、`INDIVIDUAL`
+- `sys_industry`：+ `RETAIL`、`LIFE_SERVICE`（启用）、`ENTERTAINMENT`、`TRANSPORT`、`ONLINE`、`OTHER`（停用）
+
+线上复验（测试邮箱 id 8，验后已停用）：`/common/master-data` 返回 3 种主体；**自然人 + 线上被 70001 拒绝**（修复前被受理）；自然人 + 零售受理（验证单 `MA261112K0YMC1DC5S` 已驳回）。
+
+### 3. 仍待处理
+
+- 166 部署 `08f719868`，之后未知主体、未知行业才会在线上被拒。
+- 场景 A 的主体 `M261112SMSE46Y54G` 是在门禁失效时以「自然人 + 线上」通过的测试主体，保留作为证据，不应用于收款。
