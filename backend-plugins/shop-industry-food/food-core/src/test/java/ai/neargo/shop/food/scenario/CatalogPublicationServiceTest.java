@@ -159,6 +159,22 @@ class CatalogPublicationServiceTest {
                             e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
         });
     }
+    @Test void currentProofRejectsDisabledMenuHeadWhileHistoryStaysReadable() {
+        menu(false,true,t -> {
+            var current=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
+                    "MENU",null,null,MenuSourceContracts.Mode.CURRENT);
+            var history=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
+                    "MENU",null,null,MenuSourceContracts.Mode.HISTORICAL);
+            when(t.menus().headStatus("E","A","MENU")).thenReturn("PUBLISHED");
+            assertThat(t.service().verifyMenuResource(current)).isNotNull();
+            when(t.menus().headStatus("E","A","MENU")).thenReturn("DISABLED");
+            assertThatThrownBy(() -> t.service().verifyMenuResource(current))
+                    .isInstanceOfSatisfying(BizException.class,
+                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            assertThat(t.service().verifyMenuResource(history).publication().publication().revisionNo())
+                    .isEqualTo("SOURCE");
+        });
+    }
     @Test void historicalMenuRechecksLocalChannelAfterExternalAuthorityRead() {
         menu(false,true,t -> { t.disableDuringAuthority().set(true); denied(t,"raced-disable"); });
     }

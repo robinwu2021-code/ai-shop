@@ -232,6 +232,9 @@ public class FoodAutoConfiguration {
                     @Override public long currentVersion(String entity, String store, String menu, boolean lock) {
                         return workingMenus.getObject().currentVersion(entity, store, menu, lock);
                     }
+                    @Override public String headStatus(String entity, String store, String menu) {
+                        return workingMenus.getObject().headStatus(entity, store, menu);
+                    }
                     @Override public void advance(String entity, String store, String menu, long version,
                             FnbConfigRevision revision) {
                         workingMenus.getObject().advance(entity, store, menu, version, revision);

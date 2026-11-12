@@ -856,6 +856,12 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                         }
                     }
                     validateFrozen(row);
+                    if (query.mode() == Mode.CURRENT
+                            && menus != null
+                            && "DISABLED".equals(
+                                    menus.headStatus(
+                                            query.entityNo(), query.storeNo(), query.menuNo())))
+                        throw BizException.of(ErrorCode.CONFLICT);
                     if (query.mode() == Mode.CURRENT)
                         requireLiveChannelBindings(
                                 query.entityNo(),

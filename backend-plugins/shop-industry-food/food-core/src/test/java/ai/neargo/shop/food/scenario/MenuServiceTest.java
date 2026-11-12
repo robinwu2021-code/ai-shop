@@ -235,6 +235,17 @@ class MenuServiceTest extends FoodWriteGuardFixture {
         assertThatThrownBy(work::run).isInstanceOfSatisfying(BizException.class,
                 failure -> assertThat(failure.errorCode()).isEqualTo(expected));
     }
+    @Test void headStatusReportsTheLiveMenuStateForStoreBoundMenusOnly() {
+        run(m -> {
+            var access = (ai.neargo.shop.food.policy.MenuWorkingDefinitionAccess) m.service();
+            var id = m.service().createMenu("E", "A", "actor", input("早餐"), "head-status").configNo();
+            assertThat(access.headStatus("E", "A", id)).isEqualTo("DRAFT");
+            m.fixture().sql().update("UPDATE fnb_menu SET status='DISABLED' WHERE menu_no=?", id);
+            assertThat(access.headStatus("E", "A", id)).isEqualTo("DISABLED");
+            assertThat(access.headStatus("E", "OTHER", id)).isNull();
+            assertThat(access.headStatus("E", "A", "MISSING")).isNull();
+        });
+    }
     @Test void createsBoundDraftAndEditClearsNullableFieldWithoutTouchingPublication() {
         run(m -> {
             var s = m.service(); var f = m.fixture();

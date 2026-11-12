@@ -9,5 +9,9 @@ public interface MenuWorkingDefinitionAccess {
     default long currentVersion(String entity, String store, String menu, boolean lock) {
         return capture(entity, store, menu, lock).config().version();
     }
+    /** Live head status of a menu bound to the store, or null when this access cannot tell. */
+    default String headStatus(String entity, String store, String menu) {
+        return null;
+    }
     void advance(String entity, String store, String menu, long version, FnbConfigRevision revision);
 }
