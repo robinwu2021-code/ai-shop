@@ -120,13 +120,15 @@ UPDATE ai_shop_ume.sys_ops_staff SET roles=JSON_REMOVE(roles, JSON_UNQUOTE(JSON_
 
 ## 五、未完成
 
+> 门店创建审核的 166 线上完整测试见 [`store-review-online-test.md`](store-review-online-test.md)：37 项检查 35 项符合预期，发现主体与业态门禁失效、自助单不提示签协议、B 端台湾手机号与快速开店两处 App 缺陷。
+
 1. **派发真实蓝新**（`dispatch`）及之后的开户、开产品、凭据、门店绑定按约定未做，派发前须补齐 `NWP_*` 渠道资料（真实统编、银行等），不能用测试占位。
 2. 2 条支付已知失败（§二.3）。
 3. 166 自动化票据私钥已轮换（§三.3），其他机器或云端会话需改用新私钥。
 4. 本地闭环脚本 `scripts/verify-fiat-closure-local.py` 与 near-pay 启动器 `FiatClosureLocalLauncher` 已作为**未运行的草稿**提交（`85b98d2fa`、near-pay `codex/ops-fiat-local-closure` 的 `a72f53aa4`，跳过门禁）；真实渠道的开户/开产品/凭据/门店绑定仍只能在本地桩上验证。
 5. 代客建店在商户未签协议（`agreed_at` 为空）时仍可审核通过：用户决定暂不改，待决。
 6. `check-sql-portability` 报 8 个存量文件（与本批无关）。
-7. `COMMERCE_STORE_CREATION_ENABLED=true` 需写进 166 `ai-shop-ops` 的部署配置与上线清单。
+7. ~~`COMMERCE_STORE_CREATION_ENABLED=true` 需写进 166 `ai-shop-ops` 的部署配置~~：已写入 `ai-shop.env`（见门店审核测试报告 §一）；上线清单仍需补这一项。
 
 ## 六、注意事项
 
