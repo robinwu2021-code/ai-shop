@@ -160,7 +160,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
         var budget = SelectionFeasibility.Budget.catalog();
         var sections = new ArrayList<Section>();
         var offers = new ArrayList<ChannelCatalogDetails.Offer>();
-        var windows = new ArrayList<CatalogAvailability.SourceWindow>();
+        var windows = new ArrayList<FoodCatalogAvailabilityPolicy.Ranked>();
         var taxes = new LinkedHashMap<String, CatalogTaxBasis>();
         CatalogAvailability horizon = null;
         String currency = null;
@@ -228,7 +228,10 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
                         horizon.horizonStart().equals(timed.availability().horizonStart())
                                 && horizon.horizonEnd().equals(timed.availability().horizonEnd()));
             horizon = timed.availability();
-            windows.addAll(horizon.sources());
+            for (var compiled : horizon.sources())
+                windows.add(
+                        new FoodCatalogAvailabilityPolicy.Ranked(
+                                body.menu().definition().config(), compiled));
             deadlines.add(timed.validUntil());
             boolean originallyEmpty =
                     body.menu().definition().composition().categories().stream()
@@ -323,7 +326,10 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
         var until = deadlines.stream().min(Instant::compareTo).orElseThrow();
         require(until.isAfter(clock.instant()));
         var availability =
-                new CatalogAvailability(horizon.horizonStart(), horizon.horizonEnd(), windows);
+                new CatalogAvailability(
+                        horizon.horizonStart(),
+                        horizon.horizonEnd(),
+                        FoodCatalogAvailabilityPolicy.exclusive(windows));
         var document =
                 new Document(
                         Owner.FOOD,
