@@ -14,7 +14,7 @@
 
 | 仓库 | 分支 | 位置 | 说明 |
 |---|---|---|---|
-| ai-shop | `codex/ai-shop-codex`（主开发分支） | `e1102ef5a` | 含合并、门禁修复、主体业态门禁修复与全部交接文档 |
+| ai-shop | `codex/ai-shop-codex`（主开发分支） | 最后一次代码改动 `9f44771a1`，之后只有文档提交 | 含合并、门禁修复、主体业态门禁修复与全部交接文档 |
 | ai-shop | `codex/ops-fiat-local-closure` | 同上 | 本工作的闭环分支，已与主开发分支对齐 |
 | near-pay | `develop/s1` | `6e1f0bdee` | 合入 `codex/pay-ops-menu-matrix` |
 | near-pay | `codex/ops-fiat-local-closure` | `a72f53aa4` | 仅本地闭环启动器草稿 |
