@@ -124,7 +124,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void live_creation_reuses_original_split_stock_and_coupon_boundary() throws Exception {
-        var f = fixture("12600349010", "13000349010", "live");
+        var f = fixture("19600349010", "13000349010", "live");
         when(redeem.hold(any()))
                 .thenAnswer(
                         call -> {
@@ -173,7 +173,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void preview_points_quote_uses_store_route_and_non_unit_rate() throws Exception {
-        var f = fixture("12600349017", "13000349017", "quote");
+        var f = fixture("19600349017", "13000349017", "quote");
         String raw =
                 mvc().perform(
                                 post("/mp/order/points-quote")
@@ -218,7 +218,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void payment_open_uses_the_route_accepted_with_the_original_store() throws Exception {
-        var f = fixture("12600349013", "13000349013", "payment-route");
+        var f = fixture("19600349013", "13000349013", "payment-route");
         when(redeem.hold(any()))
                 .thenAnswer(
                         call -> {
@@ -257,7 +257,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void only_a_verified_payment_creates_paid_and_earning_source_facts() throws Exception {
-        var f = fixture("12600349014", "13000349014", "paid-fact");
+        var f = fixture("19600349014", "13000349014", "paid-fact");
         when(redeem.hold(any()))
                 .thenAnswer(
                         call -> {
@@ -326,7 +326,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void unknown_hold_retains_original_amount_and_blocks_payment() throws Exception {
-        var f = fixture("12600349011", "13000349011", "unknown");
+        var f = fixture("19600349011", "13000349011", "unknown");
         when(redeem.hold(any())).thenThrow(new IllegalStateException("SIMULATED_TIMEOUT"));
         var response = create(f, "live-unknown");
         assertThat(response.get("status").asString()).isEqualTo("POINTS_PROCESSING");
@@ -392,7 +392,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void changed_hold_price_exposes_reconfirm_phase_only_to_order_owner() throws Exception {
-        var f=fixture("12600349015","13000349015","reconfirm");
+        var f=fixture("19600349015","13000349015","reconfirm");
         when(redeem.hold(any())).thenAnswer(call -> {
             var h=call.<PointsRedeemPort.HoldCommand>getArgument(0);
             return new PointsRedeemPort.HoldOutcome("QA:"+h.orderNo(),"TYPE",18,9,
@@ -414,7 +414,7 @@ class PointsOrderLiveCreationTest {
 
     @Test
     void pending_hold_timeout_closes_the_original_order_and_releases_stock() throws Exception {
-        var f = fixture("12600349012", "13000349012", "timeout");
+        var f = fixture("19600349012", "13000349012", "timeout");
         when(redeem.hold(any())).thenThrow(new IllegalStateException("SIMULATED_TIMEOUT"));
         String root = create(f, "live-timeout").get("payOrderNo").asString();
         jdbc.update(

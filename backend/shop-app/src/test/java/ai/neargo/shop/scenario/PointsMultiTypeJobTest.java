@@ -69,7 +69,9 @@ class PointsMultiTypeJobTest {
         when(jobs.run(any(),eq("HX_TOKEN"),anyInt(),anyLong(),any())).thenReturn(new PointsJobServices.Result(true,1,0,2));
         assertThat(handler.run(in).status()).isEqualTo(JobStatus.FAILED);
     }
-    @Test void order_recovery_is_registered_without_enabling_it_or_self_scheduling() {
+    // 866e3870f replaced the outbox wake-ups with this business recovery, so it is now enabled by default;
+    // scheduling still belongs to the operator-controlled task definition (no local @Scheduled).
+    @Test void order_recovery_is_registered_enabled_by_default_without_self_scheduling() {
         new org.springframework.boot.test.context.runner.ApplicationContextRunner()
             .withPropertyValues("shop.job.enabled=true")
             .withBean(ai.neargo.shop.trade.order.points.OrderPointsRecoveryService.class,
@@ -77,7 +79,7 @@ class PointsMultiTypeJobTest {
             .withUserConfiguration(ai.neargo.shop.trade.job.OrderPointsRecoveryJob.class)
             .run(ctx -> {
                 assertThat(ctx).hasSingleBean(ai.neargo.shop.trade.job.OrderPointsRecoveryJob.class);
-                assertThat(ctx.getBean(ai.neargo.shop.trade.job.OrderPointsRecoveryJob.class).orderPointsRecoveryDeclaration().enabled()).isFalse();
+                assertThat(ctx.getBean(ai.neargo.shop.trade.job.OrderPointsRecoveryJob.class).orderPointsRecoveryDeclaration().enabled()).isTrue();
                 assertThat(java.util.Arrays.stream(ai.neargo.shop.trade.job.OrderPointsRecoveryJob.class.getMethods())
                     .anyMatch(m -> m.isAnnotationPresent(org.springframework.scheduling.annotation.Scheduled.class))).isFalse();
             });

@@ -502,6 +502,8 @@ class PointsClientSwitchFlowTest {
                     OrdOrder o = new OrdOrder();
                     o.setOrderNo(orderNo);
                     o.setUserNo(userNo);
+                    // Registered-buyer orders carry the frozen identity revision (ck_counter_order_party, V615).
+                    o.setIdentityRevision(1L);
                     o.setStatus(OrdOrder.PAID);
                     o.setPayAmount(10_000L);
                     o.setPayScene(scene);
@@ -512,6 +514,7 @@ class PointsClientSwitchFlowTest {
                     sub.setSubOrderNo(subOrderNo);
                     sub.setOrderNo(orderNo);
                     sub.setUserNo(userNo);
+                    sub.setIdentityRevision(1L);
                     sub.setEntityNo(MERCHANT);
                     sub.setStatus(OrdOrder.PAID);
                     sub.setPayAmount(10_000L);

@@ -21,6 +21,13 @@ import javax.sql.DataSource;
 @SpringBootTest
 @ActiveProfiles("test")
 class PointsOrderSourceBootTest {
+    @Autowired JdbcTemplate ownerJdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    void owners() {
+        StoreOwnerFixture.store(ownerJdbc, "M", "ST");
+    }
+
     @Autowired OrderPointsCoordinator coordinator;
     @Autowired ai.neargo.shop.pay.points.event.PointsEventWorker worker;
     @Autowired ai.neargo.shop.pay.points.store.PointsReadStore payRead;
@@ -32,6 +39,7 @@ class PointsOrderSourceBootTest {
     @Test
     void accepted_pay_event_survives_ack_loss_without_duplicate_kernel_delivery() {
         var fixture = new PointsOrderSourceOutboxTest();
+        fixture.storeOwners = store -> StoreOwnerFixture.store(ownerJdbc, "M", store);
         fixture.journal = journal;
         fixture.bindings = bindings;
         fixture.policies = policies;
@@ -122,6 +130,7 @@ class PointsOrderSourceBootTest {
     @Test
     void source_and_platform_outbox_commit_and_rollback_together() {
         var fixture = new PointsOrderSourceOutboxTest();
+        fixture.storeOwners = store -> StoreOwnerFixture.store(ownerJdbc, "M", store);
         fixture.journal = journal;
         fixture.bindings = bindings;
         fixture.policies = policies;

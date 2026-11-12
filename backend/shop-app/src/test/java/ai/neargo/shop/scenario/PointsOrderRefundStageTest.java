@@ -34,6 +34,11 @@ class PointsOrderRefundStageTest {
     @Autowired ai.neargo.shop.trade.service.OrderService orders;
     @Autowired ai.neargo.shop.trade.order.points.OrderPointsFactService journal;
     @Autowired JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    void owners() {
+        StoreOwnerFixture.store(jdbc, "M", "ST");
+    }
     @Autowired PlatformTransactionManager sourceTx;
     @MockitoBean OrderPointsBindingService bindings;
     @MockitoBean RefundExecutionService executions;

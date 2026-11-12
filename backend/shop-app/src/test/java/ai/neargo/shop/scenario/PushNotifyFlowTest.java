@@ -134,8 +134,8 @@ class PushNotifyFlowTest {
     @Test
     @DisplayName("★ 绑定设备 → 新订单 → 商家收到**响铃级**推送 + 留痕")
     void newOrderRingsMerchantDevice() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127401");
-        String owner = loginAsOwnerOf("M0001", "12700127402");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "19700127401");
+        String owner = loginAsOwnerOf("M0001", "19700127402");
         bindBiz(owner, "cid-owner-1");
 
         buyAndPay(buyer, "push-new-order");
@@ -162,8 +162,8 @@ class PushNotifyFlowTest {
     @Test
     @DisplayName("★ 登出解绑后不再收到 —— 共用设备换班不能推给上一班的人")
     void unregisteredDeviceStopsReceiving() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127403");
-        String owner = loginAsOwnerOf("M0001", "12700127404");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "19700127403");
+        String owner = loginAsOwnerOf("M0001", "19700127404");
         bindBiz(owner, "cid-shift-1");
 
         mvc().perform(post("/biz/push-token/unregister").header("Authorization", "Bearer " + owner)
@@ -180,14 +180,14 @@ class PushNotifyFlowTest {
     @Test
     @DisplayName("★ 换人登录同一台设备：旧绑定被抢占，只有新主人收到")
     void reRegisterTakesOverDevice() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127405");
-        String first = loginAsOwnerOf("M0001", "12700127406");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "19700127405");
+        String first = loginAsOwnerOf("M0001", "19700127406");
         bindBiz(first, "cid-shared-1");
-        String firstUserNo = userNoOfPhone("12700127406");
+        String firstUserNo = userNoOfPhone("19700127406");
 
         // 同一台设备换人登录（B 端店员换班的真实形态）
         // A7：喂给 bindBiz（/biz/push-token），必须是 btk_
-        String second = ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, "12700127407");
+        String second = ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, "19700127407");
         bindBiz(second, "cid-shared-1");
 
         // 前一个人名下已经没有这台设备了
@@ -207,8 +207,8 @@ class PushNotifyFlowTest {
     @Test
     @DisplayName("没绑设备的商家：站内信照常，推送静默跳过（多数商家从没装过 App）")
     void noDeviceIsNotAnError() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127408");
-        String owner = loginAsOwnerOf("M0001", "12700127409");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "19700127408");
+        String owner = loginAsOwnerOf("M0001", "19700127409");
 
         buyAndPay(buyer, "push-no-device");
         dispatcher.dispatchPending();
@@ -223,9 +223,9 @@ class PushNotifyFlowTest {
     @Test
     @DisplayName("C 端到货推送是常规级 —— 买家不该被从睡梦中叫醒去取货")
     void arrivalPushIsNotRing() throws Exception {
-        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127410");
+        String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "19700127410");
         bindMp(buyer, "cid-buyer-1");
-        String owner = loginAsOwnerOf("M0001", "12700127411");
+        String owner = loginAsOwnerOf("M0001", "19700127411");
 
         buyAndPay(buyer, "push-arrive");
         dispatcher.dispatchPending();
@@ -248,9 +248,9 @@ class PushNotifyFlowTest {
     @Test
     @DisplayName("★ 运营端「选择终端」：列出某人绑定的设备，cid 只回掩码不吐全量")
     void pushDevicesListsBoundDevicesMasked() throws Exception {
-        String owner = loginAsOwnerOf("M0001", "12700127412");
+        String owner = loginAsOwnerOf("M0001", "19700127412");
         bindBiz(owner, "cid-pick-verify-01");
-        String userNo = userNoOfPhone("12700127412");
+        String userNo = userNoOfPhone("19700127412");
 
         List<ai.neargo.shop.message.notify.NotifyLogService.PushDeviceVO> devices =
                 notifyLogService.pushDevices(userNo);

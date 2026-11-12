@@ -134,7 +134,7 @@ class Phase1MasterDataTest {
     @Test
     @DisplayName("★ 非法的经营范围写不进库 —— 此前是「传什么存什么」，传 ABC 也能存")
     void illegalServiceScopeIsRejected() throws Exception {
-        String token = merchant("12600171001", "范围测试·非法值");
+        String token = merchant("19600171001", "范围测试·非法值");
 
         String body = saveStore(token, "ABC");
         // 值域是代码的事实，运营在后台放开档位也不该顺带获得「写入任意字符串」的能力
@@ -144,7 +144,7 @@ class Phase1MasterDataTest {
     @Test
     @DisplayName("★ 一期未开放的 PLATFORM 档被拒，COMMUNITY 照常通过")
     void platformScopeIsClosedInPhase1() throws Exception {
-        String token = merchant("12600171002", "范围测试·档位");
+        String token = merchant("19600171002", "范围测试·档位");
 
         // PLATFORM 是合法值，但一期没有任何商品形态支撑它
         //（无虚拟商品、无卡券、无平台自营快递品）
@@ -175,7 +175,7 @@ class Phase1MasterDataTest {
     @Test
     @DisplayName("★ 授了 HOUSEKEEPING 就能上架家政商品；授之前被拒")
     void housekeepingGateOpensWithItsOwnCode() throws Exception {
-        String token = merchant("12600171003", "类目测试·家政");
+        String token = merchant("19600171003", "类目测试·家政");
         String merchantNo = merchantNoOf(token);
         String goodsNo = saveGoods(token, "日常保洁 2 小时", "CAT310", "SERVICE");
         approveGoods(goodsNo);
@@ -189,7 +189,7 @@ class Phase1MasterDataTest {
     @Test
     @DisplayName("★ 预包装食品是新门槛：没有 PACKAGED_FOOD 上不了架")
     void packagedFoodNeedsItsOwnAuthorization() throws Exception {
-        String token = merchant("12600171004", "类目测试·粮油");
+        String token = merchant("19600171004", "类目测试·粮油");
         /*
          * **挂在 CAT130（预包装食品，二级），不是 CAT131（粮油调味，三级）。**
          *
@@ -349,7 +349,7 @@ class Phase1MasterDataTest {
     @Test
     @DisplayName("★ 在后台放开 PLATFORM 之后，商家立刻就能选它 —— 切平台模式不用发版")
     void openingScopeInOpsTakesEffectImmediately() throws Exception {
-        String token = merchant("12600171005", "范围测试·后台放开");
+        String token = merchant("19600171005", "范围测试·后台放开");
         String ops = opsLogin("admin", "admin123");
 
         assertThat(json.readTree(saveStore(token, "PLATFORM")).get("code").asInt()).isEqualTo(ai.neargo.shop.common.ErrorCode.SERVICE_SCOPE_NOT_ALLOWED.code());

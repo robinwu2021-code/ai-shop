@@ -46,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class ProxyOrderFlowTest {
 
-    private static final String CUSTOMER_PHONE = "12900129088";
+    private static final String CUSTOMER_PHONE = "19900129088";
     private static final String MERCHANT = "M0001";
     private static final String SKU = "SK0001";
 
@@ -235,7 +235,7 @@ class ProxyOrderFlowTest {
     @Test
     @DisplayName("★★★ 只有手机号也能代下：建的号就是他日后登录命中的那个号")
     void proxyOrderProvisionsAccountForANewPhone() throws Exception {
-        String phone = "129001291" + (10 + new java.util.Random().nextInt(80));
+        String phone = "199001291" + (10 + new java.util.Random().nextInt(80));
         String ops = opsLogin();
 
         String body = mvc().perform(post("/ops/orders/proxy")

@@ -58,6 +58,7 @@ class PmtCouponIssueCountRaceTest {
     @DisplayName("★★★ 两批定向发放同时跑、余量 5 张、各 4 人：合计发出不超过 5 张，计数与实发一致")
     void concurrentTargetedBatchesNeverOversell() throws Exception {
         String e = "M-CNT-" + (++seq);
+        StoreOwnerFixture.entity(jdbc, e);
         String couponNo = couponService.save(e, targeted(5), "OP").couponNo();
         doReturn(audience("A", 4)).when(members).resolveSegment(e, "SEG-A");
         doReturn(audience("B", 4)).when(members).resolveSegment(e, "SEG-B");
@@ -86,6 +87,7 @@ class PmtCouponIssueCountRaceTest {
     @DisplayName("★★★ 改券、暂停的同一刻有人领券：已领计数不被写回的旧值抹掉")
     void saveAndSetStatusDoNotOverwriteReceivedCount() throws Exception {
         String e = "M-CNT-" + (++seq);
+        StoreOwnerFixture.entity(jdbc, e);
         CouponSaveCmd center = center(10);
         String couponNo = couponService.save(e, center, "OP").couponNo();
 

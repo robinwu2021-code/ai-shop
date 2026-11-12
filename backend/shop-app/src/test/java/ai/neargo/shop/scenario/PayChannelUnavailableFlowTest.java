@@ -73,7 +73,7 @@ class PayChannelUnavailableFlowTest {
     @Test
     @DisplayName("★★ 通道没接通时提交进件：说「通道没接通」，不能说「请求参数有误」")
     void submitSaysChannelNotConnected() throws Exception {
-        String token = merchant("12600131001", "通道未接通·提交");
+        String token = merchant("19600131001", "通道未接通·提交");
 
         /*
          * 资料**填全了** —— 这一点是这条用例的关键。
@@ -110,7 +110,7 @@ class PayChannelUnavailableFlowTest {
     @Test
     @DisplayName("★ 通道没接通不影响「收款设置」页打开 —— 他至少要看得见自己卡在哪")
     void statusPageStillOpens() throws Exception {
-        String token = merchant("12600131002", "通道未接通·查看");
+        String token = merchant("19600131002", "通道未接通·查看");
 
         mvc().perform(get("/biz/merchant/payment").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0));

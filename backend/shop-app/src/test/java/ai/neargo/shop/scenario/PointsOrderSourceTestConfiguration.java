@@ -47,4 +47,28 @@ class PointsOrderSourceTestConfiguration {
     DataSourceTransactionManager transactionManager(DataSource ds) {
         return new DataSourceTransactionManager(ds);
     }
+
+    /**
+     * Store ownership is part of the simulated base-order boundary in these points-only contexts (no mch_* tables).
+     * Keep the real precondition — it must be called inside the business write transaction — and accept the owner.
+     */
+    @Bean
+    ai.neargo.shop.spi.user.StoreOwnershipWritePort storeOwnershipWritePort() {
+        return new ai.neargo.shop.spi.user.StoreOwnershipWritePort() {
+            @Override
+            public void lockEntityAndCheck(String tenant, String entity) {
+                requireTransaction();
+            }
+
+            @Override
+            public void lockAndCheck(String tenant, String entity, String store) {
+                requireTransaction();
+            }
+
+            private void requireTransaction() {
+                if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+                    throw new IllegalStateException("Store ownership check requires the business write transaction");
+            }
+        };
+    }
 }

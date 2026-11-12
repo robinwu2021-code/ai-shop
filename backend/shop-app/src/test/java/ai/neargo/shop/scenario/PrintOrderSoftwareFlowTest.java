@@ -90,7 +90,7 @@ class PrintOrderSoftwareFlowTest {
 
     @Test
     void paidFactSurvivesRedeliveryAndMerchantCanSimulateAndDownloadItsFrozenReceipt() throws Exception {
-        var owner = merchant("12600825101", "打印软件验收店");
+        var owner = merchant("19600825101", "打印软件验收店");
         String order = "PRINT-SOFTWARE-ORDER";
         seedPaidOrder(order, owner);
         var tx = new TransactionTemplate(transactions);
@@ -183,7 +183,7 @@ class PrintOrderSoftwareFlowTest {
         assertEquals(1L, count("notify_message", "dedup_key",
                 "PRINT:" + PrintHashes.sha256(notificationEvent.getEventNo() + ":" + ownerUser)));
 
-        var other = merchant("12600825102", "打印隔离验收店");
+        var other = merchant("19600825102", "打印隔离验收店");
         var forbidden = mvc.perform(get("/biz/print/exports/" + exportNo)
                 .header("Authorization", "Bearer " + other.token()).header("X-Store-No", other.store()))
                 .andReturn().getResponse().getContentAsString();
@@ -200,7 +200,7 @@ class PrintOrderSoftwareFlowTest {
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.data.key").value("print.forbidden"));
 
         // This employee belongs to the same store: only the action permission should deny these requests.
-        String phone = "12600825103";
+        String phone = "19600825103";
         jdbc.update("insert into mch_account(mch_account_no,entity_no,login_phone,status,created_at,updated_at) "
                 + "values('PRINT-COURIER',?,?,'ACTIVE',now(),now())", owner.entity(), phone);
         jdbc.update("insert into mch_store_role(mch_account_no,store_no,role,created_at,updated_at) "

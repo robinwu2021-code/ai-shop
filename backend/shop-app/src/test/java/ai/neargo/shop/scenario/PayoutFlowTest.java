@@ -245,9 +245,17 @@ class PayoutFlowTest {
     private StlBill selfBill(String tag, long net, String invoiceStatus, String payMerchantNo) {
         long completedAt = System.currentTimeMillis() - 30 * DAY;
         String subNo = "SUB-PO-" + run + "-" + tag;
-        DataScopeContext.executeWithoutScope(() -> jdbc.update(
-                "INSERT INTO ord_status_log (sub_order_no, status, at, tenant_no, created_at)"
-                        + " VALUES (?, 'COMPLETED', ?, 'MAIN', CURRENT_TIMESTAMP)", subNo, completedAt));
+        // Settle readiness reads the real funded sub-order (admission_kind LEGACY_FUNDED) plus its completion log.
+        String orderNo = "SO-PO-" + run + "-" + tag;
+        DataScopeContext.executeWithoutScope(() -> {
+            jdbc.update("INSERT INTO ord_order (order_no,user_no,status,created_at,updated_at)"
+                    + " VALUES (?,'PO-BUYER','COMPLETED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", orderNo);
+            jdbc.update("INSERT INTO ord_sub_order (sub_order_no,order_no,user_no,entity_no,store_no,fulfillment,"
+                    + "status,created_at,updated_at) VALUES (?,?,'PO-BUYER',?,?,'EXPRESS','COMPLETED',"
+                    + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", subNo, orderNo, ENTITY, "ST-" + ENTITY);
+            return jdbc.update("INSERT INTO ord_status_log (sub_order_no, status, at, tenant_no, created_at)"
+                    + " VALUES (?, 'COMPLETED', ?, 'MAIN', CURRENT_TIMESTAMP)", subNo, completedAt);
+        });
         StlBill b = new StlBill();
         b.setSettleNo("STL-PO-" + run + "-" + tag);
         b.setSubOrderNo(subNo);
