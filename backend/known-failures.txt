@@ -39,3 +39,11 @@
 
 # 2026-11-11：2026-11-06 登记的 3 条协议夹具已修复并通过定向验证，清单再次清零。
 # 完整 normal pre-push 仍要求 backend 零失败；不得用旧登记豁免协议回归。
+
+# 2026-11-12：登记 2 条支付重试回退（用户决定先登记、再由支付负责人修复）。
+# 在 origin/codex/ai-shop-codex 上同样失败，非本次合并引入；起因是 2026-10-25/26 通道管线重构
+# （9ec07d801 / 096983f3f）：同单重试经 InProcessChannel 再次 prepay，不经 IdempotencyInterceptor；
+# 拦截器重放也只返回 Succeeded 而不带首次拉起参数。期望：重试复用原单与首次 payParams，结果不确定时不重发、转补查。
+# 修好即删这两行。
+PaymentLedgerCloseRaceFlowTest.unconfirmedPrepayCannotCloseOrAllocateAnotherOriginalNumber
+PaymentRequestSnapshotTest.retry_reuses_original_store_and_account_even_if_the_caller_has_new_configuration
