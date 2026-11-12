@@ -53,6 +53,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.LinkedHashSet;
@@ -402,22 +403,8 @@ public class OpsServiceImpl implements OpsService {
         MchEntityApply apply = requireApply(applyNo);
         if (apply.getEntityNo() != null) ownershipWrites.lockEntityAndCheck("MAIN", apply.getEntityNo());
 
-        /*
-         * ★ **代填的人不能审自己填的那一张。**（三期）
-         *
-         * 代填这件事的全部风险就在这里：资料是运营录的，核验不该也是同一个人。
-         * 而<b>光靠角色配置挡不住</b> —— BD 同时持有 merchant:apply:audit
-         * 与 merchant:apply:onbehalf，两个码都在他手里，界面上两个入口都点得开。
-         * 所以这道闸钉在数据上（submitted_by vs 当前审核人），
-         * 不钉在权限表上：角色怎么配都绕不过去。
-         *
-         * 只拦「同一个人」，不拦「代填过的单子」—— 换个人审是正常流程，
-         * 拦掉它等于代填的单子永远审不了。
-         */
+        // 审核权限由既有运营入口校验；同人代填与审核按真实身份留痕。
         String auditor = SecurityUtils.currentUserNo();
-        if (apply.getSubmittedBy() != null && apply.getSubmittedBy().equals(auditor)) {
-            throw BizException.of(ErrorCode.FORBIDDEN);
-        }
 
         if (approved && MchEntityApply.APPROVED.equals(apply.getStatus())) {
             boolean sameScope=serviceScope==null || serviceScope.isBlank() || serviceScope.equals(apply.getServiceScope());
@@ -522,7 +509,9 @@ public class OpsServiceImpl implements OpsService {
 
         // 审核是能改变别人生意的操作 —— 出问题时必须能回答「谁批的」
         audit("MERCHANT_AUDIT", applyNo,
-                (approved ? "通过" : "驳回：" + reason) + "；商家=" + apply.getName());
+                (approved ? "通过" : "驳回：" + reason) + "；商家=" + apply.getName()
+                        + "；submittedBy=" + apply.getSubmittedBy() + "；auditor=" + auditor
+                        + "；sameActor=" + auditor.equals(apply.getSubmittedBy()));
         return toVO(apply);
     }
 
@@ -598,7 +587,8 @@ public class OpsServiceImpl implements OpsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (cmd.storeProfile()!=null) merchantAdminPort.validateInitialStore(cmd.storeProfile());
-        return doCreateApply(cmd, submittedBy, merchantAdminPort::pendingLicenseEntityOf);
+        // 运营代填用于独立新建；商户补证保留原有的主体选择与归属校验。
+        return doCreateApply(cmd, submittedBy, owner -> Optional.empty());
     }
 
     /**

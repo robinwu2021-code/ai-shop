@@ -242,9 +242,8 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                 ★ **代填标记**（三期）。摆在资料正文之前，因为它改变的是
                 「这份资料该怎么读」：下面每一格都不是商户自己录的。
 
-                代填这件事的全部风险就在核验这一步 —— 资料是运营录的，
-                核验不该也是同一个人。后端按 submitted_by 拦自审（403），
-                所以这条提示不是装饰：它解释了你可能会被拒的原因。
+                后端继续校验真实审核权限；有权限的代填人可以自审并留痕。
+                商户协议仍由商户本人确认。
               */}
               {current.onBehalf && (
                 <Notice tone="warning" className="mt-3">

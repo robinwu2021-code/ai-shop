@@ -22,7 +22,7 @@ const zh = {
   applySectionLicenses: "资质",
   applySectionDecide: "审核",
   applyAsPickup: "愿意承接自提点",
-  applyOnBehalf: "这份资料由运营代商户录入，不是商户自己填的 —— 核验这一步请更仔细。你审不了自己填的那一张（后端会拒）。",
+  applyOnBehalf: "这份资料由运营代商户录入，请仔细核验。有审核权限时可以自审，系统会记录同人操作。",
   applyAgreed: "商户本人已确认《商家服务协议》。",
   applyNotAgreed: "《商家服务协议》商户尚未确认 —— 运营不能代勾，他首次登录时自己补。这不影响你现在审核。",
   applyScopeNotice: "通过前必须确定服务范围：商家可以不填，但空着上架后对谁都不可见，而且不会报错。",
@@ -122,7 +122,7 @@ const zh = {
   obDesc: "替第三方商户填那张进件表。一道闸都不放宽：执照照要、单子照进审核队列、审核通过才建主体。这里只改「谁来填这张表」。",
   obWarning:
     "这不是「建商家」—— 提交之后队列里多一张待审的单，库里不会多一个主体。"
-    + "而且你审不了自己填的那一张：核验必须是另一个人，否则代填等于没人把关。",
+    + "此入口独立新建主体，不自动复用旧待补证主体；审核仍须具备审核权限。",
   obMarket: "经营地区", obOwnerEmail: "店主已注册邮箱",
   obRecordPhoneHint: "该地区手机号只作联系方式记录，不校验号码，不建立手机号登录身份。店主使用已注册的邮箱账号；短信验证尚未开放。",
   obPhone: "商户本人手机号",
@@ -725,7 +725,7 @@ const en: typeof zh = {
   applySectionLicenses: "Documents",
   applySectionDecide: "Decision",
   applyAsPickup: "Willing to host a pickup point",
-  applyOnBehalf: "These details were entered by ops on the merchant's behalf, not by the merchant — please verify more carefully. You cannot review an application you filled in yourself (the backend rejects it).",
+  applyOnBehalf: "Ops entered these details on the merchant's behalf. Verify carefully. Review permission is required; reviewing your own submission is recorded.",
   applyAgreed: "The merchant has accepted the Merchant Service Agreement.",
   applyNotAgreed: "The merchant has not accepted the Merchant Service Agreement yet — ops cannot tick it for them; they do so on their first sign-in. This does not block your review.",
   applyScopeNotice: "Set the service area before approving. Merchants may leave it blank, but an empty area means nobody can see the shop — and nothing reports it.",
@@ -822,7 +822,7 @@ const en: typeof zh = {
   obDesc: "Fill in the onboarding form for a third-party merchant. no gate is relaxed: the licence is still required, the application still enters the review queue, and the entity is only created once it is approved. This only changes who fills the form in.",
   obWarning:
     "This does not create a merchant — it adds one pending application to the queue; no entity appears in the database. "
-    + "You also cannot review the application you filled in yourself: verification must be someone else, or filling in on their behalf checks nothing.",
+    + "This creates an independent entity after approval and never automatically reuses a pending entity. Review permission is required.",
   obMarket: "Operating region", obOwnerEmail: "Owner's registered email",
   obRecordPhoneHint: "Phone numbers are contact records only and create no phone login identity. Use the owner's registered email account. SMS verification is not available yet.",
   obPhone: "Merchant's own mobile number",

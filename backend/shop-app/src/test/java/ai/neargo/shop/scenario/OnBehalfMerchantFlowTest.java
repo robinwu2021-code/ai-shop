@@ -7,6 +7,14 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.service.SelfOperatedService;
 import ai.neargo.shop.platform.OpsService;
+import ai.neargo.shop.platform.api.ops.OpsPlatformController;
+import ai.neargo.shop.spi.user.MerchantAdminPort;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.auth.store.SubjectKind;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
 import ai.neargo.shop.spi.user.UserProvisionPort;
 import ai.neargo.shop.support.TestPlan;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -42,6 +50,12 @@ class OnBehalfMerchantFlowTest {
     private OpsService opsService;
 
     @Autowired
+    private MerchantAdminPort merchantAdmin;
+
+    @Autowired
+    private OpsPlatformController opsController;
+
+    @Autowired
     private SelfOperatedService selfOperated;
 
     @Autowired
@@ -71,7 +85,7 @@ class OnBehalfMerchantFlowTest {
      * 审核要登录态（{@code SecurityUtils.requireUser}）—— 审核是能改变别人生意的操作，
      * 必须答得出「谁批的」。测试里塞一个运营身份，而不是把那行校验去掉。
      *
-     * <p>{@code OPS_TEST} 这个号同时被 {@code submitterCannotAuditOwnApply} 当作
+     * <p>{@code OPS_TEST} 这个号同时被 {@code submitterWithAuditPermissionCanAuditOwnApply} 当作
      * 「代填人」用 —— 那条要验的正是<b>同一个人</b>既填又审。
      */
     @org.junit.jupiter.api.BeforeEach
@@ -221,29 +235,65 @@ class OnBehalfMerchantFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 代填的人不能审自己填的那一张 —— 光靠角色配置挡不住")
-    void submitterCannotAuditOwnApply() {
+    void submitterWithAuditPermissionCanAuditOwnApply() {
         String owner = userProvision.ensureUserByPhone(phone(9));
-        /*
-         * 代填人写成**当前登录人**：测试里 SecurityUtils.currentUserNo() 取到谁，
-         * 就让谁去填那张单 —— 这样"同一个人"才真的成立。
-         * 写死一个常量的话，这条断言测的是"某个不存在的人不能审"，恒真且无意义。
-         */
-        String me = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
-        String applyNo = opsService.createApplyOnBehalf(full(owner, "自审水果店"), me);
+        String applyNo = opsService.createApplyOnBehalf(full(owner, "Self reviewed"), "OPS_TEST");
+        var result = opsController.auditApply(applyNo, new OpsPlatformController.AuditReq(
+                true, null, "COMMUNITY", List.of("CMT-OB-1"), null));
+        assertThat(result.status()).isEqualTo("APPROVED");
+        assertThat(applyRow(applyNo).get("agreed_at")).isNull();
+        assertThat(jdbc.queryForObject("select detail from sys_audit_log where op_action = 'MERCHANT_AUDIT' and target = ?", String.class, applyNo))
+                .contains("submittedBy=OPS_TEST", "auditor=OPS_TEST", "sameActor=true");
+        opsController.auditApply(applyNo, new OpsPlatformController.AuditReq(
+                true, null, "COMMUNITY", List.of("CMT-OB-1"), null));
+        assertThat(jdbc.queryForObject("select count(*) from mch_entity where owner_user_no = ?", Integer.class, owner)).isEqualTo(1);
+    }
 
-        assertThatThrownBy(() -> opsService.auditApply(applyNo, true, null,
-                "COMMUNITY", List.of("CMT-OB-1"), null))
-                .isInstanceOf(BizException.class);
+    @Test
+    void operatorWithoutAuditPermissionCannotReview() {
+        String owner = userProvision.ensureUserByPhone(phone(20));
+        String applyNo = opsService.createApplyOnBehalf(full(owner, "No permission"), "OPS_TEST");
+        var user = new LoginUser(Realm.OPERATOR, SubjectKind.OPS, "OPS_TEST", "operator",
+                List.of(), List.of("merchant:apply:onbehalf"), null, null);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, null, List.of()));
+        assertThatThrownBy(() -> opsController.auditApply(applyNo, new OpsPlatformController.AuditReq(
+                true, null, "COMMUNITY", List.of("CMT-OB-1"), null)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(applyRow(applyNo).get("status")).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("select count(*) from mch_entity where owner_user_no = ?", Integer.class, owner)).isZero();
+    }
 
-        /*
-         * ★ **对照量**：换个人填的单子，同一个人审得动。
-         * 没有这一条，上面那条也可能只是「auditApply 在本测试环境里根本跑不通」——
-         * 而那会让这道闸看起来一直有效，其实从没被触发过。
-         */
-        String other = userProvision.ensureUserByPhone(phone(10));
-        String byOthers = opsService.createApplyOnBehalf(full(other, "他人填的店"), "OPS-BD-9");
-        opsService.auditApply(byOthers, true, null, "COMMUNITY", List.of("CMT-OB-1"), null);
+    @Test
+    void onBehalfDoesNotReusePendingEntity() {
+        String owner = userProvision.ensureUserByPhone(phone(21));
+        String existing = merchantAdmin.quickStart(new MerchantAdminPort.QuickStartCommand(
+                owner, "Original shell", "Original address")).entityNo();
+        String applyNo = opsService.createApplyOnBehalf(full(owner, "Independent entity"), "OPS_TEST");
+        assertThat(jdbc.queryForObject("select entity_no from mch_entity_apply where apply_no = ?", String.class, applyNo)).isNull();
+        opsController.auditApply(applyNo, new OpsPlatformController.AuditReq(true, null,
+                "COMMUNITY", List.of("CMT-OB-1"), null));
+        String created = jdbc.queryForObject("select entity_no from mch_entity_apply where apply_no = ?", String.class, applyNo);
+        assertThat(created).isNotEqualTo(existing).isNotBlank();
+        assertThat(jdbc.queryForObject("select name from mch_entity where entity_no = ?", String.class, existing)).isEqualTo("Original shell");
+        assertThat(jdbc.queryForObject("select status from mch_entity where entity_no = ?", String.class, existing)).isEqualTo("PENDING_LICENSE");
+    }
+
+    @Test
+    void rejectedLegacyAssociationCanBeRefiledIndependently() {
+        String owner = userProvision.ensureUserByPhone(phone(22));
+        String existing = merchantAdmin.quickStart(new MerchantAdminPort.QuickStartCommand(
+                owner, "Legacy shell", "Original address")).entityNo();
+        // Reproduce the historical auto-associated application through the legacy filing path.
+        String oldApply = opsService.createApply(full(owner, "Incorrect association"));
+        assertThat(jdbc.queryForObject("select entity_no from mch_entity_apply where apply_no = ?", String.class, oldApply)).isEqualTo(existing);
+        opsService.acceptApply(oldApply);
+        opsController.auditApply(oldApply, new OpsPlatformController.AuditReq(false,
+                "Incorrect association; refile independently", null, null, null));
+        String newApply = opsService.createApplyOnBehalf(full(owner, "Independent replacement"), "OPS_TEST");
+        assertThat(newApply).isNotEqualTo(oldApply);
+        assertThat(jdbc.queryForObject("select entity_no from mch_entity_apply where apply_no = ?", String.class, newApply)).isNull();
+        assertThat(applyRow(oldApply).get("status")).isEqualTo("REJECTED");
+        assertThat(jdbc.queryForObject("select status from mch_entity where entity_no = ?", String.class, existing)).isEqualTo("PENDING_LICENSE");
     }
 
     @Test
