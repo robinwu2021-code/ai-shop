@@ -38,7 +38,7 @@ try{var l=JSON.parse(localStorage.getItem('shop-ops-locale')||'{}');var lo=(l&&l
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh" className={plex.variable} suppressHydrationWarning>
+    <html lang="zh-CN" className={plex.variable} suppressHydrationWarning>
       <head>
         {/* 中文字体：IBM Plex Sans SC（见上方注释说明为何不走 next/font）*/}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

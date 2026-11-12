@@ -54,7 +54,15 @@ export const zh = {
     lockedDesc: "「{feature}」将于 {phase} 开放，系统当前处于 {current}。",
     backHome: "返回工作台",
   },
-  login: { password: "密码",
+  login: {
+    emailCode: "邮箱验证码",
+    codeSent: "请输入发送至 {email} 的 6 位验证码。",
+    verifyCode: "验证并登录",
+    restart: "返回账号密码登录",
+    sessionRetry: "暂时无法核验共享登录状态。你的会话已保留，请检查网络后重试。",
+    retrySession: "重新核验",
+    otherAccount: "使用其他账号登录",
+ paymentSource: "登录后返回支付运营端。", password: "密码",
     subtitle: "社区电商平台 · 运营管理后台",
     username: "用户名",
     submit: "登录",
@@ -70,7 +78,6 @@ export const zh = {
     resetSubmit: "设置新密码",
     resetDone: "密码已重置，其它设备已退出登录",
     codeTitle: "邮箱验证码",
-    codeSent: "验证码已发到 {to}，5 分钟内有效。",
     codeSubmit: "验证并登录",
     codeBack: "换个账号",
   },
@@ -115,6 +122,7 @@ export const zh = {
     unconfirmDesc: "恢复后该{entity}重新出现在默认列表，可正常编辑与使用。",
   },
   nav: {
+    paymentOps: "支付运营",
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "待建",
     notImplementedHint: "后端尚未实现，暂时点不动",

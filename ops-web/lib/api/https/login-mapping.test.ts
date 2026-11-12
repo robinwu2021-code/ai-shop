@@ -14,7 +14,7 @@ vi.mock("../http-client", () => ({
 }));
 
 import { client } from "../http-client";
-import { dashboardHttp } from "./dashboard";
+import { dashboardHttp, verifyLoginChallenge } from "./dashboard";
 
 const post = client.post as unknown as ReturnType<typeof vi.fn>;
 
@@ -94,5 +94,18 @@ describe("运营登录：后端响应 → ops-web 的 LoginResp", () => {
     expect(r.role).toBe("MERCHANT_BD");
     expect(r.challenge).toBeUndefined();
   });
+  it("preserves the email challenge without creating a session", async () => {
+    post.mockResolvedValue({ token: null, staff: null, challenge: "C1", challengeTo: "o***@example.test" });
+    const response = await dashboardHttp.login("finance", "password");
+    expect(response).toMatchObject({ token: "", challenge: "C1", challengeTo: "o***@example.test", perms: [] });
+  });
+  it("verifies a six-digit code through the dedicated endpoint and maps the final identity", async () => {
+    post.mockResolvedValue(backendResponse(["FINANCE"]));
+    const response = await verifyLoginChallenge("C1", "123456");
+    expect(post).toHaveBeenCalledWith("/ops/auth/login/verify", { challenge: "C1", code: "123456" });
+    expect(response).toMatchObject({ role: "FINANCE", token: "otk_test", username: "bd" });
+    await expect(verifyLoginChallenge("C1", "123")).rejects.toThrow();
+  });
+
 });
 
