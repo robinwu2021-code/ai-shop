@@ -48,6 +48,17 @@ public interface PaySourceLinkApi {
     @GetExchange("/internal/pay/v2/source-links/status")
     Status status(@RequestParam("sourceScope") String sourceScope,
                   @RequestParam("sourceEntityRef") String sourceEntityRef);
+
+    record Onboarding(String onboardingNo, String payChannel, String status, String reviewStatus,
+                      String submitOutcome, String resultCode, String handoffStatus, String ezpayBindingStatus,
+                      String reason, Long updatedAt) {}
+
+    record OnboardingProgress(String status, String merchantRef, String linkStatus, String profileStatus,
+                              String reviewReason, List<Onboarding> onboardings) {}
+
+    @GetExchange("/internal/pay/v2/source-links/onboardings")
+    OnboardingProgress onboardings(@RequestParam("sourceScope") String sourceScope,
+                                  @RequestParam("sourceEntityRef") String sourceEntityRef);
     record StoreClaimCommand(String requestNo, String requestHash, String sourceScope,
             String sourceEntityRef, String targetEntityRef, String storeRef, String storeNo, long expectedRevision, boolean retireSource) {
         public StoreClaimCommand(String requestNo, String requestHash, String sourceScope,

@@ -54,7 +54,7 @@ class OpsPayServiceControllerTest {
         assertThat(result.linkStatus()).isEqualTo("VERIFIED");
         assertThat(result.profileStatus()).isEqualTo("NEED_MORE");
         assertThat(result.merchantOpsUrl()).isEqualTo("https://pay.example/ops/merchants?keyword=PM+%2F%3F%26");
-        assertThat(result.onboardingOpsUrl()).isEqualTo("https://pay.example/ops/merchants/onboarding-review");
+        assertThat(result.onboardingOpsUrl()).isEqualTo("https://pay.example/ops/merchants/onboarding-review?tab=fiat&keyword=PM+%2F%3F%26");
         verify(api).status("UME", "M1");
     }
 

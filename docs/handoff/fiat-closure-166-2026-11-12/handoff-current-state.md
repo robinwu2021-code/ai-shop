@@ -95,3 +95,18 @@
 4. 支付负责人修 2 条已知失败后从 `known-failures.txt` 删除。
 5. 清理 166 旧容器与旧 env 备份（含已作废的 UME1）。
 6. `codex/food-next01`、`fix/food-p0-schema-scope` 的 V657/V659/V660 合入主开发分支前改号。
+
+## 十、NearPay进件看板接入增量（2026-11-12，本地已验证，未部署）
+
+用户确定进件对接为优先任务后，已补齐：
+
+- NearPay `GET /internal/pay/v2/source-links/onboardings`：服务器tenant和登记caller决定来源，scope/entity精确定位支付商户，脱敏返回来源/资料审核及真实渠道进件历史。
+- ai-shop `GET /ops/payment-onboardings`：沿`merchant:admission:read`及原主体治理数据域先筛可见主体，再查询NearPay。按主体分页（最多20条），关键词为主体号/名称；接口故障明确显示失败。
+- OPS现有进件看板改接新接口；来源审核、平台审核、渠道状态、结果码、账户候选交接、ezPay关联各自展示。刷新只读取NearPay已存事实；渠道写动作仍在NearPay。旧接口供已有客户端保留，不再作为该看板数据源。
+- 支付服务与看板的公开跳转使用`/merchants/onboarding-review?tab=fiat&keyword=<支付商户号>`。NearPay实际读取的是`keyword`，不能误用`merchantNo`导致打开全量列表。
+
+验证：ai-shop13项、NearPay10项、OPS相关17项及文案70项通过；两侧类型检查及变更lint通过。受限财务角色的真实Spring测试已证明只查M0001，关键词M0002不能越域；目的页参数消费回归1项通过。详见原TDD§9。
+
+本批未部署，前述166线上版本与历史验收不代表新看板已上线。先发布NearPay只读API，再发布ai-shop服务端及OPS页面，随后用现有受限角色执行线上只读联调；不要用临时超管掩盖权限配置缺口。真实蓝新新增商店仍须完整真实材料及合法未使用MID，未在本批执行。
+
+静态守卫仍有基线问题：四个系统维护端点的权限细化登记缺失、四张C1保护表的H2结构缺失；本批未修改相关业务或扩大欠账登记。

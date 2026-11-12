@@ -9,9 +9,9 @@ import ai.neargo.shop.merchant.paysync.StoreSyncProperties;
 import ai.neargo.shop.payclient.PayServiceApplyRequests;
 import ai.neargo.shop.payclient.PayServiceApplicationService;
 import ai.neargo.shop.payclient.PaySourceLinkApi;
+import ai.neargo.shop.payclient.PayOpsLinks;
 import ai.neargo.svc.client.ServiceCallException;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.ObjectProvider;
@@ -49,7 +49,7 @@ public class OpsPayServiceController {
         this.props = props;
         this.sourceLinks = sourceLinks;
         this.applications = applications;
-        this.opsBase = trustedOpsBase(opsBase);
+        this.opsBase = PayOpsLinks.trustedBase(opsBase);
     }
 
     /** 来源/资料状态不代表账户、产品、凭据和门店路由已就绪。 */
@@ -72,18 +72,7 @@ public class OpsPayServiceController {
         String merchantUrl = opsBase.isEmpty() || status.merchantRef() == null ? null
                 : opsBase + "/merchants?keyword=" + URLEncoder.encode(status.merchantRef(), StandardCharsets.UTF_8);
         return new Status(status.status(), status.merchantRef(), status.linkStatus(), status.profileStatus(),
-                status.reviewReason(), merchantUrl, opsBase.isEmpty() ? null : opsBase + "/merchants/onboarding-review");
-    }
-
-    private static String trustedOpsBase(String configured) {
-        if (configured == null || configured.isBlank()) return "";
-        URI uri = URI.create(configured.trim());
-        boolean local = "http".equals(uri.getScheme()) && uri.getHost() != null
-                && java.util.Set.of("localhost", "127.0.0.1", "[::1]").contains(uri.getHost());
-        if ((!"https".equals(uri.getScheme()) && !local) || uri.getHost() == null
-                || uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null)
-            throw new IllegalArgumentException("shop.pay.ops-public-base-url requires a trusted HTTPS base URL");
-        return uri.toASCIIString().replaceAll("/+$", "");
+                status.reviewReason(), merchantUrl, PayOpsLinks.onboarding(opsBase, status.merchantRef()));
     }
 
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_PAY_APPLY + "')")

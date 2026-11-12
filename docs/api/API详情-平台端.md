@@ -9179,7 +9179,7 @@ onBehalfStoreIndustries
 
 #### GET `/ops/onboarding`
 
-进件看板
+旧进件列表接口，保留给现有调用者
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -9208,6 +9208,26 @@ _无字段_
 **出参**（`data`）
 
 类型：`object`
+
+
+#### GET `/ops/payment-onboardings`
+
+按可见主体分页读取 NearPay 已存进件事实，不向通道回查
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`PayServiceOnboardingRow`](#payserviceonboardingrow)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/plan-defs`
@@ -17626,6 +17646,37 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 | `applyStatus` | `string,null` | 否 | 进件状态；未 ACTIVE 时额度设了也不生效 |
 | `limitMinor` | `number` | 是 | 上限（分）；**0 = 未设置，不拦**，不是「额度为零」 |
 | `usedMinor` | `number` | 是 | 已用（分）。支付累加出来的事实，运营改不了 |
+
+### PayServiceOnboardingChannel
+
+独立支付进件只读事实；各审核/渠道阶段独立，不代表可收款。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `onboardingNo` | `string` | 是 | NearPay渠道进件单号 |
+| `payChannel` | `string` | 是 | 支付渠道编码 |
+| `status` | `string,null` | 是 | 渠道进件状态；独立于平台审核 |
+| `reviewStatus` | `string,null` | 是 | 平台进件审核状态 |
+| `submitOutcome` | `string,null` | 是 | 原渠道请求受理结果，UNKNOWN须恢复原单 |
+| `resultCode` | `string,null` | 是 | 渠道原始结果码；无回执时为空 |
+| `handoffStatus` | `string,null` | 是 | 渠道账户候选交接状态 |
+| `ezpayBindingStatus` | `string,null` | 是 | ezPay关联事实，不代表所有产品就绪 |
+| `reason` | `string,null` | 是 | 当前渠道阻塞或审核补件/拒绝原因 |
+| `updatedAt` | `number,null` | 是 | 最近更新时间，UTC毫秒 |
+
+### PayServiceOnboardingRow
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | ai-shop来源主体号 |
+| `entityName` | `string` | 是 | 来源主体名称 |
+| `status` | `string` | 是 | 来源申请审核结果，不代表渠道或收款就绪 |
+| `merchantRef` | `string,null` | 是 | NearPay支付平台商户号 |
+| `linkStatus` | `string,null` | 是 | 来源关联核验状态 |
+| `profileStatus` | `string,null` | 是 | 来源资料审批状态 |
+| `reviewReason` | `string,null` | 是 | 来源资料补件或拒绝原因 |
+| `onboardings` | [`PayServiceOnboardingChannel`](#payserviceonboardingchannel)\[\] | 是 | 该支付商户的真实渠道进件历史，含取消记录 |
+| `onboardingOpsUrl` | `string,null` | 是 | 可信支付运营端地址，携带精确支付商户过滤 |
 
 ### Payout
 

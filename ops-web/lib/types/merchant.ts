@@ -894,3 +894,48 @@ export type MerchantNudgeReason = Exclude<MerchantChainStuck, "IN_AUDIT">;
 /** 运行时也要能判：类型只在编译期拦得住，按钮是不是该出现是运行时的事 */
 export const NUDGEABLE: readonly MerchantNudgeReason[] =
   ["NO_GOODS", "NOT_ON_SALE", "NO_ACCOUNT", "NO_INBOUND", "STALE_LEDGER"] as const;
+
+/** 独立支付进件只读事实；各审核/渠道阶段独立，不代表可收款。 */
+export interface PayServiceOnboardingChannel {
+  /** NearPay渠道进件单号 */
+  onboardingNo: string;
+  /** 支付渠道编码 */
+  payChannel: string;
+  /** 渠道进件状态；独立于平台审核 */
+  status: string | null;
+  /** 平台进件审核状态 */
+  reviewStatus: string | null;
+  /** 原渠道请求受理结果，UNKNOWN须恢复原单 */
+  submitOutcome: string | null;
+  /** 渠道原始结果码；无回执时为空 */
+  resultCode: string | null;
+  /** 渠道账户候选交接状态 */
+  handoffStatus: string | null;
+  /** ezPay关联事实，不代表所有产品就绪 */
+  ezpayBindingStatus: string | null;
+  /** 当前渠道阻塞或审核补件/拒绝原因 */
+  reason: string | null;
+  /** 最近更新时间，UTC毫秒 */
+  updatedAt: number | null;
+}
+
+export interface PayServiceOnboardingRow {
+  /** ai-shop来源主体号 */
+  entityNo: string;
+  /** 来源主体名称 */
+  entityName: string;
+  /** 来源申请审核结果，不代表渠道或收款就绪 */
+  status: string;
+  /** NearPay支付平台商户号 */
+  merchantRef: string | null;
+  /** 来源关联核验状态 */
+  linkStatus: string | null;
+  /** 来源资料审批状态 */
+  profileStatus: string | null;
+  /** 来源资料补件或拒绝原因 */
+  reviewReason: string | null;
+  /** 该支付商户的真实渠道进件历史，含取消记录 */
+  onboardings: PayServiceOnboardingChannel[];
+  /** 可信支付运营端地址，携带精确支付商户过滤 */
+  onboardingOpsUrl: string | null;
+}

@@ -1255,6 +1255,121 @@ components:
         - "NO_INBOUND"
         - "STALE_LEDGER"
       description: "卡点。**取第一个断掉的环** —— 后面几列的 0 是它的后果，不是几个独立问题"
+    PayServiceOnboardingChannel:
+      type: "object"
+      properties:
+        onboardingNo:
+          type: "string"
+          description: "NearPay渠道进件单号"
+        payChannel:
+          type: "string"
+          description: "支付渠道编码"
+        status:
+          type:
+            - "string"
+            - "null"
+          description: "渠道进件状态；独立于平台审核"
+        reviewStatus:
+          type:
+            - "string"
+            - "null"
+          description: "平台进件审核状态"
+        submitOutcome:
+          type:
+            - "string"
+            - "null"
+          description: "原渠道请求受理结果，UNKNOWN须恢复原单"
+        resultCode:
+          type:
+            - "string"
+            - "null"
+          description: "渠道原始结果码；无回执时为空"
+        handoffStatus:
+          type:
+            - "string"
+            - "null"
+          description: "渠道账户候选交接状态"
+        ezpayBindingStatus:
+          type:
+            - "string"
+            - "null"
+          description: "ezPay关联事实，不代表所有产品就绪"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "当前渠道阻塞或审核补件/拒绝原因"
+        updatedAt:
+          type:
+            - "number"
+            - "null"
+          description: "最近更新时间，UTC毫秒"
+      required:
+        - "onboardingNo"
+        - "payChannel"
+        - "status"
+        - "reviewStatus"
+        - "submitOutcome"
+        - "resultCode"
+        - "handoffStatus"
+        - "ezpayBindingStatus"
+        - "reason"
+        - "updatedAt"
+      additionalProperties: false
+      description: "独立支付进件只读事实；各审核/渠道阶段独立，不代表可收款。"
+    PayServiceOnboardingRow:
+      type: "object"
+      properties:
+        entityNo:
+          type: "string"
+          description: "ai-shop来源主体号"
+        entityName:
+          type: "string"
+          description: "来源主体名称"
+        status:
+          type: "string"
+          description: "来源申请审核结果，不代表渠道或收款就绪"
+        merchantRef:
+          type:
+            - "string"
+            - "null"
+          description: "NearPay支付平台商户号"
+        linkStatus:
+          type:
+            - "string"
+            - "null"
+          description: "来源关联核验状态"
+        profileStatus:
+          type:
+            - "string"
+            - "null"
+          description: "来源资料审批状态"
+        reviewReason:
+          type:
+            - "string"
+            - "null"
+          description: "来源资料补件或拒绝原因"
+        onboardings:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PayServiceOnboardingChannel"
+          description: "该支付商户的真实渠道进件历史，含取消记录"
+        onboardingOpsUrl:
+          type:
+            - "string"
+            - "null"
+          description: "可信支付运营端地址，携带精确支付商户过滤"
+      required:
+        - "entityNo"
+        - "entityName"
+        - "status"
+        - "merchantRef"
+        - "linkStatus"
+        - "profileStatus"
+        - "reviewReason"
+        - "onboardings"
+        - "onboardingOpsUrl"
+      additionalProperties: false
     FulfillmentType:
       type: "string"
       enum:
@@ -29645,10 +29760,52 @@ paths:
           schema:
             type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payment-onboardings":
+    get:
+      operationId: "nearPayOnboardingBoard"
+      summary: "按可见主体分页读取 NearPay 已存进件事实，不向通道回查"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          "$ref": "#/components/schemas/PayServiceOnboardingRow"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/onboarding":
     get:
       operationId: "onboardingBoard"
-      summary: "进件看板"
+      summary: "旧进件列表接口，保留给现有调用者"
       tags:
         - "merchant"
       responses:

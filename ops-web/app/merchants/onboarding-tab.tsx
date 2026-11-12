@@ -1,189 +1,81 @@
 "use client";
 
-// 进件看板（WS-C）—— **只读 + 一个人工回查**。
-//
-// 它补的是「审核过了但收不了钱」的盲区：入驻审核与收款进件是两条链 ——
-// 审核通过 = 能上架卖货，进件通过 = 能收钱。审核过的商家货照上、单照来，
-// 进件没走完就是钱收不到，而运营端此前没有一个跨商家的地方能看见这件事。
-//
-// **不碰通道**：看板只读后端的进件记录，回查转调后端已有的 refresh
-// （真实进件通道属支付方案，接通与否本页都能用 —— stub 下照样显示状态）。
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { notify } from "@/lib/notify";
+import type { PayServiceOnboardingChannel, PayServiceOnboardingRow } from "@/lib/api/contracts/merchant";
+import { useAuth, scopeOf } from "@/lib/auth";
 import { useCan } from "@/lib/use-can";
 import { fmtTime } from "@/lib/utils";
-import { fill } from "@/lib/use-copy";
-import type { OnboardingRow, OnboardingStatus } from "@/lib/types";
 import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
-import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
 import type { MerchantsCopy } from "./copy";
 
-const TONES: Record<OnboardingStatus, "muted" | "warning" | "success" | "danger"> = {
-  NONE: "muted",
-  APPLYING: "warning",
-  ACTIVE: "success",
-  REJECTED: "danger",
-  FROZEN: "muted",
-};
-
-/** 停留时长：越久越该有人去问。null = 还没提交（占位记录） */
-function stayLabel(c: MerchantsCopy, ageMs: number | null): string {
-  if (ageMs == null) return c.obStayNotSubmitted;
-  const days = Math.floor(ageMs / 86_400_000);
-  if (days >= 1) return fill(c.obStayDays, { n: days });
-  return fill(c.obStayHours, { n: Math.floor(ageMs / 3_600_000) });
+function statusLabel(value: string | null, labels: Record<string, string>) {
+  return value == null ? "—" : labels[value] ?? value;
 }
 
-export function OnboardingTab({ c }: { c: MerchantsCopy }) {
-  const qc = useQueryClient();
-  const allow = useCan();
-  const canRefresh = allow("merchant:admission:update");
+function sourceLabels(c: MerchantsCopy) {
+  return { NONE: c.obStateNone, PENDING: c.obStatePending, NEED_MORE: c.obStateNeedMore,
+    REJECTED: c.obStateRejected, APPROVED: c.obStateApproved };
+}
 
-  const statusMap: StatusMap<OnboardingStatus> = {
-    NONE: { label: c.obStNONE, tone: TONES.NONE },
-    APPLYING: { label: c.obStAPPLYING, tone: TONES.APPLYING },
-    ACTIVE: { label: c.obStACTIVE, tone: TONES.ACTIVE },
-    REJECTED: { label: c.obStREJECTED, tone: TONES.REJECTED },
-    FROZEN: { label: c.obStFROZEN, tone: TONES.FROZEN },
-  };
-  const channelLabel = (ch: string): string =>
-    ch === "WECHAT" ? c.obChannelWECHAT : ch === "ALIPAY" ? c.obChannelALIPAY : ch;
-
-  const [keyword, setKeyword] = useState("");
-  const [status, setStatus] = useState("");
-  const [payChannel, setPayChannel] = useState("");
-  const { page, setPage, size, setSize } = usePaging();
-
-  const q = { keyword, status, payChannel, page, size };
-  const list = useQuery({ queryKey: ["onboarding", q], queryFn: () => api.onboardingBoard(q) });
-
-  const refresh = useMutation({
-    mutationFn: (r: OnboardingRow) =>
-      api.refreshOnboarding({ merchantNo: r.merchantNo, payChannel: r.payChannel, storeNo: r.storeNo }),
-    // 回查落库后重取看板 —— 通道那边若已批，这一下状态就翻成「已开通」
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["onboarding"] });
-      /*
-       * ★ 从没提交过的占位行，后端根本没去问通道，状态一定不动。
-       * 这时报「已回查」是骗人的：运营会一直等通道，而球在商家脚下。
-       */
-      if (r.submitted) { notify.success(c.obToastRefreshed); } else { notify.info(c.obToastNotSubmitted); }
-    },
-  });
-
-  const columns: Column<OnboardingRow>[] = [
-    {
-      header: c.obColMerchant,
-      cell: (r) => (
-        <div>
-          <div>{r.merchantName}</div>
-          <div className="txt-caption tabular-nums text-muted-foreground">{r.merchantNo}</div>
-        </div>
-      ),
-    },
-    { header: c.obColChannel, cell: (r) => channelLabel(r.payChannel) },
-    { header: c.obColStatus, cell: (r) => <StatusBadge value={r.applyStatus} map={statusMap} /> },
-    {
-      // 一眼看出「卡在哪」：被拒给原因，没被拒但收不了钱给「收款号未生成」
-      header: c.obColBlocker,
-      cell: (r) =>
-        r.rejectReason ? (
-          <span className="text-[var(--danger)]">{r.rejectReason}</span>
-        ) : r.canReceiveMoney ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <span className="text-[var(--warning)]">{c.obBlockerNoPayNo}</span>
-        ),
-    },
-    {
-      header: c.obColPayNo,
-      cell: (r) =>
-        r.payMerchantNo ? (
-          <span className="tabular-nums">{r.payMerchantNo}</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-    },
-    { header: c.obColStay, cell: (r) => stayLabel(c, r.ageMs) },
-    { header: c.obColAppliedAt, cell: (r) => (r.appliedAt ? fmtTime(r.appliedAt) : "—") },
-    {
-      header: c.obColActions,
-      cell: (r) =>
-        // 已开通的没什么可回查；未开通的才给按钮，且要 admission:update 权限
-        canRefresh && r.applyStatus !== "ACTIVE" ? (
-          <Button
-            size="sm"
-            variant="outline"
-            /*
-             * ★ 没提交过就没得回查（后端不会去问通道一个不存在的单号）。
-             * 点之前就说清楚，比点完弹一句提示好 —— 那时人已经在等状态变了。
-             * `appliedAt` 与后端的 `submitted` 同源：发出去过才有提交时间。
-             */
-            disabled={refresh.isPending || !r.appliedAt}
-            title={!r.appliedAt ? c.obNotSubmittedHint : undefined}
-            onClick={() => refresh.mutate(r)}
-          >
-            {c.obActionRefresh}
-          </Button>
-        ) : null,
-    },
+function ChannelFacts({ row, c }: { row: PayServiceOnboardingChannel; c: MerchantsCopy }) {
+  const channelLabels = { DRAFT: c.obStateDraft, SUBMITTED: c.obStateSubmitted,
+    CHANNEL_REVIEW: c.obStateChannelReview, NEED_SIGN: c.obStateNeedSign,
+    APPROVED: c.obStateApproved, REJECTED: c.obStateRejected,
+    CANCELLED: c.obStateCancelled, SUPERSEDED: c.obStateSuperseded };
+  const handoffLabels = { PENDING: c.obStateHandoffPending, ACCEPTED: c.obStateAccepted,
+    KEY_RECEIPT_MISSING: c.obStateKeyReceiptMissing };
+  const bindingLabels = { NOT_REQUIRED: c.obStateNotRequired, PENDING: c.obStateBindingPending,
+    BOUND: c.obStateBound, FAILED: c.obStateFailed };
+  const facts = [
+    [c.obOnboardingNo, row.onboardingNo], [c.obColChannel, row.payChannel],
+    [c.obColStatus, statusLabel(row.status, channelLabels)], [c.obReviewStatus, statusLabel(row.reviewStatus, sourceLabels(c))],
+    [c.obSubmitOutcome, statusLabel(row.submitOutcome, { ACCEPTED: c.obStateAccepted })], [c.obResultCode, row.resultCode],
+    [c.obHandoffStatus, statusLabel(row.handoffStatus, handoffLabels)], [c.obBindingStatus, statusLabel(row.ezpayBindingStatus, bindingLabels)],
+    [c.obColBlocker, row.reason], [c.obUpdatedAt, row.updatedAt == null ? null : fmtTime(row.updatedAt)],
   ];
+  return <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-b py-2 last:border-0">
+    {facts.map(([label, value]) => <div key={label} className="contents">
+      <dt className="txt-caption text-muted-foreground">{label}</dt>
+      <dd className="break-words">{value ?? "—"}</dd>
+    </div>)}
+  </dl>;
+}
 
-  return (
-    <>
-      <HelpNote className="mb-3">{c.obNotice}</HelpNote>
-
-      <Toolbar
-        search={keyword}
-        onSearch={(v) => { setKeyword(v); setPage(1); }}
-        searchPlaceholder={c.obSearchPh}
-      >
-        <FilterSelect
-          value={status}
-          onChange={(v) => { setStatus(v); setPage(1); }}
-          options={[
-            { value: "", label: c.obFilterAllStatus },
-            { value: "APPLYING", label: c.obStAPPLYING },
-            { value: "REJECTED", label: c.obStREJECTED },
-            { value: "ACTIVE", label: c.obStACTIVE },
-            { value: "APPLYING,REJECTED", label: c.obFilterTodo },
-          ]}
-        />
-        <FilterSelect
-          value={payChannel}
-          onChange={(v) => { setPayChannel(v); setPage(1); }}
-          options={[
-            { value: "", label: c.obFilterAllChannel },
-            { value: "WECHAT", label: c.obChannelWECHAT },
-            { value: "ALIPAY", label: c.obChannelALIPAY },
-          ]}
-        />
-      </Toolbar>
-
-      <DataTable
-        columns={columns}
-        rows={list.data?.records ?? []}
-        loading={list.isPending}
-        rowKey={(r) => `${r.merchantNo}:${r.payChannel}:${r.storeNo}`}
-        empty={c.obEmpty}
-        error={list.error}
-        onRetry={() => list.refetch()}
-      />
-      <Pagination
-        page={page}
-        size={size}
-        total={list.data?.total ?? 0}
-        onPage={setPage}
-        onSize={(v) => { setSize(v); setPage(1); }}
-      />
-    </>
-  );
+/** 仅展示 NearPay 已存事实；所有提交、通道回查和复核操作留在 NearPay。 */
+export function OnboardingTab({ c }: { c: MerchantsCopy }) {
+  const allow = useCan();
+  const canRead = allow("merchant:admission:read");
+  const auth = useAuth();
+  const [keyword, setKeyword] = useState("");
+  const { page, setPage, size } = usePaging(20);
+  const q = { keyword, page, size };
+  const list = useQuery({
+    queryKey: ["near-pay-onboarding", auth.username, auth.token, scopeOf(auth), q],
+    queryFn: () => api.nearPayOnboardingBoard(q),
+    enabled: canRead,
+  });
+  const columns: Column<PayServiceOnboardingRow>[] = [
+    { header: c.obColMerchant, cell: (r) => <div><div>{r.entityName}</div><div className="txt-caption tabular-nums text-muted-foreground">{r.entityNo}</div></div> },
+    { header: c.obSourceStatus, cell: (r) => <dl className="space-y-1">
+      {[[c.obSourceStatus, statusLabel(r.status, sourceLabels(c))], [c.obMerchantRef, r.merchantRef], [c.obLinkStatus, statusLabel(r.linkStatus, { VERIFIED: c.obStateVerified, VERIFY_PENDING: c.obStateVerifyPending, MISMATCH: c.obStateMismatch })], [c.obProfileStatus, statusLabel(r.profileStatus, sourceLabels(c))], [c.obProfileReason, r.reviewReason]].map(([label, value]) => <div key={label}><dt className="txt-caption text-muted-foreground">{label}</dt><dd>{value ?? "—"}</dd></div>)}
+    </dl> },
+    { header: c.obChannelFacts, cell: (r) => r.onboardings.length ? <div>{r.onboardings.map((row) => <ChannelFacts key={row.onboardingNo} row={row} c={c} />)}</div> : <span className="text-muted-foreground">{c.obNoApplication}</span> },
+    { header: c.obColActions, cell: (r) => r.onboardingOpsUrl ? <a className="text-primary underline focus-ring" href={r.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.obOpenNearPay}</a> : null },
+  ];
+  if (!canRead) return null;
+  return <>
+    <HelpNote className="mb-3">{c.obNotice}</HelpNote>
+    <Toolbar search={keyword} onSearch={(value) => { setKeyword(value); setPage(1); }} searchPlaceholder={c.obSearchPh}>
+      <Button variant="outline" disabled={list.isFetching} onClick={() => list.refetch()}>{c.obReload}</Button>
+    </Toolbar>
+    <DataTable columns={columns} rows={list.data?.records} loading={list.isPending} rowKey={(r) => r.entityNo} empty={c.obEmpty} error={list.error} onRetry={() => list.refetch()} />
+    <Pagination page={page} size={size} total={list.data?.total ?? 0} onPage={setPage} />
+  </>;
 }

@@ -85,3 +85,39 @@ near-pay 的平台商户由来源系统「申请支付服务」时建立：`POST
 接口形状未改后端；OpenAPI B 端投影、API 详情和索引及相关派生矩阵从现有生成器同步。定向 Vitest 15 条与 `vue-tsc --noEmit` 通过。
 
 2026-11-11 本批补件与运营回查回归：`PayServiceApplicationServiceTest` 覆盖真实锁、原文重放、actor/主体/资料漂移与 A→B→A；`PayServiceApplicationNativeMysqlTest` 验证 V660 的 MySQL 9 语义；`OpsPayServiceControllerTest` 覆盖状态权限、来源域、可信跳转及缺少 requestNo 的 HTTP 400；`ops-web/lib/pay-service-block.test.ts` 挂载真实表单验证回查、失败重试原键和切主体后的过期响应。执行结果以本次发布验证记录为准，不将资料 APPROVED 记录为收款开通完成。
+
+## §9 NearPay渠道进件事实接入（2026-11-12）
+
+用户确认按当前分析建议实施。沿用已部署来源申请，不另建渠道进件写链路。
+
+### §0 需求对账
+
+| AC | 实现落点与验收 |
+|---|---|
+| N1 | NearPay新增内部只读source-links/onboardings，按服务器tenant、调用方来源系统、scope、主体解析支付商户；返回来源/资料审批与脱敏进件单；跨来源/租户、未授权调用不得读取 |
+| N2 | ai-shop新增GET /ops/payment-onboardings，复用merchant:admission:read及MerchantGovernService.list数据域；按主体分页，keyword为主体号/名称；分页内查询NearPay事实，故障显式报依赖不可用，不伪造NONE |
+| N3 | 运营进件看板改读新接口，分列来源资料与渠道/平台审核/交接状态，显示渠道结果码及补件原因；刷新仅读取NearPay，不派发、不回查渠道、不从APPROVED推导可收款 |
+| N4 | 可信支付运营链接携带tab=fiat和keyword（支付商户号）精确定位；缺少配置或未关联不生成泛化入口 |
+
+### §1 / §2 契约与执行计划
+
+1. NearPay SourceOnboardingProgress复用PlatmchStore、SourceApplicationStatus、OnboardingApplicationService；InternalSourceLinkController复用内部令牌与调用方映射。不返回MID、银行、证照、签约链接或秘密。渠道行字段为onboardingNo/payChannel/status/reviewStatus/submitOutcome/resultCode/handoffStatus/ezpayBindingStatus/reason/updatedAt。保留取消历史，不将资料已批包装为渠道已批。
+2. ai-shop PayServiceOnboardingQueryService复用现有来源HTTP客户端和主体治理读取，先完成可见主体查询再请求独立PAY；返回{records,total,page,size}，每行entityNo/entityName与NearPay事实及定位链接。页大小框架限制1..20；不在主体分页后追加渠道状态过滤造成假总数。
+3. 运营现有OnboardingTab替换数据来源；保留旧接口供已有客户端，不双写旧mch_payment_merchant；错误与空状态分开，权限和身份变化隔离旧查询。
+4. 本批仅查询，无持久副作用，不新增幂等记录或事务；既有写操作身份/事务/原件恢复不变，幂等规范沿用户指定正文。真实送件仍需资料与合法MID前置，本批不使用测试资料派发。
+
+### §5 验证计划
+
+NearPay：来源隔离、未关联、渠道状态/原件结果码、认证边界。ai-shop：可见主体分页、来源scope、故障传播、带商户定位与MVC参数/权限。运营：真实HTTP映射、资料APPROVED+渠道待审、取消历史、错误重试、切换身份旧结果隔离。统一执行受影响测试与类型/契约检查；结果完成后补记，不重复运行不受影响全量业务。
+
+### §5 本批实际结果
+
+- ai-shop四个聚焦类共13项通过：真实HTTP客户端1、主体分页服务5、原支付状态控制器5、实际Spring运营权限/数据域2。链接参数修正后仅重跑受影响两类10项，全部通过，其余有效证据沿用。
+- NearPay SourceApplicationStatusTest 3、SourceOnboardingProgressTest 4、InternalSourceLinkControllerTest 3，共10项通过；去除重复来源归属查询后已复验。
+- OPS真实挂载看板9、HTTP映射1、支付服务块7，共17项通过；页面文案70项通过；两侧TypeScript及ai-shop变更文件ESLint通过。NearPay目的页消费keyword定位1项通过。
+- check-ops-contract与check-ops-orphan通过（既有8/13欠账未增长）。路径守卫6项通过；权限矩阵36项通过、1项仍报基线四个系统维护端点未映射，新端点已登记；数据域守卫9项通过、1项仍报基线四张C1占用表未进入H2 schema，相关源码/DDL未改。未将这些结果称为全量门禁通过，也未新增失败登记。
+- API OpenAPI（含明确行/渠道schema）、详情、索引、角色矩阵、后端分层与受影响界面规范已按原生成器更新。独立代码审查发现定位参数误用merchantNo，已按目的页实际接收的keyword修正，增加目的页渲染消费回归；未发现其他P1/P2。
+
+### §6 交付边界
+
+已完成查询契约、服务端聚合与运营页面；未部署本批增量、未执行UME166新接口联调、未派发真实蓝新或改变现有进件。上线顺序为NearPay服务端 → ai-shop服务端 → ai-shop运营Web；NearPay新接口未上线时看板明确显示依赖失败，不回退旧进件表。

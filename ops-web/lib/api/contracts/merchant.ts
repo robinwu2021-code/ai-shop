@@ -13,6 +13,7 @@ import type {
   PlanDef,
   PlanUpgradeSignal,
   OnboardingRow,
+  PayServiceOnboardingRow,
   AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow, MerchantNudgeReason, MerchantNudgeResult } from "@/lib/types";
 import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
@@ -44,6 +45,11 @@ export interface PayServiceStatus {
   merchantOpsUrl: string | null;
   onboardingOpsUrl: string | null;
 }
+
+/** NearPay 本地事实；来源/资料审核与通道状态彼此独立，不推导收款能力。 */
+export type { PayServiceOnboardingChannel, PayServiceOnboardingRow } from "@/lib/types/merchant";
+
+export type PayServiceOnboardingQ = { keyword?: string; page?: number; size?: number };
 
 export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"entityCashRefunds"|"requestEntityCashRefund"|"payoutEntityCashRefund"|"recoverEntityCashRefund">, EntityPlanPurchaseApi {
   onBehalfStoreIndustries(): Promise<import("@/lib/types").StoreIndustryChoice[]>;
@@ -266,10 +272,10 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
   // 没有一个跨商家的地方能看见。**不碰通道** —— 真实进件通道属支付方案，
   // 看板只读 mch_payment_merchant，回查转调后端已有的 refresh。
 
-  /**
-   * 进件看板。跨商家、跨通道，按状态/通道/关键词筛。
-   * @param q.status 逗号分隔多态；空 = 全部
-   */
+  /** 按可见主体分页读取 NearPay 已存进件事实，不向通道回查。 */
+  nearPayOnboardingBoard(q?: PayServiceOnboardingQ): Promise<Page<PayServiceOnboardingRow>>;
+
+  /** 旧进件列表接口，保留给现有调用者。status 支持逗号分隔多态。 */
   onboardingBoard(q?: OnboardingQ): Promise<Page<OnboardingRow>>;
 
   /**

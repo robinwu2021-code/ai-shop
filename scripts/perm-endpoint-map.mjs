@@ -201,6 +201,7 @@ export const RULES = [
   // 进件看板与人工回查：与准入同一拨人在管（都决定这家店能不能真把生意做成），
   // 复用 merchant:admission:*，不新增权限码
   ["GET", /^\/ops\/onboarding$/, "merchant:admission:read"],
+  ["GET", /^\/ops\/payment-onboardings$/, "merchant:admission:read"],
   ["POST", /^\/ops\/onboarding\/refresh$/, "merchant:admission:update"],
   // 店铺码印刷量登记：发码的与审店招的是同一拨 BD
   ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/print$/, "store:page:audit"],

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1201 个接口**：后端已实现 951（79%）· 前端在调 1033
+**合计 1202 个接口**：后端已实现 952（79%）· 前端在调 1034
 
 ---
 
@@ -1163,7 +1163,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **590** 个接口 ｜ 后端已实现 **448**（76%）｜ 前端在调 **424**
+共 **591** 个接口 ｜ 后端已实现 **449**（76%）｜ 前端在调 **425**
 
 ### aftersale（5）
 
@@ -1560,7 +1560,7 @@
 | POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
-### merchant（65）
+### merchant（66）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1621,8 +1621,9 @@
 | POST | `/ops/merchants/self-operated` | 建**平台自营商家**（跳过进件与审核） | — | `SelfOperatedResult` | — | ✅ | ✅ |
 | GET | `/ops/merchants/store-industries` | onBehalfStoreIndustries | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchants/violations` | 违规记录 | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/onboarding` | 进件看板 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/onboarding` | 旧进件列表接口，保留给现有调用者 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/onboarding/refresh` | 人工回查：替卡在进件上的商家去通道问一次结果并落库 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/payment-onboardings` | 按可见主体分页读取 NearPay 已存进件事实，不向通道回查 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/plan-defs` | 档位定义 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/plan-defs/{planCode}` | 改档位定义 | — | `PlanDef` | — | ✅ | ✅ |
 | POST | `/ops/qualifications/{qualNo}/revoke` | 撤销 | — | `Qualification` | — | ✅ | ✅ |

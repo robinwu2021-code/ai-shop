@@ -4,7 +4,7 @@ import * as db from "@/lib/mock/db";
 import { storeIndustries, marketPhonePolicies } from "@/lib/mock/db/system";
 import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
-import type { MerchantApi, PayServiceStatus } from "../contracts/merchant";
+import type { MerchantApi, PayServiceStatus, PayServiceOnboardingRow } from "../contracts/merchant";
 import type { LegalForm, MerchantChainRow } from "@/lib/types";
 
 /** 六个卡点各一行，末两行是通的 —— 全是卡点看不出对比，全是通的看不出这页为什么存在 */
@@ -514,7 +514,32 @@ export const merchantMock: MerchantApi = {
 
   getMerchant: async (merchantNo) => wait(find(merchantNo)),
 
-  // 进件看板（WS-C）：从商家派生只读行；status 支持逗号分隔多态，与后端同口径
+  // 显式只读样例：来源审核通过仍可能处于通道审核/交接中，不推导收款能力。
+  nearPayOnboardingBoard: (q = {}) => {
+    const rows: PayServiceOnboardingRow[] = db.merchants.map((merchant, index) => {
+      const state = index % 4;
+      const merchantRef = state === 0 ? null : `PM-${merchant.merchantNo}`;
+      return {
+        entityNo: merchant.merchantNo, entityName: merchant.name,
+        status: state === 0 ? "NONE" : "APPROVED", merchantRef,
+        linkStatus: merchantRef ? "VERIFIED" : null,
+        profileStatus: merchantRef ? "APPROVED" : null, reviewReason: null,
+        onboardings: state === 0 ? [] : [{
+          onboardingNo: `OB-${merchant.merchantNo}`, payChannel: "EZPAY",
+          status: state === 1 ? "CHANNEL_REVIEW" : state === 2 ? "CANCELLED" : "SUCCEEDED",
+          reviewStatus: "APPROVED", submitOutcome: "ACCEPTED",
+          resultCode: state === 1 ? "PENDING_REVIEW" : null,
+          handoffStatus: state === 3 ? "SUCCEEDED" : "WAITING",
+          ezpayBindingStatus: state === 3 ? "BOUND" : "UNBOUND",
+          reason: state === 2 ? "CANCELLED_BY_MERCHANT" : null, updatedAt: 1794384000000,
+        }],
+        // 开发样例没有真实 NearPay 地址，不提供伪造跳转。
+        onboardingOpsUrl: null,
+      };
+    });
+    return wait(db.paginate(rows, q.page, q.size, (r) => db.kwHit(q.keyword, r.entityNo, r.entityName)));
+  },
+  // 旧进件看板保留原筛选口径。
   onboardingBoard: (q = {}) =>
     wait(
       db.paginate(

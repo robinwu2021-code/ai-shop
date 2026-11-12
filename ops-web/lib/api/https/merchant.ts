@@ -74,6 +74,7 @@ export const merchantHttp: MerchantApi = {
   getMerchant: (merchantNo) => client.get(`/ops/merchants/${merchantNo}`),
 
   // 进件看板（WS-C）：只读 + 人工回查。不碰通道 —— 回查转调后端已有的 refresh。
+  nearPayOnboardingBoard: (q) => client.get("/ops/payment-onboardings", q),
   onboardingBoard: (q) => client.get("/ops/onboarding", q),
   refreshOnboarding: (v) => client.post("/ops/onboarding/refresh", v),
   setMerchantStatus: (merchantNo, status, remark, communityNos) =>
