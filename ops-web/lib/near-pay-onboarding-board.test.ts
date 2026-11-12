@@ -37,6 +37,16 @@ describe("NearPay onboarding board",()=>{
  it("isolates a late response after switching authenticated scope",async()=>{let resolve!:(v:unknown)=>void;calls.board.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));await mount();await act(async()=>useAuth.setState({merchantNo:"E2"}));await settle();await act(async()=>resolve({records:[{...row,entityName:"OLD SCOPE"}],total:1}));await settle();expect(host.textContent).not.toContain("OLD SCOPE");expect(calls.board).toHaveBeenCalledTimes(2);});
  it("isolates a late page response after returning to the previous entity page",async()=>{let resolve!:(v:unknown)=>void;calls.board.mockResolvedValueOnce({records:[row],total:41}).mockImplementationOnce(()=>new Promise(r=>{resolve=r;})).mockResolvedValueOnce({records:[{...row,entityName:"CURRENT PAGE ONE"}],total:41});await mount();await click("common.nextPage");await click("common.prevPage");expect(calls.board).toHaveBeenLastCalledWith({keyword:"",page:1,size:20});await act(async()=>resolve({records:[{...row,entityName:"LATE PAGE TWO"}],total:41}));await settle();expect(host.textContent).toContain("CURRENT PAGE ONE");expect(host.textContent).not.toContain("LATE PAGE TWO");});
 
+ it.each(["zh","en"] as const)("labels the live source PENDING and profile SUBMITTED states in %s",async(locale)=>{
+  const copy=MERCHANTS_COPY[locale];
+  calls.board.mockResolvedValue({records:[{...row,status:"PENDING",linkStatus:"PENDING",profileStatus:"SUBMITTED",onboardings:[]}],total:1});
+  await mount(copy);
+  expect(host.textContent).toContain(copy.obStateVerifyPending);
+  expect(host.textContent).toContain(copy.obStatePending);
+  expect(host.textContent).not.toContain("SUBMITTED");
+  expect(host.textContent).not.toContain("PENDING");
+ });
+
  it.each(["zh","en"] as const)("labels known states in %s while retaining unknown codes and result codes",async(locale)=>{
   const copy=MERCHANTS_COPY[locale];
   const source=["NONE","PENDING","NEED_MORE","REJECTED","APPROVED"];

@@ -20,7 +20,7 @@ function statusLabel(value: string | null, labels: Record<string, string>) {
 }
 
 function sourceLabels(c: MerchantsCopy) {
-  return { NONE: c.obStateNone, PENDING: c.obStatePending, NEED_MORE: c.obStateNeedMore,
+  return { NONE: c.obStateNone, PENDING: c.obStatePending, SUBMITTED: c.obStatePending, NEED_MORE: c.obStateNeedMore,
     REJECTED: c.obStateRejected, APPROVED: c.obStateApproved };
 }
 
@@ -64,7 +64,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
   const columns: Column<PayServiceOnboardingRow>[] = [
     { header: c.obColMerchant, cell: (r) => <div><div>{r.entityName}</div><div className="txt-caption tabular-nums text-muted-foreground">{r.entityNo}</div></div> },
     { header: c.obSourceStatus, cell: (r) => <dl className="space-y-1">
-      {[[c.obSourceStatus, statusLabel(r.status, sourceLabels(c))], [c.obMerchantRef, r.merchantRef], [c.obLinkStatus, statusLabel(r.linkStatus, { VERIFIED: c.obStateVerified, VERIFY_PENDING: c.obStateVerifyPending, MISMATCH: c.obStateMismatch })], [c.obProfileStatus, statusLabel(r.profileStatus, sourceLabels(c))], [c.obProfileReason, r.reviewReason]].map(([label, value]) => <div key={label}><dt className="txt-caption text-muted-foreground">{label}</dt><dd>{value ?? "—"}</dd></div>)}
+      {[[c.obSourceStatus, statusLabel(r.status, sourceLabels(c))], [c.obMerchantRef, r.merchantRef], [c.obLinkStatus, statusLabel(r.linkStatus, { VERIFIED: c.obStateVerified, PENDING: c.obStateVerifyPending, VERIFY_PENDING: c.obStateVerifyPending, MISMATCH: c.obStateMismatch })], [c.obProfileStatus, statusLabel(r.profileStatus, sourceLabels(c))], [c.obProfileReason, r.reviewReason]].map(([label, value]) => <div key={label}><dt className="txt-caption text-muted-foreground">{label}</dt><dd>{value ?? "—"}</dd></div>)}
     </dl> },
     { header: c.obChannelFacts, cell: (r) => r.onboardings.length ? <div>{r.onboardings.map((row) => <ChannelFacts key={row.onboardingNo} row={row} c={c} />)}</div> : <span className="text-muted-foreground">{c.obNoApplication}</span> },
     { header: c.obColActions, cell: (r) => r.onboardingOpsUrl ? <a className="text-primary-ink underline focus-ring" href={r.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.obOpenNearPay}</a> : null },
