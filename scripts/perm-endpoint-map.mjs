@@ -607,6 +607,12 @@ export const RULES = [
   ["*", /^\/ops\/staffs/, "iam:staff:update"],
   ["GET", /^\/ops\/audit-log/, "iam:audit:read"],
 
+  // 与 Controller 现有权限一致；电话策略读取另允许代申请，运行时复合授权保持不变。
+  ["GET", /^\/ops\/market-phone-policies$/, "system:param:read"],
+  ["POST", /^\/ops\/market-phone-policies\/\{market\}$/, "system:param:update"],
+  ["GET", /^\/ops\/store-industries$/, "commerce:catalog:read"],
+  ["POST", /^\/ops\/store-industries$/, "commerce:catalog:edit"],
+
   // ── 平台配置与主数据 ───────────────────────────────────────────────────
   ["GET", /^\/ops\/(industries|service-scopes)/, "system:industry:read"],
   ["*", /^\/ops\/(industries|service-scopes)/, "system:industry:update",

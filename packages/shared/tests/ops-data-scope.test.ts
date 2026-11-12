@@ -23,6 +23,7 @@
 // 分批推进时不需要人去记「这一批还要改哪些 Service」，守卫会点名。
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { backendModules } from "./backend-modules";
 
@@ -1137,6 +1138,27 @@ function schemaColumns(): Map<string, Set<string>> {
   return out;
 }
 
+/** Native-only tables are real MySQL tables, deliberately absent from H2. Reuse the
+ * producer's hash/descriptor/DDL validation rather than adding a guard exemption. */
+function nativeSchemaColumns(): Map<string, Set<string>> {
+  const source = execFileSync("python3", ["-c", `
+import json, pathlib, runpy, sys
+root = pathlib.Path(sys.argv[1])
+generator = runpy.run_path(str(root / "backend/scripts/gen-test-schema.py"))
+policies = generator["load_projection_policy"](root / "backend/shop-app/src/main/resources/db/migration", root=root)
+tables = {}
+for path, projection in policies.items():
+    if projection.entry["mode"] not in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}:
+        continue
+    generator["project_migration"](path, policies)
+    for table in projection.descriptor.get("tables", [projection.descriptor.get("table")]):
+        tables[table["name"]] = [column["name"] for column in table["columns"]]
+print(json.dumps(tables))
+`, ROOT], { encoding: "utf8" });
+  return new Map(Object.entries(JSON.parse(source) as Record<string, string[]>)
+    .map(([table, columns]) => [table, new Set(columns)]));
+}
+
 /** Branch proof for the scanner's context-insensitive calls: ops passes literal true. */
 function templateBranchSafe(accessBody: string, callerBody: string, taxBody = ""): boolean {
   const start = accessBody.indexOf("if (template)");
@@ -1182,6 +1204,7 @@ describe("运营端数据域接入", () => {
   const registry = registeredTables();
   const registered = new Set(registry.keys());
   const schema = schemaColumns();
+  const nativeSchema = nativeSchemaColumns();
   const endpoints = opsEndpoints();
   const gets = endpoints.filter((e) => e.verb === "GET");
 
@@ -1516,11 +1539,18 @@ describe("运营端数据域接入", () => {
     ).toEqual([]);
   });
 
+  it("G3 原生专属表使用已校验的真实列，不要求虚构 H2 表", () => {
+    expect(schema.has("mch_resource_occupation")).toBe(false);
+    expect(nativeSchema.get("mch_resource_occupation")?.has("entity_no")).toBe(true);
+    expect(nativeSchema.has("nonexistent_scope_table")).toBe(false);
+    expect(nativeSchema.get("mch_resource_occupation")?.has("nonexistent_anchor")).toBe(false);
+  });
+
   it("★★★ G3 已注册表必须真的存在 —— 注册一张不存在的表，那条登记就是一句谎话", () => {
-    const ghosts = [...registered].filter((t) => !schema.has(t));
+    const ghosts = [...registered].filter((t) => !schema.has(t) && !nativeSchema.has(t));
     expect(
       ghosts.sort(),
-      "DataScopeRegistration 登记了这些表，而 schema-test.sql 里没有它们。\n"
+      "DataScopeRegistration 登记了这些表，但 H2 DDL 与经迁移/描述符校验的原生专属表里都没有它们。\n"
       + "  登记不存在的表不会报错（没有查询会碰到它），但它会让人以为这块已经防住了。",
     ).toEqual([]);
   });
@@ -1561,7 +1591,7 @@ describe("运营端数据域接入", () => {
   it("★★★ G3 锚点列必须在该表的 DDL 里真的存在 —— 拼错列名只会静默拼出 1=0", () => {
     const bad: string[] = [];
     for (const [table, anchors] of registry) {
-      const cols = schema.get(table);
+      const cols = schema.get(table) ?? nativeSchema.get(table);
       if (!cols) continue;   // 上一条已经点名了
       for (const [dim, col] of Object.entries(anchors)) {
         if (!cols.has(col)) bad.push(`${table}.${col}（${dim}）`);
@@ -1569,7 +1599,7 @@ describe("运营端数据域接入", () => {
     }
     expect(
       bad.sort(),
-      "这些锚点列在 schema-test.sql 的对应建表语句里不存在。\n"
+      "这些锚点列在 H2 DDL 或经迁移校验的原生专属表描述符里不存在。\n"
       + "  **逐表核对，不是全局 grep** —— `status` 这种列名到处都是，全局 grep 会假阳性通过。\n"
       + "  最常见的成因：迁移里加了列，忘了 `python3 backend/scripts/gen-test-schema.py`。",
     ).toEqual([]);
