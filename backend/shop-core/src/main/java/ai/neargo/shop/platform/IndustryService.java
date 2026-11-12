@@ -30,6 +30,11 @@ public interface IndustryService {
      */
     boolean microAllowed(String industry, String payChannel);
 
+    /**
+     * 行业注册表里有没有这个码（<b>含停用</b>）。入驻意向照收停用行业，但注册表里根本没有的码是脏数据。
+     */
+    boolean registered(String industry);
+
     /** 改准入结论。**只有平台能改** —— 它反映的是通道规则，不是商家意愿。 */
     IndustryVO setMicroAllowed(String industry, String payChannel, boolean allowed, String remark);
 

@@ -713,6 +713,51 @@ class M9aOpsFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
     }
 
+    /**
+     * <b>主数据里查不到的主体不能放行。</b>此前 {@code canonicalSubject} 返回 null 时门禁直接 return：
+     * 166 的 {@code sys_legal_form} 只剩 ENTERPRISE 一行，自然人 + 线上业态被受理并审核通过（2026-11-12 线上测试）。
+     */
+    @Test
+    @DisplayName("★ 未登记的主体类型被拒（门禁不能因查不到而放行）")
+    void unknownSubjectIsRejected() throws Exception {
+        String user = login("18600126070");
+        mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(applyBodyWith("无此主体店", "NO_SUCH_FORM", "RETAIL")))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("★ 行业注册表里没有的行业被拒（停用的照收，见 MerchantApplyIntentIndustryFlowTest）")
+    void unknownIndustryIsRejected() throws Exception {
+        String user = login("18600126071");
+        mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(applyBodyWith("无此行业店", "INDIVIDUAL_BIZ", "NO_SUCH_INDUSTRY")))
+                .andExpect(jsonPath("$.code").value(70060));
+    }
+
+    /** 166 复现：自然人那行主数据不可用时，「自然人 + 线上」必须被拒，而不是因为查不到主体而跳过行业门禁。 */
+    @Test
+    @DisplayName("★ 主体主数据缺失时 fail-closed：自然人 + 线上不被受理")
+    void missingSubjectMasterRowFailsClosed() throws Exception {
+        String user = login("18600126072");
+        // 改名 = 查不到（166 上那行是真的不存在）；只置 enabled=0 的话旧代码仍能查到它并按 70001 拦下，复现不了
+        jdbc.update("UPDATE sys_legal_form SET legal_form='ZZ_MISSING_NP' WHERE legal_form='NATURAL_PERSON'");
+        try {
+            String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(applyBodyWith("主数据缺行店", "NATURAL_PERSON", "ONLINE")))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(json.readTree(body).get("code").asInt()).as(body).isNotEqualTo(0);
+        } finally {
+            jdbc.update("UPDATE sys_legal_form SET legal_form='NATURAL_PERSON' WHERE legal_form='ZZ_MISSING_NP'");
+        }
+    }
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     @Test
     @DisplayName("白名单内的行业可以选小微")
     void whitelistedIndustryAllowsMicro() throws Exception {

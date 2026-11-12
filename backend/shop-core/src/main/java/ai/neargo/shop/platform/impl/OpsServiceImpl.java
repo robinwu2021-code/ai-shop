@@ -852,8 +852,21 @@ public class OpsServiceImpl implements OpsService {
     }
 
     private void requireSubjectAllowedByIndustry(String industry, String subject) {
+        /*
+         * **查不到就拒，不是查不到就放。** 曾经 canonicalSubject 返回 null 时下面直接 return，
+         * 于是主数据缺行（166 的 sys_legal_form 只剩 ENTERPRISE）时「自然人 + 线上」被受理并审核通过。
+         * 不传主体仍放行：C 端入驻意向此刻还没问主体。停用行业照收（意向口径），注册表里没有的码不收。
+         */
+        String known = subject == null || subject.isBlank() ? null : masterDataService.canonicalSubject(subject);
+        if (subject != null && !subject.isBlank()
+                && (known == null || !masterDataService.enabledSubjects().contains(known))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if (industry == null || industry.isBlank()) {
             return;
+        }
+        if (!industryService.registered(industry)) {
+            throw BizException.of(ErrorCode.INDUSTRY_NOT_FOUND, industry);
         }
         /*
          * 「这个主体受不受行业白名单限制」不再硬编码成 PERSONAL，而是查主数据

@@ -251,6 +251,13 @@ class CommerceStoreCreationFlowTest {
                         else if(type==ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class) values[k]=sessions.getMapper(ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class);
                         else if(type==tools.jackson.databind.ObjectMapper.class) values[k]=new tools.jackson.databind.ObjectMapper();
                         else if(type==String.class) values[k]="response";
+                        else if(type==ai.neargo.shop.platform.MasterDataService.class) {
+                            // 主体门禁对查不到的主体 fail-closed：替身须认得本测试提交的 NATURAL_PERSON
+                            var subjects=org.mockito.Mockito.mock(ai.neargo.shop.platform.MasterDataService.class);
+                            org.mockito.Mockito.when(subjects.canonicalSubject("NATURAL_PERSON")).thenReturn("NATURAL_PERSON");
+                            org.mockito.Mockito.when(subjects.enabledSubjects()).thenReturn(List.of("NATURAL_PERSON"));
+                            values[k]=subjects;
+                        }
                         else values[k]=org.mockito.Mockito.mock(type);
                     }
                     return (ai.neargo.shop.platform.impl.OpsServiceImpl)ctor.newInstance(values);
