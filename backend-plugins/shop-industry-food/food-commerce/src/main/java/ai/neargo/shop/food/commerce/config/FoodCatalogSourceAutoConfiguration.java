@@ -4,6 +4,7 @@ import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 import ai.neargo.shop.food.commerce.port.FoodCatalogSourcePortImpl;
 import ai.neargo.shop.food.commerce.service.FoodCatalogPricePolicyService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.service.StoreCalendarSourceService;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 import ai.neargo.shop.spi.commerce.ChannelSourceWithdrawalProvider;
@@ -58,6 +59,7 @@ public class FoodCatalogSourceAutoConfiguration {
             GoodsCatalogQueryPort goods,
             MediaPublicSourcePort media,
             ObjectMapper json,
+            ObjectProvider<MenuChannelBindingService> bindings,
             ObjectProvider<Clock> clocks,
             ObjectProvider<CatalogPriceSourcePort> scopePrices,
             ObjectProvider<ChannelSourceWithdrawalProvider> withdrawals,
@@ -70,6 +72,7 @@ public class FoodCatalogSourceAutoConfiguration {
                         calendars,
                         goods,
                         media,
+                        bindings.getIfAvailable(),
                         json,
                         clocks.getIfAvailable(Clock::systemUTC));
         source.withdrawalSupport(

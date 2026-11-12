@@ -862,13 +862,9 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                                     menus.headStatus(
                                             query.entityNo(), query.storeNo(), query.menuNo())))
                         throw BizException.of(ErrorCode.CONFLICT);
-                    if (query.mode() == Mode.CURRENT)
-                        requireLiveChannelBindings(
-                                query.entityNo(),
-                                query.storeNo(),
-                                json.readValue(row.getDefinitionSnapshot(), MenuPublicationSnapshot.class)
-                                        .menu(),
-                                false);
+                    // Channel bindings are per connection: channel capture and price binding check
+                    // their own binding's live row, so one disabled binding never voids this proof
+                    // for the menu's other channels.
                     var content =
                             new ConfigRevisionContentVO(view(row, at), row.getDefinitionSnapshot());
                     var resource = MenuSourcePolicy.project(json, query, content);

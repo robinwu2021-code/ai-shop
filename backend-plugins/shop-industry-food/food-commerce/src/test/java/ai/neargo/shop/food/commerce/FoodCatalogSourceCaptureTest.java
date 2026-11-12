@@ -3,6 +3,7 @@ package ai.neargo.shop.food.commerce;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,7 +14,9 @@ import ai.neargo.shop.common.pricing.PriceTaxMode;
 import ai.neargo.shop.common.pricing.TaxSettingDefinition;
 import ai.neargo.shop.food.commerce.port.FoodCatalogSourcePortImpl;
 import ai.neargo.shop.food.commerce.service.FoodCatalogPricePolicyService;
+import ai.neargo.shop.food.dto.MenuChannelBindingVO;
 import ai.neargo.shop.food.dto.MenuSourceContracts;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.StoreCalendarSourceService;
 import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.CaptureCommand;
@@ -39,6 +42,7 @@ class FoodCatalogSourceCaptureTest {
     final FoodCatalogPricePolicyService prices = mock(FoodCatalogPricePolicyService.class);
     final StoreCalendarSourceService calendar = mock(StoreCalendarSourceService.class);
     final CatalogPriceSourcePort scopes = mock(CatalogPriceSourcePort.class);
+    final MenuChannelBindingService bindings = mock(MenuChannelBindingService.class);
     final Clock clock = Clock.fixed(FoodCatalogBindingFixtures.NOW, ZoneOffset.UTC);
 
     FoodCatalogSourcePortImpl port(MenuSourceContracts.Proof menu) {
@@ -54,10 +58,16 @@ class FoodCatalogSourceCaptureTest {
                         new CatalogPriceSourcePort.MarketScope("E", "S"),
                         new CatalogPriceSourcePort.Market("TW", "TWD", 2), tax, now, now.plusSeconds(25),
                         null)));
+        live("ACTIVE");
         var port = new FoodCatalogSourcePortImpl(menus, authorities, prices, calendar,
-                mock(GoodsCatalogQueryPort.class), mock(MediaPublicSourcePort.class), f.json, clock);
+                mock(GoodsCatalogQueryPort.class), mock(MediaPublicSourcePort.class), bindings, f.json, clock);
         port.withdrawalSupport(true, () -> scopes, () -> null);
         return port;
+    }
+
+    void live(String status) {
+        when(bindings.getBinding(eq("E"), eq("S"), eq("B"))).thenReturn(new MenuChannelBindingVO(
+                "B", "M", "S", "TEST", "REMOTE_ACCOUNT", "REMOTE_STORE", status, 1L));
     }
 
     CaptureCommand command(MenuSourceContracts.Proof menu) {
@@ -80,5 +90,16 @@ class FoodCatalogSourceCaptureTest {
         var menu = f.menu();
         assertThatThrownBy(() -> port(menu).capture(command(menu))).isInstanceOf(RuntimeException.class);
         verify(prices).capture(any());
+    }
+
+    @Test void bindingDisabledAfterPublicationDelistsTheMenuFromThisConnectionWithoutWaitingForRepublish() {
+        var menu = f.menu();
+        var port = port(menu);
+        live("DISABLED");
+        var document = port.capture(command(menu));
+        assertThat(document.details().offers()).isEmpty();
+        assertThat(document.availability().sources()).singleElement()
+                .satisfies(s -> assertThat(s.effectiveWindows()).isEmpty());
+        verify(prices, never()).capture(any());
     }
 }

@@ -4,6 +4,7 @@ import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 import ai.neargo.shop.food.commerce.service.FoodCatalogBindingService;
 import ai.neargo.shop.food.commerce.service.impl.FoodCatalogBindingServiceImpl;
 import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -43,8 +44,13 @@ public class FoodCatalogBindingAutoConfiguration {
             ObjectMapper json,
             ConfigRevisionService menus,
             @Lazy ChannelCatalogAuthorityService authorities,
+            ObjectProvider<MenuChannelBindingService> bindings,
             ObjectProvider<Clock> clocks) {
         return new FoodCatalogBindingServiceImpl(
-                json, menus, authorities, clocks.getIfAvailable(Clock::systemUTC));
+                json,
+                menus,
+                authorities,
+                bindings.getIfAvailable(),
+                clocks.getIfAvailable(Clock::systemUTC));
     }
 }

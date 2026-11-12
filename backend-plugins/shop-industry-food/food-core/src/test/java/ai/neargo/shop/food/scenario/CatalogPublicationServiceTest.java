@@ -138,7 +138,8 @@ class CatalogPublicationServiceTest {
             denied(t,"rebound");
         });
     }
-    @Test void currentChannelProofRejectsDisabledOrReboundLocalBindingWhileHistoryStaysReadable() {
+    /** A binding is per connection: losing one must not void the menu proof every other channel sells from. */
+    @Test void currentMenuProofSurvivesADisabledOrReboundBindingSoOtherChannelsKeepSelling() {
         menu(false,true,t -> {
             var current=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
                     "MENU",null,null,MenuSourceContracts.Mode.CURRENT);
@@ -147,31 +148,13 @@ class CatalogPublicationServiceTest {
             assertThat(t.service().verifyMenuResource(current).publication().publication().revisionNo())
                     .isEqualTo("SOURCE");
             t.sql().update("UPDATE fnb_menu_channel_binding SET status='DISABLED' WHERE binding_no='BIND'");
-            assertThatThrownBy(() -> t.service().verifyMenuResource(current))
-                    .isInstanceOfSatisfying(BizException.class,
-                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            assertThat(t.service().verifyMenuResource(current).publication().publication().revisionNo())
+                    .isEqualTo("SOURCE");
             assertThat(t.service().verifyMenuResource(history).publication().publication().revisionNo())
                     .isEqualTo("SOURCE");
             t.sql().update("UPDATE fnb_menu_channel_binding SET status='ACTIVE',external_store_ref='OTHER' "
                     +"WHERE binding_no='BIND'");
-            assertThatThrownBy(() -> t.service().verifyMenuResource(current))
-                    .isInstanceOfSatisfying(BizException.class,
-                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
-        });
-    }
-    @Test void currentProofRejectsDisabledMenuHeadWhileHistoryStaysReadable() {
-        menu(false,true,t -> {
-            var current=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
-                    "MENU",null,null,MenuSourceContracts.Mode.CURRENT);
-            var history=new MenuSourceContracts.Query("E","A","MENU","SOURCE",MenuSourceContracts.Kind.MENU,
-                    "MENU",null,null,MenuSourceContracts.Mode.HISTORICAL);
-            when(t.menus().headStatus("E","A","MENU")).thenReturn("PUBLISHED");
-            assertThat(t.service().verifyMenuResource(current)).isNotNull();
-            when(t.menus().headStatus("E","A","MENU")).thenReturn("DISABLED");
-            assertThatThrownBy(() -> t.service().verifyMenuResource(current))
-                    .isInstanceOfSatisfying(BizException.class,
-                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
-            assertThat(t.service().verifyMenuResource(history).publication().publication().revisionNo())
+            assertThat(t.service().verifyMenuResource(current).publication().publication().revisionNo())
                     .isEqualTo("SOURCE");
         });
     }

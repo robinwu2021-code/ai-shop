@@ -21,7 +21,9 @@ import ai.neargo.shop.food.policy.MenuSelectionFeasibilityPolicy;
 import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.policy.SelectionFeasibility;
 import ai.neargo.shop.food.policy.StoreCalendarSourcePolicy;
+import ai.neargo.shop.food.commerce.policy.FoodLiveChannelBinding;
 import ai.neargo.shop.food.service.ConfigRevisionService;
+import ai.neargo.shop.food.service.MenuChannelBindingService;
 import ai.neargo.shop.food.service.StoreCalendarSourceService;
 import ai.neargo.shop.spi.commerce.CatalogAvailability;
 import ai.neargo.shop.spi.commerce.CatalogTaxBasis;
@@ -68,6 +70,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
     private final StoreCalendarSourceService calendars;
     private final GoodsCatalogQueryPort goods;
     private final MediaPublicSourcePort media;
+    private final MenuChannelBindingService bindings;
     private final ObjectMapper json;
     private final Clock clock;
     private boolean withdrawalEnabled;
@@ -94,6 +97,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
             StoreCalendarSourceService calendars,
             GoodsCatalogQueryPort goods,
             MediaPublicSourcePort media,
+            MenuChannelBindingService bindings,
             ObjectMapper json,
             Clock clock) {
         this.menus = menus;
@@ -102,6 +106,7 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
         this.calendars = calendars;
         this.goods = goods;
         this.media = media;
+        this.bindings = bindings;
         this.json = json;
         this.clock = clock;
     }
@@ -211,9 +216,16 @@ public final class FoodCatalogSourcePortImpl implements ChannelCatalogSourcePort
                                                             .equals(b.externalStoreRef()))
                             .toList();
             require(bindings.size() <= 1);
-            // A menu no longer bound to this connection (binding disabled and menu republished)
-            // sells nothing here: it is captured closed and empty instead of blocking the store.
-            boolean bound = !bindings.isEmpty();
+            // A menu no longer bound to this connection (binding disabled, before or after
+            // republishing) sells nothing here: it is captured closed and empty instead of blocking
+            // the store, and the menu's other connections are unaffected.
+            boolean bound =
+                    !bindings.isEmpty()
+                            && FoodLiveChannelBinding.live(
+                                    this.bindings,
+                                    command.entityNo(),
+                                    command.storeNo(),
+                                    bindings.getFirst());
             var contexts =
                     body.menu().definition().contexts().stream()
                             .filter(
