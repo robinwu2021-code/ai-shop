@@ -53,8 +53,6 @@ inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ docs/ 里任何
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 《数据库表结构》里写的「N 张表」必须等于迁移里真实的张数 @<=10
 inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 文档正文里逐张列出的表 = 迁移里的表（多一张少一张都算） @<=10
 message-placeholder.test.ts::带占位符的错误文案 ★★ 反向：传了参数的码，文案里必须有 {0} —— 没有的话参数被静默吞掉，用户只看到泛话 @<=7
-ops-data-scope.test.ts::运营端数据域接入 ★★★ G3 已注册表必须真的存在 —— 注册一张不存在的表，那条登记就是一句谎话 @<=11
-ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=4
 retired-state-words.test.ts::退役状态词 ★★ 出现次数只降不升 —— 更正记述要引用它们，新写的活断言会让计数变大 @<=1
 schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=26
 wire-alignment.test.ts::请求体字段（B 端）：前端发的与后端收的必须一致 两边都定义了 body 的端点，字段名对得上 @<=1

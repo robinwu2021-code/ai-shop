@@ -54,7 +54,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
   const canRead = allow("merchant:admission:read");
   const auth = useAuth();
   const [keyword, setKeyword] = useState("");
-  const { page, setPage, size } = usePaging(20);
+  const { page, setPage, size, setSize } = usePaging(20);
   const q = { keyword, page, size };
   const list = useQuery({
     queryKey: ["near-pay-onboarding", auth.username, auth.token, scopeOf(auth), q],
@@ -67,7 +67,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
       {[[c.obSourceStatus, statusLabel(r.status, sourceLabels(c))], [c.obMerchantRef, r.merchantRef], [c.obLinkStatus, statusLabel(r.linkStatus, { VERIFIED: c.obStateVerified, VERIFY_PENDING: c.obStateVerifyPending, MISMATCH: c.obStateMismatch })], [c.obProfileStatus, statusLabel(r.profileStatus, sourceLabels(c))], [c.obProfileReason, r.reviewReason]].map(([label, value]) => <div key={label}><dt className="txt-caption text-muted-foreground">{label}</dt><dd>{value ?? "—"}</dd></div>)}
     </dl> },
     { header: c.obChannelFacts, cell: (r) => r.onboardings.length ? <div>{r.onboardings.map((row) => <ChannelFacts key={row.onboardingNo} row={row} c={c} />)}</div> : <span className="text-muted-foreground">{c.obNoApplication}</span> },
-    { header: c.obColActions, cell: (r) => r.onboardingOpsUrl ? <a className="text-primary underline focus-ring" href={r.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.obOpenNearPay}</a> : null },
+    { header: c.obColActions, cell: (r) => r.onboardingOpsUrl ? <a className="text-primary-ink underline focus-ring" href={r.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.obOpenNearPay}</a> : null },
   ];
   if (!canRead) return null;
   return <>
@@ -76,6 +76,6 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
       <Button variant="outline" disabled={list.isFetching} onClick={() => list.refetch()}>{c.obReload}</Button>
     </Toolbar>
     <DataTable columns={columns} rows={list.data?.records} loading={list.isPending} rowKey={(r) => r.entityNo} empty={c.obEmpty} error={list.error} onRetry={() => list.refetch()} />
-    <Pagination page={page} size={size} total={list.data?.total ?? 0} onPage={setPage} />
+    <Pagination page={page} size={size} total={list.data?.total ?? 0} onPage={setPage} onSize={setSize} sizes={[10, 20]} />
   </>;
 }
