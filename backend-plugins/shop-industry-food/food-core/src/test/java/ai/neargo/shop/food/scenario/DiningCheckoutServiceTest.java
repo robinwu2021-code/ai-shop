@@ -179,6 +179,28 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
                     .isInstanceOf(BizException.class);
         });
     }
+    /**
+     * 意向已落 PREPARED、还没推到 SENT 就崩了（或恰好被轮询/恢复插进来）：核心侧从没收到过支付，
+     * 查询只能看到 NOT_STARTED。这时不能把 PREPARED 当成「结果未知」，否则同 key 重试只会查询、永远不发。
+     */
+    @Test void pollOrRecoveryBeforeDispatchNeverStrandsPreparedCharge() {
+        run(c -> {
+            var source = create(c, "CREATE");
+            var request = new PayDiningSettlementReq(source.version(), DIGEST, "WECHAT");
+            c.service.customerPay(BUYER, source.settlementNo(), request, "PAY");
+            // 回到「第一个事务已提交、第二个事务还没跑」的落库状态
+            c.db.sql().update("UPDATE fnb_charge_intent SET status='PREPARED',core_reference=NULL");
+            c.actual.set(result("WAIT_PAY", "NOT_STARTED", false));
+            c.sends.set(0);
+            c.service.customerQuery(BUYER, source.settlementNo());
+            c.recovery.apply(NOW).recoverDue(200);
+            assertThat(c.db.sql().queryForObject("SELECT status FROM fnb_charge_intent", String.class))
+                    .isEqualTo("PREPARED");
+            c.restart.get().customerPay(BUYER, source.settlementNo(), request, "PAY");
+            assertThat(c.sends.get()).isOne();
+            assertThat(c.db.sql().queryForObject("SELECT COUNT(*) FROM fnb_charge_intent", Integer.class)).isOne();
+        });
+    }
     @Test void cashSuccessSettlesOnceButStockHeldCannotConsumeQuotaOrAdmitKitchen() {
         run(c -> {
             var source = create(c, "CREATE"); c.actual.set(result("PAID", "SUCCESS", false));

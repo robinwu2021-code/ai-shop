@@ -574,6 +574,26 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         return transaction(() -> view(find(entity, store, eventNo, true)));
     }
 
+    /** 同一任务在本事件之前的 START 份数之和。 */
+    private BigDecimal startedBefore(String entity, String taskNo, Long eventId) {
+        return events
+                .selectList(
+                        Wrappers.<FnbServiceEvent>lambdaQuery()
+                                .eq(FnbServiceEvent::getEntityNo, entity)
+                                .eq(FnbServiceEvent::getTaskNo, taskNo)
+                                .eq(FnbServiceEvent::getAction, "START")
+                                .lt(FnbServiceEvent::getId, eventId))
+                .stream()
+                .map(FnbServiceEvent::getQty)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** 计划量按已开做份数折算，向上取整到库存精度；servings 等于计划份数时恰好回到计划量。 */
+    private static BigDecimal cumulativeShare(BigDecimal planned, BigDecimal servings, BigDecimal planServings) {
+        return planned.multiply(servings).divide(planServings, 6, RoundingMode.UP);
+    }
+
     private FnbProductionConsumption prepare(
             String entity, String store, String actor, String eventNo) {
         var prior = find(entity, store, eventNo, false);
@@ -694,19 +714,37 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         var sourceLeaves = new ArrayList<InventoryProductionPort.SourceLeaf>();
         var materialQty = new TreeMap<String, BigDecimal>();
         var materialDefinitions = new HashMap<String, InventoryDemandPlanPort.Leaf>();
+        // 分次开做：计划用量是按整单份数一次算出、向上取整到库存精度的（ProductionDemandPolicy.gross），
+        // 逐次按比例反算常常除不尽。改为按「本任务累计开做份数」求累计应扣量（同样向上取整），
+        // 本次只扣与上次累计之差 —— 各次之和恰好等于计划量，不会超出、也不会漏扣。
+        BigDecimal startedBefore =
+                required && "START".equals(event.getAction())
+                        ? startedBefore(entity, task.getTaskNo(), event.getId())
+                        : null;
+        boolean cumulative =
+                startedBefore != null
+                        && startedBefore.add(event.getQty()).compareTo(branch.quantity()) <= 0;
         if (required)
             for (var leaf : branch.leaves()) {
                 if (!"RECIPE_MATERIAL".equals(InventoryDemandPlanFacts.sourceKind(branch, leaf)))
                     continue;
                 final BigDecimal quantity;
-                try {
+                if (cumulative) {
                     quantity =
-                            leaf.quantity()
-                                    .multiply(event.getQty())
-                                    .divide(branch.quantity(), 6, RoundingMode.UNNECESSARY)
+                            cumulativeShare(leaf.quantity(), startedBefore.add(event.getQty()), branch.quantity())
+                                    .subtract(cumulativeShare(leaf.quantity(), startedBefore, branch.quantity()))
                                     .stripTrailingZeros();
-                } catch (ArithmeticException unsupportedPrecision) {
-                    throw conflict();
+                    if (quantity.signum() == 0) continue; // 本次份额被上次的进位覆盖
+                } else {
+                    try {
+                        quantity =
+                                leaf.quantity()
+                                        .multiply(event.getQty())
+                                        .divide(branch.quantity(), 6, RoundingMode.UNNECESSARY)
+                                        .stripTrailingZeros();
+                    } catch (ArithmeticException unsupportedPrecision) {
+                        throw conflict();
+                    }
                 }
                 InventoryDemandPlanFacts.quantity(quantity, false);
                 sourceLeaves.add(new InventoryProductionPort.SourceLeaf(leaf.leafRef(), quantity));
@@ -733,8 +771,9 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                 "START".equals(event.getAction())
                         ? ("REMAKE".equals(ticket.getKind()) ? "REMAKE" : "PRODUCTION")
                         : event.getAction();
+        boolean consume = required && !sourceLeaves.isEmpty();
         var command =
-                required
+                consume
                         ? new Command(
                                 entity,
                                 store,
@@ -756,7 +795,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         row.setPurpose(purpose);
         row.setRequestSnapshot(json.writeValueAsString(command == null ? plan : command));
         row.setRequestHash(command == null ? plan.planHash() : fingerprint(command));
-        row.setStatus(required ? "PREPARED" : "NOT_REQUIRED");
+        row.setStatus(consume ? "PREPARED" : "NOT_REQUIRED");
         row.setBusinessDate(batch.getBusinessDate());
         row.setOccurredAt(event.getCreatedAt());
         row.setCreatedBy(actor);
