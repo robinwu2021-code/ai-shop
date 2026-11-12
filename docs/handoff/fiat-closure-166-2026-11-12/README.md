@@ -1,5 +1,7 @@
 # 门店与法币支付闭环 · 合并、门禁与 166 部署 · 2026-11-12
 
+> **接手先读 [`handoff-current-state.md`](handoff-current-state.md)**：当前状态、166 全部改动与回退、未修缺陷、下一步。本篇是过程记录。
+
 状态：代码已合并推送到两个主开发分支并部署 166（库到 V662）。**166 线上闭环已跑通至「蓝新进件平台审核通过」，按约定停在派发真实蓝新之前**（见 §四）；临时超管已收回，测试邮箱白名单已停用。
 
 承接 [`ops-flow-ume-2026-11-11/completed-work-checkpoint.md`](../ops-flow-ume-2026-11-11/completed-work-checkpoint.md) 的「待完成」三条。
@@ -11,7 +13,7 @@
 | ai-shop 主开发分支 `codex/ai-shop-codex` | `ad86c04f6 → ed375e8d5`（快进）。合入：门店/法币支付闭环分支、V657 运营导航、菜单权限矩阵 `codex/ops-menu-matrix-review`（含 V658） |
 | near-pay `develop/s1` | `815298d5d → 6e1f0bdee`（快进）。合入 `codex/pay-ops-menu-matrix`（foundation 166 批次 + 支付运营菜单重组） |
 | pre-push 全量门禁 | 前端/契约/生成物全过；后端 7553 跑 / 2 红（=基线 2）；餐饮 1264/0；美业 282/4（=基线 4） |
-| 166 后端 | 制品来自 `649057db0`，JAR SHA256 `05eb5464235266c068f76f9d91c3a14edd4a12b2baba1debb8d41a67b1ed58cc`；`ai-shop-api` / `ai-shop-ops` UP |
+| 166 后端 | 首次部署制品来自 `649057db0`（SHA256 `05eb5464…ed58cc`）；**当前运行 `9f44771a1`**（SHA256 `e8c2c191…703eb`，主体业态门禁修复，见 [`store-review-online-test.md`](store-review-online-test.md) §五） |
 | 166 库 `ai_shop_ume` | V660 / V661 / V662 由应用启动时 Flyway 执行成功（见 §三.2） |
 | 166 运营前端 | `/data/www/ai-shop-ops/current → /data/www/ops-navigation-releases/fiat-closure-202611112106/ai-shop-web`；公网 `/ops-shop/` 及静态资源 200 |
 | near-pay 166 | **未改动**（本批 near-pay 无需上线的后端变化） |
