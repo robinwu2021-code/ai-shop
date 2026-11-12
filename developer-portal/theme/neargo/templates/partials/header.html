@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{locale}}">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{meta.title}} · {{ui.siteTitle}}</title>
+<meta name="description" content="{{description}}">
+{{#canonical}}<link rel="canonical" href="{{canonical}}">{{/canonical}}
+{{#alternates}}<link rel="alternate" hreflang="{{language}}" href="{{href}}">{{/alternates}}
+{{#noindex}}<meta name="robots" content="noindex,follow">{{/noindex}}
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/brand.svg" type="image/svg+xml">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/portal.css">
+<script src="/portal.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">{{ui.skip}}</a>
+<header class="topbar"><a class="brand" href="{{localeHome}}"><span class="brand-mark" aria-hidden="true">n</span><strong>neargo</strong><span>{{ui.developerCenter}}</span></a><a class="language-switch" href="{{switchUrl}}" hreflang="{{#localeBase}}zh-CN{{/localeBase}}{{^localeBase}}en{{/localeBase}}" aria-label="{{ui.switchLabel}}">{{ui.switchText}}</a><div class="appearance" aria-label="{{ui.appearance}}">
+<label>{{ui.mode}}<select id="mode-select" aria-label="{{ui.mode}}"><option value="system">{{ui.system}}</option><option value="light">{{ui.light}}</option><option value="dark">{{ui.dark}}</option></select></label>
+<label>{{ui.accent}}<select id="accent-select" aria-label="{{ui.accent}}"><option value="neutral">{{ui.neutral}}</option><option value="blue">{{ui.blue}}</option><option value="violet">{{ui.violet}}</option><option value="emerald">{{ui.emerald}}</option><option value="orange">{{ui.orange}}</option></select></label>
+</div><a class="header-link" href="{{startUrl}}">{{ui.start}} <span aria-hidden="true">↗</span></a></header>
+<div class="shell">
+<aside class="sidebar" aria-label="{{ui.navigation}}">
+<form class="search" action="{{localeHome}}" method="get"><label for="search">{{ui.search}}</label><div><input id="search" type="search" name="search" value="{{search}}" placeholder="{{ui.placeholder}}" required><button type="submit" aria-label="搜索">⌕</button></div></form>
+<details class="mobile-nav" open><summary>{{ui.contents}}</summary><nav><a class="nav-home" href="{{localeHome}}">{{ui.overview}}</a>{{#pages}}{{> navigation}}{{/pages}}</nav></details>
+<div class="sidebar-footer">BUILD WITH NEARGO<br><span>{{ui.tagline}}</span></div>
+</aside>

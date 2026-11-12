@@ -1,0 +1,9 @@
+{
+  "name": "neargo-developer-portal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {"node": ">=24", "npm": ">=11.9.0"},
+  "scripts": {"start": "node server.mjs", "test": "node --test test/*.test.mjs", "sync:nearpay": "node scripts/sync-nearpay-docs.mjs"},
+  "dependencies": {"raneto": "0.18.1", "express": "5.2.1"}
+}

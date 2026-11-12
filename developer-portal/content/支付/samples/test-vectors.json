@@ -1,0 +1,40 @@
+{
+  "appId": "APP7Q2K9XW",
+  "appSecret": "sk_test_Zk3Qm9Lp2Xv7Rt5Wb8Nc4Hd6Jf1Gs0Ay",
+  "encryptKey": "Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx",
+  "p1": {
+    "method": "POST",
+    "path": "/open/pay/v1/orders",
+    "query": "",
+    "timestamp": "1794441600000",
+    "nonce": "00112233445566778899aabbccddeeff",
+    "body": "{\"outOrderNo\":\"DEV202611120001\",\"storeRef\":\"STORE-DEMO-001\",\"amountMinor\":12000,\"currency\":\"TWD\",\"subject\":\"示例商品\",\"expireMinutes\":30}",
+    "bodySha256": "83e5d10ddf802c9bbc25c629856fcbe1b5c6fab6eb5e9c2d15d88cc8dfc62b23",
+    "signature": "vWy7dGyOy7ZtfNPckDQ8zS0ELcrSpPB3BQ0QZmSkXH4="
+  },
+  "p2": {
+    "body": "{}",
+    "headers": {
+      "X-Timestamp": "1761465601000",
+      "X-Nonce": "5d2c9e7a1f3b4a6c8e0d2f4b6a8c0e1f",
+      "X-Signature": "umstQTPXokyyX02RxHKAeiNbQUc1VAAvHykNvWaInfQ="
+    }
+  },
+  "p3": {
+    "plaintext": "8123004567",
+    "ivHex": "a1b2c3d4e5f60718293a4b5c",
+    "aad": "APP7Q2K9XW|refundAccount.accountNo",
+    "packedBase64": "obLD1OX2BxgpOktc59/SAi1E7uW27KsqhePcgjLC58SwEbcblEo="
+  },
+  "p4": {
+    "eventId": "EVT20261026000001",
+    "eventType": "payment.succeeded",
+    "resource": {
+      "algorithm": "AEAD_AES_256_GCM",
+      "nonce": "Dw4NDAsKCQgHBgUE",
+      "associatedData": "payment.succeeded|EVT20261026000001",
+      "ciphertext": "i6y9W9OYb/Ebq+KW8d0K0AKGhVL6Gytj2b7m1PdHZiEHtZziNWb9FWMoK51p4/8zRI+rV7RVFlkNG22WDiVt9bUuTikZw1x5FJNj00sHucvBKouVA9nWskgdhbnZijhhODpEMGqfsRtlyXu+1d0Gig2FPt5TL08SvdMd8tDLDgT5wbA7AIE="
+    },
+    "plaintext": "{\"payOrderNo\":\"P20261026000001\",\"outOrderNo\":\"M20261026001\",\"status\":\"SUCCEEDED\",\"amountMinor\":12000,\"currency\":\"TWD\"}"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "siteUrl": "https://nearshop.umeshop.ai",
+  "checks": [
+    {
+      "path": "/",
+      "http": 200,
+      "bytes": 5647,
+      "sha256": "b52fb291afb2f53407c777ecfcf1d7fc598cff0acd2583a68b3f7e6b56a96117"
+    },
+    {
+      "path": "/en/",
+      "http": 200,
+      "bytes": 5621,
+      "sha256": "fd3fdf813f31fd4072b8db16b7fdc8fdd1994ef61f9b70a9d49e25adc6aad686"
+    },
+    {
+      "path": "/支付/外部API接入指南",
+      "http": 200,
+      "bytes": 48191,
+      "sha256": "3be6598630ad593a45375b6d00cbda366d664cd3724d07977f7d362a39871089"
+    },
+    {
+      "path": "/en/payments/external-api-guide",
+      "http": 200,
+      "bytes": 52217,
+      "sha256": "5a18604c504fe3517d7a375a5b569f6f8da3914661dda78165b5b5928c374b99"
+    },
+    {
+      "path": "/portal.css",
+      "http": 200,
+      "bytes": 9316,
+      "sha256": "bb3cc5f7014b60b364acbf1f740798cdc1923f3778c9559d14c5361c56272428"
+    },
+    {
+      "path": "/theme.js",
+      "http": 200,
+      "bytes": 1618,
+      "sha256": "4bff50be5afa7037ce0ef510d37659e49f226985e5e7e9228034202cb88df223"
+    },
+    {
+      "path": "/portal.js",
+      "http": 200,
+      "bytes": 1297,
+      "sha256": "0b59b88593224037bc4528e2eb1df9ae91685d9ce758da83e83ba74a37ca37f4"
+    },
+    {
+      "path": "/robots.txt",
+      "http": 200,
+      "bytes": 124,
+      "sha256": "81b794c7a3be9f9ca5cae0efd5cc152e3aaf3f3759097a7a945c64022d5dbd6c"
+    },
+    {
+      "path": "/sitemap.xml",
+      "http": 200,
+      "bytes": 1921,
+      "sha256": "8f09c04dc552ae13beda77f5ba6d334dabaefd8a424e1050f76efeb91c302c90",
+      "pages": 8
+    },
+    {
+      "path": "/en/sitemap.xml",
+      "http": 200,
+      "bytes": 1674,
+      "sha256": "a2c14151f16677aaca6c6e7ea2b59a66a22f5ac52b1e7ae9938dbd91ee03c6c7",
+      "pages": 8
+    },
+    {
+      "path": "/ops-shop/",
+      "http": 200,
+      "bytes": 11974,
+      "sha256": "14c12d3543c820700d9d5c6a2eb5dbe9a33b961b8850a8b4776ed4c4afeb1f43"
+    },
+    {
+      "path": "/oms/",
+      "http": 200,
+      "bytes": 6093,
+      "sha256": "bf5f13631f85d3cdf8aa2eb8595ce69d03280fa11521518101e2ac228d8c4d8d"
+    },
+    {
+      "path": "/支付/samples/open_api.py",
+      "http": 200,
+      "bytes": 6197,
+      "sha256": "3d478063bce5e2a1ed043ccfff5d4916bc446656e544e793acf1fdad22007cc3"
+    },
+    {
+      "path": "/支付/samples/crypto.mjs",
+      "http": 200,
+      "bytes": 3408,
+      "sha256": "0e25da3c94356a2e0096ee8ec0a6b045cfcc48342b5fe49d0dbd1450cc0b113a"
+    },
+    {
+      "path": "/en/payments/downloads/test-vectors.json",
+      "http": 200,
+      "bytes": 1674,
+      "sha256": "75822bb277f14b618d9e653c7b34aff3420ef0f03ce7e6710478c89305d3c6a4"
+    }
+  ],
+  "release": "20261112-bilingual-portal",
+  "imageId": "sha256:b4d9fb31138f9765e32abfd51800729e73301ffd69f7c067bdb99545b149da3c",
+  "target": "UME 192.168.3.166",
+  "container": "neargo-developer-portal",
+  "memoryLimitMiB": 256,
+  "measuredMemoryMiB": 37.96,
+  "nginxBackup": "/etc/nginx/conf.d/nearshop.umeshop.ai.conf.bak-neargo-20261112T133542Z",
+  "tlsHostnameVerified": true,
+  "tlsExpiresUtc": "2026-12-24T23:59:59Z",
+  "browserVerified": true
+}

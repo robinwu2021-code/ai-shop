@@ -1,0 +1,2 @@
+{{#is_directory}}<details class="nav-group" open><summary>{{title}}</summary><ul>{{#files}}<li>{{> navigation}}</li>{{/files}}</ul></details>{{/is_directory}}
+{{^is_directory}}{{#is_index}}{{#files}}{{> navigation}}{{/files}}{{/is_index}}{{^is_index}}<a class="nav-item {{#active}}active{{/active}}" href="{{localeBase}}/{{slug}}" {{#active}}aria-current="page"{{/active}}>{{title}}</a>{{/is_index}}{{/is_directory}}

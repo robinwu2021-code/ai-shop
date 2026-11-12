@@ -1,0 +1,11 @@
+services:
+  developer-portal:
+    build: .
+    ports:
+      - "127.0.0.1:3210:3210"
+    environment:
+      SITE_URL: ${SITE_URL:-http://localhost:3210}
+    volumes:
+      - ./content:/app/content:ro
+      - ./content-en:/app/content-en:ro
+    restart: unless-stopped
