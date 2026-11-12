@@ -624,7 +624,7 @@ class BizFoundationAccessMysqlTest {
                                 null,
                                 json,
                                 json,
-                                mock(IndustryService.class),
+                                registeredIndustries(),
                                 knownSubjects(),
                                 null,
                                 null,
@@ -669,11 +669,21 @@ class BizFoundationAccessMysqlTest {
                 store);
     }
 
-    /** 主体门禁对查不到的主体 fail-closed：替身须认得本类提交的 PERSONAL（标准码 NATURAL_PERSON）。 */
+    /**
+     * 主体门禁对查不到的主体、未登记的行业 fail-closed：替身须认得共用本装配的测试所提交的值
+     * （本类 PERSONAL → NATURAL_PERSON；FoundationQueryMysqlTest 的 ENTERPRISE + RETAIL）。
+     */
     private static MasterDataService knownSubjects() {
         MasterDataService master = mock(MasterDataService.class);
         org.mockito.Mockito.when(master.canonicalSubject("PERSONAL")).thenReturn("NATURAL_PERSON");
-        org.mockito.Mockito.when(master.enabledSubjects()).thenReturn(java.util.List.of("NATURAL_PERSON"));
+        org.mockito.Mockito.when(master.canonicalSubject("ENTERPRISE")).thenReturn("ENTERPRISE");
+        org.mockito.Mockito.when(master.enabledSubjects()).thenReturn(java.util.List.of("NATURAL_PERSON", "ENTERPRISE"));
         return master;
+    }
+
+    private static IndustryService registeredIndustries() {
+        IndustryService industries = mock(IndustryService.class);
+        org.mockito.Mockito.when(industries.registered("RETAIL")).thenReturn(true);
+        return industries;
     }
 }
