@@ -43,11 +43,18 @@ cd b-app && ../node_modules/.bin/vitest run --config vitest.config.mts tests/ret
 - `BizEndpointPermTest` 仅余 5 条其他域既有缺口；`ArchitectureTest` 既有违规不含本批类。
 - `food-embedded-test` 的 `FoodChannel*` 在 `-pl shop-app -am` 下缺 commerce channel 模块而编译失败，属既有问题；本批改动的 `LocalStockPreflightNativeMysqlTest` 无编译错误。
 
-## 5. 下一步
+## 5. 下一步（2026-11-12 重排）
 
-| 任务 | 说明 |
-|---|---|
-| I04-H | 选择/新建受控零售测试商家与门店，部署本分支、配置 `shop.inventory.replenishment.source-system` 与源客户端凭据，在 Android 模拟器/真机走 App→ai-shop→独立进销存全链；记录真实流水/余额 |
-| 小项 | 首页按门店经营类型隐藏不适用的补货入口；App 端策略选择接 REPLENISH 预检 |
-| 既有欠账 | 餐饮补货已发布路径的复数段/胖控制器、`/biz` 其他域 5 条权限缺口，按各自负责人处理 |
-| 后置 | SHARED_SYNC（I04-F）、DELEGATED（I04-G）、美业 I04-E、完整盘点与跨池迁移 |
+2026-11-12 补充事实：商户 App 的正式实现是 Flutter 仓库 `ai-shop-bapp`（本仓库 uni-app `b-app` 已归档，只作参考实现）；零售补货已移植到 bapp 分支 `codex/retail-replenishment`（本地提交 cc7cf0b，未推送）。移植时发现 `/biz/stock-control/*` 未登记 `ShopStoreMemberRoutes`，新模型门店会在控制器前被 70006 拒，已在本分支修复（1c1adfad7）。App 实际对接的后端分支是 `codex/ai-shop-codex`，本分支缺它的 `/biz/merchant/store-setup` 等登录后入口，二者需汇合。
+
+| 顺序 | 任务 | 完成条件 | 状态 |
+|---|---|---|---|
+| R1 | 模拟器闭环验收 | `codex/ai-shop-codex`+本分支本地合并包、真实独立 inventory-svc（已过账调拨出库/退货入库）、MySQL9；`pos_phone` 上用 Flutter App 走开启→登记→实收→调整关联→退仓→验收→核对，记录截图与库存流水 | 进行中 |
+| R2 | 后端分支汇合 | 本分支正式合入 `codex/ai-shop-codex`；冲突 2 处（`schema-test.sql` 需合并两边夹具、`ui-catalog.json` 重新生成）；合并后重跑零售原生/接口测试 | 待做 |
+| R3 | 门店路由闸门自动化证据 | 修好 `StoreScopedDailyRoutesFlowTest` 上下文（缺 `commerceMigrationInitializer`），让新增 `stockControlRoutesPassAdmission` 真跑 | 待做 |
+| R4 | Flutter 分支收口 | bapp 分支推送到其 origin；在 bapp 功能矩阵/接口对接记录登记零售补货；入口只对零售门店、`biz:stock` 可见的 widget 测试 | 待做（R1 后） |
+| R5 | uni-app 页面处置 | 决定 `b-app/pages/retail-replenishments` 保留为参考还是随归档冻结；UI 清单口径同步 | 待定 |
+| R6 | App 端策略选择接 REPLENISH 预检 | 零售门店在 App 里看到“可补货”能力由预检决定，而非开关 | 低优先 |
+| I04-H | 目标环境验收 | 166 执行 V659/V660、配置 `shop.inventory.replenishment.source-system` 与源客户端凭据，选定测试商家走真实 App→ai-shop→独立进销存 | 待 R1–R4 |
+| 既有欠账 | 餐饮补货复数路径/胖控制器、`generated-docs` 闸门、其他域 5 条权限缺口 | 各自负责人处理，不在零售批次内改名已发布接口 | 记录 |
+| 后置 | I04-F SHARED_SYNC、I04-G DELEGATED、I04-E 美业、完整盘点与跨池迁移 | 按总计划 | 暂停 |
