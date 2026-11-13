@@ -52,6 +52,7 @@ components:
     MerchantStatus:
       type: "string"
       enum:
+        - "PENDING_LICENSE"
         - "ACTIVE"
         - "SUSPENDED"
         - "FROZEN"
@@ -1813,6 +1814,9 @@ components:
         communityNo:
           type: "string"
           description: "受限角色的社区数据域"
+        pickupNo:
+          type: "string"
+          description: "受限运营角色的取货点数据域；平台全量角色为空"
       required:
         - "username"
         - "role"

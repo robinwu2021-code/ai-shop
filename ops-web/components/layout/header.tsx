@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { paymentOpsHref } from "@/lib/auth/ops-bridge";
 import { IS_MOCK } from "@/lib/api";
 import { breadcrumb } from "@/lib/nav";
 import { useNavPrefs } from "@/lib/stores/nav-prefs";
@@ -73,7 +74,7 @@ export function Header() {
   // 数据域徽标：被限定到某商家/社区的账号，顶栏要一直显示裁剪范围 ——
   // 否则运营看到"列表里只有 3 个商家"会以为是数据丢了（矩阵 §2.3 数据域）。
   const scope = merchantNo || communityNo;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { panelCollapsed, togglePanel } = useNavPrefs();
   const { open, setOpen } = useCommandPalette();
@@ -106,6 +107,9 @@ export function Header() {
         <SearchTrigger onOpen={() => setOpen(true)} />
         <CommandPalette open={open} onOpenChange={setOpen} />
         <NotifyBell />
+        <Button size="sm" variant="ghost" onClick={() => window.location.assign(paymentOpsHref(window.location.origin, locale))}>
+          {t("nav.paymentOps")}
+        </Button>
         <LangSwitcher />
         <ThemeSwitcher />
         {/* 角色名不再单独占位：进用户名的 title。此前"运营管理员 admin"两段文本
@@ -119,6 +123,7 @@ export function Header() {
           aria-label={t("common.logout")}
           title={t("common.logout")}
           onClick={() => {
+            useServerMenu.getState().clear();
             logout();
             router.push("/login");
           }}

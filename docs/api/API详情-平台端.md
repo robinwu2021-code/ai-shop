@@ -2574,6 +2574,7 @@ _无字段_
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+| `pickupNo` | `string` | 否 | 受限运营角色的取货点数据域；平台全量角色为空 |
 
 
 #### POST `/ops/auth/login/verify`
@@ -2598,6 +2599,7 @@ _无字段_
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+| `pickupNo` | `string` | 否 | 受限运营角色的取货点数据域；平台全量角色为空 |
 
 
 #### GET `/ops/auth/me`
@@ -2622,6 +2624,7 @@ _无字段_
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+| `pickupNo` | `string` | 否 | 受限运营角色的取货点数据域；平台全量角色为空 |
 
 
 #### POST `/ops/auth/reset`
@@ -15764,6 +15767,7 @@ Delivery state of an inventory/order synchronization event.
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+| `pickupNo` | `string` | 否 | 受限运营角色的取货点数据域；平台全量角色为空 |
 
 ### LogisticsCapability
 
@@ -16941,6 +16945,7 @@ Region-specific contact recording. SMS can open only after the deployment declar
 
 枚举取值：
 
+- `PENDING_LICENSE`
 - `ACTIVE`
 - `SUSPENDED`
 - `FROZEN`

@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-13",
+  "environment": "UME166",
+  "mainCodeCommit": "56e5c71de",
+  "deployedSourceBase": "be71b4e9817ce1dbcd01aa2a96cd9791487dc93a",
+  "deployedFixCommit": "566aecfa44fa114eb44ca91f051322ffe8b223ce",
+  "preservedFrontendCommit": "f351c734227cb860629e5728e2aafb60c04b0421",
+  "deployment": {
+    "releaseId": "ops-display-20261113-566aecfa4",
+    "build": {
+      "baseCommit": "be71b4e9817ce1dbcd01aa2a96cd9791487dc93a",
+      "fixCommit": "566aecfa44fa114eb44ca91f051322ffe8b223ce",
+      "originalFixCommit": "c74fa5036",
+      "patchSha256": "fa23d780ad423a7fbe475aa7cebfce1f9ddf301af8dc300c2203cb5fe1441cc7",
+      "frontendBuild": true,
+      "productionArtifactGuard": true,
+      "releaseRegressionTests": 6,
+      "out": "/tmp/ops-display-fix-20261113/source/ops-web/out",
+      "basePath": "/ops-shop",
+      "apiBase": "/ops-shop",
+      "mock": false
+    },
+    "backendRestarted": false,
+    "dataChanged": false,
+    "previousWeb": "/data/www/ai-shop-ops/releases/independent-onboarding-20261112-80705a078-r2",
+    "assetsVerified": 25,
+    "status": "DEPLOYED",
+    "web": "/data/www/ai-shop-ops/releases/ops-display-20261113-566aecfa4",
+    "indexMatchesArtifact": true,
+    "runtimesUnchanged": true,
+    "lockReleased": true
+  },
+  "public": {
+    "releaseId": "ops-display-20261113-566aecfa4",
+    "indexMatchesArtifact": true,
+    "assetsVerified": 25,
+    "allAssetHashesMatch": true
+  },
+  "verification": {
+    "targetedInitialTests": 85,
+    "finalDisplayRegressions": 6,
+    "finalDisplayAndI18nTests": 18,
+    "opsAssertions": 1054,
+    "opsFailures": 0,
+    "sharedAssertions": 728,
+    "sharedExistingFailures": 14,
+    "sharedNewFailures": 0,
+    "generatedArtifactsFresh": 26,
+    "typescript": true,
+    "productionBuild": true
+  },
+  "opsBrowser": {
+    "existingOperator": "neara@neargo.ai",
+    "entityNo": "MUME88600453990001754",
+    "listMissingTime": "-",
+    "drawerMissingTime": "-",
+    "pendingLicenseLabel": "待补证",
+    "scopedStoreLinkPreserved": true,
+    "dialogCountAfterClick": 0,
+    "storeCountAfterNavigation": 38,
+    "readOnly": true,
+    "localeObserved": "zh"
+  },
+  "otherLocales": "zh-TW and en covered by mounted regressions; no claim of browser-language-switch acceptance",
+  "backendRestarted": false,
+  "seedDataChanged": false
+}
