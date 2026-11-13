@@ -29,3 +29,7 @@
 回退备份：166 `/data0/app/ai-shop/releases/nearshop-dual-domain-20261111`；201 `/usr/local/nginx/conf/.nearshop-backups/nearshop-dual-domain-20261111`。旧域名两个配置字节哈希不变。可先撤下新增域名虚拟主机再 nginx -t/reload；CORS 回退优先按当前运行配置去除新来源，若期间已有其他应用发布，不回退其他会话的制品。原运行容器和私有 inspect 已保留，辅助脚本位于 166 备份目录 `apply-cors.py`。
 
 配置独立审查发现并修复辅助脚本的失败回退路径；停止、重命名、创建、启动和健康检查五种故障状态的模型验证通过。未在生产环境额外触发故障或演练回退。
+
+### 2026-11-13 图片路径补正
+
+`media.locations.conf` 安装到166的 `/etc/nginx/snippets/ai-shop-media.locations.conf`，**在 nearshop 和 twpay 两个 server 块同时 include**。只增量加入 include，不用旧模板覆盖当前首页等其他会话配置。`/uploads/` 经API公开用途校验，`/media/` 经API签名验证，404再交OPS验证；不alias磁盘、不记录签名访问日志、不走代理缓存。原mallpay专用规则可保留，新的`^~ /media/`统一接管；201通用转发无需变更。两域名nginx配置已备份在166 `/data0/app/ai-shop/releases/image-upload-20261113/nginx-before/`，撤销 include/新增snippet后 nginx -t/reload 可回退。

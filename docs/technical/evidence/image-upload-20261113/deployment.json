@@ -1,0 +1,11 @@
+{
+  "status": "DEPLOYED",
+  "previousSha256": "60a3a0d00a13377d776c6fa83606ffee2afab5c9c9b3b25feafc9ed7c4b655c3",
+  "newSha256": "b85174d978e7b385ec3b8abe5512f02b2d2f13d0efe95f8adfa5c9f73d04ac6f",
+  "migrationResourcesUnchanged": true,
+  "apiHealth": "UP",
+  "opsHealth": "UP",
+  "nearPayRestarted": false,
+  "envChanged": false,
+  "sourceCommit": "5fb522a8f"
+}

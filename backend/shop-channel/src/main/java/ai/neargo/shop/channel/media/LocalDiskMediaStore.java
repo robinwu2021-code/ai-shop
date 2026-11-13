@@ -3,6 +3,7 @@ package ai.neargo.shop.channel.media;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.media.MediaStore;
+import ai.neargo.shop.media.MediaKeys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -103,8 +104,7 @@ public class LocalDiskMediaStore implements MediaStore {
 
     @Override
     public InputStream openPrivate(String key) throws IOException {
-        String[] segments=key.split("/");
-        if (segments.length<3 || "goods".equalsIgnoreCase(segments[2])) throw new IllegalArgumentException("PRIVATE_KEY_REQUIRED");
+        if (MediaKeys.isPublicKey(key)) throw new IllegalArgumentException("PRIVATE_KEY_REQUIRED");
         return Files.newInputStream(resolve(key));
     }
 
