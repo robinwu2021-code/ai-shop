@@ -57,6 +57,7 @@ export const RULES = [
   ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/(instructions|claims)$/, "commerce:mall:order:read"],
   ["*", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/evidence(\/content|\/url)?$/, "commerce:mall:offline:evidence"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/claims\/\{claimNo\}\/decline$/, "commerce:mall:offline:review"],
+  ["GET", /^\/ops\/biz-mall\/offline\/collectors$/, "commerce:mall:offline:confirm"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/confirmations$/, "commerce:mall:offline:confirm"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/voids$/, "commerce:mall:offline:void"],
   ["POST", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/refunds\/\{refundNo\}\/payouts$/, "commerce:mall:offline:refund:confirm"],
