@@ -40,6 +40,8 @@ import ai.neargo.shop.food.api.biz.BizSalesRestrictionController;
 import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
 import ai.neargo.shop.food.api.biz.BizCounterSettlementController;
 import ai.neargo.shop.food.api.biz.BizSettlementController;
+import ai.neargo.shop.food.api.biz.BizCashShiftController;
+import ai.neargo.shop.food.service.CashShiftService;
 import java.time.Clock;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.pay.MarketPort;
@@ -386,6 +388,16 @@ public class FoodWebAutoConfiguration {
             StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizSettlementController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CashShiftService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCashShiftController.class)
+    BizCashShiftController bizCashShiftController(CashShiftService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizCashShiftController(service, stores, scope);
     }
 
     /** 门店基本信息组装（POS B6）：平台的商家、市场端口可缺省（缺省时币种为空）。 */
