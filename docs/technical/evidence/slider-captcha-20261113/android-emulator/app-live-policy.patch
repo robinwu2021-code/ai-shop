@@ -1,0 +1,25 @@
+diff --git a/apps/merchant_app/lib/dev/standard_onboarding_live.dart b/apps/merchant_app/lib/dev/standard_onboarding_live.dart
+index f2ae28c..af0c145 100644
+--- a/apps/merchant_app/lib/dev/standard_onboarding_live.dart
++++ b/apps/merchant_app/lib/dev/standard_onboarding_live.dart
+@@ -142,0 +143,2 @@ bool allowsLiveOnboardingRequest(
++    '/biz/auth/captcha/challenge',
++    '/biz/auth/captcha/verify',
+diff --git a/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart b/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart
+index 92464c2..ece4df0 100644
+--- a/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart
++++ b/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart
+@@ -52,0 +53,13 @@ void main() {
++  test('live dev authentication permits the deployed slider captcha routes', () {
++    for (final path in [
++      '/biz/auth/captcha/challenge',
++      '/biz/auth/captcha/verify',
++    ]) {
++      expect(allowsLiveOnboardingRequest('POST', path), isTrue, reason: path);
++      for (final method in ['PUT', 'PATCH', 'DELETE']) {
++        expect(allowsLiveOnboardingRequest(method, path), isFalse);
++      }
++      expect(allowsLiveOnboardingRequest('POST', '$path/unknown'), isFalse);
++    }
++  });
++

@@ -1,0 +1,13 @@
+00:00 +0: loading /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart
+00:00 +0: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart: live dev entry permits frozen mall purchase and refund writes only
+00:00 +1: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart: live dev entry lets the email tab request a code
+00:00 +2: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart: live dev authentication permits the deployed slider captcha routes
+00:00 +3: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: password request retries once after a server-requested proof
+00:00 +4: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: password request retries once after a server-requested proof
+00:00 +5: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: cancelling does not retry the authentication request
+00:00 +6: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: a rejected proof never loops through another dialog
+00:00 +7: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: ordinary errors and mismatched challenges do not open a captcha
+00:00 +8: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: email and phone send bind proof to their canonical target
+00:00 +9: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: logout while a challenge is open prevents the delayed retry
+00:00 +10: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/auth_captcha_api_test.dart: OTP login and unguarded success do not require a local captcha flag
+00:00 +11: All tests passed!
