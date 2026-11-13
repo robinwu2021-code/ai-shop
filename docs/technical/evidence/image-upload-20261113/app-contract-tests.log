@@ -1,0 +1,28 @@
+00:00 +0: loading /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/retail/goods_image_reference_test.dart
+00:00 +0: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: login registers and restores without identity or market endpoint
+00:00 +1: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: login registers and restores without identity or market endpoint
+00:00 +2: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: quick-start selects exact currentStoreNo, never first/default store
+00:00 +3: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: missing authoritative quick-start store never falls back to first
+00:00 +4: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: known creation recovers only with GET through missing and failed lists
+00:00 +5: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: known creation retains recovery until selection succeeds
+00:00 +6: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: late known creation GET cannot overwrite newer selection
+00:00 +7: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: late known creation GET cannot overwrite newer logout
+00:00 +8: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: late known creation GET cannot overwrite newer account
+00:00 +9: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: Taiwan creation requires address and keeps all setup fields in unknown identity
+00:00 +10: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: latest application of another entity cannot fill or sign selected shop
+00:00 +11: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: PENDING application prevents duplicate POST
+00:00 +12: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: A to B to A discards first A delayed response
+00:00 +13: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: agreement zero never becomes accepted timestamp
+00:00 +14: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: creation store-list delay cannot override a newer selection
+00:00 +15: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: stale application write does not start recovery in a newer store
+00:00 +16: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: old HTTP401 after account login cannot clear the new token
+00:00 +17: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: SELECT_STORE respects store context
+00:00 +18: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: SELECT_STORE respects roundTrip context
+00:00 +19: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: SELECT_STORE respects account context
+00:00 +20: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: SELECT_STORE respects session context
+00:00 +21: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: SELECT_STORE respects current context
+00:00 +22: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: current business permission denial keeps account and HTTP401 clears it
+00:00 +23: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: stale editable payment form cannot re-submit after latest row was sent
+00:00 +24: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: invalid quick start leaves form editable for corrected name
+00:00 +25: /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/standard_onboarding_controller_test.dart: no-store initial application is restored without stale store headers
+00:00 +26: All tests passed!
