@@ -20,6 +20,7 @@ import { useNavTree, useServerMenu } from "@/lib/stores/server-menu";
 export interface PageTab {
   key: string;
   label: string;
+  group?: string;
 }
 
 /**
@@ -50,14 +51,14 @@ export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
     [path, keys, perms, serverHrefs, nav],
   );
   return React.useMemo(
-    () => navTabs(path, allowed, nav).map(({ key, label }) => {
+    () => navTabs(path, allowed, nav).map(({ key, label, group }) => {
       if (!label) {
         const msg = `[nav] ${path} 的 tab "${key}" 在 lib/nav.ts 里没有对应叶子 —— 补一条，否则它在菜单里进不去`;
         if (process.env.NODE_ENV !== "production") throw new Error(msg);
         console.error(msg);
         return { key, label: key };
       }
-      return { key, label: tNav(label) };
+      return { key, label: tNav(label), group: group ? tNav(group) : undefined };
     }),
     // allowed 已经是 useMemo 的产物；tNav 随 locale 变，必须进依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
