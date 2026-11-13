@@ -9,6 +9,7 @@ import { breadcrumb } from "@/lib/nav";
 import { useNavPrefs } from "@/lib/stores/nav-prefs";
 import { useServerMenu, useNavTree } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -33,13 +34,13 @@ function Breadcrumb() {
   const crumbs = breadcrumb(pathname, sp.get("tab"), sp.get("view"), perms, serverHrefs, nav);
   if (!crumbs.length) return null;
   return (
-    <nav aria-label="breadcrumb" className="flex items-center gap-1 txt-body text-muted-foreground">
+    <nav aria-label="breadcrumb" className="flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap txt-body text-muted-foreground">
       {crumbs.map((c, i) => {
         const last = i === crumbs.length - 1;
         return (
-          <span key={i} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight className="size-3.5 opacity-50 rtl:-scale-x-100" />}
-            <span className={last ? "text-foreground" : undefined} aria-current={last ? "page" : undefined}>
+          <span key={i} className="flex min-w-0 items-center gap-1">
+            {i > 0 && <ChevronRight className="size-3.5 shrink-0 opacity-50 rtl:-scale-x-100" />}
+            <span className={cn("truncate", last && "text-foreground")} title={tNav(c)} aria-current={last ? "page" : undefined}>
               {tNav(c)}
             </span>
           </span>
@@ -60,11 +61,12 @@ function SearchTrigger({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={t("nav.search")}
+      title={t("nav.search")}
       className="focus-ring flex items-center gap-2 rounded-field px-2 py-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
     >
       <Search className="size-3.5" />
-      <span className="max-sm:hidden">{t("nav.searchHint")}</span>
-      <kbd className="rounded-chip border border-border px-1.5 txt-caption max-sm:hidden">{mac ? "⌘" : "Ctrl "}K</kbd>
+      <span className="hidden xl:inline">{t("nav.searchHint")}</span>
+      <kbd className="hidden rounded-chip border border-border px-1.5 txt-caption xl:block">{mac ? "⌘" : "Ctrl "}K</kbd>
     </button>
   );
 }
@@ -79,8 +81,8 @@ export function Header() {
   const { panelCollapsed, togglePanel } = useNavPrefs();
   const { open, setOpen } = useCommandPalette();
   return (
-    <header className="sticky top-0 z-[var(--z-sticky)] flex h-14 items-center justify-between bg-[color-mix(in_srgb,var(--surface)_82%,transparent)] px-6 backdrop-blur-md">
-      <div className="flex items-center gap-3 txt-body text-muted-foreground">
+    <header className="sticky top-0 z-[var(--z-sticky)] flex h-14 items-center justify-between gap-3 bg-[color-mix(in_srgb,var(--surface)_82%,transparent)] px-3 backdrop-blur-md sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-3 txt-body text-muted-foreground [&>button]:shrink-0">
         {/* 面板开关放顶栏而不是面板自己身上：收起后面板整个不渲染，
             按钮长在它上面就跟着消失了，没法再展开。 */}
         <button
@@ -103,7 +105,7 @@ export function Header() {
         {scope && <span>{t("common.scope")} <span className="text-foreground">{scope}</span></span>}
         {IS_MOCK && <Badge tone="warning">{t("common.mockData")}</Badge>}
       </div>
-      <div className="flex items-center gap-2 txt-body">
+      <div className="flex shrink-0 items-center gap-1 whitespace-nowrap txt-body sm:gap-2">
         <SearchTrigger onOpen={() => setOpen(true)} />
         <CommandPalette open={open} onOpenChange={setOpen} />
         <NotifyBell />
@@ -114,7 +116,7 @@ export function Header() {
         <ThemeSwitcher />
         {/* 角色名不再单独占位：进用户名的 title。此前"运营管理员 admin"两段文本
             说的是同一个人，占了顶栏最大的一块。 */}
-        <span className="font-medium" title={t(`role.${role}`)}>{username}</span>
+        <span className="sr-only max-w-24 truncate font-medium md:not-sr-only md:block xl:max-w-40" title={`${username} · ${t(`role.${role}`)}`}>{username}</span>
         {/* 改密码挨着用户名与退出：三者都是「这个账号」的事，不进菜单 */}
         <ChangePasswordButton />
         <Button
