@@ -1,0 +1,5 @@
+{
+  "apps/merchant_app/lib/features/goods/goods_image_preview.dart": "a3fadb590da05229ee4d95ab630204f9c7cbbc143fd798e30d81eb9cbca747f4",
+  "packages/platform_adapters/lib/neargo_platform.dart": "bb90007deb8c94af0aea0348048f19c0178a290880245b0f455c0c6e9cbbfaeb",
+  "apps/merchant_app/integration_test/image_upload_acceptance_20261113_test.dart": "f59fd566f444484199b07735c4f4ad116614d2aa82dc50bb38941188ff388510"
+}
