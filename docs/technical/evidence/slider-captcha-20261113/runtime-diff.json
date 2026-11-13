@@ -1,0 +1,50 @@
+{
+  "oldSha256": "b85174d978e7b385ec3b8abe5512f02b2d2f13d0efe95f8adfa5c9f73d04ac6f",
+  "newSha256": "70c8181b92893618a0e3b4c045aaae03eeb3b924ca0d1a62ac02c0cb2df7c82e",
+  "changedClasses": [
+    "BOOT-INF/classes/ai/neargo/shop/config/SecurityConfig.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$EmailOtpReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$HasPasswordResp.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$LoginReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$MerchantLoginResp.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$OtpReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$PasswordReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController$StaffLoginReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizAuthController.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizIdentityController$EnterReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizIdentityController$VerifyReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizIdentityController.class",
+    "BOOT-INF/lib/shop-base-auth-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/auth/BizContextFilter.class",
+    "BOOT-INF/lib/shop-base-auth-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/common/GlobalExceptionHandler$UnauthorizedException.class",
+    "BOOT-INF/lib/shop-base-auth-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/common/GlobalExceptionHandler.class"
+  ],
+  "addedClasses": [
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/BizCaptchaService$Action.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/BizCaptchaService$Challenge.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/BizCaptchaService$Proof.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/BizCaptchaService.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/JdbcCaptchaStore$Entry.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/JdbcCaptchaStore.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/TianaiSliderEngine$FreshBackground.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/TianaiSliderEngine.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/impl/BizCaptchaServiceImpl$ChallengeState.class",
+    "BOOT-INF/classes/ai/neargo/shop/auth/captcha/impl/BizCaptchaServiceImpl.class",
+    "BOOT-INF/classes/ai/neargo/shop/config/BizCaptchaConfiguration.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizCaptchaController$ChallengeReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizCaptchaController$Point.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizCaptchaController$Track.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizCaptchaController$VerifyReq.class",
+    "BOOT-INF/classes/ai/neargo/shop/portal/biz/BizCaptchaController.class",
+    "BOOT-INF/lib/shop-base-0.1.0-SNAPSHOT.jar!/ai/neargo/shop/common/captcha/CaptchaRequiredException.class"
+  ],
+  "removedClasses": [],
+  "addedLibraries": [
+    "tianai-captcha-1.5.6.jar"
+  ],
+  "removedLibraries": [],
+  "changedMigrations": [],
+  "addedMigrations": [
+    "BOOT-INF/classes/db/migration/V663__biz_auth_captcha.sql"
+  ],
+  "removedMigrations": []
+}
