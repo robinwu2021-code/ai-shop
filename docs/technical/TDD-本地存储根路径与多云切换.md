@@ -11,6 +11,7 @@
 | 子目录和云key相同 | LocalDiskMediaStore、现有MediaStore接口 | 商品图、私有凭证和CSV按原key落盘，URL不含物理根路径 |
 | local/cos显式切换 | 原ConditionalOnProperty装配；本地资源映射限local | 各模式只有一个MediaStore，COS模式不暴露本地目录 |
 | 本地私有文件可用 | MediaReadController | 有效签名可读；无签名、过期、篡改拒绝；PDF/CSV Content-Type正确 |
+| 166真实图片闭环 | 双域名uploads/media路由、统一公开用途规则 | 真实登录上传与新旧域名字节回读；证照与核款凭证仍需签名 |
 | 梳理位置、规划Google接入 | reference/文件与图片存储位置.md | 区分已实现和计划；不声称Google已可选，不迁移near-pay加密私有材料 |
 
 ## 1. 方案与取舍
@@ -23,7 +24,7 @@
 - 打印：`${shop.print.artifacts.root:${shop.storage.root:./data}/print-private}`，保留原单独覆盖。
 - 存储根只是磁盘落点，不加到asset_key或URL中。普通媒体的桶根对应`<root>/uploads`，其下逐字等于COS object key。
 - root不变，切provider不会复制文件；先复制并核对key、字节及私有访问权限，再修改配置重启。不存在自动跨provider兜底。
-- 公共图只允许goods（保留已有旧两段商品图兼容）；证件、付款凭证、报表签名或授权读取。禁止nginx把整个存储根直接alias成公开目录。
+- 公共图按现有SysMediaAsset声明允许goods、avatar、evidence（保留已有旧两段商品图兼容）；证件、付款凭证、报表签名或授权读取。禁止nginx把整个存储根直接alias成公开目录。
 - Google Cloud作为下一适配器接入同一MediaStore；本批先规划bucket、key、签名及权限，未实现前不得配置为生产provider。
 - near-pay进件附件、渠道认领凭证当前为数据库密文及Vault密钥，本批不改其存储/加密/归属模型。
 
@@ -56,3 +57,13 @@ Google适配、完整地区默认语言启动接线不在上述已通过范围�
 ## 7. 166发布补记
 
 已部署本地根路径兼容及MIME修复，并补打印共享持久卷，普通媒体原挂载保留。实际配置、制品与验证见[发布记录](部署-地区配置与本地存储-166-2026-11-13.md)。前述暂不部署为初始阶段范围。
+
+## 8. 图片实测补正（2026-11-13）
+
+真实HTTPS商品图片上传成功并落盘，但公网回读失败；API/OPS本机均200，定位166双域名遗漏/uploads路由。网关只代理应用，不alias磁盘；/media保留签名校验并按原核款凭证方式在API404时交OPS验证。201通用转发无需改动，保留支付H5与现有首页。
+
+同时对齐既有SysMediaAsset的公开用途（GOODS/AVATAR/EVIDENCE），复用MediaKeys供本地、COS和列表小图共同判断；证照、商家售后、核款及报表仍私有，COS新上传显式Private，不调整历史桶ACL。
+
+- [x] HTTP回归先复现头像公开URL返回404；5项中1失败，符合根因。
+- [x] 统一规则及COS ACL回归、本地打包：7类21项通过；COS历史头像/晒单列表缩略图保留签名读取，未迁移旧桶ACL。
+- [ ] 166双域名真实上传与公开/私有读取验收。

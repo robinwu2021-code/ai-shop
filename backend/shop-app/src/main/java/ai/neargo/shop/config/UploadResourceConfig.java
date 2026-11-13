@@ -2,7 +2,7 @@ package ai.neargo.shop.config;
 import org.springframework.core.io.FileSystemResource;
 
 
-import ai.neargo.shop.media.SysMediaAsset;
+import ai.neargo.shop.media.MediaKeys;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +14,6 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
-import java.util.Locale;
 
 /**
  * 把上传目录里<b>公开的那一部分</b>映射成可访问的 URL。
@@ -30,7 +29,7 @@ import java.util.Locale;
  * UUID 文件名给的是「不可枚举」，不是访问控制：URL 一旦出现在数据库导出、
  * 运营端截图或日志里，谁都能拉到证件原件。
  *
- * <p>所以现在多了一道 {@link GoodsOnlyInterceptor}：只有 {@code goods} 那一层放行，
+ * <p>所以现在多了一道 {@link PublicImagesOnlyInterceptor}：商品图、用户头像和晒单放行，
  * {@code qual} / {@code aftersale} 走 {@code /media/**} 的签名 URL。
  *
  * <p><b>切换对象存储时本配置不装配</b>：那时 URL 指向 COS，不再经过本服务，
@@ -59,23 +58,23 @@ public class UploadResourceConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new GoodsOnlyInterceptor(publicPrefix))
+        registry.addInterceptor(new PublicImagesOnlyInterceptor(publicPrefix))
                 .addPathPatterns(publicPrefix + "/**");
     }
 
     /**
-     * 公开目录只放行商品图。
+     * 公开目录按统一用途规则放行。
      *
      * <p><b>为什么用拦截器而不是把 handler 的 pattern 写成 {@code /uploads/*}{@code /*}{@code /goods/**}</b>：
      * Spring 会把 {@code **} 之前的部分当作 handler 前缀剥掉，剩下的才拿去解析文件位置 ——
      * 于是 {@code {主体}/{门店}/goods} 这三段会在定位文件时丢失，图反而打不开了。
      * 判断放在拦截器里，位置解析仍走完整路径。
      */
-    static class GoodsOnlyInterceptor implements HandlerInterceptor {
+    static class PublicImagesOnlyInterceptor implements HandlerInterceptor {
 
         private final String prefix;
 
-        GoodsOnlyInterceptor(String prefix) {
+        PublicImagesOnlyInterceptor(String prefix) {
             this.prefix = prefix;
         }
 
@@ -84,7 +83,6 @@ public class UploadResourceConfig implements WebMvcConfigurer {
             String rest = req.getRequestURI();
             int at = rest.indexOf(prefix + "/");
             rest = at < 0 ? rest : rest.substring(at + prefix.length() + 1);
-            String[] seg = rest.split("/");
 
             /*
              * 两种形态都要认：
@@ -92,8 +90,7 @@ public class UploadResourceConfig implements WebMvcConfigurer {
              *   旧：{商家}/{名}                      —— 存量，当时全是商品图，放行
              * 存量不搬家（TDD §L3-10），所以这两种会长期共存。
              */
-            boolean ok = seg.length <= 2
-                    || SysMediaAsset.GOODS.equalsIgnoreCase(seg[2]);
+            boolean ok = MediaKeys.isPublicKey(rest);
             if (!ok) {
                 // 404 而不是 403：403 等于承认「这个路径下有东西」，对枚举者是一条信息
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -105,7 +102,6 @@ public class UploadResourceConfig implements WebMvcConfigurer {
 
     /** 给测试与读取侧共用的判断，避免两处各写一遍大小写规则。 */
     public static boolean isPublicKey(String key) {
-        String[] seg = key.split("/");
-        return seg.length <= 2 || SysMediaAsset.GOODS.equalsIgnoreCase(seg[2].toLowerCase(Locale.ROOT));
+        return MediaKeys.isPublicKey(key);
     }
 }

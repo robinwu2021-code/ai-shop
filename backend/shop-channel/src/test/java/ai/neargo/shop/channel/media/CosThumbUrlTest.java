@@ -45,4 +45,11 @@ class CosThumbUrlTest {
         assertThat(url).startsWith("https://www.hxmall.top/cos-private/" + LICENSE + "?q-sign");
         assertThat(url).doesNotContain("!w").doesNotContain("img.hxmall.top");
     }
+    @Test
+    void historicalAvatarAndEvidenceThumbnailsKeepSignedAccessUntilAclMigration() {
+        for (String key : java.util.List.of("_USER/U1/avatar/202611/a.png", "_USER/U1/evidence/review/202611/a.png")) {
+            assertThat(own.thumbUrl(key, true, 200))
+                    .startsWith("https://www.hxmall.top/cos-private/" + key + "?q-sign");
+        }
+    }
 }

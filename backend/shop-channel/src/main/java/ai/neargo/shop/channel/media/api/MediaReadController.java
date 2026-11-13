@@ -1,7 +1,7 @@
 package ai.neargo.shop.channel.media.api;
 
 import ai.neargo.shop.channel.media.LocalDiskMediaStore;
-import ai.neargo.shop.media.SysMediaAsset;
+import ai.neargo.shop.media.MediaKeys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -74,7 +74,7 @@ public class MediaReadController {
          * 公开档不该走这条路：它有缓存头、有签名开销，而且混着走会让
          * 「哪些图是私有的」这个问题在两个地方各有一个答案。
          */
-        if (SysMediaAsset.GOODS.equalsIgnoreCase(segment(key, 2))) {
+        if (MediaKeys.isPublicKey(key)) {
             return ResponseEntity.notFound().build();
         }
 
@@ -91,11 +91,6 @@ public class MediaReadController {
                 .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePrivate().noTransform())
                 .contentType(contentTypeOf(file))
                 .body(new FileSystemResource(file));
-    }
-
-    private static String segment(String key, int i) {
-        String[] seg = key.split("/");
-        return i < seg.length ? seg[i] : "";
     }
 
     private static MediaType contentTypeOf(Path file) {

@@ -63,6 +63,38 @@ class LocalMediaHttpReadTest {
         }
     }
 
+    @Test void avatarsEvidenceAndLegacyGoodsArePublicAndNotPrivateStreams() throws Exception {
+        try (var context = context()) {
+            var store = context.getBean(MediaStore.class);
+            var mvc = MockMvcBuilders.webAppContextSetup(context).build();
+            for (String key : java.util.List.of("_USER/U1/avatar/202611/avatar.png",
+                    "_USER/U1/evidence/review/202611/review.png", "M1/legacy.png")) {
+                byte[] image = {1, 2, 3};
+                store.put(key, new ByteArrayInputStream(image), image.length, "image/png");
+                mvc.perform(get(store.publicUrl(key))).andExpect(status().isOk()).andExpect(content().bytes(image));
+                mvc.perform(get(store.signedUrl(key, Duration.ofMinutes(1)))).andExpect(status().isNotFound());
+                org.assertj.core.api.Assertions.assertThatThrownBy(() -> store.openPrivate(key))
+                        .isInstanceOf(IllegalArgumentException.class);
+            }
+        }
+    }
+
+    @Test void businessProofsRemainSignedOnly() throws Exception {
+        try (var context = context()) {
+            var store = context.getBean(MediaStore.class);
+            var mvc = MockMvcBuilders.webAppContextSetup(context).build();
+            for (String purpose : java.util.List.of(SysMediaAsset.QUAL.toLowerCase(java.util.Locale.ROOT), SysMediaAsset.AFTERSALE.toLowerCase(java.util.Locale.ROOT), SysMediaAsset.OFFLINE_RECEIPT.toLowerCase(java.util.Locale.ROOT), "reports")) {
+                String key = "E1/S1/" + purpose + "/202611/proof.png";
+                byte[] image = {4, 5, 6};
+                store.put(key, new ByteArrayInputStream(image), image.length, "image/png");
+                mvc.perform(get(store.publicUrl(key))).andExpect(status().isNotFound());
+                mvc.perform(get(store.privatePath(key))).andExpect(status().isNotFound());
+                mvc.perform(get(store.signedUrl(key, Duration.ofMinutes(1))))
+                        .andExpect(status().isOk()).andExpect(content().bytes(image));
+            }
+        }
+    }
+
     @Test void csvAndUnknownFilesAreNotReportedAsJpeg() throws Exception {
         try (var context = context()) {
             var store = context.getBean(MediaStore.class);

@@ -133,7 +133,7 @@ public class MediaUsageService {
                         ? null
                         : mediaStore.thumbUrl(
                                 a.getAssetKey(),
-                                SysMediaAsset.GOODS.equals(a.getBizType()),
+                                MediaKeys.isPublicKey(a.getAssetKey()),
                                 THUMB_WIDTH);
         return ReclaimableVO.of(a, thumb);
     }
