@@ -16,6 +16,7 @@ import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
 import ai.neargo.shop.pay.openapp.service.AppGrantService.GrantView;
 import ai.neargo.shop.payclient.BizPaymentAppService;
+import ai.neargo.shop.payclient.PaymentReadRouter;
 import java.util.List;
 import java.util.Set;
 import org.springframework.context.annotation.Profile;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -39,9 +41,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizPaymentController {
 
     private final BizPaymentAppService app;
+    private final PaymentReadRouter reads;
 
-    public BizPaymentController(BizPaymentAppService app) {
+    public BizPaymentController(BizPaymentAppService app, PaymentReadRouter reads) {
         this.app = app;
+        this.reads = reads;
     }
 
     public record GrantReq(String appNo, Set<String> actions) {
@@ -147,16 +151,18 @@ public class BizPaymentController {
                                      @RequestParam(required = false) Long amountMax,
                                      @RequestParam(required = false) String q,
                                      @RequestParam(required = false) String cursor,
-                                     @RequestParam(required = false) Integer size) {
-        return app.paymentOrders(BizContext.requireStoreNo(),
+                                     @RequestParam(required = false) Integer size,
+                                     @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.orders(environment,
                 new PaymentQuery(from, to, source, channel, status, amountMin, amountMax, q, cursor, size));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_STATEMENT + "')")
     @GetMapping("/biz/payment/orders/summary")
     public Summary paymentSummary(@RequestParam(required = false) String from,
-                                  @RequestParam(required = false) String to) {
-        return app.paymentSummary(BizContext.requireStoreNo(), from, to);
+                                  @RequestParam(required = false) String to,
+                                  @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.summary(environment, from, to);
     }
 
     /** 顾客说「我付了」：传 tradeNoSuffix（≥6 位）按交易号找；否则按 amountMinor + within（10m / 1h / today） */
@@ -164,21 +170,23 @@ public class BizPaymentController {
     @GetMapping("/biz/payment/orders/lookup")
     public Lookup paymentLookup(@RequestParam(required = false) Long amountMinor,
                                 @RequestParam(required = false) String within,
-                                @RequestParam(required = false) String tradeNoSuffix) {
-        return app.paymentLookup(BizContext.requireStoreNo(), amountMinor, within, tradeNoSuffix);
+                                @RequestParam(required = false) String tradeNoSuffix,
+                                @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.lookup(environment, amountMinor, within, tradeNoSuffix);
     }
 
     /** 本店是否已开通收款（有生效的收款商户绑定）及已开通的渠道：「收款」Tab 据此决定给列表还是给开通入口 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
     @GetMapping("/biz/payment/collect-status")
-    public CollectStatus collectStatus() {
-        return app.collectStatus(BizContext.requireStoreNo());
+    public CollectStatus collectStatus(@RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.status(environment);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.PAY_ORDER_VIEW + "')")
     @GetMapping("/biz/payment/orders/{payOrderNo}")
-    public Detail paymentDetail(@PathVariable String payOrderNo) {
-        return app.paymentDetail(BizContext.requireStoreNo(), payOrderNo);
+    public Detail paymentDetail(@PathVariable String payOrderNo,
+            @RequestHeader(value = PaymentReadRouter.HEADER, required = false) String environment) {
+        return reads.detail(environment, payOrderNo);
     }
 
     /** 待确认的单「立即查询结果」：向渠道查单补账，返回查后的详情 */
