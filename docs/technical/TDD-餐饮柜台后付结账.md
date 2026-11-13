@@ -244,6 +244,7 @@ BizCounterSettlementPermTest / RemoteCounterSettlementServiceTest  各 1，全�
 5. **AC7 落点**。设计以为核心单 PAID 后 AR 会自然消失；实际日结的 AR 只看核心有效应收是否 > 0，与支付状态无关。改为按「COUNTER 结算单 SETTLED」排除 AR 与 PAY_UNKNOWN；其他结算单仍记（资金完整性仍为未知）。
 6. **资金隔离（实现中发现）**。核对 PAID 读者时发现：资金巡检 `FundInvariantReconciler`（每小时）按 `LEGACY_FUNDED + paid_at` 找「已付却没结算单」的子单并补出账，出账 `settleSourcesOf` 只排除美业 `MANUAL_OFFLINE`，且把无支付通道视为线上 —— 会给每张后付实收单补一张带佣金、待分账的结算单。已在两处按 `ord_postpay_receipt_root` 排除，并加对照测试与消融。仍未处理（后续）：报表纠偏只认 `ORDER_PAID`，已滚完的日报不会因实收重算；后付单没有在线支付号，售后退款会被 `RefundFinancialOwnerServiceImpl` 拒绝（安全但不可用）。
 7. **拆分部署的错误码**。`InternalServiceResponses.invoke` 不回业务码，少收 / 账单变了在独立部署下会退化成 500。两跳都改用 `invokeBound`（业务码 + 请求摘要），调用方核对摘要后才采信；少收的差额参数不跨服务，独立部署显示「—」。
+9. **控制器漏登记（本机起服务时发现）**。餐饮 Web 控制器不走包扫描，靠 `FoodWebAutoConfiguration` 逐个 `@Bean` 登记；`BizCounterSettlementController` 漏了，单元测试全绿但运行时四个端点 404。已补登记，并加守卫 `FoodControllerRegistrationTest`（food-web 下每个 `@RestController` 必须在 config 里 `@Bean`/`@Import`，条件注解里的 `.class` 不算；消融：去掉登记 → 红）。本机 8091 冒烟：四个端点返回业务码 10404，外部记账带 `bizNo` 记账与按 `bizNo` 查询正常。
 8. **餐饮 API 清单未重生成**。`docs/api/food/接口清单.*` 钉在 2026-10-30 的基线、不在闸门里，本期不重生成。
 
 ## 迁移（需 root 先执行）

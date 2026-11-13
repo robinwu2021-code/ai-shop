@@ -38,6 +38,7 @@ import ai.neargo.shop.food.api.biz.BizRecipeController;
 import ai.neargo.shop.food.api.biz.BizReservationController;
 import ai.neargo.shop.food.api.biz.BizSalesRestrictionController;
 import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
+import ai.neargo.shop.food.api.biz.BizCounterSettlementController;
 import ai.neargo.shop.food.api.biz.BizSettlementController;
 import ai.neargo.shop.food.api.biz.BizStationController;
 import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
@@ -60,6 +61,7 @@ import ai.neargo.shop.food.foodclient.FoodOfflineDraftClientConfiguration;
 import ai.neargo.shop.food.job.DiningTransactionRecoveryJob;
 import ai.neargo.shop.food.job.FoodMaintenanceJobs;
 import ai.neargo.shop.food.port.FoodPricingSourceFactsPortImpl;
+import ai.neargo.shop.food.service.CounterSettlementService;
 import ai.neargo.shop.food.service.BundleService;
 import ai.neargo.shop.food.service.BusinessCloseService;
 import ai.neargo.shop.food.service.BusinessReturnApprovalService;
@@ -379,6 +381,19 @@ public class FoodWebAutoConfiguration {
             StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizSettlementController(service, stores, scope);
+    }
+
+    /** 柜台后付整桌结账（TDD-餐饮柜台后付结账）；拆分部署时 service 是 RemoteCounterSettlementService。 */
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({CounterSettlementService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizCounterSettlementController.class)
+    BizCounterSettlementController bizCounterSettlementController(
+            CounterSettlementService service,
+            StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizCounterSettlementController(service, stores, scope);
     }
 
     @Bean
