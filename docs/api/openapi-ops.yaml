@@ -368,6 +368,9 @@ components:
     StoreIndustryChoice:
       type: "object"
       properties:
+        available:
+          type: "boolean"
+          description: "Whether this industry has a published, enabled business type and free plan."
         industryCode:
           type: "string"
           description: "系统门店行业编码"

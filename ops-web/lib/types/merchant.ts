@@ -281,6 +281,8 @@ export interface InitialStoreProfile {
 }
 /** 可用于运营代客建店的已启用行业与已发布经营类型。 */
 export interface StoreIndustryChoice {
+  /** Whether this industry has a published, enabled business type and free plan. */
+  available?: boolean;
   /** 系统门店行业编码 */
   industryCode: string;
   /** 子行业编码；行业父项为 null */

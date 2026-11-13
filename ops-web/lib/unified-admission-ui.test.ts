@@ -4,12 +4,12 @@ import {createRoot,type Root} from "react-dom/client";
 import {QueryClient,QueryClientProvider} from "@tanstack/react-query";
 import {beforeEach,afterEach,it,expect,vi} from "vitest";
 import type {AdmissionEntry} from "./types";
-const state=vi.hoisted(()=>({list:vi.fn(),create:vi.fn(),accept:vi.fn(),addStore:vi.fn(),context:vi.fn(),error:vi.fn()}));
+const state=vi.hoisted(()=>({list:vi.fn(),create:vi.fn(),accept:vi.fn(),addStore:vi.fn(),context:vi.fn(),error:vi.fn(),storeChoices:vi.fn()}));
 vi.mock("@/lib/api",()=>({api:{
  listAdmissions:state.list,selfOperatedContext:state.context,onBehalfContext:state.context,
  createSelfOperated:state.create,acceptApply:state.accept,addSelfOperatedStore:state.addStore,
  listCommunities:async()=>({records:[]}),listAuthCodes:async()=>[],listIndustries:async()=>[],
- onBehalfStoreIndustries:async()=>[],
+ onBehalfStoreIndustries:state.storeChoices,
 }}));
 vi.mock("@/lib/api/master-data",()=>({useCodeLabel:()=>({industry:(v:string)=>v,subject:(v:string)=>v})}));
 vi.mock("@/lib/i18n",()=>({useI18n:()=>({locale:"zh",t:(k:string)=>k}),useT:()=>((k:string)=>k)}));
@@ -23,7 +23,7 @@ const entries:AdmissionEntry[]=[
  {key:"SELF:M1",type:"SELF_OPERATED",name:"自营测试",ownerUserNo:"OWNER-S",status:"ACTIVE",createdAt:2,selfOperated:{merchantNo:"M1",name:"自营测试",ownerUserNo:"OWNER-S",status:"ACTIVE",serviceScope:"CITY",createdAt:2}},
 ];
 beforeEach(()=>{(globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
- vi.clearAllMocks();state.list.mockResolvedValue({records:entries,total:2});state.context.mockResolvedValue({market:"TW",recordOnly:true,marketEnabled:true});
+ vi.clearAllMocks();state.list.mockResolvedValue({records:entries,total:2});state.context.mockResolvedValue({market:"TW",recordOnly:true,marketEnabled:true});state.storeChoices.mockResolvedValue([]);
  state.create.mockResolvedValue({merchantNo:"M-new",created:true});state.addStore.mockResolvedValue({merchantNo:"M1",storeNo:"S-new",name:"实际新增门店"});
  host=document.createElement("div");document.body.append(host);root=createRoot(host);client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
 });
@@ -50,6 +50,29 @@ it("switches the creation dialog between assisted and platform-owned without cha
  expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain("大陆");
  expect(document.querySelector("#ob-market")).toBeNull();
  await input("admission-create-type","ON_BEHALF");expect(document.querySelector("#ob-owner-email")).not.toBeNull();
+});
+it("names the action as merchant creation and aligns the type control inside the form",async()=>{
+ await render();await click(c.obNew);
+ const dialog=document.querySelector('[role="dialog"]')!;
+ expect(dialog.querySelector("h2")?.textContent).toBe("新增商户");
+ expect(document.activeElement).toBe(dialog.querySelector("h2"));
+ const type=document.getElementById("admission-create-type")!;
+ expect(type.closest("form")).not.toBeNull();expect(type.className).toContain("w-full");
+ await input("admission-create-type","SELF_OPERATED");
+ const form=document.getElementById("so-owner")!.closest("form")!;
+ expect(form.className).not.toContain("border");expect(document.getElementById("admission-create-type")!.closest("form")).toBe(form);
+});
+it("shows service industries without allowing an unconfigured business plan to be submitted",async()=>{
+ state.storeChoices.mockResolvedValue([
+  {industryCode:"SERVICE",subIndustryCode:null,businessTypeCode:"SERVICE",nameZh:"服务业",enabled:true,available:false},
+  {industryCode:"SERVICE",subIndustryCode:"SERVICE_HAIR",businessTypeCode:"SERVICE",nameZh:"美发",enabled:true,available:false},
+ ]);
+ await render();await click(c.obNew);
+ expect(document.getElementById("ob-store-industry")?.textContent).toContain("服务业");
+ await input("ob-store-industry","SERVICE");
+ const child=document.querySelector('#ob-store-sub-industry option[value="SERVICE_HAIR"]') as HTMLOptionElement;
+ expect(child.disabled).toBe(true);expect(document.body.textContent).toContain(c.obIndustryUnavailable);
+ expect([...document.querySelectorAll("button")].find(b=>b.textContent===c.obSubmit)?.disabled).toBe(true);
 });
 it("self-operation success closes the dialog and refreshes the unified list",async()=>{
  await render();await click(c.obNew);await input("admission-create-type","SELF_OPERATED");

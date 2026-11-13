@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 import type { MerchantsCopy } from "./copy";
 
-export function SelfOperatedTab({c,canCreate,onCreated,onBusyChange}:{c:MerchantsCopy;canCreate:boolean;onCreated?:()=>void;onBusyChange?:(busy:boolean)=>void}) {
+export function SelfOperatedTab({c,canCreate,onCreated,onBusyChange,embedded=false,admissionTypeField}:{c:MerchantsCopy;canCreate:boolean;onCreated?:()=>void;onBusyChange?:(busy:boolean)=>void;embedded?:boolean;admissionTypeField?:React.ReactNode}) {
  const context=useQuery({queryKey:["self-operated-context"],queryFn:()=>api.selfOperatedContext(),enabled:canCreate});
  const phoneOwner=context.data?.market==="CN" && !context.data.recordOnly;
  const [ownerEmail,setOwnerEmail]=useState("");const [phone,setPhone]=useState("");
@@ -29,8 +29,8 @@ export function SelfOperatedTab({c,canCreate,onCreated,onBusyChange}:{c:Merchant
  const ready=!!context.data?.marketEnabled && !context.isError && !!name.trim() && (phoneOwner?/^1[3-9]\d{9}$/.test(phone.trim()):/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && (scope!=="COMMUNITY" || communityNos.length>0);
  if(!canCreate)return <Notice tone="danger">{c.soNoPerm}</Notice>;
  return <div className="space-y-4">
-  <form className="space-y-5 rounded-card border bg-card p-5" onSubmit={e=>{e.preventDefault();if(ready&&!create.isPending)create.mutate();}}>
-   <p className="txt-caption text-muted-foreground">{c.obSystemMarket}：{context.data?.market??"—"}</p>
+  <form className={embedded?"space-y-5":"space-y-5 rounded-card border bg-card p-5"} onSubmit={e=>{e.preventDefault();if(ready&&!create.isPending)create.mutate();}}>
+   {admissionTypeField?<div className="grid gap-4 sm:grid-cols-2">{admissionTypeField}<div className="space-y-1.5"><span className="block txt-caption">{c.obSystemMarket}</span><p className="flex h-[var(--ctl-h)] items-center txt-body">{context.data?.market??"—"}</p></div></div>:<p className="txt-caption text-muted-foreground">{c.obSystemMarket}：{context.data?.market??"—"}</p>}
    {context.error&&<Notice tone="danger">{context.error.message}</Notice>}
    {industries.error&&<Notice tone="danger">{industries.error.message}</Notice>}
    {communities.error&&<Notice tone="danger">{communities.error.message}</Notice>}
