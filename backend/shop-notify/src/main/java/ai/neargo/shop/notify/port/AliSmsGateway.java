@@ -1,6 +1,9 @@
 package ai.neargo.shop.notify.port;
 
 import ai.neargo.shop.spi.notify.SendResult;
+import ai.neargo.shop.common.otp.OtpScenes;
+import org.springframework.core.env.Environment;
+import java.util.HashMap;
 import ai.neargo.shop.spi.notify.SmsPort;
 import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
@@ -62,6 +65,7 @@ public class AliSmsGateway implements SmsPort {
     private final String accessKeySecret;
     private final String signName;
     private final String otpTemplate;
+    private final Map<String, String> otpSceneTemplates;
     /** 来单提醒模板。**可以为空**（阿里云审批没下来），见 requireConfigured 的注释 */
     private final String orderPaidTemplate;
     private final String afterSaleTemplate;
@@ -75,12 +79,19 @@ public class AliSmsGateway implements SmsPort {
                          @Value("${shop.sms.ali.templates.otp:}") String otpTemplate,
                          @Value("${shop.sms.ali.templates.order-paid:}") String orderPaidTemplate,
                          @Value("${shop.sms.ali.templates.after-sale-applied:}") String afterSaleTemplate,
-                         @Value("${shop.sms.ali.templates.ship:}") String shipTemplate) {
+                         @Value("${shop.sms.ali.templates.ship:}") String shipTemplate, Environment environment) {
         this.endpoint = endpoint;
         this.accessKeyId = accessKeyId;
         this.accessKeySecret = accessKeySecret;
         this.signName = signName;
         this.otpTemplate = otpTemplate;
+        var templates = new HashMap<String, String>();
+        for (String scene : OtpScenes.ALL) {
+            String template = environment.getProperty("shop.sms.ali.otp-scenes." + scene);
+            if (template != null && !template.isBlank()) templates.put(scene, template.trim());
+        }
+        templates.put(OtpScenes.LOGIN, otpTemplate);
+        this.otpSceneTemplates = Map.copyOf(templates);
         this.orderPaidTemplate = orderPaidTemplate == null ? "" : orderPaidTemplate.trim();
         this.afterSaleTemplate = afterSaleTemplate == null ? "" : afterSaleTemplate.trim();
         this.shipTemplate = shipTemplate == null ? "" : shipTemplate.trim();
@@ -128,6 +139,19 @@ public class AliSmsGateway implements SmsPort {
 
     @Override
     public SendResult sendOtp(String phone, String code) {
+        return sendOtpWithTemplate(phone, code, otpTemplate);
+    }
+
+    @Override public void requireOtpScene(String scene) {
+        String template = otpSceneTemplates.get(scene);
+        require(template, "OTP scene template " + scene);
+    }
+    @Override public SendResult sendOtpForScene(String phone, String code, String scene, String bizType, String operatorNo) {
+        requireOtpScene(scene);
+        return sendOtpWithTemplate(phone, code, otpSceneTemplates.get(scene));
+    }
+
+    private SendResult sendOtpWithTemplate(String phone, String code, String template) {
         Map<String, String> p = new TreeMap<>();
         p.put("Action", "SendSms");
         p.put("Version", "2017-05-25");
@@ -140,7 +164,7 @@ public class AliSmsGateway implements SmsPort {
         p.put("Timestamp", TS.format(Instant.now()));
         p.put("PhoneNumbers", phone);
         p.put("SignName", signName);
-        p.put("TemplateCode", otpTemplate);
+        p.put("TemplateCode", template);
         p.put("TemplateParam", "{\"code\":\"" + code + "\"}");
 
         String canonical = canonicalize(p);
@@ -174,7 +198,7 @@ public class AliSmsGateway implements SmsPort {
              */
             throw new SmsException("阿里云拒绝：" + respCode + " " + msg, false);
         }
-        return SendResult.of(field(resp.body(), "BizId"), otpTemplate);
+        return SendResult.of(field(resp.body(), "BizId"), template);
     }
 
     /**

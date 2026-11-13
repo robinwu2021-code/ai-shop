@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "stage": "JAVA_BACKEND_UI_DEFERRED",
+  "reason": "GET /biz/payment/events is already consumed by standalone ai-shop-bapp Flutter (released source 0d6ba2f81), not repository Vue b-app. This record preserves the deployed 166 payment SSE baseline without claiming a Vue implementation.",
+  "plan": "docs/technical/TDD-沙箱收款消息与SSE.md",
+  "contract": "docs/api/biz-payment-events.openapi.json",
+  "entries": [
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/payment/events"
+    }
+  ]
+}

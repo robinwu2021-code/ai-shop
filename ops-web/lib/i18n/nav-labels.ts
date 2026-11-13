@@ -16,6 +16,8 @@ const OVERLAY: Record<string, Record<string, string>> = {
   "商户中心": { en: "Merchants" },
   "入驻资质": { en: "Onboarding" },
   "准入押金": { en: "Admission" },
+  "入驻申请": { en: "Admission applications" },
+  "支付开通": { en: "Payment activation" },
   "自营建档": { en: "Self-operated" },
   "代办入驻": { en: "Assisted Entry" },
   "自营风险": { en: "Operating Risks" },

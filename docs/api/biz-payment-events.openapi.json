@@ -1,0 +1,62 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Merchant payment events",
+    "version": "1.0.0",
+    "description": "Existing sandbox payment SSE contract retained when merging the live 166 baseline. The standalone Flutter ai-shop-bapp consumes it; repository Vue b-app remains deferred. Runtime is conditional on shop.payment-collections.enabled."
+  },
+  "paths": {
+    "/biz/payment/events": {
+      "get": {
+        "operationId": "merchantPaymentEvents",
+        "summary": "Stream authorized store payment events",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Requires merchant BizContext and mch:pay:order:view. Cursor binds identity/store/expiry. ready, payment.succeeded, resync_required, access_revoked events and comment heartbeat. No cursor starts at current committed high water mark.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque server-issued cursor from a prior connection."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized event stream, without proxy buffering.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor"
+          },
+          "401": {
+            "description": "Missing or expired merchant session"
+          },
+          "403": {
+            "description": "Identity/store/permission denied"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

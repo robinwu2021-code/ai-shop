@@ -72,6 +72,23 @@ class BizCaptchaServiceTest {
                 .isInstanceOf(BizException.class);
     }
 
+    @Test void genericSceneProofBindsBusinessKeyAndConsumesOnce() {
+        var c = service.issue(BizCaptchaService.Action.OTP_SEND,"13800000000","ip","ORDER_PICKUP_CONFIRM","order1");
+        var proof = service.verify(c.challengeId(),BizCaptchaService.Action.OTP_SEND,"13800000000",solution(c),"ip",
+                "ORDER_PICKUP_CONFIRM","order1");
+        var shared = new CaptchaProofService(store);
+        shared.require("OTP_SEND","13800000000","ORDER_PICKUP_CONFIRM","order1",proof.captchaToken());
+        assertThatThrownBy(() -> shared.require("OTP_SEND","13800000000","ORDER_PICKUP_CONFIRM","order1",proof.captchaToken()))
+                .isInstanceOf(BizException.class);
+        var other = service.issue(BizCaptchaService.Action.OTP_SEND,"13800000000","ip","ORDER_PICKUP_CONFIRM","order1");
+        var mismatch = service.verify(other.challengeId(),BizCaptchaService.Action.OTP_SEND,"13800000000",solution(other),"ip",
+                "ORDER_PICKUP_CONFIRM","order1");
+        assertThatThrownBy(() -> shared.require("OTP_SEND","13800000000","ORDER_PICKUP_CONFIRM","order2",mismatch.captchaToken()))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> shared.require("OTP_SEND","13800000000","ORDER_PICKUP_CONFIRM","order1",mismatch.captchaToken()))
+                .isInstanceOf(BizException.class);
+    }
+
     @Test void missingWrongExpiredAndMismatchedProofsAreRejected() {
         assertThatThrownBy(() -> service.require(BizCaptchaService.Action.LOGIN, "a", null)).isInstanceOf(BizException.class);
         assertThatThrownBy(() -> service.require(BizCaptchaService.Action.LOGIN, "a", "wrong")).isInstanceOf(BizException.class);

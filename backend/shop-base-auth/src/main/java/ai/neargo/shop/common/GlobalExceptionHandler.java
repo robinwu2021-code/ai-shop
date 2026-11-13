@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CaptchaRequiredException.class)
     public ApiResult<Map<String, Object>> onCaptcha(CaptchaRequiredException e) {
         return new ApiResult<>(e.errorCode().code(), Messages.get(e.errorCode().msgKey()),
-                Map.of("captchaRequired", true, "action", e.action()));
+                e.details());
     }
 
     @ExceptionHandler(BizException.class)

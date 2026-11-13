@@ -48,7 +48,8 @@ class EmailOtpAuthTest {
     private final OtpStore store = new OtpStore(limiter);
     private final MailPort mail = mock(MailPort.class);
     private final OtpSendGuard guard = mock(OtpSendGuard.class);
-    private final EmailOtpService email = new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(mail, store, guard, false, false, 60);
+    private final ai.neargo.shop.common.otp.service.OtpSendService otpService = OtpFixtures.email(store, guard, mail, false, false);
+    private final EmailOtpService email = new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(otpService);
     private final UserMapper users = mock(UserMapper.class);
     private final IdentityMapper identities = mock(IdentityMapper.class);
     private final PasswordHasher hasher = mock(PasswordHasher.class);
@@ -87,9 +88,17 @@ class EmailOtpAuthTest {
                     && (values.contains(i.getIdentityValue()) || values.contains(i.getUserNo())))
                     .findFirst().orElse(null);
         });
-        auth = new AuthServiceImpl(users, identities, mock(WxPhonePort.class), mock(MpSessionService.class),
-                tokens, store, guard, mock(SmsPort.class), mock(WxAuthPort.class), hasher, limiter,
-                mock(PersonService.class), "", mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(SmsAdmissionPort.class));
+        auth = new AuthServiceImpl(users,
+                identities,
+                mock(WxPhonePort.class),
+                mock(MpSessionService.class),
+                tokens,
+                mock(WxAuthPort.class),
+                hasher,
+                limiter,
+                mock(PersonService.class),
+                mock(FissionPort.class),
+                otpService);
     }
 
     @Test
@@ -153,13 +162,13 @@ class EmailOtpAuthTest {
         String code = store.peek(EmailOtpService.key("person@example.com")).orElseThrow();
         assertThat(code).matches("[0-9]{6}");
         verify(mail).send(eq("person@example.com"), anyString(), contains(code), eq("OTP"), isNull());
-        verify(guard).check(argThat(key -> key.startsWith("email:") && !key.contains("person")));
+        verify(guard).check(argThat(key -> key.startsWith("email:") && !key.contains("person")), isNull(), isNull());
     }
 
     @Test
     void stubIsRefusedUnlessExplicitlyAllowed() {
         // 生产与本地跑同一组 profile，分不开；所以「走桩」必须显式放行，默认当作没有邮件通道
-        assertThatThrownBy(() -> new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(mail, store, guard, true, false, 60).send("person@example.com", null))
+        assertThatThrownBy(() -> new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(OtpFixtures.email(store, guard, mail, true, false)).send("person@example.com", null))
                 .isInstanceOfSatisfying(BizException.class,
                         e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
         verifyNoInteractions(mail, guard);
@@ -179,14 +188,14 @@ class EmailOtpAuthTest {
 
     @Test
     void allowedStubLogsCodeAtDebugWithMaskedAddress() {
-        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ai.neargo.shop.user.service.impl.EmailOtpServiceImpl.class);
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ai.neargo.shop.user.port.OtpChannelPortImpl.class);
         var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
         appender.start();
         var level = logger.getLevel();
         logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
         logger.addAppender(appender);
         try {
-            new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(mail, store, guard, true, true, 60).send("Person@Example.com", null);
+            new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(OtpFixtures.email(store, guard, mail, true, true)).send("Person@Example.com", null);
         } finally {
             logger.detachAppender(appender);
             logger.setLevel(level);
@@ -211,7 +220,7 @@ class EmailOtpAuthTest {
     @Test
     void resendIsRateLimitedBeforeCodeReplacement() {
         var realGuard = new OtpSendGuard(limiter, true, 60, 10, 20, 15);
-        var service = new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(mail, store, realGuard, false, false, 60);
+        var service = new ai.neargo.shop.user.service.impl.EmailOtpServiceImpl(OtpFixtures.email(store, realGuard, mail, false, false));
         service.send("person@example.com", null);
         String original = store.peek(EmailOtpService.key("person@example.com")).orElseThrow();
         assertThatThrownBy(() -> service.send("PERSON@example.com", null))

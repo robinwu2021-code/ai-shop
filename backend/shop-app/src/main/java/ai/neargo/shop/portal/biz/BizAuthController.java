@@ -2,6 +2,14 @@ package ai.neargo.shop.portal.biz;
 
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.captcha.BizCaptchaService;
+import ai.neargo.shop.auth.ClientMeta;
+import ai.neargo.shop.common.otp.OtpEntries;
+import ai.neargo.shop.common.otp.OtpScenes;
+import ai.neargo.shop.common.otp.service.OtpSendService;
+import ai.neargo.shop.common.otp.service.OtpSendService.Channel;
+import ai.neargo.shop.common.otp.service.OtpSendService.OtpContext;
+import ai.neargo.shop.common.otp.service.OtpSendService.SendCommand;
+import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.LoginAuditor;
@@ -34,6 +42,7 @@ public class BizAuthController {
 
     private final AuthService authService;
     private final BizCaptchaService captcha;
+    private final OtpSendService otp;
 
     private final LoginAuditor auditor;
     private final CommunityService communityService;
@@ -45,8 +54,9 @@ public class BizAuthController {
                              LoginAuditor auditor, CommunityService communityService,
                              BizMerchantController merchantController,
                              MerchantStaffService merchantStaffService,
-                             TokenStore tokenStore, BizCaptchaService captcha) {
+                             TokenStore tokenStore, BizCaptchaService captcha, OtpSendService otp) {
         this.captcha = captcha;
+        this.otp = otp;
         this.merchantStaffService = merchantStaffService;
         this.tokenStore = tokenStore;
         this.authService = authService;
@@ -128,8 +138,8 @@ public class BizAuthController {
      */
     @PostMapping("/biz/auth/otp/send")
     public void sendOtp(@RequestBody @Valid OtpReq req, HttpServletRequest http) {
-        captcha.require(BizCaptchaService.Action.OTP_SEND, req.phone(), http.getHeader("X-Captcha-Token"));
-        authService.sendOtp(req.phone());
+        otp.send(new SendCommand(OtpScenes.LOGIN, Channel.SMS, req.phone(), null, null, Map.of(), http.getHeader("X-Captcha-Token")),
+                new OtpContext(OtpEntries.BIZ_LOGIN, ClientMeta.clientIp(http), null));
     }
 
     /** @param phone 收码手机号 */
@@ -144,8 +154,9 @@ public class BizAuthController {
      */
     @PostMapping("/biz/auth/email-otp/send")
     public EmailOtpService.Delivery sendEmailOtp(@RequestBody @Valid EmailOtpReq req, HttpServletRequest http) {
-        captcha.require(BizCaptchaService.Action.EMAIL_OTP_SEND, req.email(), http.getHeader("X-Captcha-Token"));
-        return authService.sendEmailOtp(req.email(), req.locale());
+        var result = otp.send(new SendCommand(OtpScenes.LOGIN, Channel.EMAIL, req.email(), null, req.locale(), Map.of(), http.getHeader("X-Captcha-Token")),
+                new OtpContext(OtpEntries.BIZ_LOGIN, ClientMeta.clientIp(http), null));
+        return new EmailOtpService.Delivery(result.expiresInSeconds(), result.resendAfterSeconds());
     }
 
     /**

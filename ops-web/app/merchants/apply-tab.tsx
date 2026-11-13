@@ -56,7 +56,7 @@ const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
   OTHER: c.qualOTHER,
 });
 
-export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=false }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean; onBehalfOnly?:boolean }) {
+export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=false, action }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean; onBehalfOnly?:boolean; action?:React.ReactNode }) {
   const qc = useQueryClient();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
   const label = useCodeLabel();
@@ -123,34 +123,8 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
   const decided = current?.status === "APPROVED" || current?.status === "REJECTED";
 
   const columns: Column<MerchantApply>[] = [
-    {
-      header: c.applyColNo, numeric: true, align: "start",
-      cell: (a) => <div className="space-y-1">
-        <div>{a.applyNo}</div>
-        <div className="txt-caption text-muted-foreground">{a.onBehalf ? c.applySourceOps : c.applySourceMerchant}</div>
-      </div>,
-    },
-    {
-      header: c.applyColName,
-      cell: (a) => <div className="space-y-1">
-        <div className="max-w-40 truncate font-medium" title={a.name}>{a.name}</div>
-        <div className="max-w-40 truncate txt-caption text-muted-foreground" title={`${label.subject(a.subject)} · ${label.industry(a.industry)}`}>{label.subject(a.subject)} · {label.industry(a.industry)}</div>
-      </div>,
-    },
-    {
-      header: c.applyColStore,
-      cell: (a) => a.storeProfile ? <div className="space-y-1">
-        <div className="max-w-40 truncate" title={a.storeProfile.name}>{a.storeProfile.name}</div>
-        <div className="max-w-40 truncate txt-caption text-muted-foreground" title={a.storeProfile.address}>{a.storeProfile.address}</div>
-      </div> : <span className="txt-caption text-muted-foreground">{c.applyStoreUnprovided}</span>,
-    },
-    {
-      header: c.colContact,
-      cell: (a) => <div className="space-y-1">
-        <div>{a.contactName || "—"}</div>
-        {a.contactPhone && <div className="txt-caption text-muted-foreground">{a.contactPhone}</div>}
-      </div>,
-    },
+    { header:c.applyColName,cell:(a)=><div className="space-y-1"><div className="max-w-56 truncate font-medium" title={a.name}>{a.name}</div><div className="max-w-56 truncate txt-caption text-muted-foreground" title={a.storeProfile?.name}>{a.storeProfile?.name || c.applyStoreUnprovided}</div></div> },
+    { header:c.colContact,cell:(a)=><span>{a.contactName || "—"}</span> },
     { header: c.applyColStatus, cell: (a) => <StatusBadge value={a.status} map={STATUS_MAP} /> },
     { header: c.colCreatedAt, cell: (a) => <div className="max-w-24 whitespace-normal">{fmtTime(new Date(a.createdAt).toISOString())}</div> },
     {
@@ -175,7 +149,6 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
 
   return (
     <>
-      {!onBehalfOnly && <p className="mb-4 txt-body text-muted-foreground">{c.applySummary}</p>}
       <Toolbar
         search={keyword}
         onSearch={(v) => { setKeyword(v); setPage(1); }}
@@ -194,6 +167,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
             { value: "REJECTED", label: STATUS_MAP.REJECTED.label },
           ]}
         />
+        {action && <div className="ms-auto">{action}</div>}
       </Toolbar>
 
       <DataTable
