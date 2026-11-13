@@ -194,6 +194,7 @@ export const zhTW: Messages = {
   },
   // 业务枚举文案（components/status.tsx 消费）
   merchantStatus: {
+    PENDING_LICENSE: "待補證",
     ACTIVE: "正常經營",
     SUSPENDED: "已封禁",
     FROZEN: "已凍結",

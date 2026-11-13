@@ -30042,8 +30042,8 @@
         },
         {
           "key": "login.codeSent",
-          "zh-CN": "验证码已发到 {to}，5 分钟内有效。",
-          "en": "We sent a code to {to}. It expires in 5 minutes.",
+          "zh-CN": "请输入发送至 {email} 的 6 位验证码。",
+          "en": "Enter the 6-digit code sent to {email}.",
           "ar": null
         },
         {
@@ -30056,6 +30056,12 @@
           "key": "login.codeTitle",
           "zh-CN": "邮箱验证码",
           "en": "Email code",
+          "ar": null
+        },
+        {
+          "key": "login.emailCode",
+          "zh-CN": "邮箱验证码",
+          "en": "Email verification code",
           "ar": null
         },
         {
@@ -30095,9 +30101,21 @@
           "ar": null
         },
         {
+          "key": "login.otherAccount",
+          "zh-CN": "使用其他账号登录",
+          "en": "Sign in with another account",
+          "ar": null
+        },
+        {
           "key": "login.password",
           "zh-CN": "密码",
           "en": "Password",
+          "ar": null
+        },
+        {
+          "key": "login.paymentSource",
+          "zh-CN": "登录后返回支付运营端。",
+          "en": "Sign in to return to payment operations.",
           "ar": null
         },
         {
@@ -30131,6 +30149,24 @@
           "ar": null
         },
         {
+          "key": "login.restart",
+          "zh-CN": "返回账号密码登录",
+          "en": "Back to password sign-in",
+          "ar": null
+        },
+        {
+          "key": "login.retrySession",
+          "zh-CN": "重新核验",
+          "en": "Retry verification",
+          "ar": null
+        },
+        {
+          "key": "login.sessionRetry",
+          "zh-CN": "暂时无法核验共享登录状态。你的会话已保留，请检查网络后重试。",
+          "en": "Unable to verify your shared session right now. Your session has been preserved. Check your connection and retry.",
+          "ar": null
+        },
+        {
           "key": "login.submit",
           "zh-CN": "登录",
           "en": "Sign in",
@@ -30146,6 +30182,12 @@
           "key": "login.username",
           "zh-CN": "用户名",
           "en": "Username",
+          "ar": null
+        },
+        {
+          "key": "login.verifyCode",
+          "zh-CN": "验证并登录",
+          "en": "Verify and sign in",
           "ar": null
         },
         {
@@ -30245,6 +30287,12 @@
           "ar": null
         },
         {
+          "key": "merchantStatus.PENDING_LICENSE",
+          "zh-CN": "待补证",
+          "en": "Pending license",
+          "ar": null
+        },
+        {
           "key": "merchantStatus.SUSPENDED",
           "zh-CN": "已封禁",
           "en": "Suspended",
@@ -30314,6 +30362,12 @@
           "key": "nav.openMenu",
           "zh-CN": "打开菜单",
           "en": "Open menu",
+          "ar": null
+        },
+        {
+          "key": "nav.paymentOps",
+          "zh-CN": "支付运营",
+          "en": "Payment operations",
           "ar": null
         },
         {
@@ -48836,6 +48890,7 @@
         "client": "ops-web",
         "values": [
           "zh",
+          "zh-TW",
           "en"
         ],
         "zh": ""
@@ -49200,6 +49255,7 @@
         "name": "MerchantStatus",
         "client": "ops-web",
         "values": [
+          "PENDING_LICENSE",
           "ACTIVE",
           "SUSPENDED",
           "FROZEN"
@@ -49889,15 +49945,6 @@
           "USER",
           "STORE",
           "RECEIVE"
-        ],
-        "zh": ""
-      },
-      {
-        "name": "PointsLocale",
-        "client": "ops-web",
-        "values": [
-          "zh",
-          "en"
         ],
         "zh": ""
       },
