@@ -71,18 +71,17 @@ class ProfileAndPasswordTest {
                 .thenReturn(new ai.neargo.shop.spi.user.WxAuthPort.WxSession("openid-1", null));
         when(tokenStore.issue(any())).thenReturn("tk");
 
-        AuthServiceImpl auth = new AuthServiceImpl(
-                userMapper, identityMapper, mock(ai.neargo.shop.spi.user.WxPhonePort.class),
-                mock(ai.neargo.shop.user.service.MpSessionService.class), tokenStore,
-                mock(ai.neargo.shop.common.OtpStore.class),
-                mock(ai.neargo.shop.common.ratelimit.OtpSendGuard.class),
-                mock(ai.neargo.shop.spi.notify.SmsPort.class),
+        AuthServiceImpl auth = new AuthServiceImpl(userMapper,
+                identityMapper,
+                mock(ai.neargo.shop.spi.user.WxPhonePort.class),
+                mock(ai.neargo.shop.user.service.MpSessionService.class),
+                tokenStore,
                 wxAuthPort,
                 mock(ai.neargo.shop.auth.PasswordHasher.class),
                 mock(ai.neargo.shop.common.ratelimit.RateLimiter.class),
-                personService, "", fissionPort,
-                mock(ai.neargo.shop.user.service.OtpTestPhoneService.class),
-                mock(ai.neargo.shop.user.service.EmailOtpService.class), mock(SmsAdmissionPort.class));
+                personService,
+                fissionPort,
+                mock(ai.neargo.shop.common.otp.service.OtpSendService.class));
 
         auth.login(new ai.neargo.shop.user.service.AuthService.LoginCommand(
                 "WX_MINI", "code-1", null, null, null, Boolean.TRUE));

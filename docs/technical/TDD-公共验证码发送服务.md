@@ -1,8 +1,8 @@
 # TDD-公共验证码发送服务
 
-状态：草案（开发方案，未实施）。日期：2026-11-13。档位：1；扩展既有公共验证码能力、SPI与场景策略，不新增业务域、Maven模块或表族。
+状态：已实现（本地验证完成，统一分支发布与166模拟器验收进行中）。日期：2026-11-13。档位：1；扩展既有公共验证码能力、SPI与场景策略，不新增业务域、Maven模块或表族。
 
-> **For agentic workers:** 实施采用 superpowers:executing-plans；按本项目 MEMORY 及 Java规范§八集中编码、一次受影响编译与测试，修复后只重验受影响部分。以下复选项均为待开发任务，不是已完成证据。
+> **For agentic workers:** 实施采用 superpowers:executing-plans；按本项目 MEMORY 及 Java规范§八集中编码、一次受影响编译与测试，修复后只重验受影响部分。验证与发布进度见复选项及§5。
 
 **Goal:** 将短信/邮箱发码封装为与认证业务平级的公共能力，通过静态场景常量和独立策略按需要求滑块，优先复用现有代码。
 **Architecture:** 公共契约落现有 shop-base，编排与安全基础实现落 shop-base-auth 的 common.otp 包；旧发码中的渠道差异通过一份 SPI 渠道验证码能力抽取复用，Tianai仍留shop-app。AuthService、会员、订单等业务都是调用方，不作为公共服务的父层。
@@ -84,7 +84,7 @@ record OtpSendResult(long expiresInSeconds, int resendAfterSeconds) {}
 - VerifyCommand：scene、channel、recipient、businessKey、code。
 - OtpContext：entryCode由服务端入口固定选择，clientIp由可信请求元数据提供，senderKey仅取已认证发起人。后台调用可无IP，保持原OtpSendGuard此时跳过IP补充闸的行为；账号/发起人硬限及平台统计照常，不伪造IP。
 - OtpSendResult：expiresInSeconds、resendAfterSeconds；不返回OTP正文。
-- OtpChannelPort：`DeliveryResult deliver(DeliveryCommand command)`及`boolean verifyAndConsume(VerificationCommand command)`。DeliveryCommand内嵌record包含scene、channel、recipient、storageKey、ttl、locale、logicalTemplateKey、parameters；VerificationCommand包含scene、channel、recipient、storageKey、code。DeliveryResult只含实际expiresInSeconds。接收的均为公共服务解析后的可信值，不再执行发码计数。
+- OtpChannelPort：`DeliveryResult deliver(DeliveryCommand command)`及`boolean verifyAndConsume(VerificationCommand command)`。DeliveryCommand内嵌record包含scene、channel、recipient、storageKey、ttl、locale、logicalTemplateKey、parameters；VerificationCommand包含scene、channel、recipient、storageKey、code。DeliveryResult只含实际expiresInSeconds；requireAvailable负责地区/通道资格预检，在凭据和限流前执行，保留原地区拒绝顺序。接收的均为公共服务解析后的可信值，不再执行发码计数。
 - 渠道实现同时承接原LOGIN测试身份/固定码的发送与校验分支。公共verify先检查场景/入口与键，再调用渠道Port；真实码仍由原OtpStore原子消费，LOGIN不存码测试身份继续按原受控规则验证。新场景不自动继承此旁路。
 - 验证码生成/存码时序和校验规则保留在渠道实现中。旧AuthService/EmailOtpService发送与OTP校验方法委托公共入口，避免发送成功但公共校验不支持测试身份、或保留两份验证分支。用户名解析、账号创建、密码认证仍属于原业务服务。
 
@@ -98,9 +98,9 @@ record OtpSendResult(long expiresInSeconds, int resendAfterSeconds) {}
 | EMAIL_CHANGE | EMAIL10分钟 | ALWAYS | 同上 |
 | ORDER_PICKUP_CONFIRM | SMS5分钟，绑定业务对象 | 账户小时1次/24小时3次免验证 | 同上；不替代订单本身的取货凭证 |
 
-以上为开发初始建议，不是当前已上线配置。场景常量存在不代表场景已开放；未开放、未配齐对应渠道/模板的场景明确拒绝，不能借用LOGIN模板发送。
+以下默认策略已经实现；线上生效时间见§5发布记录。场景常量存在不代表场景已开放；未开放、未配齐对应渠道/模板的场景明确拒绝，不能借用LOGIN模板发送。
 
-OtpScenePolicy首期集中登记：允许渠道、各渠道TTL、逻辑模板键/允许参数名、滑块模式及软阈值、是否要求业务键。6位数字码、60秒重发间隔和原硬限制、失败5次/15分钟规则作为现有公共基线复用；首期不宣称可按场景改写尚未支持的硬限或失败规则。配置在启动时绑定/校验后形成内存快照；业务发送不逐次读配置库。首期不实现规则脚本引擎。
+OtpScenePolicy首期集中登记：允许渠道、各渠道TTL、滑块模式及软阈值、是否要求业务键；逻辑模板按OTP_<SCENE>映射，尚无已注册业务参数，非空parameters拒绝。6位数字码、60秒重发间隔和原硬限制、失败5次/15分钟规则作为现有公共基线复用；首期不宣称可按场景改写尚未支持的硬限或失败规则。配置在启动时绑定/校验后形成内存快照；业务发送不逐次读配置库。首期不实现规则脚本引擎。
 
 场景与入口分开：新增静态入口常量`OtpEntries.BIZ_LOGIN`、`LEGACY_AUTH`。策略解析先确认scene已启用，再确认(scene, entryCode)组合已登记，读取场景基线后应用明确的入口滑块覆盖；未登记组合拒绝，不能自动退为免验证。BIZ_LOGIN/LOGIN为ADAPTIVE；LEGACY_AUTH/LOGIN为RATE_ONLY（计数、硬限制不变，不加新弹窗）。其他场景/入口完成授权、模板、客户端上下文接入后逐项登记启用。
 
@@ -135,45 +135,45 @@ InMemoryOtpFrequency：每个接收账号只保存小时/24小时计数与到期
 - MailPort和现有日志装饰器复用；将原EmailOtpServiceImpl.Content整体搬为OtpChannelPortImpl的private EmailContent helper，并从旧类删除，再扩展场景/语言/实际TTL，避免正文写10分钟而策略只有5分钟。NotifyBizType.OTP继续表示消息分类，不能当作OTP业务场景替代品。
 - 内部外部码转发、运营手工测试等既有通知调用逐项分类，不自动改成平台生成OTP；来单、物流等普通通知不走OtpSendService。
 
-### 2.5 待开发任务
+### 2.5 实施任务
 
 #### 任务1：公共契约、场景策略与键规则
 
 Files：新建shop-base/src/main/java/ai/neargo/shop/common/otp/{OtpScenes,OtpEntries,OtpScenePolicy,OtpKeys}.java、common/otp/service/OtpSendService.java、spi/otp/OtpChannelPort.java；新建shop-base-auth/.../common/otp/policy/OtpScenePolicies.java；复用OtpStore原有方法和锁定规则，保留旧方法。
 
-- [ ] 定义§2.2公共签名、内嵌record、场景/入口静态常量和场景允许参数；校验字段使用现有框架。
-- [ ] 静态登记默认策略、配置一次绑定到内存；只启用已准备好的LOGIN入口。
-- [ ] 实现LOGIN旧键兼容及新场景/业务对象隔离；场景无效、渠道不允许、业务键缺失明确拒绝。
-- [ ] 新建OtpScenePolicyTest：LOGIN短信/邮件默认5/10分钟、未开放场景拒绝、场景/业务键不可混用；原OtpStore默认方法行为不变；BIZ_LOGIN与LEGACY_AUTH策略明确且未登记入口拒绝。
+- [x] 定义§2.2公共签名、内嵌record、场景/入口静态常量和场景允许参数；校验字段使用现有框架。
+- [x] 静态登记默认策略、配置一次绑定到内存；只启用已准备好的LOGIN入口。
+- [x] 实现LOGIN旧键兼容及新场景/业务对象隔离；场景无效、渠道不允许、业务键缺失明确拒绝。
+- [x] 新建OtpScenePolicyTest：LOGIN短信/邮件默认5/10分钟、未开放场景拒绝、场景/业务键不可混用；原OtpStore默认方法行为不变；BIZ_LOGIN与LEGACY_AUTH策略明确且未登记入口拒绝。
 
 #### 任务2：轻量内存频率和公共发送编排
 
 Files：新建shop-base-auth/.../common/otp/policy/InMemoryOtpFrequency.java、common/otp/service/impl/OtpSendServiceImpl.java；扩展现有OtpSendGuard的显式IP重载，复用RateRule和现有错误码。
 
-- [ ] 实现§2.3固定窗口计数，Clock可注入；账户与平台总量跨场景共享。
-- [ ] 按§2.3时序实现公共send与verifyAndConsume（后者经渠道Port统一处理真实码和原受控LOGIN测试身份）；低风险不调用滑块凭据消费者。
-- [ ] OtpFrequencyCounterTest：前3次/第4次、24小时阈值、平台触发、跨场景累计、窗口到期、容量上限；用可控Clock，不sleep。
-- [ ] OtpSendServiceTest：需滑块但无凭据时不扣额度/不投递；有效凭据后只扣一次；硬上限不能靠滑块绕过；通道失败保留频率；低风险verifyNoInteractions证明不访问滑块存储；显式IP参与原来源限流、后台无IP保持原跳过IP补充闸行为，场景OTP键与硬限流账号键不会混用。
+- [x] 实现§2.3固定窗口计数，Clock可注入；账户与平台总量跨场景共享。
+- [x] 按§2.3时序实现公共send与verifyAndConsume（后者经渠道Port统一处理真实码和原受控LOGIN测试身份）；低风险不调用滑块凭据消费者。
+- [x] OtpFrequencyCounterTest：前3次/第4次、24小时阈值、平台触发、跨场景累计、窗口到期、容量上限；用可控Clock，不sleep。
+- [x] OtpSendServiceTest：需滑块但无凭据时不扣额度/不投递；有效凭据后只扣一次；硬上限不能靠滑块绕过；通道失败保留频率；低风险verifyNoInteractions证明不访问滑块存储；显式IP参与原来源限流、后台无IP保持原跳过IP补充闸行为，场景OTP键与硬限流账号键不会混用。
 
 #### 任务3：抽取原发送代码，完成通道复用
 
 Files：shop-core/user/service/impl/{AuthServiceImpl,EmailOtpServiceImpl}.java；新增user/port/OtpChannelPortImpl.java（含private EmailContent）；调整SmsPort及现有Gateway/NotifyLoggingSmsPort的OTP场景重载；复用MailPort、邮件Content与通知日志。
 
-- [ ] 把短信/邮箱的现有投递与OTP验证分支移动到一个实现中；移除分支内重复硬限流，不复制旧流程。
-- [ ] 旧发送/OTP验证方法委托公共接口(LOGIN, LEGACY_AUTH)，公共服务调用渠道Port，不回调AuthService，避免循环。
-- [ ] 保留地区规则、固定验证码、测试身份/测试号、不投递白名单、原存码时序和SMTP异常映射。
-- [ ] 扩展现有短信/邮件模板处理，使场景路由和正文TTL匹配策略；未配齐的新场景不发送。
-- [ ] OtpSendCompatibilityTest：LOGIN旧OTP键和接口结果、验证码只消费一次、邮件发送失败不激活新码、原白名单不真实投递且仍限流、非LOGIN不自动继承登录测试绕过；直接使用公共send+verify也可验证同一受控LOGIN测试身份，和旧包装结果一致。
+- [x] 把短信/邮箱的现有投递与OTP验证分支移动到一个实现中；移除分支内重复硬限流，不复制旧流程。
+- [x] 旧发送/OTP验证方法委托公共接口(LOGIN, LEGACY_AUTH)，公共服务调用渠道Port，不回调AuthService，避免循环。
+- [x] 保留地区规则、固定验证码、测试身份/测试号、不投递白名单、原存码时序和SMTP异常映射。
+- [x] 扩展现有短信/邮件模板处理，使场景路由和正文TTL匹配策略；未配齐的新场景不发送。
+- [x] OtpSendCompatibilityTest：LOGIN旧OTP键和接口结果、验证码只消费一次、邮件发送失败不激活新码、原白名单不真实投递且仍限流、非LOGIN不自动继承登录测试绕过；直接使用公共send+verify也可验证同一受控LOGIN测试身份，和旧包装结果一致。
 
 #### 任务4：提取滑块凭据能力，接入现有业务入口
 
 Files：JdbcCaptchaStore搬到shop-base-auth保持现包名；新增auth/captcha/CaptchaProofService.java；调整shop-app/config/BizCaptchaConfiguration.java、auth/captcha/impl/BizCaptchaServiceImpl.java、portal/biz/{BizCaptchaController,BizAuthController}.java及必要共享装配。
 
-- [ ] 复用现有表与消费SQL；纯凭据消费者可由公共服务调用，不引用Tianai DTO或上层业务Service。
-- [ ] 发题/验题/凭据消费统一scope，扩展scene/businessKey与10452往返上下文，并兼容现有App缺省LOGIN；不修改历史Flyway。
-- [ ] 将B端发码从Controller每次强制require改为公共send；密码登录策略保持原样。
-- [ ] 检查API/OPS、纯模块测试的构造与Bean装配，无API专属Bean硬依赖；所有硬限制只执行一次。
-- [ ] 扩展BizCaptchaHttpTest及相关MySQL9消费用例，覆盖旧协议、新场景10452→发题→验题→发送重试的上下文一致、跨场景/业务对象拒绝、失败后凭据仍已消费；增加装配回归。不得访问真实短信/邮件通道。
+- [x] 复用现有表与消费SQL；纯凭据消费者可由公共服务调用，不引用Tianai DTO或上层业务Service。
+- [x] 发题/验题/凭据消费统一scope，扩展scene/businessKey与10452往返上下文，并兼容现有App缺省LOGIN；不修改历史Flyway。
+- [x] 将B端发码从Controller每次强制require改为公共send；密码登录策略保持原样。
+- [x] 检查API/OPS、纯模块测试的构造与Bean装配，无API专属Bean硬依赖；所有硬限制只执行一次。
+- [x] 扩展BizCaptchaHttpTest及相关MySQL9消费用例，覆盖旧协议、新场景10452→发题→验题→发送重试的上下文一致、跨场景/业务对象拒绝、失败后凭据仍已消费；增加装配回归。不得访问真实短信/邮件通道。
 
 #### 任务5：集中增量验证与发布
 
@@ -187,15 +187,85 @@ Files：JdbcCaptchaStore搬到shop-base-auth保持现包名；新增auth/captcha
 
 ### 2.6 只读可实施性复核结论
 
-已复核并明确：入口策略分辨B/C兼容；统一发送/验证对受控测试身份的语义一致；首批可变策略与继承的硬规则分开；显式IP传到既有guard；邮件私有内容构造器随代码迁移；新场景滑块上下文在错误、发题、验题、重试中一致。没有新增另一套OTPStore、通知日志、短信/邮件客户端或Tianai引擎。上述均为待开发决策，非已实现声明。
+已复核并明确：入口策略分辨B/C兼容；统一发送/验证对受控测试身份的语义一致；首批可变策略与继承的硬规则分开；显式IP传到既有guard；邮件私有内容构造器随代码迁移；新场景滑块上下文在错误、发题、验题、重试中一致。没有新增另一套OTPStore、通知日志、短信/邮件客户端或Tianai引擎。上述决策已实现；实测范围见§5。
 
-## §5 对账三 · 实现 → 需求（待实施）
+## §5 对账三 · 实现 → 需求
 
-| AC | 计划验证 | 当前证据 |
+| AC | 已运行的方法/范围 | 实测结果 |
 |---|---|---|
-| AC1/AC4 | OtpScenePolicyTest、架构依赖检查 | 未执行；本轮只写开发方案 |
-| AC2/AC3 | OtpFrequencyCounterTest、OtpSendServiceTest低风险不访问滑块存储 | 未执行 |
-| AC5/AC7 | OtpSendCompatibilityTest、现有短信/邮箱回归、API/OPS装配回归 | 未执行 |
-| AC6 | BizCaptchaHttpTest、受影响MySQL9一次性消费、模拟器验证 | 未执行 |
+| AC1/AC4 | OtpScenePolicyTest 全3项；ArchitectureTest 全23项 | 策略3通过；架构22通过/1已有条件跳过；无新增域依赖 |
+| AC2/AC3 | OtpFrequencyCounterTest 全3项；OtpSendServiceTest#lowFrequencySendsSkipProofAndPassTrustedContextAndTtl、legacyEntryNeverRequiresSliderButSharesAccountCounter | 账户/平台窗口、到期、并发、容量均通过；低风险verifyNoInteractions(proofs)，不新增频率SQL |
+| AC5/AC7 | OtpSendCompatibilityTest；EmailOtpAuthTest 18项、RegionalSmsAdmissionTest、SmsMockPrefixTest 3项、BizAuthEmailLoginTest 4项 | 新旧键、SMTP失败、地区、号段模拟、旧HTTP结果、测试身份边界均通过 |
+| AC6 | OtpSendServiceTest#missingProofHasNoHardGuardOrSendSideEffects、proofIsConsumedBeforeHardGuardAndAttemptCountsBeforeDeliveryFailure；BizCaptchaServiceTest；BizCaptchaNativeMysqlTest | HTTP/引擎共享测试8通过；原生MySQL9.7.4全10项通过，含新场景+业务键、一用凭据、并发、业务回滚 |
+| 新场景往返 | BizCaptchaHttpTest#enabledBusinessSceneRoundTripsThroughHttpAndRetiresProofOnRetry | 测试配置启用ORDER_PICKUP_CONFIRM，公共服务10452→HTTP发题→HTTP验题→公共服务发送→重复凭据拒绝；仅stub短信 |
 
-本轮没有修改产品代码、运行新业务测试、合并发布或改变166运行行为。具体Java规范不在本文复制，统一以仓库规范§八与MEMORY为准。
+验证日志：`/tmp/otp-service-affected.log`（新增策略/计数/服务12项通过，core24/25通过，旧guard签名断言失败）；`/tmp/otp-service-app.log`（该失败方法修正通过，随后发现verify接口漏声明）；`/tmp/otp-service-http.log`（接口修正，架构23、HTTP7、引擎8、邮箱HTTP4，无失败）；`/tmp/otp-service-final.log`（TTL新测试1、新场景HTTP1、原生MySQL10，无失败）；`/tmp/otp-service-framework.log`（框架校验归位后，仅重验受影响公共服务/兼容/邮箱/HTTP，6+22+8项通过，BUILD SUCCESS）。
+
+MySQL原生用例使用单独临时MySQL9.7.4，127.0.0.1:3319，每方法随机临时库后删除；未用3306，未改历史V663。没有因文档、提交或原样搬迁SQL重复跑无关全仓测试。
+
+### 发布及模拟器验收
+
+进行中。166已有支付SSE发布c477fa54591c（来源5fba0e2cc），必须保留该版本全部代码/迁移/运行配置后再部署；不覆盖其他会话发布、不修改nearpay或inventory容器。模拟器仅用已授权测试身份，避免真实消息。
+
+## §6 对账二 · 设计 → 实现
+
+公共契约/策略/编排、既有渠道提取、旧包装、B端Controller和装配均按§2落地。JdbcCaptchaStore仅跨模块搬迁，包名及源码完全一致，无新表/历史迁移修改。具体变更文件统计在提交时登记。
+
+实现裁定：
+
+- 增加渠道requireAvailable前置资格检查，保留地区拒绝先于凭据/限流的原语义；否则关闭地区可能误报滑块。其代价是投递前仍有既有地区能力查询，不属于新增频率SQL。
+- 当前没有注册业务模板参数，parameters仅允许空；各场景逻辑模板固定OTP_<SCENE>，阿里短信通过shop.sms.ali.otp-scenes.<SCENE>启动配置绑定供应商模板，不借用LOGIN。新场景上线仍需业务授权及客户端上下文接入。
+- 首次实现曾在服务内部调用Validator；收尾按Java规范§八移回公共DTO的Bean Validation条件属性，删除内部重复校验；普通发送不增加一层验证引擎。
+- 最终审查没有Critical/Important。TTL小于一分钟的文案问题涉及§2明确的正文/有效期一致要求，按实际误导用户的影响纳入本轮修复，秒级配置显示秒数，默认整分钟原文案不变；新增30/90秒回归通过。审查暂不判断的启动与新场景HTTP分别由后续装配/发布与真实往返证据闭合。
+
+本轮实现文件统计（提交前暂存区；不含后续发布证据）：
+
+```text
+ .../shop/auth/captcha/BizCaptchaService.java       |  11 +-
+ .../auth/captcha/impl/BizCaptchaServiceImpl.java   |  19 +--
+ .../shop/config/BizCaptchaConfiguration.java       |   9 +-
+ .../ai/neargo/shop/config/OtpConfiguration.java    |  38 +++++
+ .../neargo/shop/portal/biz/BizAuthController.java  |  21 ++-
+ .../shop/portal/biz/BizCaptchaController.java      |  27 +++-
+ .../shop-app/src/main/resources/application.yml    |   8 +
+ .../shop/authcaptcha/BizCaptchaHttpTest.java       |  56 ++++++-
+ .../shop/authcaptcha/BizCaptchaServiceTest.java    |  17 ++
+ .../commercebridge/BizIdentityNativeMysqlTest.java |  22 ++-
+ .../BizLoginStoreNativeMysqlTest.java              |  21 ++-
+ .../shop/auth/captcha/CaptchaProofService.java     |  14 ++
+ .../neargo/shop/auth/captcha/JdbcCaptchaStore.java |   0
+ .../neargo/shop/common/GlobalExceptionHandler.java |   2 +-
+ .../common/otp/policy/InMemoryOtpFrequency.java    |  54 +++++++
+ .../shop/common/otp/policy/OtpScenePolicies.java   |  69 ++++++++
+ .../neargo/shop/common/otp/policy/OtpSettings.java |  36 +++++
+ .../otp/service/impl/OtpSendServiceImpl.java       |  53 ++++++
+ .../neargo/shop/common/ratelimit/OtpSendGuard.java |   9 +-
+ .../shop/common/otp/OtpFrequencyCounterTest.java   |  49 ++++++
+ .../neargo/shop/common/otp/OtpScenePolicyTest.java |  51 ++++++
+ .../neargo/shop/common/otp/OtpSendServiceTest.java |  92 +++++++++++
+ .../common/captcha/CaptchaRequiredException.java   |  17 +-
+ .../java/ai/neargo/shop/common/otp/OtpEntries.java |   8 +
+ .../java/ai/neargo/shop/common/otp/OtpKeys.java    |  33 ++++
+ .../ai/neargo/shop/common/otp/OtpScenePolicy.java  |  16 ++
+ .../java/ai/neargo/shop/common/otp/OtpScenes.java  |  13 ++
+ .../shop/common/otp/service/OtpSendService.java    |  34 ++++
+ .../java/ai/neargo/shop/spi/notify/SmsPort.java    |  12 ++
+ .../ai/neargo/shop/spi/otp/OtpChannelPort.java     |  16 ++
+ .../message/notify/port/NotifyLoggingSmsPort.java  |  16 +-
+ .../neargo/shop/user/port/OtpChannelPortImpl.java  | 130 +++++++++++++++
+ .../neargo/shop/user/service/EmailOtpService.java  |  19 +--
+ .../shop/user/service/impl/AuthServiceImpl.java    | 177 ++++-----------------
+ .../user/service/impl/EmailOtpServiceImpl.java     | 147 +++--------------
+ .../neargo/shop/user/ProfileAndPasswordTest.java   |  17 +-
+ .../neargo/shop/user/service/EmailOtpAuthTest.java |  27 ++--
+ .../ai/neargo/shop/user/service/OtpFixtures.java   |  32 ++++
+ .../user/service/OtpSendCompatibilityTest.java     |  83 ++++++++++
+ .../user/service/RegionalSmsAdmissionTest.java     |  17 +-
+ .../shop/user/service/SmsMockPrefixTest.java       |  17 +-
+ .../ai/neargo/shop/notify/port/AliSmsGateway.java  |  30 +++-
+ .../ai/neargo/shop/notify/port/StubSmsGateway.java |   9 ++
+ docs/api/biz-auth-captcha.openapi.json             |  40 ++++-
+ ...235\227\351\252\214\350\257\201\347\240\201.md" |   3 +
+ ...217\221\351\200\201\346\234\215\345\212\241.md" |  82 ++++++----
+ 46 files changed, 1272 insertions(+), 401 deletions(-)
+```

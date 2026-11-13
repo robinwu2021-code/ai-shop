@@ -37,12 +37,17 @@ class SmsMockPrefixTest {
     private final SmsPort sms = mock(SmsPort.class);
 
     private AuthServiceImpl auth(String mockPrefixes) {
-        var auth = new AuthServiceImpl(mock(UserMapper.class), mock(IdentityMapper.class),
-                mock(WxPhonePort.class), mock(MpSessionService.class),
-                new MemoryTokenStore(Duration.ofHours(1)), store, mock(OtpSendGuard.class), sms,
-                mock(WxAuthPort.class), mock(PasswordHasher.class), limiter, mock(PersonService.class), "",
-                mock(FissionPort.class), mock(OtpTestPhoneService.class), mock(EmailOtpService.class), mock(SmsAdmissionPort.class));
-        auth.setMockSmsPrefixes(mockPrefixes);
+        var auth = new AuthServiceImpl(mock(UserMapper.class),
+                mock(IdentityMapper.class),
+                mock(WxPhonePort.class),
+                mock(MpSessionService.class),
+                new MemoryTokenStore(Duration.ofHours(1)),
+                mock(WxAuthPort.class),
+                mock(PasswordHasher.class),
+                limiter,
+                mock(PersonService.class),
+                mock(FissionPort.class),
+                OtpFixtures.create(store, mock(OtpSendGuard.class), sms, mock(ai.neargo.shop.spi.notify.MailPort.class), mock(SmsAdmissionPort.class), mock(OtpTestPhoneService.class), mock(TestIdentityService.class), "", false, false, mockPrefixes));
         return auth;
     }
 

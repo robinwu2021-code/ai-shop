@@ -61,11 +61,23 @@ class BizIdentityNativeMysqlTest {
             }
             db.mybatis.getConfiguration().addMapper(IdentityMapper.class);
             var guard = new OtpSendGuard(limiter, true, 60, 10, 20, 15);
-            var email = new EmailOtpServiceImpl(mock(MailPort.class), otp, guard, false, false, 60);
-            auth = new AuthServiceImpl(db.mybatis.getMapper(UserMapper.class), db.mybatis.getMapper(IdentityMapper.class),
-                    mock(WxPhonePort.class), mock(MpSessionService.class), tokens, otp, guard, mock(SmsPort.class),
-                    mock(WxAuthPort.class), new PasswordHasher(), limiter, mock(PersonService.class), "",
-                    mock(FissionPort.class), mock(OtpTestPhoneService.class), email, mock(SmsAdmissionPort.class));
+            var otpService = mock(ai.neargo.shop.common.otp.service.OtpSendService.class);
+            when(otpService.verifyAndConsume(any(), any())).thenAnswer(inv -> {
+                ai.neargo.shop.common.otp.service.OtpSendService.VerifyCommand c = inv.getArgument(0);
+                String recipient = ai.neargo.shop.common.otp.OtpKeys.normalize(c.channel(), c.recipient());
+                return otp.verifyAndConsume(ai.neargo.shop.common.otp.OtpKeys.storageKey(c.scene(), c.channel(), recipient, c.businessKey()), c.code());
+            });
+            auth = new AuthServiceImpl(db.mybatis.getMapper(UserMapper.class),
+                db.mybatis.getMapper(IdentityMapper.class),
+                mock(WxPhonePort.class),
+                mock(MpSessionService.class),
+                tokens,
+                mock(WxAuthPort.class),
+                new PasswordHasher(),
+                limiter,
+                mock(PersonService.class),
+                mock(FissionPort.class),
+                otpService);
             var ticketService = new LoginTicketServiceImpl(db.jdbc, db.manager, Duration.ofMinutes(5));
             identities = new LoginIdentityServiceImpl(auth, ticketService, tokens, mock(LoginAuditor.class),
                     db.mybatis.getMapper(MchAccountMapper.class), db.mybatis.getMapper(MchEntityMapper.class),

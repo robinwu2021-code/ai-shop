@@ -1,6 +1,11 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.ClientMeta;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.otp.OtpScenes;
+import ai.neargo.shop.common.otp.policy.OtpScenePolicies;
+import ai.neargo.shop.common.otp.service.OtpSendService.Channel;
 import ai.neargo.shop.auth.captcha.BizCaptchaService;
 import cloud.tianai.captcha.validator.common.model.dto.ImageCaptchaTrack;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,11 +19,21 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class BizCaptchaController {
     private final BizCaptchaService captcha;
-    public BizCaptchaController(BizCaptchaService captcha) { this.captcha = captcha; }
+    private final OtpScenePolicies policies;
+    public BizCaptchaController(BizCaptchaService captcha, OtpScenePolicies policies) { this.captcha = captcha; this.policies = policies; }
+    private String scene(BizCaptchaService.Action action, String scene, String key) {
+        String resolved = scene == null ? OtpScenes.LOGIN : scene;
+        if (action == BizCaptchaService.Action.LOGIN) {
+            if (!OtpScenes.LOGIN.equals(resolved) || (key != null && !key.isBlank())) throw BizException.of(ErrorCode.BAD_REQUEST);
+        } else policies.requireChallenge(resolved,
+                action == BizCaptchaService.Action.OTP_SEND ? Channel.SMS : Channel.EMAIL, key);
+        return resolved;
+    }
 
-    public record ChallengeReq(@NotNull BizCaptchaService.Action action, @NotBlank @Size(max=191) String principal) {}
+    public record ChallengeReq(@NotNull BizCaptchaService.Action action, @NotBlank @Size(max=191) String principal, @Size(max=64) String scene, @Size(max=191) String businessKey) {}
     public record VerifyReq(@NotBlank @Size(max=64) String challengeId, @NotNull BizCaptchaService.Action action,
-                            @NotBlank @Size(max=191) String principal, @NotNull @Valid Track track) {}
+                            @NotBlank @Size(max=191) String principal, @NotNull @Valid Track track,
+                            @Size(max=64) String scene, @Size(max=191) String businessKey) {}
     public record Point(@NotNull @DecimalMin("-1024") @DecimalMax("1024") Float x,
                         @NotNull @DecimalMin("-1024") @DecimalMax("1024") Float y,
                         @NotNull @DecimalMin("0") @DecimalMax("120000") Float t,
@@ -42,11 +57,13 @@ public class BizCaptchaController {
 
     @PostMapping("/biz/auth/captcha/challenge")
     public BizCaptchaService.Challenge challenge(@RequestBody @Valid ChallengeReq request, HttpServletRequest http) {
-        return captcha.issue(request.action(), request.principal(), ClientMeta.clientIp(http));
+        return captcha.issue(request.action(), request.principal(), ClientMeta.clientIp(http),
+                scene(request.action(), request.scene(), request.businessKey()), request.businessKey());
     }
 
     @PostMapping("/biz/auth/captcha/verify")
     public BizCaptchaService.Proof verify(@RequestBody @Valid VerifyReq request, HttpServletRequest http) {
-        return captcha.verify(request.challengeId(), request.action(), request.principal(), request.track().toEngine(), ClientMeta.clientIp(http));
+        return captcha.verify(request.challengeId(), request.action(), request.principal(), request.track().toEngine(), ClientMeta.clientIp(http),
+                scene(request.action(), request.scene(), request.businessKey()), request.businessKey());
     }
 }

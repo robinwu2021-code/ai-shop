@@ -3,7 +3,7 @@
   "info": {
     "title": "Merchant authentication slider CAPTCHA",
     "version": "2026-11-13",
-    "description": "Self-hosted Tianai core 1.5.6 with native Flutter consumption in the separate ai-shop-bapp repository. The repository legacy Vue b-app integration is deferred. Server enforcement is controlled only by shop.auth.captcha.enabled / SHOP_AUTH_CAPTCHA_ENABLED (default false). Once enabled, missing/invalid X-Captcha-Token on protected operations returns HTTP200 with code10452 and data {captchaRequired:true,action}; clients cannot opt out by omitting headers. Solve once and retry the original operation once with the same action/principal. Proof consumption precedes protected work and survives its failure/rollback. OTP credential login, identities/enter and authenticated business operations are outside this CAPTCHA policy."
+    "description": "Self-hosted Tianai puzzle for nearboss. Controlled by shop.auth.captcha.enabled (default false). Password login/identity discovery requires a proof when enabled; OTP sends use adaptive account and process-wide hour/day thresholds via OtpSendService, then existing hard rate limits. Low-frequency sends skip captcha state storage. LOGIN defaults to 3/hour or 5/day per recipient; platform 500/hour or 3000/day. Counters are approximate per process and reset on restart. When required, code10452 contains {captchaRequired:true,action,scene,businessKey?}. Roundtrip scene/businessKey through challenge, verify and retry. Old clients may omit them for LOGIN. Proofs are single-use and consumed before guarded work, including failed work. Legacy auth entry uses hard limits without newly requiring a slider. Other scene codes are disabled until callers and channel templates are explicitly registered."
   },
   "paths": {
     "/biz/auth/captcha/challenge": {
@@ -104,13 +104,15 @@
       "method": "POST",
       "path": "/biz/auth/otp/send",
       "action": "OTP_SEND",
-      "principalField": "phone"
+      "principalField": "phone",
+      "when": "Captcha rollout enabled and account or platform soft threshold reached; scene LOGIN"
     },
     {
       "method": "POST",
       "path": "/biz/auth/email-otp/send",
       "action": "EMAIL_OTP_SEND",
-      "principalField": "email"
+      "principalField": "email",
+      "when": "Captcha rollout enabled and account or platform soft threshold reached; scene LOGIN"
     }
   ],
   "x-rate-limits": {
@@ -134,7 +136,7 @@
         "schema": {
           "type": "string"
         },
-        "description": "One-use proof on the protected operation, not on challenge issuance. Missing/invalid proof returns CaptchaRequired when enforcement is enabled."
+        "description": "One-use proof on an operation that currently requires captcha. Adaptive low-frequency OTP sends do not require or consume a proof. Missing/invalid required proof returns CaptchaRequired."
       }
     },
     "schemas": {
@@ -162,6 +164,17 @@
           },
           "principal": {
             "$ref": "#/components/schemas/Principal"
+          },
+          "scene": {
+            "type": "string",
+            "maxLength": 64,
+            "default": "LOGIN",
+            "description": "Registered OtpScenes value. Defaults LOGIN for existing clients. Non-LOGIN scenes require explicit server enablement."
+          },
+          "businessKey": {
+            "type": "string",
+            "maxLength": 191,
+            "description": "Same stable business identifier from captchaRequired. Required for ORDER_PICKUP_CONFIRM. LOGIN must omit it."
           }
         },
         "required": [
@@ -185,6 +198,17 @@
           },
           "track": {
             "$ref": "#/components/schemas/ImageCaptchaTrack"
+          },
+          "scene": {
+            "type": "string",
+            "maxLength": 64,
+            "default": "LOGIN",
+            "description": "Registered OtpScenes value. Defaults LOGIN for existing clients. Non-LOGIN scenes require explicit server enablement."
+          },
+          "businessKey": {
+            "type": "string",
+            "maxLength": 191,
+            "description": "Same stable business identifier from captchaRequired. Required for ORDER_PICKUP_CONFIRM. LOGIN must omit it."
           }
         },
         "required": [
@@ -460,6 +484,14 @@
               },
               "action": {
                 "$ref": "#/components/schemas/CaptchaAction"
+              },
+              "scene": {
+                "type": "string",
+                "description": "OTP scene; absent for password LOGIN."
+              },
+              "businessKey": {
+                "type": "string",
+                "description": "Present only for a business-bound challenge."
               }
             },
             "required": [

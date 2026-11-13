@@ -622,6 +622,14 @@ shop:
 
   # 发码限流（安全整改方案 §2.2 的三道闸）。**生产必须开着**
   otp:
+    # 软阈值：本进程固定小时/24小时窗口；只决定是否要求滑块，不替代原硬限流。
+    adaptive:
+      account-hourly: ${SHOP_OTP_ADAPTIVE_ACCOUNT_HOURLY:3}
+      account-daily: ${SHOP_OTP_ADAPTIVE_ACCOUNT_DAILY:5}
+      platform-hourly: ${SHOP_OTP_ADAPTIVE_PLATFORM_HOURLY:500}
+      platform-daily: ${SHOP_OTP_ADAPTIVE_PLATFORM_DAILY:3000}
+      maximum-keys: ${SHOP_OTP_ADAPTIVE_MAXIMUM_KEYS:100000}
+      # scenes 按 OtpScenes 常量配置；除 LOGIN 外默认关闭，启用还需登记可信 entries 及渠道模板。
     rate-limit: ${SHOP_OTP_RATE_LIMIT:true}
     interval-seconds: ${SHOP_OTP_INTERVAL_SECONDS:60}
     daily-per-phone: ${SHOP_OTP_DAILY_PER_PHONE:10}
