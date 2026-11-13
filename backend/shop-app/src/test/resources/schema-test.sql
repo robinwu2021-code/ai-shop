@@ -20355,3 +20355,20 @@ VALUES
     ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
     ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+
+
+CREATE TABLE IF NOT EXISTS sys_auth_captcha_state
+(
+    state_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    scope_hash VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS sys_auth_captcha_rate
+(
+    rate_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    hits INT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
