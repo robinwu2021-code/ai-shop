@@ -36,7 +36,7 @@ it('opens a focused overview and loads each detail view separately without losin
   expect(drawer.textContent).toContain(detail);
   expect(drawer.querySelector('a[href*="tab=stores"]')).toBeNull();
  }
- await act(async()=>[...drawer.querySelectorAll('button')].find(b=>b.textContent==='商家档案')!.click());
+ await act(async()=>[...drawer.querySelectorAll('button')].find(b=>b.textContent==='Merchants')!.click());
  expect(drawer.querySelector('a[href*="tab=stores"]')).not.toBeNull();
 });
 it('does not expose the payment view without its existing permission',async()=>{

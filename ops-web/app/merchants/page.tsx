@@ -45,7 +45,6 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Textarea } from "@/components/ui/textarea";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Tabs } from "@/components/ui/tabs";
-import { useI18n } from "@/lib/i18n";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { PagedTable } from "@/components/ui/paged-table";
@@ -68,7 +67,6 @@ export default function MerchantsPage() {
 
 function MerchantsInner() {
   const c = useCopy(MERCHANTS_COPY);
-  const { tNav } = useI18n();
   const tabs = useNavTabs("/merchants", TAB_KEYS);
   const tierOptions = TIER_OPTIONS(c);
   const qc = useQueryClient();
@@ -352,7 +350,7 @@ function MerchantsInner() {
         {current && (
           <div>
             <Tabs value={detailView} onChange={setDetailTab} tabs={[
-              { key: "overview", label: tNav("商家档案") },
+              { key: "overview", label: tabs.find((view) => view.key === "list")?.label ?? c.entity },
               { key: "fulfillment", label: c.fieldFulfillment },
               { key: "staff", label: c.fieldStaff },
               ...(canPay ? [{ key: "payment", label: c.payServiceField }] : []),

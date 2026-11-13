@@ -11,7 +11,7 @@
 // 复制粘贴的代价不只是行数：漏掉 `setPage(1)` 就会出现"从第 3 页切到另一个 tab，
 // 还停在第 3 页但那个 tab 只有 1 页"——列表空白，看着像没数据。
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { navTabs, visibleTabKeys } from "@/lib/nav";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
@@ -21,6 +21,7 @@ export interface PageTab {
   key: string;
   label: string;
   group?: string;
+  href?: string;
 }
 
 /**
@@ -51,14 +52,14 @@ export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
     [path, keys, perms, serverHrefs, nav],
   );
   return React.useMemo(
-    () => navTabs(path, allowed, nav).map(({ key, label, group }) => {
+    () => navTabs(path, allowed, nav).map(({ key, label, group, href }) => {
       if (!label) {
         const msg = `[nav] ${path} 的 tab "${key}" 在 lib/nav.ts 里没有对应叶子 —— 补一条，否则它在菜单里进不去`;
         if (process.env.NODE_ENV !== "production") throw new Error(msg);
         console.error(msg);
         return { key, label: key };
       }
-      return { key, label: tNav(label), group: group ? tNav(group) : undefined };
+      return { key, label: tNav(label), group: group ? tNav(group) : undefined, href };
     }),
     // allowed 已经是 useMemo 的产物；tNav 随 locale 变，必须进依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,20 +74,28 @@ export function useNavTabs(path: string, keys: readonly string[]): PageTab[] {
  */
 export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [string, (k: string) => void] {
   const sp = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const qTab = sp.get("tab");
   const valid = React.useCallback((k: string | null) => !!k && tabs.some((t) => t.key === k), [tabs]);
 
-  const [tab, setTabState] = React.useState(() => (valid(qTab) ? (qTab as string) : tabs[0].key));
+  const defaultTab = tabs.find(({ href }) => {
+    if (!href) return false;
+    const query = new URLSearchParams(href.split("?")[1]);
+    return !query.has("tab") && !query.has("view");
+  })?.key ?? tabs[0].key;
+  const [tab, setTabState] = React.useState(() => (valid(qTab) ? (qTab as string) : defaultTab));
 
   // URL 变化（从别的页面深链进来、浏览器前进后退）时同步
   React.useEffect(() => {
-    if (valid(qTab) && qTab !== tab) {
-      setTabState(qTab as string);
+    const next = qTab || defaultTab;
+    if ((!qTab || valid(qTab)) && next !== tab) {
+      setTabState(next);
       onSwitch?.();
     }
     // onSwitch 通常是就地箭头函数，进依赖会每次渲染都跑；这里只认 qTab 的变化
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qTab]);
+  }, [qTab, defaultTab]);
 
   /*
    * **当前 tab 从列表里消失了** —— tab 判权之后这是会真实发生的：
@@ -106,10 +115,19 @@ export function usePageTab(tabs: readonly PageTab[], onSwitch?: () => void): [st
     (k: string) => {
       setTabState(k);
       onSwitch?.();
+      const target = tabs.find((t) => t.key === k)?.href;
+      const [path, search = ""] = target?.split("?")
+        ?? [pathname, k === tabs[0].key ? "" : `tab=${encodeURIComponent(k)}`];
+      const query = new URLSearchParams(sp.toString());
+      query.delete("tab");
+      query.delete("view");
+      new URLSearchParams(search).forEach((v, key) => query.set(key, v));
+      const suffix = query.toString();
+      router.push(path + (suffix ? `?${suffix}` : ""), { scroll: false });
     },
-    // 同上：onSwitch 每次渲染都是新引用，不进依赖
+    // onSwitch 每次渲染都是新引用，路径和功能元数据须随本次视图更新。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [tabs, sp, pathname, router],
   );
 
   return [tab, setTab];
