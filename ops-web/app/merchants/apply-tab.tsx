@@ -21,13 +21,12 @@ import type { AdmissionEntry, ApplyStatus, MerchantApply } from "@/lib/types";
 import { SelfOperatedDetails } from "./self-operated-details";
 import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
+import { AdmissionDetailDrawer as Drawer, AdmissionDetailSection as DrawerSection, AdmissionDetailField as Field, AdmissionDetailGrid as FieldGrid } from "./admission-detail-layout";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Notice } from "@/components/ui/notice";
-import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckboxField } from "@/components/ui/checkbox";
@@ -209,14 +208,39 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
       />
       <SelfOperatedDetails c={c} entry={selfCurrent} canAddStore={canSelfOp} onClose={()=>setSelfCurrent(null)} />
 
-      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""} desc={current?.applyNo}>
+      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""} desc={current?.applyNo}
+        footer={current && canAudit && !decided ? (
+          <div className="flex w-full flex-wrap justify-end gap-3">
+            <Button variant="outline" disabled={!reason.trim() || audit.isPending} onClick={() => audit.mutate({ approved: false })}>
+              {c.applyActionReject}
+            </Button>
+            <Button disabled={!scopeReady || audit.isPending} onClick={() => audit.mutate({ approved: true })}>
+              {c.applyActionApprove}
+            </Button>
+          </div>
+        ) : undefined}
+      >
         {current && (
           <>
             <DrawerSection title={c.applySectionInfo} first>
               <FieldGrid>
                 <Field label={c.applyColStatus}><StatusBadge value={current.status} map={STATUS_MAP} /></Field>
-                <Field label={c.applyOwner}>{current.ownerUserNo??"—"}</Field>
                 <Field label={c.applyMarket}>{current.marketCode??"—"}</Field>
+                <Field label={c.applyOwner} wide>{current.ownerUserNo??"—"}</Field>
+                <Field label={c.colCreatedAt}>{fmtTime(new Date(current.createdAt).toISOString())}</Field>
+                {(decided || !canAudit) && <Field label={c.applyColScope}>{scopeLabel(c, current.serviceScope)}{current.communityNos?.length ? ` · ${current.communityNos.length}` : ""}</Field>}
+              </FieldGrid>
+              {current.onBehalf && (
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <Badge tone="info">{c.applySourceOps}</Badge>
+                  <Badge tone={current.agreedAt ? "success" : "warning"}>{current.agreedAt ? c.applyAgreed : c.applyNotAgreed}</Badge>
+                </div>
+              )}
+              {current.rejectReason && <Notice tone="danger" className="mt-5 [overflow-wrap:anywhere]">{current.rejectReason}</Notice>}
+            </DrawerSection>
+
+            <DrawerSection title={c.applySectionBusiness}>
+              <FieldGrid>
                 <Field label={c.applyColSubject}>{label.subject(current.subject)}</Field>
                 <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
                 {/*
@@ -225,43 +249,24 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
                   它是这张意向单里唯一说得出「平台还接不了的是哪一类」的地方。
                 */}
                 {current.industryNote ? (
-                  <Field label={c.applyColIndustryNote}>{current.industryNote}</Field>
+                  <Field label={c.applyColIndustryNote} wide>{current.industryNote}</Field>
                 ) : null}
                 <Field label={c.colContact}>{current.contactName || "—"}</Field>
                 <Field label={c.obContactPhone}>{current.contactPhone || "—"}</Field>
-                {current.category && <Field label={c.applyColCategory}>{current.category}</Field>}
+                {current.category && <Field label={c.applyColCategory} wide>{current.category}</Field>}
                 {/* 推荐人：**只在有值时显示** —— 绝大多数申请没有，空着一栏比不显示更容易误读成「查不到」 */}
                 {current.referrerPhone ? (
                   <Field label={c.applyColReferrer}>{current.referrerPhone}</Field>
                 ) : null}
-                {(decided || !canAudit) && <Field label={c.applyColScope}>{scopeLabel(c, current.serviceScope)}{current.communityNos?.length ? ` · ${current.communityNos.length}` : ""}</Field>}
-                <Field label={c.colCreatedAt}>{fmtTime(new Date(current.createdAt).toISOString())}</Field>
               </FieldGrid>
-              {/*
-                ★ **代填标记**（三期）。摆在资料正文之前，因为它改变的是
-                「这份资料该怎么读」：下面每一格都不是商户自己录的。
-
-                后端继续校验真实审核权限；有权限的代填人可以自审并留痕。
-                商户协议仍由商户本人确认。
-              */}
-              {current.onBehalf && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Badge tone="info">{c.applySourceOps}</Badge>
-                  <Badge tone={current.agreedAt ? "success" : "warning"}>{current.agreedAt ? c.applyAgreed : c.applyNotAgreed}</Badge>
-                  <HelpNote inline>{c.applyOnBehalf}</HelpNote>
-                </div>
-              )}
-              {current.desc && <p className="mt-2 txt-body text-muted-foreground">{current.desc}</p>}
-              {current.asPickupPoint && <Badge className="mt-2">{c.applyAsPickup}</Badge>}
-              {current.rejectReason && (
-                <Notice tone="danger" className="mt-3">{current.rejectReason}</Notice>
-              )}
+              {current.desc && <p className="mt-5 whitespace-pre-wrap txt-body text-muted-foreground [overflow-wrap:anywhere]">{current.desc}</p>}
+              {current.asPickupPoint && <Badge className="mt-5">{c.applyAsPickup}</Badge>}
             </DrawerSection>
 
             {current.storeProfile && <DrawerSection title={c.applySectionStore}>
               <FieldGrid>
-                <Field label={c.obStoreName}>{current.storeProfile.name}</Field>
-                <Field label={c.obStoreAddress}>{current.storeProfile.address}</Field>
+                <Field label={c.obStoreName} wide>{current.storeProfile.name}</Field>
+                <Field label={c.obStoreAddress} wide>{current.storeProfile.address}</Field>
                 <Field label={c.obStoreIndustry}>{label.industry(current.storeProfile.industryCode)} / {current.storeProfile.subIndustryCode}</Field>
                 <Field label={c.obBusinessType}>{current.storeProfile.businessTypeCode}</Field>
               </FieldGrid>
@@ -269,9 +274,9 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
 
             {(current.merchantNo || current.storeNo) && <DrawerSection title={c.applySectionResult}>
               <FieldGrid>
-                {current.merchantNo && <Field label={c.applyResultMerchant}>{current.merchantNo}</Field>}
-                {current.storeNo && <Field label={c.applyResultStore}>{current.storeNo}</Field>}
-                {current.storeNo && canReadSubscription && <Field label={c.applyViewSubscription}>
+                {current.merchantNo && <Field label={c.applyResultMerchant} wide>{current.merchantNo}</Field>}
+                {current.storeNo && <Field label={c.applyResultStore} wide>{current.storeNo}</Field>}
+                {current.storeNo && canReadSubscription && <Field label={c.applyViewSubscription} wide>
                   {subscription.error ? (subscription.error as Error).message : subscription.data
                     ? `${subscription.data.sources?.some(x=>x.permanent && x.planVersionNo===subscription.data!.currentPlanVersionNo) ? c.applyFreePlan : c.applyPaidPlan} · ${subscription.data.currency} · ${subscription.data.businessTypeCode}` : c.applySubscriptionMissing}
                 </Field>}
@@ -287,20 +292,20 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
             */}
             {!!current.qualificationItems?.length && (
               <DrawerSection title={c.applySectionLicenses}>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {current.qualificationItems.map((q, i) => (
-                    <div key={i} className="rounded-card border p-2">
-                      <div className="flex items-center justify-between">
+                    <div key={i} className="min-w-0 rounded-card border p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge tone="info">{qualTypeLabel(c)[q.type] ?? q.type}</Badge>
                         <span className="txt-caption text-muted-foreground">
                           {q.expireAt ? fmtTime(q.expireAt) : c.applyQualForever}
                         </span>
                       </div>
-                      <div className="mt-1 txt-caption tabular-nums">{q.code || "—"}</div>
+                      <div className="mt-3 txt-caption tabular-nums [overflow-wrap:anywhere]">{q.code || "—"}</div>
                       {q.imageUrl && (
                         <a className="focus-ring" href={q.imageUrl} target="_blank" rel="noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={q.imageUrl} alt={q.type} className="mt-2 w-full rounded-card" />
+                          <img src={q.imageUrl} alt={qualTypeLabel(c)[q.type] ?? q.type} className="mt-3 h-36 w-full rounded-card bg-muted/30 object-contain" />
                         </a>
                       )}
                     </div>
@@ -318,7 +323,7 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
                 <p className="txt-caption text-muted-foreground">{c.applyRawFilesHint}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {current.licenses.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring txt-body underline">
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring txt-body underline [overflow-wrap:anywhere]">
                       {url.split("/").pop()}
                     </a>
                   ))}
@@ -332,10 +337,10 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
                   服务范围放在审核动作**上面**：它是通过的前置条件，不是附属选项。
                   放下面的话运营会先点通过再发现被拦，而拦截原因在视线之外。
                 */}
-                <HelpNote>{c.applyScopeNotice}</HelpNote>
-
                 <Label>{c.applyScopeLabel}</Label>
                 <FilterSelect
+                  className="mt-2 w-full"
+                  aria-label={c.applyScopeLabel}
                   value={scope}
                   onChange={setScope}
                   options={[
@@ -400,22 +405,6 @@ export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=tru
                   />
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    disabled={!scopeReady || audit.isPending}
-                    onClick={() => audit.mutate({ approved: true })}
-                  >
-                    {c.applyActionApprove}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    // 驳回必须写理由 —— 不写就等于让对方猜着改，而重来的人有一部分不会回来
-                    disabled={!reason.trim() || audit.isPending}
-                    onClick={() => audit.mutate({ approved: false })}
-                  >
-                    {c.applyActionReject}
-                  </Button>
-                </div>
               </DrawerSection>
             )}
           </>

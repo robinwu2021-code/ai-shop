@@ -3,7 +3,7 @@ import {useState} from "react";
 import {useMutation} from "@tanstack/react-query";
 import {api} from "@/lib/api";
 import type {AdmissionEntry,SelfOperatedStore} from "@/lib/types";
-import {Drawer,DrawerSection,Field,FieldGrid} from "@/components/ui/drawer";
+import {AdmissionDetailDrawer as Drawer,AdmissionDetailSection as DrawerSection,AdmissionDetailField as Field,AdmissionDetailGrid as FieldGrid} from "./admission-detail-layout";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Button} from "@/components/ui/button";
@@ -21,8 +21,9 @@ function SelfOperatedDetailBody({c,entry,canAddStore}:{c:MerchantsCopy;entry:Non
  const add=useMutation({mutationFn:()=>api.addSelfOperatedStore({merchantNo:entry.merchantNo,name:name.trim(),address:address.trim()||undefined}),onSuccess:store=>{setStores(prev=>[...prev,store]);setName("");setAddress("");notify.success(c.soStoreAdded);}});
  return <>
   <DrawerSection title={c.applySectionInfo} first><FieldGrid>
-   <Field label={c.admissionType}>{c.admissionSelf}</Field><Field label={c.soResultMerchant}>{entry.merchantNo}</Field>
-   <Field label={c.admissionOwner}>{entry.ownerUserNo}</Field><Field label={c.soScope}>{entry.serviceScope==="CITY"?c.soScopeCity:entry.serviceScope==="PLATFORM"?c.applyScopePlatform:c.soScopeCommunity}</Field>
+   <Field label={c.admissionType}>{c.admissionSelf}</Field><Field label={c.soScope}>{entry.serviceScope==="CITY"?c.soScopeCity:entry.serviceScope==="PLATFORM"?c.applyScopePlatform:c.soScopeCommunity}</Field>
+   <Field label={c.soResultMerchant} wide>{entry.merchantNo}</Field>
+   <Field label={c.admissionOwner} wide>{entry.ownerUserNo}</Field>
   </FieldGrid></DrawerSection>
   {canAddStore&&<DrawerSection title={c.soStoreSubmit}><form className="space-y-4" onSubmit={e=>{e.preventDefault();if(name.trim()&&!add.isPending)add.mutate();}}>
    <div className="space-y-1.5"><Label required htmlFor="admission-store-name">{c.soStoreName}</Label><Input id="admission-store-name" value={name} onChange={e=>setName(e.target.value)} disabled={add.isPending} /></div>

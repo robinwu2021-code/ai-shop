@@ -31,7 +31,7 @@ it('groups store details separately and keeps the existing approval command',asy
  state.audit.mockImplementation(async()=>({...state.rows[0],status:'APPROVED',merchantNo:'M1',storeNo:'S1'}));
  await render(h(ApplyTab,{c,canAudit:true}));await open();
  const dialog=document.querySelector('[role="dialog"]')!;
- expect(dialog.textContent).toContain('经营主体与申请人');expect(dialog.textContent).toContain('开店资料');expect(dialog.textContent).toContain('门店地址');
+ expect(dialog.textContent).toContain('申请信息');expect(dialog.textContent).toContain('经营主体与联系人');expect(dialog.textContent).toContain('开店资料');expect(dialog.textContent).toContain('门店地址');
  const approve=[...dialog.querySelectorAll('button')].find(b=>b.textContent===c.applyActionApprove)!;
  await act(async()=>approve.click());
  expect(state.audit).toHaveBeenCalledWith('A1',true,'','CITY',[],[]);
