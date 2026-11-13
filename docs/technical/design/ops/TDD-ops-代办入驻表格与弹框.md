@@ -53,3 +53,5 @@
 - Compiled 13 baseline classes and compared their disassembled behavior with the fresh live package c477fa54: no differences. Candidate replaces 13 class entries across shop-base/core/merchant and adds V664 only; all other archive entries are byte-identical.
 - Deployment and read-only UI verification pending. Incremental results are reused under Java section 8.4; push uses SKIP_COMPILE_GATE=1 and does not claim unrelated full-project gates passed.
 
+
+2026-11-13统一分支集成补充：166先应用了支付SSE的V664（256749001）；运营菜单迁移未应用，合并公共OTP时顺延为V665__ops_admission_entry_consolidation.sql，SQL内容不改。历史候选记录中的“adds V664”是当时制品描述，当前以V665为准。

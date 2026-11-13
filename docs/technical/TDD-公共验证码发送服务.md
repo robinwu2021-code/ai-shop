@@ -271,3 +271,5 @@ MySQL原生用例使用单独临时MySQL9.7.4，127.0.0.1:3319，每方法随机
 ```
 
 统一分支发布裁定：166在本轮期间先部署支付SSE5fba0e2cc，故保留该提交再合并OTP；首次正常push被既有SSE的Vue交付清单缺项拦截（GET /biz/payment/events）。只补该已部署接口的精确OpenAPI及Flutter/legacy-Vue交付清单，不扩大known-*欠账基线，不改支付行为；未包含原工作区未提交代码。
+
+统一分支并发更新：首次通过全部适用push检查及干净test-compile后，远端推进4a9baa006，正常拒绝更新，未force。合并该运营提交时发现其新迁移也占V664；DB61只读核对166已成功应用V664__sandbox_payment_collection_stream.sql（checksum256749001），故保留其原字节，将尚未应用的运营菜单DML迁移仅改名为V665。其内容不改；此为集成编号冲突处理，非修改历史已应用迁移。后续候选同时保留运营新代码，并定向执行其新增两组测试。
