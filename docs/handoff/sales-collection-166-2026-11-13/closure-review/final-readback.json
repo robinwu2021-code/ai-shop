@@ -1,0 +1,175 @@
+{
+  "status": "PASS",
+  "environment": "166",
+  "realFundsReceived": false,
+  "testPayment": true,
+  "storeNo": "ST261113Y693VWBMKT",
+  "orderNo": "01fc24ae8f2a40779243fe6b0ec40654",
+  "order": {
+    "order": {
+      "orderNo": "01fc24ae8f2a40779243fe6b0ec40654",
+      "store": {
+        "tenantNo": "MAIN",
+        "storeNo": "ST261113Y693VWBMKT"
+      },
+      "status": "COMPLETED",
+      "payable": {
+        "currency": "TWD",
+        "minor": "199000"
+      },
+      "components": [
+        {
+          "componentNo": "1ccdde709620410ea2de8adc545d1728",
+          "kind": "PLAN",
+          "listAmount": {
+            "currency": "TWD",
+            "minor": "238800"
+          },
+          "dealAmount": {
+            "currency": "TWD",
+            "minor": "199000"
+          },
+          "creditAmount": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "cashAmount": {
+            "currency": "TWD",
+            "minor": "199000"
+          },
+          "cycleDays": 365,
+          "quantity": 1
+        }
+      ],
+      "createdAt": "2026-11-13T13:15:20.842Z"
+    },
+    "paymentStatus": "PAID",
+    "fulfillmentStatus": "COMPLETED",
+    "refundStatus": "NONE",
+    "title": "零售專業版・年付",
+    "lineCount": 1,
+    "latestClaimStatus": null
+  },
+  "documentation": {
+    "testAllowed": true,
+    "confirmations": [
+      {
+        "confirmationActionNo": "CFM-MWF2Y05C-1S5L",
+        "paymentNo": "MP1abd4a0aedffcc11bc12fa517c54e896104fb2e62c2e20408cce1bd395a2",
+        "status": "APPLIED",
+        "testPayment": true,
+        "operatorNo": "ST-UME-ADMIN",
+        "confirmedAt": "2026-11-13T14:36:23.809Z",
+        "actualAmount": {
+          "currency": "TWD",
+          "minor": "199000"
+        },
+        "actualPaidAt": "2026-11-13T14:36:23Z",
+        "collectorNo": "ST-UME-ADMIN",
+        "collectionReference": "TEST-CFM-MWF2Y05C-1S5L",
+        "evidenceKey": null,
+        "complete": true,
+        "supplements": [
+          {
+            "actionNo": "docs-MWF2ZRYB-XJEE",
+            "operatorNo": "ST-UME-ADMIN",
+            "createdAt": "2026-11-13T14:37:47.198Z",
+            "note": "测试核款后补充资料：本附件仅证明本次测试操作，不是实际收款凭证。",
+            "evidenceKeys": [
+              "M26111119233ZE990/ST261113Y693VWBMKT/mallpay/202611/c02fdf4a1d6743cba9ed8098ade7fe0e.jpg"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "realCashReceipts": [],
+  "subscription": {
+    "store": {
+      "tenantNo": "MAIN",
+      "storeNo": "ST261113Y693VWBMKT"
+    },
+    "entitlementVersion": 2,
+    "sources": [
+      {
+        "sourceNo": "3254cfc3-01b1-4961-8027-2a9fea7d6f8e",
+        "entitlementCode": null,
+        "planVersionNo": "0093f8eaf6ec432c93e0938f1db90ea0",
+        "originNo": "ST261113Y693VWBMKT",
+        "durationMillis": 0,
+        "consumedMillis": 0,
+        "valuationBasis": {
+          "currency": "TWD",
+          "minor": "0"
+        },
+        "permanent": true,
+        "lifecycle": "NORMAL",
+        "revokedDurationMillis": 0
+      }
+    ],
+    "segments": [
+      {
+        "sourceNo": "3254cfc3-01b1-4961-8027-2a9fea7d6f8e",
+        "entitlementCode": "END_BIZ_APP",
+        "startsAt": "2026-11-13T13:04:59.618Z",
+        "endsAt": null
+      }
+    ],
+    "businessTypeCode": "RETAIL",
+    "currency": "TWD",
+    "currentPlanVersionNo": "767966963c464b7ba6eb640328973e74",
+    "serverNow": 1794580723661
+  },
+  "currentPlan": {
+    "draft": {
+      "planNo": "RETAIL:PRO",
+      "planVersionNo": "767966963c464b7ba6eb640328973e74",
+      "typeCode": "RETAIL",
+      "tier": "PRO",
+      "displayName": "零售專業版",
+      "summary": "商戶 App 全功能 + POS",
+      "entitlementCodes": [
+        "END_BIZ_APP",
+        "END_APP_POS"
+      ],
+      "policyVersion": "tw-launch-1",
+      "expectedVersion": 2,
+      "reason": "seed-tw-2026-11-06"
+    },
+    "status": "PUBLISHED",
+    "revision": 1,
+    "version": 2
+  },
+  "checks": [
+    {
+      "method": "POST",
+      "path": "/ops/auth/login",
+      "http": 200
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/orders/01fc24ae8f2a40779243fe6b0ec40654?storeNo=ST261113Y693VWBMKT",
+      "http": 200
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/orders/01fc24ae8f2a40779243fe6b0ec40654/receipt-documentation?storeNo=ST261113Y693VWBMKT",
+      "http": 200
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/orders/01fc24ae8f2a40779243fe6b0ec40654/cash-receipts?storeNo=ST261113Y693VWBMKT",
+      "http": 200
+    },
+    {
+      "method": "GET",
+      "path": "/ops/stores/ST261113Y693VWBMKT/subscription?entitlementCode=END_BIZ_APP",
+      "http": 200
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/catalog",
+      "http": 200
+    }
+  ]
+}

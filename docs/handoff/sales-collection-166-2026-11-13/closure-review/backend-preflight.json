@@ -1,0 +1,7 @@
+{
+  "baselineSha256": "7095f47e08f5ef6abdab161252fc79b0548548c23d06038ce2a5225c865f4500",
+  "candidateSha256": "0ed89ae0f55506150165418c36c0eec4ccb6c4a6715ca492cf11755b8a6cbf0b",
+  "changedClasses": 37,
+  "otherEntriesUnchanged": true,
+  "migrationRequired": false
+}
