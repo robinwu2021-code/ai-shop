@@ -79,3 +79,10 @@ it('uses a registered email for Taiwan self-operation without mainland prompts o
 it('keeps audit-only users in the unified application list without exposing creation',async()=>{
  await render(h(OnBehalfTab,{c,canSubmit:false,canAudit:true}));expect(host.querySelector('table')).not.toBeNull();expect([...host.querySelectorAll('button')].some(b=>b.textContent===c.obNew)).toBe(false);expect(host.textContent).toContain(c.applyActionAccept);
 });
+it('does not invent a stored default-store name from an idempotent creation request',async()=>{
+ state.selfCreate.mockResolvedValue({merchantNo:'M-idem',storeNo:'S-existing',ownerUserNo:'U-owner',created:false,reachableCommunities:1,selfOperated:true,fundsMode:'AGGREGATED',businessMode:'SELF_OPERATED',serviceScope:'CITY'});
+ await render(h(SelfOperatedTab,{c,canCreate:true}));
+ for(const [id,value] of [['so-owner','owner@example.test'],['so-name','Unstored requested name'],['so-scope','CITY']]){const el=document.getElementById(id) as HTMLInputElement;await act(async()=>{Object.getOwnPropertyDescriptor(el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype,'value')!.set!.call(el,value);el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));});}
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent===c.soSubmit)!.click());
+ expect(host.textContent).toContain('S-existing');expect(host.textContent).not.toContain('Unstored requested name');
+});
