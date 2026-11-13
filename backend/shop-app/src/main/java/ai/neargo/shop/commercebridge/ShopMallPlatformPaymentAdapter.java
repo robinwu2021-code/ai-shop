@@ -67,7 +67,7 @@ public final class ShopMallPlatformPaymentAdapter implements PlatformPaymentPort
     private static PlatformCollectionService.Request offline(PaymentIntentCommand c) {
         if (c.offline() == null
                 || c.preparedAt() == null
-                || !"BANK_TRANSFER".equals(c.payMethod())
+                || !c.offline().collectionMethod().equals(c.payMethod())
                 || !c.offline().platformMerchantNo().equals(c.platformMerchantNo())
                 || !c.offline().currency().equals(c.amount().currency())) return null;
         return new PlatformCollectionService.Request(

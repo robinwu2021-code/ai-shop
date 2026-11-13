@@ -14,6 +14,19 @@ afterEach(() => vi.unstubAllGlobals());
 const ok = (data: unknown) => vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ code: 0, msg: "success", data }) });
 
 describe("commerce http", () => {
+  it("销售方式、销售凭据和门店按正式合同发送，无银行占位字段", async () => {
+    const fetch=ok({status:"ACCEPTED"});vi.stubGlobal("fetch",fetch);
+    await commerceHttp.offlineAssistedQuote("STORE-1",{lines:[{skuVersionNo:"SKU-1",quantity:1}],currency:"TWD",collectionMethod:"SALES_COLLECTION"});
+    expect(JSON.parse(fetch.mock.calls[0]![1].body)).toMatchObject({collectionMethod:"SALES_COLLECTION"});
+    await commerceHttp.confirmOfflinePayment("STORE-1","ORDER-1",{
+      actionNo:"A1",claimNo:null,actualAmount:{currency:"TWD",minor:"19900"},actualPaidAt:"2026-11-13T00:00:00Z",
+      actualReceiver:"PLATFORM",collectorNo:"SALES-1",collectionReference:"RECEIPT-1",evidenceKey:"PRIVATE",historical:false,reason:"actual receipt",
+    });
+    const body=JSON.parse(fetch.mock.calls[1]![1].body);
+    expect(body.collectorNo).toBe("SALES-1");expect(body.collectionReference).toBe("RECEIPT-1");expect(body).not.toHaveProperty("bankReference");
+    await commerceHttp.offlineCollectors("STORE-1");
+    expect(fetch.mock.calls[2]![0]).toContain("/ops/biz-mall/offline/collectors?storeNo=STORE-1");
+  });
   it("凭证上传发原始字节，Content-Type=image/png，assetKey 与 storeNo 在查询串", async () => {
     const fetch = ok({ assetKey: "K1" });
     vi.stubGlobal("fetch", fetch);

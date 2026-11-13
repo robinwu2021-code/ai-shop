@@ -6,6 +6,10 @@ import ai.neargo.commerce.api.port.CheckoutReadinessPort;
 import ai.neargo.commerce.api.port.OfflineCollectionPort;
 import ai.neargo.commerce.api.port.PrivateEvidencePort;
 import ai.neargo.shop.auth.*;
+import ai.neargo.shop.platform.OpsService;
+import ai.neargo.common.security.rbac.Permissions;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import ai.neargo.shop.commercebridge.port.ShopMallPaymentRecovery;
 import ai.neargo.shop.config.MallOperatorSessions;
 import ai.neargo.shop.inventory.service.CoordinatedInventoryService;
@@ -129,7 +133,9 @@ class ShopMallConfiguration {
                                                                         c.currency(),
                                                                         c.maximumMinor())))
                         .toList();
-        boolean offline = enabled && offlineEnabled && allowed.contains("OFFLINE:BANK_TRANSFER");
+        Set<String> offline = enabled && offlineEnabled
+                ? Stream.of("BANK_TRANSFER","SALES_COLLECTION").filter(m->allowed.contains("OFFLINE:"+m)).collect(Collectors.toSet())
+                : Set.of();
         return new ShopMallCheckoutReadiness(
                 enabled, inventory, () -> options, bindings, offline, recipient);
     }
@@ -151,8 +157,18 @@ class ShopMallConfiguration {
     OfflineCollectionPort mallOfflineCollection(
             PlatformCollectionService collection,
             ObjectProvider<PlatformRefundService> refunds,
+            OpsService staff, ShopCommerceStoreAdapter stores,
             @Value("${commerce.mall.payment.platform-merchant-no}") String recipient) {
-        return new ShopMallOfflineCollectionAdapter(collection, refunds.getIfAvailable(), recipient);
+        return new ShopMallOfflineCollectionAdapter(collection, refunds.getIfAvailable(), recipient,store -> {
+                    var target=stores.find(store).orElseThrow();
+                    if(!"MAIN".equals(store.tenantNo()))return List.of();
+                    return staff.staffList().stream()
+                            .filter(s->"ACTIVE".equals(s.status()))
+                            .filter(s->Permissions.matches(s.perms(),"commerce:mall:assisted:purchase"))
+                            .filter(s->s.perms().contains("*") || (s.communityNo()==null && s.pickupNo()==null
+                                    && (s.merchantNo()==null || s.merchantNo().equals(target.merchantNo()))))
+                            .map(s->new OfflineCollectionPort.Collector(s.staffNo(),s.realName())).toList();
+                });
     }
 
     @Bean

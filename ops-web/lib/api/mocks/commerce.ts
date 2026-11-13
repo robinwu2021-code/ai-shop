@@ -114,13 +114,21 @@ export const commerceMock: CommerceApi = {
   grantMallEnd: async (storeNo, v) => wait(sub(storeNo, m.grant(storeNo, v)), 400),
   revokeMallSource: async (storeNo, no, v) => wait(sub(storeNo, m.revoke(storeNo, no, v)), 400),
 
-  offlineProfile: async (currency) => {
+  offlineCollectors: async () => wait([]),
+  offlineProfile: async (currency, method) => {
+    if (method === "SALES_COLLECTION") return wait(null);
     const p = m.mall.s.profiles[currency];
     return wait(p ? clone({ ...p.terms, enabled: p.enabled }) : null);
   },
-  configureOfflineProfile: async (v) => wait(clone(m.configureProfile(v)), 350),
+  configureOfflineProfile: async (v) => {
+    if(v.collectionMethod === "SALES_COLLECTION") m.mallFail("OFFLINE_UNAVAILABLE");
+    return wait(clone(m.configureProfile({...v,bankCode:v.bankCode ?? "",bankAccount:v.bankAccount ?? "",accountName:v.accountName ?? ""})),350);
+  },
   offlinePendingClaims: async (q) => wait(clone(m.pendingClaims(q ?? {}))),
-  offlineAssistedQuote: async (storeNo, v) => wait(clone(m.assistedQuote(storeNo, v)), 350),
+  offlineAssistedQuote: async (storeNo, v) => {
+    if(v.collectionMethod === "SALES_COLLECTION") m.mallFail("OFFLINE_UNAVAILABLE");
+    return wait(clone(m.assistedQuote(storeNo, v)),350);
+  },
   offlineAssistedPlace: async (storeNo, v) => wait(summary(m.assistedPlace(storeNo, v)).order!, 400),
   issueOfflineInstructions: async (storeNo, no) => wait(clone(m.publicInstructions(m.issueInstructions(storeNo, no))), 350),
   offlineInstructions: async (storeNo, no) => wait(clone(m.publicInstructions(m.instructionsOf(storeNo, no)))),
@@ -135,7 +143,7 @@ export const commerceMock: CommerceApi = {
   offlineEvidenceUrl: async (storeNo, no, key) => wait(m.evidenceUrl(storeNo, no, key)),
   declineOfflineClaim: async (storeNo, no, claimNo, reason) => wait(clone(m.declineClaim(storeNo, no, claimNo, reason)), 400),
   offlineAction: async (storeNo, no, actionNo) => wait(clone(m.actionOf(storeNo, no, actionNo))),
-  confirmOfflinePayment: async (storeNo, no, v) => wait(m.confirmPayment(storeNo, no, v), 400),
+  confirmOfflinePayment: async (storeNo, no, v) => wait(m.confirmPayment(storeNo, no, {...v,bankReference:v.bankReference ?? ""}), 400),
   voidOfflineOrder: async (storeNo, no, v) => wait(m.voidOrder(storeNo, no, v), 400),
   recoverOfflineOrder: async () => { throw new ApiError(10400,"Offline order recovery requires a real bank ledger"); },
   confirmOfflineRefundPayout: async (storeNo, no, r, v) => wait(m.payout(storeNo, no, r, v), 400),

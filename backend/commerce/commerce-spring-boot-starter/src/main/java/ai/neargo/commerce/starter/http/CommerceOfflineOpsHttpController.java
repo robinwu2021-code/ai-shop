@@ -45,13 +45,16 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
     @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/cash-refunds/{refundNo}/recover")
     public Object recoverCashRefund(@RequestParam("storeNo") String store,@PathVariable("orderNo") String order,@PathVariable("refundNo") String refund){var a=context.operator("commerce:mall:offline:refund:confirm");return ok(offline.recoverCashRefund(a,new OrderQuery(new StoreRef(a.tenantNo(),code(store)),code(order)),code(refund)));}
 
-    public record QuoteRequest(List<QuoteLine> lines, String currency) {}
+    public record QuoteRequest(List<QuoteLine> lines, String currency, String collectionMethod) {
+        public QuoteRequest(List<QuoteLine> lines,String currency) { this(lines,currency,null); }
+    }
     public record EmptyRequest() {}
 
     @GetMapping("/ops/biz-mall/offline/profile")
-    public Object profile(@RequestParam("currency") String currency) {
+    public Object profile(@RequestParam("currency") String currency,
+            @RequestParam(value="collectionMethod",required=false) String method) {
         var actor = context.operator("commerce:collection:profile:read");
-        return ok(offline.profile(actor, currency).orElse(null));
+        return ok((method==null?offline.profile(actor,currency):offline.profile(actor, currency, method)).orElse(null));
     }
 
     @PutMapping("/ops/biz-mall/offline/profile")
@@ -83,7 +86,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
                 offline.quote(
                         actor,
                         new QuoteCommand(
-                                new StoreRef(actor.tenantNo(), code(store)), d.lines(), d.currency())));
+                                new StoreRef(actor.tenantNo(), code(store)), d.lines(), d.currency()),d.collectionMethod()));
     }
 
     public record PlaceRequest(
@@ -193,7 +196,13 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
             String bankReference,
             String evidenceKey,
             boolean historical,
-            String reason) {}
+            String reason, String collectorNo, String collectionReference) {}
+
+    @GetMapping("/ops/biz-mall/offline/collectors")
+    public Object collectors(@RequestParam("storeNo") String store) {
+        var actor=context.operator("commerce:mall:offline:confirm");
+        return ok(offline.collectors(actor,new StoreRef(actor.tenantNo(),code(store))));
+    }
 
     @PostMapping("/ops/biz-mall/offline/orders/{orderNo}/confirmations")
     public Object confirm(
@@ -215,7 +224,7 @@ public final class CommerceOfflineOpsHttpController extends MallHttpSupport {
                                 d.bankReference(),
                                 d.evidenceKey(),
                                 d.historical(),
-                                d.reason())));
+                                d.reason(),d.collectorNo(),d.collectionReference())));
     }
 
     public record VoidRequest(

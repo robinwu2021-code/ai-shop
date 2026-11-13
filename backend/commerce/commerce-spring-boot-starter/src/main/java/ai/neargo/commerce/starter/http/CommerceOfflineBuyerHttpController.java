@@ -32,13 +32,26 @@ public final class CommerceOfflineBuyerHttpController extends MallHttpSupport {
     @GetMapping("/biz/stores/{storeNo}/mall/offline/orders/{orderNo}/cash-refunds")
     public Object cashRefunds(@PathVariable("storeNo") String store,@PathVariable("orderNo") String order){var a=context.buyer(store,"commerce:mall:read");return ok(offline.cashRefunds(a.actor(),new OrderQuery(a.store(),code(order))));}
 
-    public record QuoteRequest(List<QuoteLine> lines, String currency) {}
+    public record QuoteRequest(List<QuoteLine> lines, String currency, String collectionMethod) {
+        public QuoteRequest(List<QuoteLine> lines,String currency) { this(lines,currency,null); }
+    }
 
     @PostMapping("/biz/stores/{storeNo}/mall/offline/quotes")
     public Object quote(@PathVariable("storeNo") String store, @RequestBody String body) {
         var d = json.read(body, QuoteRequest.class);
         var c = context.buyer(store, "commerce:mall:purchase");
-        return ok(offline.quote(c.actor(), new QuoteCommand(c.store(), d.lines(), d.currency())));
+        return ok(offline.quote(c.actor(), new QuoteCommand(c.store(), d.lines(), d.currency()),d.collectionMethod()));
+    }
+
+    public record UpgradeRequest(String targetPlanVersionNo, String operationNo,
+            long expectedEntitlementVersion, String targetSkuVersionNo, String currency, String collectionMethod) {}
+
+    @PostMapping("/biz/stores/{storeNo}/mall/offline/upgrade-quotes")
+    public Object upgrade(@PathVariable("storeNo") String store, @RequestBody String body) {
+        var d = json.read(body, UpgradeRequest.class);
+        var c = context.buyer(store, "commerce:mall:purchase");
+        return ok(offline.quoteUpgrade(c.actor(), new UpgradeCommand(c.store(), d.targetPlanVersionNo(),
+                d.operationNo(), d.expectedEntitlementVersion(), d.targetSkuVersionNo()), d.currency(),d.collectionMethod()));
     }
 
     public record EmptyRequest() {}

@@ -32,9 +32,18 @@ public interface PlatformCollectionService {
 
     record OfflineProfile(String tenantNo, String profileNo, long expectedVersion, String merchantNo,
             String currency, String bankCode, String bankAccount, String accountName,
-            String paymentWindowVersion, long paymentWindowMs, boolean enabled, String operatorNo, String reason) {}
+            String paymentWindowVersion, long paymentWindowMs, boolean enabled, String operatorNo, String reason,
+            String collectionMethod, String contactInstructions) {
+        public OfflineProfile(String tenantNo,String profileNo,long expectedVersion,String merchantNo,String currency,
+                String bankCode,String bankAccount,String accountName,String paymentWindowVersion,long paymentWindowMs,
+                boolean enabled,String operatorNo,String reason) {
+            this(tenantNo,profileNo,expectedVersion,merchantNo,currency,bankCode,bankAccount,accountName,
+                    paymentWindowVersion,paymentWindowMs,enabled,operatorNo,reason,null,null);
+        }
+    }
     record OfflineInstructions(String profileNo, long version, String merchantNo, String currency,
             String receivingAccountKey, String paymentWindowVersion, long paymentWindowMs, Map<String, String> instructions) {
+        public String collectionMethod() { return instructions.getOrDefault("collectionMethod", "BANK_TRANSFER"); }
         /** Sorted for byte-stable JSON across instances (Map.copyOf order is salted per JVM). */
         public OfflineInstructions { instructions = Collections.unmodifiableMap(new TreeMap<>(instructions)); }
     }
@@ -43,7 +52,13 @@ public interface PlatformCollectionService {
     default Optional<OfflineProfileView> offlineProfile(String tenant, String profile, String currency) { return Optional.empty(); }
     /** Precision is assigned by this trusted manual rail, never supplied by the HTTP caller. */
     record OfflineProof(Key key, String operatorNo, String actualReceiver, long actualMinor, String currency,
-            long actualPaidAt, String bankReference, String evidenceReference, String mode, long confirmedAt) {}
+            long actualPaidAt, String bankReference, String evidenceReference, String mode, long confirmedAt,
+            String collectorNo, String collectionReference) {
+        public OfflineProof(Key key,String operatorNo,String actualReceiver,long actualMinor,String currency,
+                long actualPaidAt,String bankReference,String evidenceReference,String mode,long confirmedAt) {
+            this(key,operatorNo,actualReceiver,actualMinor,currency,actualPaidAt,bankReference,evidenceReference,mode,confirmedAt,null,null);
+        }
+    }
     record OfflineVoid(Key key, String operatorNo, String reconciliationReference, String reason,
             String evidenceReference, long reconciledAt, Map<String, String> unmatchedDispositions) {
         public OfflineVoid { unmatchedDispositions = Collections.unmodifiableMap(new TreeMap<>(unmatchedDispositions)); }

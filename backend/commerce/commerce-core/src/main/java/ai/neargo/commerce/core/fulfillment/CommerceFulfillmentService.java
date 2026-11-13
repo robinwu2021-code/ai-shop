@@ -177,7 +177,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         var command = locked(q.tenantNo(),q.orderNo(),o -> {
             if (o.quote().purchase().offline()==null) throw fail("OFFLINE_INTENT_REQUIRED");
             return new StartPaymentCommand(o.quote().store(),o.orderNo(),o.view().payable().minor()==0?"INTERNAL":"OFFLINE",
-                    o.view().payable().minor()==0?"ZERO":"BANK_TRANSFER",null);
+                    o.view().payable().minor()==0?"ZERO":o.quote().purchase().offline().collectionMethod(),null);
         });
         return preparePayment(q.tenantNo(),command,o -> {
             if (o.quote().purchase().offline()==null) throw fail("OFFLINE_INTENT_REQUIRED");
@@ -197,6 +197,9 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 o -> {
                     authorized.accept(o);
                     if (!internalZero && (o.quote().purchase().offline() != null) != "OFFLINE".equals(c.channel()))
+                        throw fail("PAYMENT_ROUTE_MISMATCH");
+                    if (!internalZero && o.quote().purchase().offline()!=null
+                            && !o.quote().purchase().offline().collectionMethod().equals(c.payMethod()))
                         throw fail("PAYMENT_ROUTE_MISMATCH");
                     if (internalZero && o.view().payable().minor() != 0)
                         throw fail("INVALID_REQUEST");

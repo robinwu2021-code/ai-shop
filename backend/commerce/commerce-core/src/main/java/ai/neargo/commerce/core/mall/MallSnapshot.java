@@ -270,7 +270,7 @@ public final class MallSnapshot {
                             new Money(currency, convertedValue()), new Money(currency, historicalAvailableCredit),
                             new Money(currency, credit()), new Money(currency, historicalCredit()),
                             new Money(currency, Math.subtractExact(Math.addExact(historicalAvailableCredit, convertedValue()), credit())),
-                            Instant.ofEpochMilli(valuationAt)));
+                            Instant.ofEpochMilli(valuationAt)), purchase.offline()==null?null:purchase.offline().collectionMethod());
         }
     }
 

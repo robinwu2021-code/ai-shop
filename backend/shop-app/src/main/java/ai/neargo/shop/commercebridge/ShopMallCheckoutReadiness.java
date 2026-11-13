@@ -13,7 +13,7 @@ final class ShopMallCheckoutReadiness implements CheckoutReadinessPort {
     private final ShopMallHardwareInventoryAdapter inventory;
     private final Supplier<List<PaymentOption>> options;
     private final ShopMallPayerBindings bindings;
-    private final boolean offlineRouteAllowed;
+    private final Set<String> offlineMethods;
     private final String recipient;
     private static final long MAX_SAFE_MINOR = 9007199254740991L;
 
@@ -39,11 +39,16 @@ final class ShopMallCheckoutReadiness implements CheckoutReadinessPort {
             ShopMallPayerBindings bindings,
             boolean offlineRouteAllowed,
             String recipient) {
+        this(enabled,inventory,options,bindings,offlineRouteAllowed?Set.of("BANK_TRANSFER"):Set.of(),recipient);
+    }
+
+    ShopMallCheckoutReadiness(boolean enabled,ShopMallHardwareInventoryAdapter inventory,Supplier<List<PaymentOption>> options,
+            ShopMallPayerBindings bindings,Set<String> offlineMethods,String recipient) {
         this.enabled = enabled;
         this.inventory = inventory;
         this.options = options;
         this.bindings = bindings;
-        this.offlineRouteAllowed = offlineRouteAllowed && recipient != null && !recipient.isBlank();
+        this.offlineMethods = recipient!=null && !recipient.isBlank()?Set.copyOf(offlineMethods):Set.of();
         this.recipient = recipient;
     }
 
@@ -84,7 +89,7 @@ final class ShopMallCheckoutReadiness implements CheckoutReadinessPort {
             ai.neargo.commerce.api.offline.OfflineCollectionTerms terms) {
         var reasons = new LinkedHashSet<String>();
         if (!enabled) reasons.add("PAYMENT_COORDINATION_DISABLED");
-        if (!offlineRouteAllowed || terms == null) reasons.add("OFFLINE_UNAVAILABLE");
+        if (terms == null || !offlineMethods.contains(terms.collectionMethod())) reasons.add("OFFLINE_UNAVAILABLE");
         if (store.model() != CommerceModel.STORE_V1 || store.status() != StoreStatus.ACTIVE)
             reasons.add("STORE_UNAVAILABLE");
         for (var sku : skus)
@@ -102,7 +107,7 @@ final class ShopMallCheckoutReadiness implements CheckoutReadinessPort {
                         ? List.of(
                                 new PaymentOption(
                                         "OFFLINE",
-                                        "BANK_TRANSFER",
+                                        terms.collectionMethod(),
                                         payable.currency(),
                                         MAX_SAFE_MINOR))
                         : List.<PaymentOption>of();

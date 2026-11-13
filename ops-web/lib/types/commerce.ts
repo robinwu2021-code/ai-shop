@@ -587,7 +587,11 @@ export interface MallQuoteCreditView {
 }
 
 /** 报价（服务器冻结） */
+export type MallCollectionMethod = "BANK_TRANSFER" | "SALES_COLLECTION";
+export interface MallSalesCollector { collectorNo: string; displayName: string }
+
 export interface MallQuoteView {
+  collectionMethod?: MallCollectionMethod;
   /** 报价号 */
   quoteNo?: string;
   /** 门店 */
@@ -620,6 +624,7 @@ export interface MallQuoteLine {
 
 /** 报价请求 */
 export interface MallQuoteRequest {
+  collectionMethod?: MallCollectionMethod;
   /** 行 */
   lines: MallQuoteLine[];
   /** 币种 */
@@ -941,6 +946,8 @@ export interface MallOfflineCollectionTerms {
 
 /** 配置收款档案 */
 export interface MallOfflineProfileCommand {
+  collectionMethod?: MallCollectionMethod;
+  contactInstructions?: string;
   /** 档案号 */
   profileNo: string;
   /** 乐观锁：首次传 0，之后传当前 profileVersion */
@@ -950,11 +957,11 @@ export interface MallOfflineProfileCommand {
   /** 币种 */
   currency: string;
   /** 银行代码 */
-  bankCode: string;
+  bankCode: string | null;
   /** 账号 */
-  bankAccount: string;
+  bankAccount: string | null;
   /** 户名 */
-  accountName: string;
+  accountName: string | null;
   /** 付款窗口版本 */
   paymentWindowVersion: string;
   /** 付款窗口（毫秒，1000 ~ 90 天） */
@@ -998,6 +1005,7 @@ export interface MallOfflinePendingClaim {
 
 /** 已发出的付款指引（冻结档案版本） */
 export interface MallOfflineInstructionsView {
+  collectionMethod?: MallCollectionMethod;
   /** Immutable receiver frozen with this order. */
   platformMerchantNo: string;
   /** 订单号 */
@@ -1039,6 +1047,8 @@ export interface MallOfflineSignedRead {
 
 /** 核款：录入实际到账 */
 export interface MallOfflineConfirmRequest {
+  collectorNo?: string;
+  collectionReference?: string;
   /** 幂等动作号 */
   actionNo: string;
   /** 对应的申报；运营直接录款为 null */
@@ -1050,7 +1060,7 @@ export interface MallOfflineConfirmRequest {
   /** 实际收款主体（必须是档案里的平台主体） */
   actualReceiver: string;
   /** 银行流水号（全局唯一） */
-  bankReference: string;
+  bankReference?: string | null;
   /** 凭证资产键 */
   evidenceKey: string;
   /** 补录早于下单的历史到账 */

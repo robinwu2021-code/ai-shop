@@ -10,6 +10,74 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 class PlatformOfflineCollectionMysqlTest {
+    @org.junit.jupiter.api.RepeatedTest(3)
+    void salesReceiptUniqueIndexArbitratesConcurrentOrders() throws Exception {
+        try(var f=new Fixture()) {
+            var terms=f.base.service.configureOffline(new PlatformCollectionService.OfflineProfile("MAIN","profile-sales",0,
+                    "platform-mch","TWD",null,null,null,"w1",86400000,true,"ops","test only","SALES_COLLECTION","Contact sales"));
+            var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+            var gate=new java.util.concurrent.CountDownLatch(1);
+            try {
+                var results=new ArrayList<java.util.concurrent.Future<Boolean>>();
+                for(String order:List.of("CA","CB")) {
+                    var req=new PlatformCollectionService.Request(new PlatformCollectionService.Key("MAIN",order,order),"buyer","platform-mch",
+                            "OFFLINE","SALES_COLLECTION",10000,"TWD",86401000,1000,null,terms);
+                    f.base.service.create(req);
+                    results.add(pool.submit(()->{
+                        gate.await();
+                        try {
+                            f.base.service.confirmOffline(new PlatformCollectionService.OfflineProof(req.key(),"ops","platform-mch",10000,"TWD",1000,null,
+                                    "private-proof","NORMAL",2000,"sales","one-receipt"));
+                            return true;
+                        } catch(IllegalArgumentException conflict) {
+                            assertEquals("SALES_REFERENCE_CONFLICT",conflict.getMessage());return false;
+                        }
+                    }));
+                }
+                gate.countDown();
+                assertEquals(1,results.stream().filter(result->{try{return result.get(15,java.util.concurrent.TimeUnit.SECONDS);}catch(Exception e){throw new AssertionError(e);}}).count());
+                assertEquals(1,f.base.jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE status='SUCCESS'",Integer.class));
+            } finally { pool.shutdownNow(); }
+        }
+    }
+
+    @Test
+    void salesReceiptUsesItsOwnMethodAndCannotPayAnotherOrder() throws Exception {
+        try (var f = new Fixture()) {
+            var terms = f.base.service.configureOffline(new PlatformCollectionService.OfflineProfile(
+                    "MAIN", "profile-sales", 0, "platform-mch", "TWD", null, null, null, "w1", 86400000,
+                    true, "ops", "test only", "SALES_COLLECTION", "Contact assigned sales"));
+            assertEquals("SALES_COLLECTION", terms.collectionMethod());
+            assertFalse(terms.instructions().containsKey("bankAccount"));
+            var a = new PlatformCollectionService.Request(new PlatformCollectionService.Key("MAIN","SA","SA"),
+                    "buyer","platform-mch","OFFLINE","SALES_COLLECTION",10000,"TWD",86401000,1000,null,terms);
+            assertEquals("PENDING", f.base.service.create(a).state());
+            var proof = new PlatformCollectionService.OfflineProof(a.key(),"ops","platform-mch",10000,"TWD",1000,
+                    null,"private-proof","NORMAL",2000,"sales-1","receipt-1");
+            var paid = f.base.service.confirmOffline(proof);
+            assertEquals("MATCHED",paid.disposition());
+            assertEquals(paid,f.base.service.confirmOffline(proof));
+            assertEquals("SALES_COLLECTION",paid.receipt().request().method());
+            assertNull(f.base.jdbc.queryForObject("SELECT platform_bank_ref_key FROM stl_payment WHERE payment_no=?",String.class,paid.receipt().paymentNo()));
+            var b = new PlatformCollectionService.Request(new PlatformCollectionService.Key("MAIN","SB","SB"),
+                    "buyer","platform-mch","OFFLINE","SALES_COLLECTION",10000,"TWD",86401000,1000,null,terms);
+            f.base.service.create(b);
+            var duplicate = new PlatformCollectionService.OfflineProof(b.key(),"ops","platform-mch",10000,"TWD",1000,
+                    null,"other-proof","NORMAL",2000,"sales-1","receipt-1");
+            assertThrows(IllegalArgumentException.class,()->f.base.service.confirmOffline(duplicate));
+            var mismatch = new PlatformCollectionService.OfflineProof(b.key(),"ops","platform-mch",9900,"TWD",1000,
+                    null,"private-proof","NORMAL",2000,"sales-1","receipt-2");
+            assertEquals("UNMATCHED",f.base.service.confirmOffline(mismatch).disposition());
+            assertEquals("PENDING",f.base.service.query(b.key()).state());
+            var foreign = new PlatformCollectionService.OfflineProof(b.key(),"ops","platform-mch",10000,"USD",1000,
+                    null,"private-proof","NORMAL",2000,"sales-1","receipt-3");
+            var received=f.base.service.confirmOffline(foreign);
+            assertEquals("UNMATCHED",received.disposition());
+            assertEquals("USD",received.receipt().request().currency());
+            assertEquals(0,f.base.sends.get());
+        }
+    }
+
     @Test
     void disabledProfileRemainsManageableWithItsCurrentVersionButCannotBeUsedForNewQuotes() throws Exception {
         try (var f = new Fixture()) {
