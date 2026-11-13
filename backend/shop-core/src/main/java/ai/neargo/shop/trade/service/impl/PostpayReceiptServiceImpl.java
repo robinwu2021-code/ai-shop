@@ -242,7 +242,8 @@ public class PostpayReceiptServiceImpl implements PostpayReceiptService {
         for (OrdOfflineRecord r : records) {
             receipts.insertRecord(row.getReceiptNo(), r.getRecordNo(), r.getMethod(), r.getAmountMinor());
         }
-        events.publish(new PostpayReceiptPort.Recorded(row.getReceiptNo(), c.entityNo(), c.storeNo(), c.bizNo()));
+        events.publish(new PostpayReceiptPort.Recorded(row.getReceiptNo(), c.entityNo(), c.storeNo(), c.bizNo(),
+                c.roots().stream().map(Root::orderNo).toList()));
         return receipt(row, c.roots().stream().map(Root::orderNo).toList(), false);
     }
 
