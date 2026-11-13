@@ -1,0 +1,23 @@
+{
+  "status": "VERIFIED",
+  "authenticatedPublicMultipartUpload": true,
+  "bytes": 69,
+  "sha256": "7c7177d68edc0fc580877bcdb06b106647b2de6ef6f45b03cc0a7ceb1ee8c9af",
+  "reads": [
+    {
+      "origin": "https://nearshop.umeshop.ai",
+      "status": 200,
+      "contentType": "image/png",
+      "sha256Matched": true
+    },
+    {
+      "origin": "https://twpay.umeshop.ai",
+      "status": 200,
+      "contentType": "image/png",
+      "sha256Matched": true
+    }
+  ],
+  "persistentFileMatched": true,
+  "boundToBusinessRecord": false,
+  "phase": "after-backend-release"
+}

@@ -1,6 +1,7 @@
 package ai.neargo.shop.channel.media;
 
 import ai.neargo.shop.media.MediaStore;
+import ai.neargo.shop.media.MediaKeys;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
@@ -41,9 +42,6 @@ import java.util.List;
 @Component
 @ConditionalOnProperty(name = "shop.media.provider", havingValue = "cos")
 public class CosMediaStore implements MediaStore {
-
-    /** key 的第 3 段（用途）为它时按公读上传。 */
-    private static final String PUBLIC_SEGMENT = "goods";
 
     private final COSClient cos;
     private final String bucket;
@@ -88,10 +86,9 @@ public class CosMediaStore implements MediaStore {
         }
     }
 
-    /** goods 段公读，其余私有。key 段位见 BizUploadController：entity/store/用途/yyyymm/名。 */
+    /** 与本地读取共用用途规则，包含历史商品图兼容。 */
     private static boolean isPublic(String key) {
-        String[] seg = key.split("/");
-        return seg.length >= 3 && PUBLIC_SEGMENT.equalsIgnoreCase(seg[2]);
+        return MediaKeys.isPublicKey(key);
     }
 
     @Override
@@ -102,10 +99,7 @@ public class CosMediaStore implements MediaStore {
             meta.setContentType(contentType);
         }
         PutObjectRequest req = new PutObjectRequest(bucket, key, in, meta);
-        if (isPublic(key)) {
-            req.setCannedAcl(CannedAccessControlList.PublicRead);
-        }
-        if (key.split("/").length>=3 && "reports".equals(key.split("/")[2])) req.setCannedAcl(CannedAccessControlList.Private);
+        req.setCannedAcl(isPublic(key) ? CannedAccessControlList.PublicRead : CannedAccessControlList.Private);
         cos.putObject(req);
     }
 
@@ -148,7 +142,10 @@ public class CosMediaStore implements MediaStore {
      */
     @Override
     public String thumbUrl(String key, boolean isPublic, int width) {
-        if (!isPublic) {
+        // 历史头像/晒单未显式设PublicRead；列表继续签名读，避免切换规则后旧图403。
+        String[] segments = key.split("/");
+        boolean historicalGoods = segments.length <= 2 || "goods".equalsIgnoreCase(segments[2]);
+        if (!isPublic || !historicalGoods) {
             return signedUrl(key, THUMB_SIGN_TTL);
         }
         // nginx 只放行这三档（img.hxmall.top.conf），别的宽度拼出来就是 404，不如给原图
