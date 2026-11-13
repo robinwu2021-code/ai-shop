@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.auth.store.SubjectKind;
+import ai.neargo.shop.auth.captcha.BizCaptchaService;
+import jakarta.servlet.http.HttpServletRequest;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.LoginAuditor;
 import ai.neargo.shop.auth.Realm;
@@ -31,6 +33,7 @@ import java.util.List;
 public class BizAuthController {
 
     private final AuthService authService;
+    private final BizCaptchaService captcha;
 
     private final LoginAuditor auditor;
     private final CommunityService communityService;
@@ -42,7 +45,8 @@ public class BizAuthController {
                              LoginAuditor auditor, CommunityService communityService,
                              BizMerchantController merchantController,
                              MerchantStaffService merchantStaffService,
-                             TokenStore tokenStore) {
+                             TokenStore tokenStore, BizCaptchaService captcha) {
+        this.captcha = captcha;
         this.merchantStaffService = merchantStaffService;
         this.tokenStore = tokenStore;
         this.authService = authService;
@@ -59,7 +63,9 @@ public class BizAuthController {
      * 分两次请求就会先闪一下错误的那一屏。
      */
     @PostMapping("/biz/auth/login")
-    public MerchantLoginResp login(@RequestBody LoginReq req) {
+    public MerchantLoginResp login(@RequestBody @Valid LoginReq req, HttpServletRequest http) {
+        if (AuthService.GRANT_PASSWORD.equals(req.grantType()))
+            captcha.require(BizCaptchaService.Action.LOGIN, req.principal(), http.getHeader("X-Captcha-Token"));
         AuthService.LoginResult result;
         try {
             result = authService.login(new AuthService.LoginCommand(
@@ -121,12 +127,13 @@ public class BizAuthController {
      * mock 下看不出问题，而真实环境里没有人收得到验证码。
      */
     @PostMapping("/biz/auth/otp/send")
-    public void sendOtp(@RequestBody OtpReq req) {
+    public void sendOtp(@RequestBody @Valid OtpReq req, HttpServletRequest http) {
+        captcha.require(BizCaptchaService.Action.OTP_SEND, req.phone(), http.getHeader("X-Captcha-Token"));
         authService.sendOtp(req.phone());
     }
 
     /** @param phone 收码手机号 */
-    public record OtpReq(String phone) {
+    public record OtpReq(@NotBlank @Size(max = 32) String phone) {
     }
 
     /**
@@ -136,7 +143,8 @@ public class BizAuthController {
      * 没有可用邮件通道时回 10505，<b>不回成功</b> —— 「说发了、没人收到」比报错更难查。
      */
     @PostMapping("/biz/auth/email-otp/send")
-    public EmailOtpService.Delivery sendEmailOtp(@RequestBody @Valid EmailOtpReq req) {
+    public EmailOtpService.Delivery sendEmailOtp(@RequestBody @Valid EmailOtpReq req, HttpServletRequest http) {
+        captcha.require(BizCaptchaService.Action.EMAIL_OTP_SEND, req.email(), http.getHeader("X-Captcha-Token"));
         return authService.sendEmailOtp(req.email(), req.locale());
     }
 
@@ -233,7 +241,7 @@ public class BizAuthController {
      * @param marketCode 注册地区（可选，TDD-注册地区与三步建店）。只在这次登录<b>新建账号</b>时生效，
      *                   已有账号忽略；不在可注册地区内落部署默认
      */
-    public record LoginReq(String grantType, String principal, String credential, Boolean agreed,
+    public record LoginReq(@NotBlank String grantType, @NotBlank @Size(max = 191) String principal, String credential, Boolean agreed,
                            String marketCode) {
     }
 
