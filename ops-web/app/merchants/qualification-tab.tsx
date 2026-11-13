@@ -27,7 +27,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { Input } from "@/components/ui/input";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { MerchantsCopy } from "./copy";
@@ -163,7 +163,7 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
 
   return (
     <div className="space-y-4">
-      <Notice tone="warning">{c.qualHint}</Notice>
+      <HelpNote>{c.qualHint}</HelpNote>
 
       <Toolbar>
         <Input

@@ -216,8 +216,15 @@ export const merchantMock: MerchantApi = {
    * （`requireLicenseIfNeeded`：只在客户端传了 qualificationItems 时生效）——
    * 不拦的话，开发期永远演不出「代填不放宽证件」这条，而那是这一期的全部要点。
    */
+  onBehalfContext: async () => wait({...marketPhonePolicies.find(p=>p.market==="TW")!}),
+  listOnBehalfApplies: (q = {}) => {
+    const statuses=q.status?.split(",").filter(Boolean) ?? ["PENDING","REVIEWING"];
+    return wait(db.paginate(db.applies,q.page,q.size,a=>a.onBehalf===true && statuses.includes(a.status) && db.kwHit(q.keyword,a.name,a.contactName,a.contactPhone)));
+  },
   applyOnBehalf: async (v) => {
-    const {phone,name,subject,qualificationItems,market="CN",ownerEmail,storeProfile}=v;
+    const {phone,name,subject,qualificationItems,ownerEmail,storeProfile}=v;
+    const market=marketPhonePolicies.find(p=>p.market==="TW")!.market;
+    if(v.market && v.market!==market) fail("地区与系统配置不符", "Region differs from system configuration");
     const policy=marketPhonePolicies.find(p=>p.market===market && p.marketEnabled);
     if (!policy) fail("地区不可用", "Market unavailable");
     if (!policy!.recordOnly && !/^1[3-9]\d{9}$/.test(phone ?? "")) {

@@ -101,6 +101,11 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
     description?: string;
   }): Promise<SelfOperatedResult>;
 
+  /** 当前登录环境统一配置的入驻地区与电话策略。 */
+  onBehalfContext(): Promise<import("@/lib/types").MarketPhonePolicy>;
+  /** 仅运营代办申请，服务端过滤后分页。 */
+  listOnBehalfApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
+
   /**
    * **代商家提交入驻申请**（三期）。BD 在店里把执照拍下来、当场替老板填完。
    *
@@ -113,8 +118,7 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    *
    * **协议不在这里勾**：`agreed_at` 落库时一律为空，运营不能替商户同意。
    *
-   * ⚠️ **代填的人审不了自己填的那张单**（后端按 `submitted_by` 拦，403）——
-   * BD 同时持有审核码与代填码，光靠权限配置挡不住。
+   * 地区由登录环境统一配置决定；旧客户端仅可传入相同地区。审核沿用审核权限并留痕。
    */
   applyOnBehalf(v: {
     market?: string;

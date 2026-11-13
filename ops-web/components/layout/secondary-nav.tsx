@@ -156,7 +156,7 @@ function SecondaryNavPanel({ title, segments, segBase, activeIdx }: {
         {segments.map((seg, si) => (
           <section key={segKey(seg.group, si)} aria-label={seg.group ? tNav(seg.group) : undefined} className="mb-4 last:mb-0">
             {seg.group && <h3 className="mb-1.5 px-2.5 txt-caption font-semibold text-muted-foreground">{tNav(seg.group)}</h3>}
-            <div className={cn("space-y-0.5", seg.group && "ms-2 border-s border-border/70 ps-2")}>
+            <div className={cn("space-y-0.5", seg.group && "ms-2 ps-2")}>
               {seg.leaves.map((l, i) => (
                 <LeafRow key={l.href + l.label} leaf={l} active={segBase[si] + i === activeIdx} />
               ))}
