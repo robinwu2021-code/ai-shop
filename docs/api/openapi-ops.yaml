@@ -14371,9 +14371,28 @@ components:
           description: "估值时间"
       additionalProperties: false
       description: "升级抵扣明细"
+    MallCollectionMethod:
+      type: "string"
+      enum:
+        - "BANK_TRANSFER"
+        - "SALES_COLLECTION"
+      description: "报价（服务器冻结）"
+    MallSalesCollector:
+      type: "object"
+      properties:
+        collectorNo:
+          type: "string"
+        displayName:
+          type: "string"
+      required:
+        - "collectorNo"
+        - "displayName"
+      additionalProperties: false
     MallQuoteView:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
         quoteNo:
           type: "string"
           description: "报价号"
@@ -14409,7 +14428,6 @@ components:
             - type: "null"
           description: "升级抵扣明细；普通报价为 null"
       additionalProperties: false
-      description: "报价（服务器冻结）"
     MallQuoteLine:
       type: "object"
       properties:
@@ -14427,6 +14445,8 @@ components:
     MallQuoteRequest:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
         lines:
           type: "array"
           items:
@@ -15023,6 +15043,10 @@ components:
     MallOfflineProfileCommand:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
+        contactInstructions:
+          type: "string"
         profileNo:
           type: "string"
           description: "档案号"
@@ -15036,13 +15060,19 @@ components:
           type: "string"
           description: "币种"
         bankCode:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "银行代码"
         bankAccount:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "账号"
         accountName:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "户名"
         paymentWindowVersion:
           type: "string"
@@ -15136,6 +15166,8 @@ components:
     MallOfflineInstructionsView:
       type: "object"
       properties:
+        collectionMethod:
+          "$ref": "#/components/schemas/MallCollectionMethod"
         platformMerchantNo:
           type: "string"
           description: "Immutable receiver frozen with this order."
@@ -15211,6 +15243,10 @@ components:
     MallOfflineConfirmRequest:
       type: "object"
       properties:
+        collectorNo:
+          type: "string"
+        collectionReference:
+          type: "string"
         actionNo:
           type: "string"
           description: "幂等动作号"
@@ -15229,7 +15265,9 @@ components:
           type: "string"
           description: "实际收款主体（必须是档案里的平台主体）"
         bankReference:
-          type: "string"
+          type:
+            - "string"
+            - "null"
           description: "银行流水号（全局唯一）"
         evidenceKey:
           type: "string"
@@ -15246,7 +15284,6 @@ components:
         - "actualAmount"
         - "actualPaidAt"
         - "actualReceiver"
-        - "bankReference"
         - "evidenceKey"
         - "historical"
         - "reason"
@@ -18579,6 +18616,32 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/biz-mall/offline/collectors":
+    get:
+      operationId: "offlineCollectors"
+      summary: "offlineCollectors"
+      tags:
+        - "commerce"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/biz-mall/offline/claims":
     get:
       operationId: "offlinePendingClaims"

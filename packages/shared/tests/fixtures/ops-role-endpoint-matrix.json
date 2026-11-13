@@ -788,6 +788,7 @@
     "POST /ops/biz-mall/categories",
     "PUT /ops/biz-mall/categories/{categoryCode}",
     "GET /ops/biz-mall/offline/claims",
+    "GET /ops/biz-mall/offline/collectors",
     "POST /ops/biz-mall/offline/orders",
     "GET /ops/biz-mall/offline/orders/{orderNo}/actions/{actionNo}",
     "GET /ops/biz-mall/offline/orders/{orderNo}/cash-receipts",

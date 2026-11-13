@@ -31,36 +31,38 @@ const HOUR = 3_600_000;
 
 interface Form {
   profileNo: string; platformMerchantNo: string; bankCode: string; bankAccount: string; accountName: string;
-  paymentWindowVersion: string; windowHours: string; enabled: boolean; reason: string;
+  contactInstructions: string; paymentWindowVersion: string; windowHours: string; enabled: boolean; reason: string;
 }
 
 export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean }) {
   const qc = useQueryClient();
   const [currency, setCurrency] = React.useState("TWD");
-  const q = useQuery({ queryKey: ["mall-profile", currency], queryFn: () => api.offlineProfile(currency) });
+  const [method,setMethod] = React.useState<"BANK_TRANSFER" | "SALES_COLLECTION">("SALES_COLLECTION");
+  const sales=method === "SALES_COLLECTION";
+  const q = useQuery({ queryKey: ["mall-profile", currency, method], queryFn: () => api.offlineProfile(currency,method) });
   const [form, setForm] = React.useState<Form | null>(null);
   const terms = q.data;
 
   React.useEffect(() => {
     if (q.isLoading || q.error) return;
     setForm(terms
-      ? { profileNo: terms.profileNo, platformMerchantNo: terms.platformMerchantNo, bankCode: terms.instructions.bankCode ?? "",
+      ? { contactInstructions: terms.instructions.contactInstructions ?? "", profileNo: terms.profileNo, platformMerchantNo: terms.platformMerchantNo, bankCode: terms.instructions.bankCode ?? "",
           bankAccount: terms.instructions.bankAccount ?? "", accountName: terms.instructions.accountName ?? "",
           paymentWindowVersion: terms.paymentWindowVersion, windowHours: String(terms.paymentWindowMs / HOUR), enabled: terms.enabled, reason: "" }
-      : { profileNo: "", platformMerchantNo: "", bankCode: "", bankAccount: "", accountName: "", paymentWindowVersion: "", windowHours: "24", enabled: true, reason: "" });
-  }, [terms, q.isLoading, q.error]);
+      : { contactInstructions: "", profileNo: "", platformMerchantNo: "", bankCode: "", bankAccount: "", accountName: "", paymentWindowVersion: "", windowHours: "24", enabled: true, reason: "" });
+  }, [terms, q.isLoading, q.error, method, currency]);
 
   const windowMs = form ? Math.round(Number(form.windowHours) * HOUR) : 0;
   const save = useMutation({
     mutationFn: (f: Form) => api.configureOfflineProfile({
       profileNo: f.profileNo.trim(), expectedVersion: terms?.profileVersion ?? 0, platformMerchantNo: f.platformMerchantNo.trim(), currency,
-      bankCode: f.bankCode.trim(), bankAccount: f.bankAccount.trim(), accountName: f.accountName.trim(),
+      collectionMethod: method,contactInstructions: sales ? f.contactInstructions.trim() : undefined,
+      bankCode: sales ? null : f.bankCode.trim(), bankAccount: sales ? null : f.bankAccount.trim(), accountName: sales ? null : f.accountName.trim(),
       paymentWindowVersion: f.paymentWindowVersion.trim(), paymentWindowMs: windowMs, enabled: f.enabled, reason: f.reason.trim(),
     }),
-    onSuccess: (t) => { qc.invalidateQueries({ queryKey: ["mall-profile", currency] }); notify.success(fill(c.toastProfileSaved, { v: t.profileVersion })); },
+    onSuccess: (t) => { qc.invalidateQueries({ queryKey: ["mall-profile", currency, method] }); notify.success(fill(c.toastProfileSaved, { v: t.profileVersion })); },
   });
-  const valid = form && form.profileNo.trim() && form.platformMerchantNo.trim() && form.bankCode.trim() && form.bankAccount.trim()
-    && form.accountName.trim() && form.paymentWindowVersion.trim() && form.reason.trim() && windowMs >= 1000 && windowMs <= 90 * 24 * HOUR;
+  const valid = form && form.profileNo.trim() && form.platformMerchantNo.trim() && (sales ? form.contactInstructions.trim() : form.bankCode.trim() && form.bankAccount.trim() && form.accountName.trim()) && form.paymentWindowVersion.trim() && form.reason.trim() && windowMs >= 1000 && windowMs <= 90 * 24 * HOUR;
 
 
   return (
@@ -68,6 +70,10 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
       <HelpNote>{c.collectionHelp}</HelpNote>
       {!canWrite && <ReadOnlyNotice what={c.profileWriteWhat} perm="commerce:collection:profile:write" />}
       <div className="flex items-center gap-2">
+        <Label htmlFor="pf-method">{c.fieldCollectionMethod}</Label>
+        <Select id="pf-method" value={method} disabled={save.isPending} onChange={e=>{setMethod(e.target.value as typeof method);setForm(null);}}>
+          <option value="SALES_COLLECTION">{c.methodSales}</option><option value="BANK_TRANSFER">{c.methodBank}</option>
+        </Select>
         <label htmlFor="pf-cur" className="txt-label text-muted-foreground">{c.fieldCurrency}</label>
         <Select id="pf-cur" value={currency} onChange={(e) => { setCurrency(e.target.value); setForm(null); }}>
           {CURRENCIES.map((x) => <option key={x} value={x}>{x}</option>)}
@@ -91,6 +97,11 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
                   <Input id="pf-merchant" value={form.platformMerchantNo} disabled={!canWrite} onChange={(e) => setForm((f) => f && { ...f, platformMerchantNo: e.target.value })} />
                   <p className="txt-caption text-muted-foreground">{c.platformMerchantHint}</p>
                 </div>
+                {sales ? <div className="space-y-1">
+                  <Label htmlFor="pf-contact" required>{c.fieldSalesContact}</Label>
+                  <Textarea id="pf-contact" value={form.contactInstructions} disabled={!canWrite} onChange={v=>setForm(f=>f && {...f,contactInstructions:v})}/>
+                  <p className="txt-caption text-muted-foreground">{c.salesContactHint}</p>
+                </div> : <>
                 <div className="space-y-1">
                   <Label htmlFor="pf-bank" required>{c.fieldBankCode}</Label>
                   <Input id="pf-bank" value={form.bankCode} disabled={!canWrite} onChange={(e) => setForm((f) => f && { ...f, bankCode: e.target.value })} />
@@ -103,6 +114,7 @@ export function CollectionTab({ c, canWrite }: { c: MallCopy; canWrite: boolean 
                   <Label htmlFor="pf-name" required>{c.fieldAccountName}</Label>
                   <Input id="pf-name" value={form.accountName} disabled={!canWrite} onChange={(e) => setForm((f) => f && { ...f, accountName: e.target.value })} />
                 </div>
+                </>}
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="pf-win" required>{c.fieldWindowHours}</Label>

@@ -5267,7 +5267,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/QuoteRequest"
+                "$ref": "#/components/schemas/OfflineQuoteRequest"
               }
             }
           }
@@ -6227,6 +6227,14 @@
               "type": "string",
               "pattern": "^[A-Z]{3}$"
             }
+          },
+          {
+            "name": "collectionMethod",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CollectionMethod"
+            }
           }
         ],
         "responses": {
@@ -6690,7 +6698,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/QuoteRequest"
+                "$ref": "#/components/schemas/OfflineQuoteRequest"
               }
             }
           }
@@ -9221,6 +9229,279 @@
           }
         }
       }
+    },
+    "/biz/stores/{storeNo}/mall/offline/upgrade-quotes": {
+      "post": {
+        "operationId": "buyerOfflineUpgradeQuote",
+        "summary": "线下升级报价：复用升级估值并冻结平台收款档案",
+        "tags": [
+          "Buyer"
+        ],
+        "x-required-capability": "commerce:mall:purchase",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; persisted outcome may remain PENDING or UNKNOWN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QuoteView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetPlanVersionNo": {
+                    "type": "string"
+                  },
+                  "operationNo": {
+                    "type": "string"
+                  },
+                  "expectedEntitlementVersion": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "targetSkuVersionNo": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "collectionMethod": {
+                    "$ref": "#/components/schemas/CollectionMethod"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "currency"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/biz-mall/offline/collectors": {
+      "get": {
+        "operationId": "offlineSalesCollectors",
+        "summary": "Eligible sales collectors for the authorized store",
+        "tags": [
+          "Operations"
+        ],
+        "x-required-capability": "commerce:mall:offline:confirm",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Host envelope; declarations and accepted actions are not money.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "msg",
+                    "data"
+                  ],
+                  "properties": {
+                    "code": {
+                      "const": 0
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SalesCollector"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected or unavailable; msg contains the machine-readable reason. Legacy security filters retain existing host error codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9311,6 +9592,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/QuoteCreditView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collectionMethod": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectionMethod"
               },
               {
                 "type": "null"
@@ -11405,7 +11696,14 @@
             "type": "string"
           },
           "bankReference": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "evidenceKey": {
             "type": "string"
@@ -11416,6 +11714,14 @@
           },
           "reason": {
             "type": "string"
+          },
+          "collectorNo": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "collectionReference": {
+            "type": "string",
+            "maxLength": 128
           }
         },
         "additionalProperties": false,
@@ -11424,11 +11730,11 @@
           "actualAmount",
           "actualPaidAt",
           "actualReceiver",
-          "bankReference",
           "evidenceKey",
           "historical",
           "reason"
-        ]
+        ],
+        "description": "Sales orders require an eligible collectorNo and a real collectionReference, no bankReference/claimNo. Bank orders require bankReference. Method is taken from the frozen order, never from this request."
       },
       "OfflineVoidRequest": {
         "type": "object",
@@ -11509,13 +11815,34 @@
             "pattern": "^[A-Z]{3}$"
           },
           "bankCode": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "bankAccount": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "accountName": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "paymentWindowVersion": {
             "type": "string"
@@ -11530,6 +11857,13 @@
           },
           "reason": {
             "type": "string"
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
+          },
+          "contactInstructions": {
+            "type": "string",
+            "maxLength": 1024
           }
         },
         "additionalProperties": false,
@@ -11538,14 +11872,12 @@
           "expectedVersion",
           "platformMerchantNo",
           "currency",
-          "bankCode",
-          "bankAccount",
-          "accountName",
           "paymentWindowVersion",
           "paymentWindowMs",
           "enabled",
           "reason"
-        ]
+        ],
+        "description": "BANK_TRANSFER requires bankCode, bankAccount and accountName. SALES_COLLECTION requires contactInstructions and null bank fields. Missing collectionMethod retains legacy BANK_TRANSFER."
       },
       "OfflineInstructionsView": {
         "type": "object",
@@ -11576,6 +11908,9 @@
           "platformMerchantNo": {
             "type": "string",
             "description": "Immutable receiving platform merchant frozen into this order; operators never enter this identifier manually."
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
           }
         },
         "additionalProperties": false,
@@ -12255,6 +12590,98 @@
           "actions"
         ],
         "description": "Buyer-safe progress only; excludes platform proof, payee identifiers and bank references. REFUNDED requires a verified complete refund fact. HTTP success alone is not refund completion."
+      },
+      "CollectionMethod": {
+        "type": "string",
+        "enum": [
+          "BANK_TRANSFER",
+          "SALES_COLLECTION"
+        ]
+      },
+      "OfflineQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteLine"
+            }
+          },
+          "currency": {
+            "type": "string"
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OfflineCollectionProfile": {
+        "type": "object",
+        "properties": {
+          "profileNo": {
+            "type": "string"
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "platformMerchantNo": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "receivingAccountKey": {
+            "type": "string"
+          },
+          "paymentWindowVersion": {
+            "type": "string"
+          },
+          "paymentWindowMs": {
+            "type": "integer"
+          },
+          "instructions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "collectionMethod": {
+            "$ref": "#/components/schemas/CollectionMethod"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "profileNo",
+          "profileVersion",
+          "platformMerchantNo",
+          "currency",
+          "receivingAccountKey",
+          "paymentWindowVersion",
+          "paymentWindowMs",
+          "instructions",
+          "enabled"
+        ],
+        "description": "Current administrative collection profile, including disabled state. Frozen quotation terms remain unchanged."
+      },
+      "SalesCollector": {
+        "type": "object",
+        "properties": {
+          "collectorNo": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectorNo",
+          "displayName"
+        ],
+        "additionalProperties": false
       }
     }
   }

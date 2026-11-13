@@ -72,6 +72,111 @@ class PaymentCollectionHttpMysqlTest {
                 HttpResponse.BodyHandlers.ofString());
     }
 
+    @org.springframework.context.annotation.Configuration
+    @org.springframework.web.servlet.config.annotation.EnableWebMvc
+    @org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
+    @org.springframework.context.annotation.Import({
+        ai.neargo.shop.common.GlobalExceptionHandler.class,
+        ai.neargo.shop.common.ApiResponseWrapper.class,
+        PaymentCollectionExceptionHandler.class
+    })
+    static class ProtocolWeb {
+        @org.springframework.context.annotation.Bean
+        ai.neargo.shop.auth.PermChecker perm(org.springframework.context.ApplicationContext context) {
+            return new ai.neargo.shop.auth.PermChecker(context.getBeanProvider(ai.neargo.shop.auth.LivePermResolver.class));
+        }
+        @org.springframework.context.annotation.Bean
+        PaymentCollectionStream stream() { return org.mockito.Mockito.mock(PaymentCollectionStream.class); }
+        @org.springframework.context.annotation.Bean
+        ai.neargo.shop.portal.biz.BizPaymentEventsController events(PaymentCollectionStream stream) {
+            return new ai.neargo.shop.portal.biz.BizPaymentEventsController(stream);
+        }
+    }
+
+    @Test
+    void realMethodSecurityAuthenticationAndIdentityPermissionFailuresKeepHttpStatus() throws Exception {
+        try (var f = new PaymentCollectionMysqlFixture();
+                var context = new org.springframework.web.context.support.AnnotationConfigWebApplicationContext()) {
+            context.setServletContext(new org.springframework.mock.web.MockServletContext());
+            context.register(ProtocolWeb.class);
+            context.refresh();
+            var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(context).build();
+            var get = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/biz/payment/events")
+                    .header("Authorization", "Bearer rejected");
+            try {
+                org.springframework.security.core.context.SecurityContextHolder.clearContext();
+                assertEquals(401, mvc.perform(get).andReturn().getResponse().getStatus());
+                org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(f.user, null, List.of()));
+                ai.neargo.shop.auth.BizContext.clear();
+                var denied = mvc.perform(get).andReturn();
+                assertInstanceOf(org.springframework.security.access.AccessDeniedException.class, denied.getResolvedException());
+                assertEquals(403, denied.getResponse().getStatus());
+                var picker = LoginUser.merchantByUser("USR_PICKER", "picker");
+                org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(picker, null, List.of()));
+                ai.neargo.shop.auth.BizContext.set(f.identities.resolveStrict(picker, "ST_SSE_SANDBOX"));
+                var missingPermission = mvc.perform(get).andReturn();
+                assertInstanceOf(ai.neargo.shop.common.BizException.class, missingPermission.getResolvedException());
+                assertEquals(403, missingPermission.getResponse().getStatus());
+                org.mockito.Mockito.verifyNoInteractions(context.getBean(PaymentCollectionStream.class));
+            } finally {
+                ai.neargo.shop.auth.BizContext.clear();
+                org.springframework.security.core.context.SecurityContextHolder.clearContext();
+            }
+        }
+    }
+
+    @Test
+    void realGlobalAdvicePreservesProtocolErrorsAndUnwrappedAck() throws Exception {
+        try (var f = new PaymentCollectionMysqlFixture();
+                var host = new PaymentCollectionSandboxHost(f, 0)) {
+            String raw = f.json.writeValueAsString(f.fact(801));
+            String at = Long.toString(Instant.now().getEpochSecond());
+            var badSignature = http.send(
+                    HttpRequest.newBuilder(URI.create(host.origin
+                            + "/internal/payment-results/merchant-collections"))
+                            .header("Content-Type", "application/json")
+                            .header("X-Payment-Timestamp", at)
+                            .header("X-Payment-Nonce", UUID.randomUUID().toString())
+                            .header("X-Payment-Environment", "SANDBOX")
+                            .header("X-Payment-Signature", "0".repeat(64))
+                            .POST(HttpRequest.BodyPublishers.ofString(raw)).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(401, badSignature.statusCode(), badSignature.body());
+            assertEquals(403, post(host, raw.replace("\"sourceId\":42", "\"sourceId\":999"), "SANDBOX").statusCode());
+            assertEquals(422, post(host, raw.replace("\"paidMinor\":100", "\"paidMinor\":99"), "SANDBOX").statusCode());
+            assertEquals(400, post(host, raw.replace("\"schemaVersion\":1", "\"schemaVersion\":0"), "SANDBOX").statusCode());
+            assertEquals(400, post(host, "{", "SANDBOX").statusCode());
+            var missingHeader = http.send(HttpRequest.newBuilder(URI.create(host.origin
+                            + "/internal/payment-results/merchant-collections"))
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(raw)).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(400, missingHeader.statusCode());
+            for (String table : List.of("payment_collection_receipt", "sys_outbox",
+                    "sys_outbox_operation", "sys_outbox_delivery", "notify_message", "payment_collection_stream"))
+                assertEquals(0, f.jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class), table);
+            var applied = post(host, raw, "SANDBOX");
+            assertEquals(200, applied.statusCode(), applied.body());
+            var ack = f.json.readTree(applied.body());
+            assertEquals("APPLIED", ack.path("status").asString());
+            assertEquals(f.fact(801).eventId(), ack.path("eventId").asString());
+            assertEquals(PaymentCollectionSecurity.hash(raw), ack.path("payloadSha256").asString());
+            assertFalse(ack.has("code"));
+            assertFalse(ack.has("data"));
+            assertEquals(409, post(host, raw.replace("\"paidMinor\":100", "\"paidMinor\":99"), "SANDBOX").statusCode());
+            assertEquals(400, http.send(request(host, "/biz/payment/events")
+                    .header("Last-Event-ID", "tampered").build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+            String pickerToken = f.tokens.issue(ai.neargo.shop.auth.TokenStore.SessionData.of(
+                    LoginUser.merchantByUser("USR_PICKER", "picker")));
+            assertEquals(403, http.send(HttpRequest.newBuilder(URI.create(host.origin + "/biz/payment/events"))
+                    .header("Authorization", "Bearer " + pickerToken)
+                    .header("X-Store-No", "ST_SSE_SANDBOX").build(),
+                    HttpResponse.BodyHandlers.ofString()).statusCode());
+        }
+    }
+
     @Test
     void httpReceiverCommitsDurableMessageSseReadyReplayAndPermissionRevocation() throws Exception {
         try (var f = new PaymentCollectionMysqlFixture();

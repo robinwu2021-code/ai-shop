@@ -5,6 +5,7 @@ import static ai.neargo.commerce.core.mall.MallSnapshot.*;
 import ai.neargo.commerce.api.catalog.*;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.mall.*;
+import ai.neargo.commerce.api.offline.OfflineCollectionTerms;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.catalog.*;
 import ai.neargo.commerce.core.spi.*;
@@ -141,18 +142,14 @@ public final class DefaultMallFacade implements MallFacade {
     }
 
     public QuoteView quoteOffline(ActorContext actor, QuoteCommand command,
-            ai.neargo.commerce.api.offline.OfflineCollectionTerms terms) {
+            OfflineCollectionTerms terms) {
         Objects.requireNonNull(terms);
         if (command == null || !terms.currency().equals(command.currency())) throw fail("CURRENCY_MISMATCH");
         return quote(actor, command, null, terms);
     }
 
-    private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade) {
-        return quote(actor, command, upgrade, null);
-    }
-
     private QuoteView quote(ActorContext actor, QuoteCommand command, UpgradeCommand upgrade,
-            ai.neargo.commerce.api.offline.OfflineCollectionTerms terms) {
+            OfflineCollectionTerms terms) {
         if (command == null
                 || command.lines() == null
                 || command.lines().isEmpty()
@@ -571,13 +568,26 @@ public final class DefaultMallFacade implements MallFacade {
     }
 
     public QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand c) {
+        return quoteUpgrade(actor, c, null);
+    }
+
+    /** Freezes the same upgrade economics with bank-transfer terms instead of online readiness. */
+    public QuoteView quoteUpgradeOffline(ActorContext actor, UpgradeCommand c,
+            OfflineCollectionTerms terms) {
+        return quoteUpgrade(actor, c, Objects.requireNonNull(terms));
+    }
+
+    private QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand c,
+            OfflineCollectionTerms terms) {
         if (c == null
                 || c.targetPlanVersionNo() == null
                 || c.operationNo() == null
                 || c.operationNo().isBlank()) throw fail("INVALID_REQUEST");
         return uow.required(
                 () -> {
-                    authorize(actor, c.store(), "commerce:mall:purchase");
+                    boolean assisted = terms != null && actor != null && actor.subjectKind() == SubjectKind.OPERATOR;
+                    authorize(actor, c.store(), assisted
+                            ? "commerce:mall:assisted:purchase" : "commerce:mall:purchase");
                     var catalog = catalogs.load(actor.tenantNo(), CatalogLockMode.NONE);
                     var candidates =
                             catalog.skuVersions.values().stream()
@@ -618,13 +628,15 @@ public final class DefaultMallFacade implements MallFacade {
                                         ? "INVALID_UPGRADE_TARGET"
                                         : "AMBIGUOUS_UPGRADE_TARGET");
                     var target = candidates.getFirst();
+                    if (terms != null && !terms.currency().equals(target.price().currency()))
+                        throw fail("CURRENCY_MISMATCH");
                     return quote(
                             actor,
                             new QuoteCommand(
                                     c.store(),
                                     List.of(new QuoteLine(target.skuVersionNo(), 1)),
                                     target.price().currency()),
-                            c);
+                            c, terms);
                 });
     }
 

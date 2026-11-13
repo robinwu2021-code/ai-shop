@@ -28,6 +28,16 @@ class OfflineCollectionTermsTest {
     }
 
     @Test
+    void salesMethodNeedsNoBankDetailsAndLegacyTermsRemainBankTransfers() {
+        var sales = terms(Map.of("collectionMethod", "SALES_COLLECTION", "contactInstructions", "Contact sales"));
+        assertEquals("SALES_COLLECTION", sales.collectionMethod());
+        assertFalse(sales.instructions().containsKey("bankAccount"));
+        assertEquals("BANK_TRANSFER", terms(Map.of("bankCode", "BANK")).collectionMethod());
+        assertThrows(IllegalArgumentException.class,
+                () -> terms(Map.of("collectionMethod", "UNSUPPORTED")));
+    }
+
+    @Test
     void voidDispositionsAreSortedToo() {
         var m = new LinkedHashMap<String, String>();
         m.put("U9", "returned");

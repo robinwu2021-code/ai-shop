@@ -8,7 +8,15 @@ import java.util.*;
 /** Trusted pay-domain manual rail. All calls occur outside commerce transactions; no bank/provider IO. */
 public interface OfflineCollectionPort {
     record ManualPayment(PaymentIntentCommand original,String operatorNo,Money actualAmount,Instant actualPaidAt,
-            String actualReceiver,String bankReference,String evidenceReference,boolean historical,Instant confirmedAt) {}
+            String actualReceiver,String bankReference,String evidenceReference,boolean historical,Instant confirmedAt,
+            String collectorNo, String collectionReference) {
+        public ManualPayment(PaymentIntentCommand original,String operatorNo,Money actualAmount,Instant actualPaidAt,
+                String actualReceiver,String bankReference,String evidenceReference,boolean historical,Instant confirmedAt) {
+            this(original,operatorNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceReference,historical,confirmedAt,null,null);
+        }
+    }
+    record Collector(String collectorNo, String displayName) {}
+    default List<Collector> collectors(ai.neargo.commerce.api.common.StoreRef store) { return List.of(); }
     record ManualResult(String disposition,String paymentNo) {}
     record Reconciliation(PaymentIntentCommand original,String operatorNo,String reference,String reason,
             String evidenceReference,Instant reconciledAt,Map<String,String> unmatchedDispositions) {}

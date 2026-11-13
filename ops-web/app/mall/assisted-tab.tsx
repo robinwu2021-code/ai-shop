@@ -31,6 +31,7 @@ export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSu
   const [address, setAddress] = React.useState<MallShippingAddress>({ recipient: "", phone: "", countryCode: "", region: "", city: "", addressLine: "", postalCode: "" });
   const [frozenAddress, setFrozenAddress] = React.useState<MallShippingAddress | null>(null);
   const [currency, setCurrency] = React.useState("TWD");
+  const [method,setMethod] = React.useState<"BANK_TRANSFER" | "SALES_COLLECTION">("SALES_COLLECTION");
   const [sku, setSku] = React.useState("");
   const [qty, setQty] = React.useState("1");
   const [quote, setQuote] = React.useState<MallQuoteView | null>(null);
@@ -56,7 +57,7 @@ export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSu
 
   const reset = () => { setQuote(null); setOrder(null); setIns(null); setOpen(null); setFrozenAddress(null); place.reset(); doQuote.reset(); };
   const doQuote = useMutation({
-    mutationFn: () => api.offlineAssistedQuote(storeNo, { lines: [{ skuVersionNo: sku, quantity: Number(qty) }], currency }),
+    mutationFn: () => api.offlineAssistedQuote(storeNo, { lines: [{ skuVersionNo: sku, quantity: Number(qty) }], currency, collectionMethod:method }),
     onSuccess: (q) => { setQuote(q); setIdem(newOpNo("IDEM")); setOrder(null); setIns(null); setFrozenAddress(null); place.reset(); },
   });
   const place = useMutation({
@@ -126,6 +127,12 @@ export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSu
             </FieldGrid>
           ) : <Notice tone="muted">{c.assistedContextUnavailable}</Notice>}
           {catalog.error && <DataTable columns={[]} rows={undefined} error={showErr(catalog.error)} onRetry={() => catalog.refetch()} rowKey={() => ""} empty={c.noSellable} />}
+          <div className="space-y-1">
+            <Label htmlFor="as-method">{c.fieldCollectionMethod}</Label>
+            <Select id="as-method" value={method} onChange={e=>{setMethod(e.target.value as typeof method);reset();}}>
+              <option value="SALES_COLLECTION">{c.methodSales}</option><option value="BANK_TRANSFER">{c.methodBank}</option>
+            </Select>
+          </div>
           <div className="grid gap-3 md:grid-cols-4">
             <div className="space-y-1">
               <Label htmlFor="as-cur">{c.fieldCurrency}</Label>
@@ -190,12 +197,12 @@ export function AssistedTab({ c, canReadSubscription }: { c: MallCopy; canReadSu
               </FieldGrid>
               {!ins ? <Button loading={issue.isPending} onClick={() => issue.mutate()}>{c.btnIssue}</Button> : (
                 <>
-                  <Notice tone="info">{c.instructionsIssued}</Notice>
+                  <Notice tone="info">{ins.collectionMethod === "SALES_COLLECTION" ? c.salesInstructionsIssued : c.instructionsIssued}</Notice>
                   <FieldGrid>
                     <Field label={c.colPayable}><Money m={ins.payable} /></Field>
                     <Field label={c.colDueAt}>{fmtAt(ins.paymentDueAt)}</Field>
                     <Field label={c.colProfile}>{`${ins.profileNo} · v${ins.profileVersion}`}</Field>
-                    <Field label={c.colInstructions}>{Object.entries(ins.instructions).map(([k, v]) => `${k}: ${v}`).join(" · ")}</Field>
+                    <Field label={c.colInstructions}>{Object.entries(ins.instructions).filter(([key])=>key!=="collectionMethod").map(([k, v]) => `${k}: ${v}`).join(" · ")}</Field>
                   </FieldGrid>
                 </>
               )}

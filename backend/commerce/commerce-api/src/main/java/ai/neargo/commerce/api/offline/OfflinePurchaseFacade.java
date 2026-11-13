@@ -31,7 +31,13 @@ public interface OfflinePurchaseFacade {
         }
     }
     record ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
-            String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason) {}
+            String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason,
+            String collectorNo, String collectionReference) {
+        public ReviewCommand(OrderQuery order,String actionNo,String claimNo,Money actualAmount,Instant actualPaidAt,
+                String actualReceiver,String bankReference,String evidenceKey,boolean historical,String reason) {
+            this(order,actionNo,claimNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceKey,historical,reason,null,null);
+        }
+    }
     record VoidCommand(OrderQuery order,String actionNo,String reconciliationReference,String reason,String evidenceKey,
             Map<String,String> unmatchedDispositions) {
         public VoidCommand { unmatchedDispositions = unmatchedDispositions == null ? null
@@ -49,6 +55,20 @@ public interface OfflinePurchaseFacade {
     default ai.neargo.commerce.api.port.OfflineCashRefundPort.View requestCashRefund(ActorContext actor,OrderQuery order,ai.neargo.commerce.api.port.OfflineCashRefundPort.Request command){throw new UnsupportedOperationException();}
     default ai.neargo.commerce.api.port.OfflineCashRefundPort.View payoutCashRefund(ActorContext actor,OrderQuery order,String refundNo,ai.neargo.commerce.api.port.OfflineCashRefundPort.Payout command){throw new UnsupportedOperationException();}
     default ai.neargo.commerce.api.port.OfflineCashRefundPort.View recoverCashRefund(ActorContext actor,OrderQuery order,String refundNo){throw new UnsupportedOperationException();}
+    default QuoteView quote(ActorContext actor, QuoteCommand command, String collectionMethod) {
+        return quote(actor, command);
+    }
+    default QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand command, String currency, String collectionMethod) {
+        return quoteUpgrade(actor, command, currency);
+    }
+    default Optional<OfflineCollectionProfile> profile(ActorContext actor, String currency, String collectionMethod) {
+        return profile(actor, currency);
+    }
+    default List<ai.neargo.commerce.api.port.OfflineCollectionPort.Collector> collectors(ActorContext actor, StoreRef store) {
+        return List.of();
+    }
+    /** Same frozen upgrade valuation as online checkout, with trusted offline collection terms. */
+    QuoteView quoteUpgrade(ActorContext actor, UpgradeCommand command, String currency);
     record RefundPayoutCommand(OrderQuery order,String refundNo,Money actualAmount,Instant paidOutAt,
             String payeeReference,String bankReference,String evidenceKey) {}
     /**
@@ -62,7 +82,16 @@ public interface OfflinePurchaseFacade {
      * buyer writes on the transfer so the operator can find the order when confirming receipt.
      */
     record InstructionsView(String orderNo, Money payable, Instant paymentDueAt, String profileNo,
-            long profileVersion, String platformMerchantNo, Map<String, String> instructions) {}
+            long profileVersion, Map<String, String> instructions, String collectionMethod, String platformMerchantNo) {
+        public InstructionsView(String orderNo, Money payable, Instant paymentDueAt, String profileNo,
+                long profileVersion, String platformMerchantNo, Map<String,String> instructions) {
+            this(orderNo,payable,paymentDueAt,profileNo,profileVersion,instructions,"BANK_TRANSFER",platformMerchantNo);
+        }
+        public InstructionsView(String orderNo, Money payable, Instant paymentDueAt, String profileNo,
+                long profileVersion, Map<String,String> instructions) {
+            this(orderNo,payable,paymentDueAt,profileNo,profileVersion,instructions,"BANK_TRANSFER",null);
+        }
+    }
     /** Issues (idempotently) the frozen instructions for an offline order and returns them. */
     InstructionsView issue(ActorContext actor, OrderQuery order);
     InstructionsView instructions(ActorContext actor, OrderQuery order);
@@ -73,7 +102,14 @@ public interface OfflinePurchaseFacade {
     List<PendingClaim> pendingClaims(ActorContext actor, String afterOrderNo, String afterClaimNo, int limit);
     record ProfileCommand(String profileNo, long expectedVersion, String platformMerchantNo, String currency,
             String bankCode, String bankAccount, String accountName, String paymentWindowVersion,
-            long paymentWindowMs, boolean enabled, String reason) {}
+            long paymentWindowMs, boolean enabled, String reason, String collectionMethod, String contactInstructions) {
+        public ProfileCommand(String profileNo,long expectedVersion,String platformMerchantNo,String currency,
+                String bankCode,String bankAccount,String accountName,String paymentWindowVersion,long paymentWindowMs,
+                boolean enabled,String reason) {
+            this(profileNo,expectedVersion,platformMerchantNo,currency,bankCode,bankAccount,accountName,
+                    paymentWindowVersion,paymentWindowMs,enabled,reason,null,null);
+        }
+    }
     /** Pay-domain collection profile; each change creates a new immutable version. */
     OfflineCollectionTerms configureProfile(ActorContext actor, ProfileCommand command);
     Optional<OfflineCollectionProfile> profile(ActorContext actor, String currency);

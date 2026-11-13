@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.ApiResponseWrapper;
+import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.message.api.biz.BizMessageController;
 import ai.neargo.shop.portal.biz.BizPaymentEventsController;
 import ai.neargo.shop.portal.internal.InternalPaymentCollectionController;
@@ -64,6 +65,8 @@ public final class PaymentCollectionSandboxHost implements AutoCloseable {
                     beans.registerSingleton("stream", new BizPaymentEventsController(stream));
                     beans.registerSingleton("queries", new Queries(fixture));
                     beans.registerSingleton("apiAdvice", new ApiResponseWrapper());
+                    beans.registerSingleton("globalErrors", new GlobalExceptionHandler());
+                    beans.registerSingleton("paymentProtocolErrors", new PaymentCollectionExceptionHandler());
                     beans.registerSingleton(
                             "messages",
                             new BizMessageController(
