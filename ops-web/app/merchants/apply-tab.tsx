@@ -26,6 +26,7 @@ import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckboxField } from "@/components/ui/checkbox";
@@ -44,7 +45,7 @@ const STATUS_MAP: StatusMap<ApplyStatus> = {
 function scopeLabel(c: MerchantsCopy, scope?: string | null): string {
   if (scope === "CITY") return c.applyScopeCity;
   if (scope === "PLATFORM") return c.applyScopePlatform;
-  return c.applyScopeCommunity;
+  return scope === "COMMUNITY" ? c.applyScopeCommunity : c.applyScopeEmpty;
 }
 
 /** 文案表是扁平的 Record<string,string>，枚举 → 文案的映射在组件里拼 */
@@ -121,28 +122,39 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
   const decided = current?.status === "APPROVED" || current?.status === "REJECTED";
 
   const columns: Column<MerchantApply>[] = [
-    { header: c.colNo, cell: (a) => a.applyNo, numeric: true, align: "start" },
-    { header: c.colName, cell: (a) => a.name },
-    { header: c.applyColIndustry, cell: (a) => label.industry(a.industry) },
-    { header: c.applyColSubject, cell: (a) => label.subject(a.subject) },
-    { header: c.colContact, cell: (a) => `${a.contactName} ${a.contactPhone}` },
     {
-      // 服务范围空着的要一眼看出来 —— 它是「通过之后没人看得见」的唯一预警
-      header: c.applyColScope,
-      cell: (a) =>
-        a.communityNos?.length ? (
-          // 服务范围是 ADR-009 定的**固定三档**，不是运营可维护的字典 ——
-          // 所以用文案表而不是 master-data。判据：取值域会不会被运营改
-          `${scopeLabel(c, a.serviceScope)} · ${a.communityNos.length}`
-        ) : (
-          <span className="text-[var(--warning)]">{c.applyScopeEmpty}</span>
-        ),
+      header: c.applyColNo, numeric: true, align: "start",
+      cell: (a) => <div className="space-y-1">
+        <div>{a.applyNo}</div>
+        <div className="txt-caption text-muted-foreground">{a.onBehalf ? c.applySourceOps : c.applySourceMerchant}</div>
+      </div>,
     },
-    { header: c.colStatus, cell: (a) => <StatusBadge value={a.status} map={STATUS_MAP} /> },
+    {
+      header: c.applyColName,
+      cell: (a) => <div className="space-y-1">
+        <div className="max-w-56 truncate font-medium" title={a.name}>{a.name}</div>
+        <div className="txt-caption text-muted-foreground">{label.subject(a.subject)} · {label.industry(a.industry)}</div>
+      </div>,
+    },
+    {
+      header: c.applyColStore,
+      cell: (a) => a.storeProfile ? <div className="space-y-1">
+        <div className="max-w-56 truncate" title={a.storeProfile.name}>{a.storeProfile.name}</div>
+        <div className="max-w-56 truncate txt-caption text-muted-foreground" title={a.storeProfile.address}>{a.storeProfile.address}</div>
+      </div> : <span className="txt-caption text-muted-foreground">{c.applyStoreUnprovided}</span>,
+    },
+    {
+      header: c.colContact,
+      cell: (a) => <div className="space-y-1">
+        <div>{a.contactName || "—"}</div>
+        {a.contactPhone && <div className="txt-caption text-muted-foreground">{a.contactPhone}</div>}
+      </div>,
+    },
+    { header: c.applyColStatus, cell: (a) => <StatusBadge value={a.status} map={STATUS_MAP} /> },
     { header: c.colCreatedAt, cell: (a) => fmtTime(new Date(a.createdAt).toISOString()) },
     {
       header: c.colActions,
-      // 窄屏钉在行尾：这张表 9 列约 1076px 宽，手机视口 375 —— 不钉的话
+      // 窄屏钉在行尾：手机视口 375 —— 不钉的话
       // 要一路横滑到底才点得到「受理/查看」，而企微的入驻意向通知点进来就是这一页
       stickyEnd: true,
       cell: (a) => (
@@ -162,12 +174,14 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
 
   return (
     <>
+      <p className="mb-4 txt-body text-muted-foreground">{c.applySummary}</p>
       <Toolbar
         search={keyword}
         onSearch={(v) => { setKeyword(v); setPage(1); }}
         searchPlaceholder={c.applySearchPh}
       >
         <FilterSelect
+          aria-label={c.applyColStatus}
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
           options={[
@@ -185,7 +199,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
         rows={list.data?.records ?? []}
         loading={list.isPending}
         rowKey={(a) => a.applyNo}
-        empty={c.applyEmpty}
+        empty={status || keyword.trim() ? c.applyEmpty : c.applyEmptyTodo}
         error={list.error}
         onRetry={() => list.refetch()}
       />
@@ -197,27 +211,14 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
         onSize={(v) => { setSize(v); setPage(1); }}
       />
 
-      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""}>
+      <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""} desc={current?.applyNo}>
         {current && (
           <>
-            <DrawerSection title={c.applySectionInfo}>
+            <DrawerSection title={c.applySectionInfo} first>
               <FieldGrid>
-                <Field label={c.colNo}>{current.applyNo}</Field>
+                <Field label={c.applyColStatus}><StatusBadge value={current.status} map={STATUS_MAP} /></Field>
                 <Field label={c.applyOwner}>{current.ownerUserNo??"—"}</Field>
                 <Field label={c.applyMarket}>{current.marketCode??"—"}</Field>
-                {current.storeProfile&&<>
-                  <Field label={c.obStoreName}>{current.storeProfile.name}</Field>
-                  <Field label={c.obStoreAddress}>{current.storeProfile.address}</Field>
-                  <Field label={c.obStoreIndustry}>{current.storeProfile.industryCode} / {current.storeProfile.subIndustryCode}</Field>
-                  <Field label={c.obBusinessType}>{current.storeProfile.businessTypeCode}</Field>
-                </>}
-                {current.storeNo&&<>
-                  <Field label={c.applyStoreResult}>{current.merchantNo} / {current.storeNo}</Field>
-                  {canReadSubscription&&<Field label={c.applyViewSubscription}>
-                    {subscription.error ? (subscription.error as Error).message : subscription.data
-                      ? `${subscription.data.sources?.some(x=>x.permanent && x.planVersionNo===subscription.data!.currentPlanVersionNo) ? c.applyFreePlan : c.applyPaidPlan} · ${subscription.data.currency} · ${subscription.data.businessTypeCode}` : c.applySubscriptionMissing}
-                  </Field>}
-                </>}
                 <Field label={c.applyColSubject}>{label.subject(current.subject)}</Field>
                 <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
                 {/*
@@ -228,15 +229,15 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                 {current.industryNote ? (
                   <Field label={c.applyColIndustryNote}>{current.industryNote}</Field>
                 ) : null}
-                <Field label={c.colContact}>{`${current.contactName} ${current.contactPhone}`}</Field>
-                <Field label={c.applyColCategory}>{current.category}</Field>
+                <Field label={c.colContact}>{current.contactName || "—"}</Field>
+                <Field label={c.obContactPhone}>{current.contactPhone || "—"}</Field>
+                {current.category && <Field label={c.applyColCategory}>{current.category}</Field>}
                 {/* 推荐人：**只在有值时显示** —— 绝大多数申请没有，空着一栏比不显示更容易误读成「查不到」 */}
                 {current.referrerPhone ? (
                   <Field label={c.applyColReferrer}>{current.referrerPhone}</Field>
                 ) : null}
-                <Field label={c.colStatus}>
-                  <StatusBadge value={current.status} map={STATUS_MAP} />
-                </Field>
+                {(decided || !canAudit) && <Field label={c.applyColScope}>{scopeLabel(c, current.serviceScope)}{current.communityNos?.length ? ` · ${current.communityNos.length}` : ""}</Field>}
+                <Field label={c.colCreatedAt}>{fmtTime(new Date(current.createdAt).toISOString())}</Field>
               </FieldGrid>
               {/*
                 ★ **代填标记**（三期）。摆在资料正文之前，因为它改变的是
@@ -246,24 +247,38 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                 商户协议仍由商户本人确认。
               */}
               {current.onBehalf && (
-                <Notice tone="warning" className="mt-3">
-                  {c.applyOnBehalf}
-                  {/*
-                    协议状态跟着代填一起说。分开放两处的话，
-                    「这单是代填的」与「协议还没人勾」会被当成两件不相干的事 ——
-                    而后者正是前者的必然结果（运营不能替商户勾）。
-                  */}
-                  <span className="mt-1 block txt-caption">
-                    {current.agreedAt ? c.applyAgreed : c.applyNotAgreed}
-                  </span>
-                </Notice>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Badge tone="info">{c.applySourceOps}</Badge>
+                  <Badge tone={current.agreedAt ? "success" : "warning"}>{current.agreedAt ? c.applyAgreed : c.applyNotAgreed}</Badge>
+                  <HelpNote inline>{c.applyOnBehalf}</HelpNote>
+                </div>
               )}
-              <p className="mt-2 txt-body text-[var(--muted)]">{current.desc}</p>
+              {current.desc && <p className="mt-2 txt-body text-muted-foreground">{current.desc}</p>}
               {current.asPickupPoint && <Badge className="mt-2">{c.applyAsPickup}</Badge>}
               {current.rejectReason && (
                 <Notice tone="danger" className="mt-3">{current.rejectReason}</Notice>
               )}
             </DrawerSection>
+
+            {current.storeProfile && <DrawerSection title={c.applySectionStore}>
+              <FieldGrid>
+                <Field label={c.obStoreName}>{current.storeProfile.name}</Field>
+                <Field label={c.obStoreAddress}>{current.storeProfile.address}</Field>
+                <Field label={c.obStoreIndustry}>{label.industry(current.storeProfile.industryCode)} / {current.storeProfile.subIndustryCode}</Field>
+                <Field label={c.obBusinessType}>{current.storeProfile.businessTypeCode}</Field>
+              </FieldGrid>
+            </DrawerSection>}
+
+            {(current.merchantNo || current.storeNo) && <DrawerSection title={c.applySectionResult}>
+              <FieldGrid>
+                {current.merchantNo && <Field label={c.applyResultMerchant}>{current.merchantNo}</Field>}
+                {current.storeNo && <Field label={c.applyResultStore}>{current.storeNo}</Field>}
+                {current.storeNo && canReadSubscription && <Field label={c.applyViewSubscription}>
+                  {subscription.error ? (subscription.error as Error).message : subscription.data
+                    ? `${subscription.data.sources?.some(x=>x.permanent && x.planVersionNo===subscription.data!.currentPlanVersionNo) ? c.applyFreePlan : c.applyPaidPlan} · ${subscription.data.currency} · ${subscription.data.businessTypeCode}` : c.applySubscriptionMissing}
+                </Field>}
+              </FieldGrid>
+            </DrawerSection>}
 
             {/*
               资质：需要执照的档位必传，免执照档位没有。缺它正是驳回的主因。
@@ -319,7 +334,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
                   服务范围放在审核动作**上面**：它是通过的前置条件，不是附属选项。
                   放下面的话运营会先点通过再发现被拦，而拦截原因在视线之外。
                 */}
-                <Notice tone="info" className="mb-3">{c.applyScopeNotice}</Notice>
+                <HelpNote>{c.applyScopeNotice}</HelpNote>
 
                 <Label>{c.applyScopeLabel}</Label>
                 <FilterSelect

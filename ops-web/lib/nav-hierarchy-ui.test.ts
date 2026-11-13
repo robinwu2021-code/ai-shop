@@ -27,6 +27,7 @@ it('shows named groups once, keeps every destination, and marks the current leaf
  expect([...nav.querySelectorAll('a')].map(x=>x.getAttribute('href'))).toEqual(['/merchants','/merchants?tab=on-behalf','/merchants?tab=list','/merchants?tab=stores']);
  expect(nav.querySelector('a[aria-current="page"]')?.textContent).toBe('商家档案');
  expect(nav.querySelector('section[aria-label="入驻"]')?.textContent).toContain('代办入驻');
+ expect(nav.querySelectorAll('[class*="border-s"]')).toHaveLength(0);
 });
 
 it('carries the same menu groups into page view choices',()=>{

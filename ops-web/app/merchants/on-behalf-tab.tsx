@@ -17,9 +17,7 @@
 // ──────────────────────────────────────────────────────
 // 提交之后不会有主体
 // ──────────────────────────────────────────────────────
-// 这是最容易被误解的一点，界面上因此说了两遍（顶部警示 + 成功回执）。
-// 制单与审核分离在这个仓库里是有先例的，而代填最需要那一层：
-// 资料是运营录的，核验不该也是同一个人 —— 后端按 submitted_by 拦自审（403）。
+// 入口说明按需查看，提交后的回执明确申请仍待审核；审核按既有权限执行并留痕。
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -30,6 +28,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { MerchantsCopy } from "./copy";
@@ -103,11 +102,10 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
 
   return (
     <div className="space-y-4">
-      {/* 不可关闭：这段说明是这个入口的适用边界，每次打开都要在 */}
-      <Notice tone="warning">{c.obWarning}</Notice>
       {!canSubmit && <Notice tone="danger">{c.obNoPerm}</Notice>}
 
-      <ConfigCard title={c.obTitle} notice={c.obDesc}>
+      <ConfigCard title={c.obTitle}>
+        <HelpNote>{c.obWarning}<p className="mt-2">{c.obDesc}</p></HelpNote>
         <div className="max-w-xl space-y-4">
           <div>
             <Label htmlFor="ob-market">{c.obMarket}</Label>
