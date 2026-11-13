@@ -189,6 +189,7 @@ export const RULES = [
   // 建平台自营商家（跳过进件与审核）。**单独一个码，且不配给任何角色** ——
   // 于是只有持 "*" 的 SUPER_ADMIN 能用。不复用 merchant:admission:update：
   // 那个码 BD 手里有，而「平台成为这批货的销售主体」不该由招商日常决定
+  ["GET", /^\/ops\/merchants\/admissions$/, "merchant:apply:audit", "OR merchant:apply:onbehalf / merchant:selfop:create; rows are filtered by each existing permission"],
   ["POST", /^\/ops\/merchants\/self-operated$/, "merchant:selfop:create"],
   // 代商家提交入驻申请（BD 在店里替老板填）。**与 selfop 刻意分开的另一个码**：
   // 那个回答「平台要不要自己下场经营」只给超管，这个回答「谁来替第三方录资料」要给 BD。

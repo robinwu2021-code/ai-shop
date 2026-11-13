@@ -4,7 +4,7 @@ import {createRoot,type Root} from "react-dom/client";
 import {QueryClient,QueryClientProvider} from "@tanstack/react-query";
 import {beforeEach,afterEach,it,expect,vi} from "vitest";
 import type {AdmissionEntry} from "./types";
-const state=vi.hoisted(()=>({list:vi.fn(),create:vi.fn(),accept:vi.fn(),addStore:vi.fn(),context:vi.fn()}));
+const state=vi.hoisted(()=>({list:vi.fn(),create:vi.fn(),accept:vi.fn(),addStore:vi.fn(),context:vi.fn(),error:vi.fn()}));
 vi.mock("@/lib/api",()=>({api:{
  listAdmissions:state.list,selfOperatedContext:state.context,onBehalfContext:state.context,
  createSelfOperated:state.create,acceptApply:state.accept,addSelfOperatedStore:state.addStore,
@@ -13,7 +13,7 @@ vi.mock("@/lib/api",()=>({api:{
 }}));
 vi.mock("@/lib/api/master-data",()=>({useCodeLabel:()=>({industry:(v:string)=>v,subject:(v:string)=>v})}));
 vi.mock("@/lib/i18n",()=>({useI18n:()=>({locale:"zh",t:(k:string)=>k}),useT:()=>((k:string)=>k)}));
-vi.mock("@/lib/notify",()=>({notify:{success:vi.fn(),error:vi.fn()}}));
+vi.mock("@/lib/notify",()=>({notify:{success:vi.fn(),error:state.error}}));
 import {OnBehalfTab} from "@/app/merchants/on-behalf-tab";
 import {MERCHANTS_COPY} from "@/app/merchants/copy";
 const c=MERCHANTS_COPY.zh;
@@ -57,6 +57,13 @@ it("self-operation success closes the dialog and refreshes the unified list",asy
  const before=state.list.mock.calls.length;await click(c.soSubmit);
  expect(state.create).toHaveBeenCalledWith(expect.objectContaining({ownerEmail:"owner@example.test",name:"平台主体",phone:undefined}));
  expect(document.querySelector('[role="dialog"]')).toBeNull();expect(state.list.mock.calls.length).toBeGreaterThan(before);
+});
+it("keeps the actual zero-coverage warning visible after successful creation closes the dialog",async()=>{
+ state.create.mockResolvedValue({merchantNo:"M-new",created:true,reachableCommunities:0});
+ await render();await click(c.obNew);await input("admission-create-type","SELF_OPERATED");
+ await input("so-owner","owner@example.test");await input("so-name","无覆盖自营");await input("so-scope","CITY");
+ await click(c.soSubmit);expect(document.querySelector('[role="dialog"]')).toBeNull();
+ expect(state.error).toHaveBeenCalledWith(c.soResultReachZero);
 });
 it("self-operation-only users do not load assisted context or offer assisted creation",async()=>{
  state.list.mockResolvedValue({records:[entries[1]],total:1});await render({canSubmit:false,canAudit:false,canSelfOp:true});await click(c.obNew);

@@ -23,7 +23,7 @@ export function OnBehalfTab({ c, canSubmit, canAudit=false, canSelfOp=false, ini
   return <div className="space-y-4">
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <ApplyTab c={c} canAudit={canAudit} canSelfOp={canSelfOp} canViewApplications={canAudit||canSubmit} initialType={initialType} unified canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit||canSelfOp?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
-      {open && <ApplicationDialog c={c} canSubmit={canSubmit} canSelfOp={canSelfOp} onSelfDone={() => {setOpen(false);void qc.invalidateQueries({queryKey:["applies"]});}} onDone={(result) => {
+      {open && <ApplicationDialog c={c} canSubmit={canSubmit} canSelfOp={canSelfOp} onSelfDone={() => {setDone(null);setOpen(false);void qc.invalidateQueries({queryKey:["applies"]});}} onDone={(result) => {
         setDone(result); setOpen(false);
         void qc.invalidateQueries({ queryKey: ["applies"] });
       }} onCancel={() => setOpen(false)} />}
