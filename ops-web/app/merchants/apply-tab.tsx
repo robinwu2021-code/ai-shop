@@ -132,15 +132,15 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
     {
       header: c.applyColName,
       cell: (a) => <div className="space-y-1">
-        <div className="max-w-56 truncate font-medium" title={a.name}>{a.name}</div>
-        <div className="txt-caption text-muted-foreground">{label.subject(a.subject)} · {label.industry(a.industry)}</div>
+        <div className="max-w-40 truncate font-medium" title={a.name}>{a.name}</div>
+        <div className="max-w-40 truncate txt-caption text-muted-foreground" title={`${label.subject(a.subject)} · ${label.industry(a.industry)}`}>{label.subject(a.subject)} · {label.industry(a.industry)}</div>
       </div>,
     },
     {
       header: c.applyColStore,
       cell: (a) => a.storeProfile ? <div className="space-y-1">
-        <div className="max-w-56 truncate" title={a.storeProfile.name}>{a.storeProfile.name}</div>
-        <div className="max-w-56 truncate txt-caption text-muted-foreground" title={a.storeProfile.address}>{a.storeProfile.address}</div>
+        <div className="max-w-40 truncate" title={a.storeProfile.name}>{a.storeProfile.name}</div>
+        <div className="max-w-40 truncate txt-caption text-muted-foreground" title={a.storeProfile.address}>{a.storeProfile.address}</div>
       </div> : <span className="txt-caption text-muted-foreground">{c.applyStoreUnprovided}</span>,
     },
     {
@@ -151,7 +151,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
       </div>,
     },
     { header: c.applyColStatus, cell: (a) => <StatusBadge value={a.status} map={STATUS_MAP} /> },
-    { header: c.colCreatedAt, cell: (a) => fmtTime(new Date(a.createdAt).toISOString()) },
+    { header: c.colCreatedAt, cell: (a) => <div className="max-w-24 whitespace-normal">{fmtTime(new Date(a.createdAt).toISOString())}</div> },
     {
       header: c.colActions,
       // 窄屏钉在行尾：手机视口 375 —— 不钉的话
