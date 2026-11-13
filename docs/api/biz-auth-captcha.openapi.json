@@ -1,0 +1,483 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Merchant authentication slider CAPTCHA",
+    "version": "2026-11-13",
+    "description": "Self-hosted Tianai core 1.5.6 with native Flutter consumption in the separate ai-shop-bapp repository. The repository legacy Vue b-app integration is deferred. Server enforcement is controlled only by shop.auth.captcha.enabled / SHOP_AUTH_CAPTCHA_ENABLED (default false). Once enabled, missing/invalid X-Captcha-Token on protected operations returns HTTP200 with code10452 and data {captchaRequired:true,action}; clients cannot opt out by omitting headers. Solve once and retry the original operation once with the same action/principal. Proof consumption precedes protected work and survives its failure/rollback. OTP credential login, identities/enter and authenticated business operations are outside this CAPTCHA policy."
+  },
+  "paths": {
+    "/biz/auth/captcha/challenge": {
+      "post": {
+        "operationId": "issueBizAuthCaptcha",
+        "tags": [
+          "Merchant authentication CAPTCHA"
+        ],
+        "summary": "Issue a fresh PNG puzzle",
+        "description": "Issue a fresh PNG puzzle. Anonymous, rate limited independently of the enforcement rollout flag. The expected answer stays server-side.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope: code=0 succeeds; inspect code for business errors.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ChallengeResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CaptchaError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/captcha/verify": {
+      "post": {
+        "operationId": "verifyBizAuthCaptcha",
+        "tags": [
+          "Merchant authentication CAPTCHA"
+        ],
+        "summary": "Consume the challenge and verify the real puzzle and drag track",
+        "description": "Consume the challenge and verify the real puzzle and drag track. Incorrect/expired/scope-mismatched attempts also consume the challenge. Success returns a 60-second one-use proof.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ApiResult envelope: code=0 succeeds; inspect code for business errors.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ProofResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CaptchaError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-captcha-protected-operations": [
+    {
+      "method": "POST",
+      "path": "/biz/auth/login",
+      "action": "LOGIN",
+      "when": "grantType == PASSWORD"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/auth/identities",
+      "action": "LOGIN",
+      "when": "grantType == PASSWORD"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/auth/otp/send",
+      "action": "OTP_SEND",
+      "principalField": "phone"
+    },
+    {
+      "method": "POST",
+      "path": "/biz/auth/email-otp/send",
+      "action": "EMAIL_OTP_SEND",
+      "principalField": "email"
+    }
+  ],
+  "x-rate-limits": {
+    "windowSeconds": 60,
+    "challenge": {
+      "perCanonicalPrincipal": 10,
+      "perTrustedClientIp": 30
+    },
+    "verify": {
+      "perCanonicalPrincipal": 20,
+      "perTrustedClientIp": 60
+    },
+    "description": "Account limits and IP limits are shared through the database across API instances and action values."
+  },
+  "components": {
+    "parameters": {
+      "CaptchaToken": {
+        "name": "X-Captcha-Token",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "One-use proof on the protected operation, not on challenge issuance. Missing/invalid proof returns CaptchaRequired when enforcement is enabled."
+      }
+    },
+    "schemas": {
+      "CaptchaAction": {
+        "type": "string",
+        "enum": [
+          "LOGIN",
+          "OTP_SEND",
+          "EMAIL_OTP_SEND"
+        ],
+        "description": "LOGIN covers password login and password identity discovery; the two sends have separate actions."
+      },
+      "Principal": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 191,
+        "description": "Exact credential/delivery target. LOGIN trims phone principals and trims/lowercases email principals; EMAIL_OTP_SEND trims/lowercases email; OTP_SEND binds the unchanged phone target.",
+        "example": "merchant@example.test"
+      },
+      "ChallengeRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/CaptchaAction"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/Principal"
+          }
+        },
+        "required": [
+          "action",
+          "principal"
+        ]
+      },
+      "VerifyRequest": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "action": {
+            "$ref": "#/components/schemas/CaptchaAction"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/Principal"
+          },
+          "track": {
+            "$ref": "#/components/schemas/ImageCaptchaTrack"
+          }
+        },
+        "required": [
+          "challengeId",
+          "action",
+          "principal",
+          "track"
+        ]
+      },
+      "ChallengeData": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "description": "Opaque challenge identifier; no answer is embedded."
+          },
+          "backgroundImage": {
+            "type": "string",
+            "description": "PNG data URL; fresh private background with the puzzle gap. No original/background URL is published."
+          },
+          "templateImage": {
+            "type": "string",
+            "description": "Transparent PNG data URL retaining its vertical position. Render at top=0 and translate horizontally."
+          },
+          "backgroundImageWidth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Source PNG pixels; currently 320."
+          },
+          "backgroundImageHeight": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Source PNG pixels; currently 180."
+          },
+          "templateImageWidth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Read the returned width; depends on the chosen engine template."
+          },
+          "templateImageHeight": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Equal to backgroundImageHeight; keep transparent vertical padding."
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "const": 120
+          }
+        },
+        "required": [
+          "challengeId",
+          "backgroundImage",
+          "templateImage",
+          "backgroundImageWidth",
+          "backgroundImageHeight",
+          "templateImageWidth",
+          "templateImageHeight",
+          "expiresInSeconds"
+        ]
+      },
+      "TrackPoint": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "minimum": -1024,
+            "maximum": 1024,
+            "description": "Horizontal displacement from pointer down, in source-image pixels."
+          },
+          "y": {
+            "type": "number",
+            "minimum": -1024,
+            "maximum": 1024,
+            "description": "Vertical displacement from pointer down, in source-image pixels."
+          },
+          "t": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120000,
+            "description": "Milliseconds elapsed since pointer down, not an absolute timestamp."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "DOWN",
+              "MOVE",
+              "UP"
+            ]
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "t",
+          "type"
+        ]
+      },
+      "ImageCaptchaTrack": {
+        "type": "object",
+        "properties": {
+          "bgImageWidth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Must equal the challenge backgroundImageWidth; this track field is named bgImageWidth."
+          },
+          "bgImageHeight": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Must equal backgroundImageHeight."
+          },
+          "templateImageWidth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Must equal the challenge template width."
+          },
+          "templateImageHeight": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1024,
+            "description": "Must equal the challenge template height."
+          },
+          "startTime": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Pointer-down epoch time in milliseconds."
+          },
+          "stopTime": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Pointer-up epoch time in milliseconds; a valid drag lasts at least 300ms."
+          },
+          "left": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1024,
+            "description": "Final horizontal template displacement, in source-image pixels."
+          },
+          "top": {
+            "type": "integer",
+            "const": 0
+          },
+          "trackList": {
+            "type": "array",
+            "minItems": 10,
+            "maxItems": 1600,
+            "items": {
+              "$ref": "#/components/schemas/TrackPoint"
+            },
+            "description": "DOWN, sampled MOVE events, then UP. Keep real source-pixel motion samples; BasicCaptchaTrackValidator requires at least 10 samples and >=300ms."
+          }
+        },
+        "required": [
+          "bgImageWidth",
+          "bgImageHeight",
+          "templateImageWidth",
+          "templateImageHeight",
+          "startTime",
+          "stopTime",
+          "left",
+          "top",
+          "trackList"
+        ],
+        "description": "Convert display pixels to source pixels using the displayed image scale. Puzzle coordinates remain left-to-right in RTL interfaces. The server checks exact image dimensions, matching offset and basic motion; it does not trust a client success flag."
+      },
+      "ProofData": {
+        "type": "object",
+        "properties": {
+          "captchaToken": {
+            "type": "string",
+            "description": "Opaque short-lived one-use proof. Send only as X-Captcha-Token on the original protected operation; do not persist or log it."
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "const": 60
+          }
+        },
+        "required": [
+          "captchaToken",
+          "expiresInSeconds"
+        ]
+      },
+      "ChallengeResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 0
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ChallengeData"
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ]
+      },
+      "ProofResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 0
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProofData"
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ]
+      },
+      "CaptchaError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "enum": [
+              10400,
+              10429,
+              10452
+            ]
+          },
+          "msg": {
+            "type": "string",
+            "description": "Localized business error."
+          },
+          "data": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "description": "HTTP remains 200 for these business errors. 10400=input validation, 10429=issue/verify rate limit, 10452=invalid, expired, replayed or incorrectly scoped challenge. These errors do not by themselves request a new authentication popup."
+      },
+      "CaptchaRequired": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "const": 10452
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "captchaRequired": {
+                "type": "boolean",
+                "const": true
+              },
+              "action": {
+                "$ref": "#/components/schemas/CaptchaAction"
+              }
+            },
+            "required": [
+              "captchaRequired",
+              "action"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ]
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Implementation, TTL/binding, V663 and scoped verification evidence",
+    "url": "https://github.com/robinwu2021-code/ai-shop/blob/codex/ai-shop-codex/docs/technical/TDD-B%E7%AB%AF%E6%BB%91%E5%9D%97%E9%AA%8C%E8%AF%81%E7%A0%81.md"
+  }
+}
