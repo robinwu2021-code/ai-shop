@@ -44,7 +44,11 @@
 
 `PaymentCollectionSourceBootstrapTest`覆盖：空配置、开关关闭、新建与两端不同ID、重复启动、旧数据保持、冲突整批回滚、disabled、跨实体/店号/店删除/实体删除/market、环境/type/sourceId与正数约束、提交早于outbox、失败不启动outbox。
 
-验证使用进程内H2，只证明普通JDBC事务与Spring接线，不冒称MySQL9原生唯一键/并发锁证据；本任务不连接任何真实数据库。原生测试须在单独明确授权的MySQL9临时schema进行。
+默认使用进程内H2；初次交付只包含H2证据。2026-11-14追加明确授权后，同一套测试已在本机MySQL9.7.4的一次性schema运行，包含原21项及真实双连接同键同target幂等、同键不同target一个成功另一个明确冲突且不覆盖两项，并未触及166或任何既有业务schema。
+
+可选原生测试环境变量为 `PAYMENT_SOURCE_BOOTSTRAP_JDBC_URL`、`PAYMENT_SOURCE_BOOTSTRAP_DB_USER`、`PAYMENT_SOURCE_BOOTSTRAP_DB_PASSWORD`；未提供URL时仍默认H2。URL只接受 `jdbc:mysql://127.0.0.1:3308/payment_source_bootstrap_<16–64位小写hex>`，可选固定连接参数 `?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`。非此地址/库名前缀或不完整凭据在连接前拒绝；接入后再次核对server版本以9开头。每测只清当前一次性schema内的 `payment_collection_source`、`mch_store`、`mch_entity` 三表，不调用schema/admin管理。
+
+一次性schema与仅localhost临时用户由独立测试协调器创建，用户仅获该schema权限。管理员客户端直接读取受保护defaults-file，不将管理员认证交给Java测试；临时凭据只传子进程环境，无命令行密码。协调器finally删除schema/user并分别核对不存在。仓库不包含任何凭据或环境业务默认配置。
 
 ## 6 交付记录
 
@@ -63,3 +67,12 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home mvn -o 
 原未跟踪 `TDD-沙箱收款消息与SSE.md` §配置建议由主流程替换为：
 
 > 显式来源绑定由受保护 `shop.payment-collections.source-bindings` 配置在启动时事务provision，默认空、无配置不读写来源映射表。仅支持经PAY/SOURCE与SHOP双边事实独立核对的SANDBOX/CHECKOUT/TW来源；paymentStoreId与shopStoreId独立填写。已有相同键与目标且enabled=1幂等，不同目标/禁用记录拒绝并整批回滚；不覆盖、不删除旧映射，不提供公开写API、不从收到的payment fact自注册。详细合同见《沙箱收款来源配置初始化》。
+
+
+### 2026-11-14 原生验收追加
+
+相同 `PaymentCollectionSourceBootstrapTest`：H2默认23项通过；MySQL9.7.4原生23项通过（原21项+两个双连接并发测试），均0失败/错误/跳过，40模块reactor BUILD SUCCESS。原生测试实用InnoDB与utf8mb4_bin表定义。
+
+并发测试各自打开两条物理JDBC连接、使用独立transaction manager与共同起跑门槛：同target两次均成功且仅一行；不同target恰一成功、另一返回source mapping conflict，最终行保持获胜目标。无需改生产代码或追加业务重试。
+
+[安全原生验收证明](evidence/payment-source-bootstrap-mysql-20261114.json)记录server版本、23项计数、两项并发名称、一次性schema清理与用户清理的独立确认。原生日志 `/tmp/payment-source-bootstrap-mysql-native.log` 为0600且检查临时凭据不存在。H2日志 `/tmp/payment-source-bootstrap-h2-concurrency.log`。早先ArchitectureTest既有失败边界保持不变，没有重复运行无关全量。

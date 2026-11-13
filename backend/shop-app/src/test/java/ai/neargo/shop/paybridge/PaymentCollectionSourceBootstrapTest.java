@@ -3,9 +3,14 @@ package ai.neargo.shop.paybridge;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -17,21 +22,44 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** In-memory wiring/transaction evidence; it does not substitute for MySQL9 native verification. */
+/** H2 by default; explicit MySQL mode can only address one disposable local test schema. */
 class PaymentCollectionSourceBootstrapTest {
     DataSource dataSource;
     JdbcTemplate jdbc;
     ApplicationContextRunner context;
+    boolean nativeMysql;
 
     @BeforeEach
     void setup() {
-        dataSource = new DriverManagerDataSource(
-                "jdbc:h2:mem:source-bootstrap-" + UUID.randomUUID()
-                        + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
+        String url = System.getenv("PAYMENT_SOURCE_BOOTSTRAP_JDBC_URL");
+        String user = System.getenv("PAYMENT_SOURCE_BOOTSTRAP_DB_USER");
+        String password = System.getenv("PAYMENT_SOURCE_BOOTSTRAP_DB_PASSWORD");
+        nativeMysql = url != null;
+        if (nativeMysql) {
+            if (!url.matches("jdbc:mysql://127\\.0\\.0\\.1:3308/"
+                    + "payment_source_bootstrap_[a-f0-9]{16,64}"
+                    + "(?:\\?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC)?")
+                    || user == null || user.isBlank() || password == null || password.isBlank()) {
+                throw new IllegalArgumentException("Only an explicit disposable local MySQL9 schema is allowed");
+            }
+            dataSource = new DriverManagerDataSource(url, user, password);
+        } else {
+            if (user != null || password != null) {
+                throw new IllegalArgumentException("MySQL credentials require the restricted test URL");
+            }
+            dataSource = new DriverManagerDataSource(
+                    "jdbc:h2:mem:source-bootstrap-" + UUID.randomUUID()
+                            + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
+        }
         jdbc = new JdbcTemplate(dataSource);
+        if (nativeMysql) {
+            assertThat(jdbc.queryForObject("SELECT VERSION()", String.class)).startsWith("9.");
+            clearOwnTables();
+        }
         context = new ApplicationContextRunner()
                 .withUserConfiguration(PaymentCollectionSourceConfiguration.class)
                 .withBean("dataSource", DataSource.class, () -> dataSource)
@@ -40,16 +68,31 @@ class PaymentCollectionSourceBootstrapTest {
                 .withPropertyValues("shop.payment-collections.enabled=true");
     }
 
+    @AfterEach
+    void cleanupNativeTables() {
+        if (nativeMysql && jdbc != null) {
+            clearOwnTables();
+        }
+    }
+
+    private void clearOwnTables() {
+        for (String table : List.of("payment_collection_source", "mch_store", "mch_entity")) {
+            jdbc.execute("DROP TABLE IF EXISTS " + table);
+        }
+    }
+
     void schema() {
+        String options = nativeMysql
+                ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin" : "";
         jdbc.execute("CREATE TABLE mch_entity (entity_no VARCHAR(64) PRIMARY KEY,"
-                + " market VARCHAR(8),deleted INT NOT NULL DEFAULT 0)");
+                + " market VARCHAR(8),deleted INT NOT NULL DEFAULT 0)" + options);
         jdbc.execute("CREATE TABLE mch_store (id BIGINT PRIMARY KEY,store_no VARCHAR(64),"
-                + " entity_no VARCHAR(64),deleted INT NOT NULL DEFAULT 0)");
+                + " entity_no VARCHAR(64),deleted INT NOT NULL DEFAULT 0)" + options);
         jdbc.execute("CREATE TABLE payment_collection_source (environment VARCHAR(16),"
                 + " pay_app_id BIGINT,source_type VARCHAR(16),source_id BIGINT,"
                 + " payment_store_id BIGINT,store_no VARCHAR(64),entity_no VARCHAR(64),"
                 + " enabled BOOLEAN NOT NULL DEFAULT TRUE,"
-                + " PRIMARY KEY(environment,pay_app_id,source_type,source_id,payment_store_id))");
+                + " PRIMARY KEY(environment,pay_app_id,source_type,source_id,payment_store_id))" + options);
         jdbc.update("INSERT INTO mch_entity VALUES ('E1','TW',0),('E2','TW',0)");
         jdbc.update("INSERT INTO mch_store VALUES (101,'S1','E1',0),(102,'S2','E2',0)");
     }
@@ -163,6 +206,65 @@ class PaymentCollectionSourceBootstrapTest {
         assertThat(output.getAll()).contains("environment=SANDBOX", "paymentStoreId=9001",
                         "shopStoreId=101", "storeNo=S1", "entityNo=E1", "fingerprint=")
                 .doesNotContain("must-not-be-logged", "cursor-secret=");
+    }
+
+    @Test
+    void concurrentSameTargetOnTwoConnectionsCreatesOnlyOneMapping() throws Exception {
+        schema();
+        var outcomes = concurrently(bindingValue(101, "S1", "E1"), bindingValue(101, "S1", "E1"));
+        assertThat(outcomes).containsOnlyNulls();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payment_collection_source", Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void concurrentConflictingTargetsNeverOverwriteTheWinningMapping() throws Exception {
+        schema();
+        var outcomes = concurrently(bindingValue(101, "S1", "E1"), bindingValue(102, "S2", "E2"));
+        assertThat(outcomes.stream().filter(e -> e == null).count()).isEqualTo(1);
+        var failure = outcomes.stream().filter(e -> e != null).findFirst().orElseThrow();
+        assertThat(failure).hasMessageStartingWith("Payment collection source mapping conflict:");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payment_collection_source", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT store_no FROM payment_collection_source", String.class))
+                .isEqualTo(outcomes.getFirst() == null ? "S1" : "S2");
+    }
+
+    private PaymentCollectionSourceProperties.Binding bindingValue(long shopId, String store,
+            String entity) {
+        return new PaymentCollectionSourceProperties.Binding(
+                "SANDBOX", 42, "CHECKOUT", 42, 9001, shopId, store, entity, "TW");
+    }
+
+    private List<IllegalStateException> concurrently(PaymentCollectionSourceProperties.Binding first,
+            PaymentCollectionSourceProperties.Binding second) throws Exception {
+        try (var left = dataSource.getConnection(); var right = dataSource.getConnection();
+                var workers = Executors.newFixedThreadPool(2)) {
+            var ready = new CountDownLatch(2);
+            var start = new CountDownLatch(1);
+            var connections = List.of(left, right);
+            var values = List.of(first, second);
+            var futures = java.util.stream.IntStream.range(0, 2).mapToObj(index -> workers.submit(() -> {
+                var ds = new SingleConnectionDataSource(connections.get(index), true);
+                var bootstrap = new PaymentCollectionSourceBootstrap(
+                        new PaymentCollectionSourceProperties(List.of(values.get(index))), ds,
+                        new DataSourceTransactionManager(ds));
+                ready.countDown();
+                if (!start.await(15, TimeUnit.SECONDS)) {
+                    throw new AssertionError("Concurrent bootstrap start timed out");
+                }
+                try {
+                    bootstrap.provision();
+                    return (IllegalStateException) null;
+                } catch (IllegalStateException conflict) {
+                    return conflict;
+                }
+            })).toList();
+            assertThat(ready.await(15, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            return java.util.Arrays.asList(futures.get(0).get(30, TimeUnit.SECONDS),
+                    futures.get(1).get(30, TimeUnit.SECONDS));
+        }
     }
 
     @Test
