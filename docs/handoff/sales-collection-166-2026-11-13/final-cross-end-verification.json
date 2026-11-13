@@ -1,0 +1,342 @@
+{
+  "realFundsConfirmed": false,
+  "ordersCreated": false,
+  "checks": [
+    {
+      "method": "POST",
+      "path": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/orders/b1d96a07a7494dfaba2f3816f298996d?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/orders/b1d96a07a7494dfaba2f3816f298996d/cash-receipts?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/orders/01fc24ae8f2a40779243fe6b0ec40654?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/orders/01fc24ae8f2a40779243fe6b0ec40654/cash-receipts?storeNo=ST261113Y693VWBMKT",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/stores/ST261113Y693VWBMKT/subscription?entitlementCode=END_BIZ_APP",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/catalog",
+      "http": 200,
+      "code": 0,
+      "message": null
+    }
+  ],
+  "status": "PASS",
+  "storeNo": "ST261113Y693VWBMKT",
+  "opsOrderNo": "b1d96a07a7494dfaba2f3816f298996d",
+  "appOrderNo": "01fc24ae8f2a40779243fe6b0ec40654",
+  "orders": {
+    "b1d96a07a7494dfaba2f3816f298996d": {
+      "summary": {
+        "order": {
+          "orderNo": "b1d96a07a7494dfaba2f3816f298996d",
+          "store": {
+            "tenantNo": "MAIN",
+            "storeNo": "ST261113Y693VWBMKT"
+          },
+          "status": "CLOSED",
+          "payable": {
+            "currency": "TWD",
+            "minor": "19900"
+          },
+          "components": [
+            {
+              "componentNo": "f6ff66d7c0c948628cb88c243129df69",
+              "kind": "PLAN",
+              "listAmount": {
+                "currency": "TWD",
+                "minor": "19900"
+              },
+              "dealAmount": {
+                "currency": "TWD",
+                "minor": "19900"
+              },
+              "creditAmount": {
+                "currency": "TWD",
+                "minor": "0"
+              },
+              "cashAmount": {
+                "currency": "TWD",
+                "minor": "19900"
+              },
+              "cycleDays": 30,
+              "quantity": 1
+            }
+          ],
+          "createdAt": "2026-11-13T13:05:55.219Z"
+        },
+        "paymentStatus": "CLOSED",
+        "fulfillmentStatus": "PENDING",
+        "refundStatus": "NONE",
+        "title": "零售專業版・月付",
+        "lineCount": 1,
+        "latestClaimStatus": null
+      },
+      "quote": {
+        "quoteNo": "531d4ac5f056466083c111337385a820",
+        "store": {
+          "tenantNo": "MAIN",
+          "storeNo": "ST261113Y693VWBMKT"
+        },
+        "total": {
+          "currency": "TWD",
+          "minor": "19900"
+        },
+        "credit": {
+          "currency": "TWD",
+          "minor": "0"
+        },
+        "payable": {
+          "currency": "TWD",
+          "minor": "19900"
+        },
+        "components": [
+          {
+            "componentNo": "f6ff66d7c0c948628cb88c243129df69",
+            "kind": "PLAN",
+            "listAmount": {
+              "currency": "TWD",
+              "minor": "19900"
+            },
+            "dealAmount": {
+              "currency": "TWD",
+              "minor": "19900"
+            },
+            "creditAmount": {
+              "currency": "TWD",
+              "minor": "0"
+            },
+            "cashAmount": {
+              "currency": "TWD",
+              "minor": "19900"
+            },
+            "cycleDays": 30,
+            "quantity": 1
+          }
+        ],
+        "entitlementVersion": 1,
+        "balanceVersion": -1,
+        "expiresAt": "2026-11-13T13:20:54.920Z",
+        "creditBreakdown": {
+          "newConversion": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "historicalAvailable": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "applied": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "reservedHistorical": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "balanceAfter": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "valuationAt": "2026-11-13T13:05:54.920Z"
+        },
+        "collectionMethod": "SALES_COLLECTION"
+      },
+      "cashReceipts": []
+    },
+    "01fc24ae8f2a40779243fe6b0ec40654": {
+      "summary": {
+        "order": {
+          "orderNo": "01fc24ae8f2a40779243fe6b0ec40654",
+          "store": {
+            "tenantNo": "MAIN",
+            "storeNo": "ST261113Y693VWBMKT"
+          },
+          "status": "AWAITING_PAYMENT",
+          "payable": {
+            "currency": "TWD",
+            "minor": "199000"
+          },
+          "components": [
+            {
+              "componentNo": "1ccdde709620410ea2de8adc545d1728",
+              "kind": "PLAN",
+              "listAmount": {
+                "currency": "TWD",
+                "minor": "238800"
+              },
+              "dealAmount": {
+                "currency": "TWD",
+                "minor": "199000"
+              },
+              "creditAmount": {
+                "currency": "TWD",
+                "minor": "0"
+              },
+              "cashAmount": {
+                "currency": "TWD",
+                "minor": "199000"
+              },
+              "cycleDays": 365,
+              "quantity": 1
+            }
+          ],
+          "createdAt": "2026-11-13T13:15:20.842Z"
+        },
+        "paymentStatus": "PAYING",
+        "fulfillmentStatus": "PENDING",
+        "refundStatus": "NONE",
+        "title": "零售專業版・年付",
+        "lineCount": 1,
+        "latestClaimStatus": null
+      },
+      "quote": {
+        "quoteNo": "8d484c6c460046b9a425cd8c7e0beab7",
+        "store": {
+          "tenantNo": "MAIN",
+          "storeNo": "ST261113Y693VWBMKT"
+        },
+        "total": {
+          "currency": "TWD",
+          "minor": "199000"
+        },
+        "credit": {
+          "currency": "TWD",
+          "minor": "0"
+        },
+        "payable": {
+          "currency": "TWD",
+          "minor": "199000"
+        },
+        "components": [
+          {
+            "componentNo": "1ccdde709620410ea2de8adc545d1728",
+            "kind": "PLAN",
+            "listAmount": {
+              "currency": "TWD",
+              "minor": "238800"
+            },
+            "dealAmount": {
+              "currency": "TWD",
+              "minor": "199000"
+            },
+            "creditAmount": {
+              "currency": "TWD",
+              "minor": "0"
+            },
+            "cashAmount": {
+              "currency": "TWD",
+              "minor": "199000"
+            },
+            "cycleDays": 365,
+            "quantity": 1
+          }
+        ],
+        "entitlementVersion": 1,
+        "balanceVersion": -1,
+        "expiresAt": "2026-11-13T13:30:02.335Z",
+        "creditBreakdown": {
+          "newConversion": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "historicalAvailable": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "applied": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "reservedHistorical": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "balanceAfter": {
+            "currency": "TWD",
+            "minor": "0"
+          },
+          "valuationAt": "2026-11-13T13:15:02.335Z"
+        },
+        "collectionMethod": "SALES_COLLECTION"
+      },
+      "cashReceipts": []
+    }
+  },
+  "subscription": {
+    "store": {
+      "tenantNo": "MAIN",
+      "storeNo": "ST261113Y693VWBMKT"
+    },
+    "entitlementVersion": 1,
+    "sources": [
+      {
+        "sourceNo": "3254cfc3-01b1-4961-8027-2a9fea7d6f8e",
+        "entitlementCode": null,
+        "planVersionNo": "0093f8eaf6ec432c93e0938f1db90ea0",
+        "originNo": "ST261113Y693VWBMKT",
+        "durationMillis": 0,
+        "consumedMillis": 0,
+        "valuationBasis": {
+          "currency": "TWD",
+          "minor": "0"
+        },
+        "permanent": true,
+        "lifecycle": "NORMAL",
+        "revokedDurationMillis": 0
+      }
+    ],
+    "segments": [
+      {
+        "sourceNo": "3254cfc3-01b1-4961-8027-2a9fea7d6f8e",
+        "entitlementCode": "END_BIZ_APP",
+        "startsAt": "2026-11-13T13:04:59.618Z",
+        "endsAt": null
+      }
+    ],
+    "businessTypeCode": "RETAIL",
+    "currency": "TWD",
+    "currentPlanVersionNo": "0093f8eaf6ec432c93e0938f1db90ea0",
+    "serverNow": 1794575780405
+  },
+  "currentPlan": "FREE",
+  "salesCashReceipts": 0,
+  "stoppedTestSkus": [
+    "test-plan-retail-pro-m",
+    "test-plan-retail-pro-y",
+    "test-plan-retail-chain-m",
+    "test-plan-retail-chain-y"
+  ],
+  "appCreatedOrderReadByOps": true
+}

@@ -1,0 +1,86 @@
+{
+  "realFundsConfirmed": false,
+  "ordersCreated": false,
+  "checks": [
+    {
+      "method": "POST",
+      "path": "/ops/auth/login",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/catalog",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=BANK_TRANSFER",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=SALES_COLLECTION",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/profile?currency=TWD&collectionMethod=SALES_COLLECTION",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "GET",
+      "path": "/ops/biz-mall/offline/collectors?storeNo=ST261105S2K8ZD6T3C",
+      "http": 200,
+      "code": 0,
+      "message": null
+    },
+    {
+      "method": "POST",
+      "path": "/ops/biz-mall/offline/quotes?storeNo=ST261105S2K8ZD6T3C",
+      "http": 200,
+      "code": 0,
+      "message": null
+    }
+  ],
+  "catalogKeys": [
+    "businessTypes",
+    "businessEnds",
+    "planDefinitions",
+    "planVersions",
+    "products",
+    "skuDefinitions",
+    "skuVersions",
+    "categories"
+  ],
+  "salesProfile": {
+    "profileNo": "UME-TW-BANK-sales",
+    "profileVersion": 1,
+    "platformMerchantNo": "UME-PLATFORM",
+    "currency": "TWD",
+    "collectionMethod": "SALES_COLLECTION",
+    "enabled": true,
+    "paymentWindowMs": 259200000
+  },
+  "eligibleCollectors": 2,
+  "quote": {
+    "quoteNo": "afd9960b59494390810a2cfdf6f04480",
+    "payable": {
+      "currency": "TWD",
+      "minor": "19900"
+    },
+    "collectionMethod": "SALES_COLLECTION",
+    "status": null,
+    "expiresAt": "2026-11-13T13:10:11.455Z"
+  },
+  "status": "PASS"
+}

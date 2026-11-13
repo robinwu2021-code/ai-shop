@@ -1,0 +1,11 @@
+{
+  "releaseId": "sales-collection-20261113",
+  "shopCommit": "a74da0ae4",
+  "integrationCommit": "d3e6ada5a",
+  "appCommit": "8851f92",
+  "shopSha256": "51860fb0204f42eb770c16ac762445de287adb2f06b22e10240263d09c552f92",
+  "oldShopSha256": "2c627892534f5abf646ce64106deed2de4663eaf4cb92d8b4e08a303bf5ca024",
+  "paySha256": "1ebb0be3d381e539a83c1967cb3b9454fa437f3f986dcba2282c3a9f6c4f0a0c",
+  "migration": "666",
+  "businessFundsConfirmed": false
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "payment_no": "MPe9e5de8978b65f67b6121dfc85292f24dfde9288554d18a6388c85c874a5",
+    "status": "PENDING",
+    "pay_method": "SALES_COLLECTION",
+    "amount_minor": 19900,
+    "currency": "TWD",
+    "platform_handoff_state": null
+  }
+]

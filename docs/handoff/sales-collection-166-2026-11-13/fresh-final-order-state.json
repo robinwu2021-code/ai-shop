@@ -1,0 +1,28 @@
+{
+  "orders": [
+    {
+      "order_no": "b1d96a07a7494dfaba2f3816f298996d",
+      "created_at": "2026-11-13 13:05:55.219000"
+    },
+    {
+      "order_no": "01fc24ae8f2a40779243fe6b0ec40654",
+      "created_at": "2026-11-13 13:15:20.842000"
+    }
+  ],
+  "payments": [
+    {
+      "order_no": "b1d96a07a7494dfaba2f3816f298996d",
+      "status": "CLOSED",
+      "pay_method": "SALES_COLLECTION",
+      "amount_minor": 19900,
+      "currency": "TWD"
+    },
+    {
+      "order_no": "01fc24ae8f2a40779243fe6b0ec40654",
+      "status": "PENDING",
+      "pay_method": "SALES_COLLECTION",
+      "amount_minor": 199000,
+      "currency": "TWD"
+    }
+  ]
+}

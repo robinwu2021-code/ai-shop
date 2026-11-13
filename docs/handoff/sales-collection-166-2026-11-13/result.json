@@ -1,0 +1,21 @@
+{
+  "status": "DEPLOYED",
+  "releaseId": "sales-collection-20261113",
+  "shopSha256": "51860fb0204f42eb770c16ac762445de287adb2f06b22e10240263d09c552f92",
+  "previousWeb": "/data/www/ai-shop-ops/releases/ops-login-error-20261113-r2",
+  "web": "/data/www/ai-shop-ops/releases/sales-collection-20261113",
+  "migration": "666",
+  "salesRouteEnabled": true,
+  "payUnchanged": true,
+  "fundsConfirmed": false,
+  "services": {
+    "ai-shop-api": {
+      "id": "b775bfb198c22bcdfa8f5756ceff42de4774999dea5606315c1ea14f6de0e1ec",
+      "health": "UP"
+    },
+    "ai-shop-ops": {
+      "id": "f12f9b95a0321592969879794f25910d682adab1fde74a07c157fd8049dadaf6",
+      "health": "UP"
+    }
+  }
+}
