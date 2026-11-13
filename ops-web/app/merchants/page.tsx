@@ -397,7 +397,7 @@ function MerchantsInner() {
                 而浏览器实测这个 <a> 确实带 focus-ring。
               */}
               <Button size="sm" variant="outline" asChild>
-                <Link href={`/merchants?tab=stores&merchantNo=${encodeURIComponent(current.merchantNo)}`} data-audit-skip="button-aschild">
+                <Link href={`/merchants?tab=stores&merchantNo=${encodeURIComponent(current.merchantNo)}`} data-audit-skip="button-aschild" onClick={() => setCurrent(null)}>
                   {c.viewStores}
                 </Link>
               </Button>

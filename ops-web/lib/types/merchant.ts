@@ -28,7 +28,7 @@ export type MerchantTier = "SMALL" | "MEDIUM" | "LARGE";
  * 于是一家已经在正常经营、又提交了第二张执照的商家，status 该填什么无解 ——
  * 而这正是「一人多主体」的常见情形。
  */
-export type MerchantStatus = "ACTIVE" | "SUSPENDED" | "FROZEN";
+export type MerchantStatus = "PENDING_LICENSE" | "ACTIVE" | "SUSPENDED" | "FROZEN";
 
 /**
  * 经营状态的合法迁移。
@@ -37,6 +37,7 @@ export type MerchantStatus = "ACTIVE" | "SUSPENDED" | "FROZEN";
  * 冻结是**风控**，要等风险排除。两者都不可逆地回到 ACTIVE 之外的态。
  */
 export const MERCHANT_TRANSITIONS: Record<MerchantStatus, MerchantStatus[]> = {
+  PENDING_LICENSE: [],
   ACTIVE: ["SUSPENDED", "FROZEN"],
   SUSPENDED: ["ACTIVE"],
   FROZEN: ["ACTIVE"],

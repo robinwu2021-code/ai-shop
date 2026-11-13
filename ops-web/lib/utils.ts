@@ -54,7 +54,7 @@ export function money(minorAmount: number, currency = DEFAULT_CURRENCY) {
  * 放宽签名而不是改后端：毫秒是后端全域的一致口径。
  */
 export function fmtTime(at?: string | number | null) {
-  if (at === null || at === undefined || at === "") return "-";
+  if (at === null || at === undefined || at === "" || at === 0) return "-";
   const d = new Date(at);
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString(localeTag());
 }

@@ -188,6 +188,7 @@ export const en: Messages = {
     checkFields: "Fix the errors in the form first",
   },
   merchantStatus: {
+    PENDING_LICENSE: "Pending license",
     ACTIVE: "Active",
     SUSPENDED: "Suspended",
     FROZEN: "Frozen",
