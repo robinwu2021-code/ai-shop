@@ -1,6 +1,6 @@
 # TDD-餐饮柜台后付结账
 
-状态：已实现（第一段，2026-11-12；未合并、未推送，迁移待 root 执行）
+状态：已实现（第一段，2026-11-13；本机 8091 与 POS 真机联调通过；未合并、未推送，迁移待 root 执行，上线前按「上线清单」核对目标环境）
 档位：2（跨核心订单、餐饮、收款记账三个域；改核心订单状态；重开被延期的资金专项）
 关联决策：[ADR-059 餐饮后付单人工实收与资金专项第一段](./ADR/ADR-059-餐饮后付单人工实收与资金专项第一段.md)
 关联需求：`docs/requirements/餐饮系统-完整需求文档.md` §5.4、§十；`docs/requirements/餐饮系统-需求矩阵.md` FNB-F01、FNB-F02、FNB-F03（整桌一次结账，原列 P3，本期提前）、FNB-C08（清台）
@@ -189,6 +189,10 @@ record PostpayReceipt(String receiptNo, long dueMinor, long receivedMinor, long 
 | R6 | `BizCounterSettlementPermTest` | 通过 |
 | 资金隔离 | `PostpayReceiptServiceTest#receipted_orders_never_become_platform_settlement_sources`（对照：同形状普通已付单仍出账） | 通过 |
 | 拆分部署 | `RemoteCounterSettlementServiceTest`（业务码只在摘要对上时采信） | 通过 |
+| 控制器装配 | `FoodControllerRegistrationTest`（food-web 每个控制器都在 config 里登记；§6 偏差 9） | 通过 |
+| 核心读已结清后付单 | `AcceptedPostpayPaymentStateTest`（未付 / 实收覆盖的 PAID 合法，其余冲突；§6 偏差 11） | 通过 |
+| 读结算单带实收与找零 | `#wholeTableFreezesConfirmsClosesAndReleasesTable` 结账后 `get` 返回 receivedMinor / changeMinor；`#underpaidKeepsBillFrozenAndCancelUnfreezes` 确认前为空（消融：不落库 → 红） | 通过 |
+| 真实环境 | 本机 8091：POS 真机开台 → 下单 → 柜台结账（现金、外部刷卡）→ 推进厨房任务后放台 → 日结预览 issues 为空 | 通过（签核待营业日结束后用第二账号验证） |
 
 真实输出（2026-11-12）：
 
@@ -247,12 +251,54 @@ BizCounterSettlementPermTest / RemoteCounterSettlementServiceTest  各 1，全�
 9. **控制器漏登记（本机起服务时发现）**。餐饮 Web 控制器不走包扫描，靠 `FoodWebAutoConfiguration` 逐个 `@Bean` 登记；`BizCounterSettlementController` 漏了，单元测试全绿但运行时四个端点 404。已补登记，并加守卫 `FoodControllerRegistrationTest`（food-web 下每个 `@RestController` 必须在 config 里 `@Bean`/`@Import`，条件注解里的 `.class` 不算；消融：去掉登记 → 红）。本机 8091 冒烟：四个端点返回业务码 10404，外部记账带 `bizNo` 记账与按 `bizNo` 查询正常。
 10. **核心确认在事务里读核心应收（本机端到端时发现）**。`IndustryOrderService#getForStore` 规定不能在事务里调用，`PostpayReceiptServiceImpl` 却在加锁事务里调用，真实环境确认收齐一律返回 40190；单元测试把它 mock 掉了所以没发现。改为两段：事务外读应收与版本并记下订单行版本，事务内加锁后只比对行版本（账单已被结算单冻结，推 PAID 也带版本守卫）。测试替身改为「在事务里调用即失败」，测试辅助方法不再自带事务；消融（读放回事务内）→ 10 例全红。本机 8091 从开台到确认收齐一次跑通：应收 12180（含 5% 服务费 580），现金 20000，找零 7820，核心单 PAID、台账 CLOSED。
 11. **核心读已结清后付单报冲突（POS 联调日结时发现）**。`IndustryOrderServiceImpl#result` 断言已受理后付单必须 WAIT_PAY 且无付款时间，后付人工实收推到 PAID 后，所有经 `getForStore` 读这张单的地方（日结、取消校验）都报 10409，一张结过账的桌就让当天日结做不了。§6 偏差 6 的 PAID 读者核对只扫了直接 SQL，漏了这条断言。改为：WAIT_PAY 无付款时间，或 PAID 有付款时间且被 `ord_postpay_receipt_root` 覆盖，两者都合法（`acceptedPostpayPaymentState`，单测覆盖四种组合；消融退回只认 WAIT_PAY → 红）。本机 8091：5 张柜台结算单（含 POS 真机两张）后日结预览成功，应收 41370，issues 为空（AC7 实证）。`IndustryOrderServiceTest` 的 13 个错误在未改动的 HEAD 上同样存在（夹具未注入 ownershipWrites），与本次无关。
+12. **读结算单补实收与找零（联调后补）**。原先只有确认收齐那次响应带实收与找零，POS 重启后无法再显示找零。V40 加 `received_minor` / `change_minor`（V40 未上过正式环境，合在同一版），确认时落库，重放确认时补写空值。
 8. **餐饮 API 清单未重生成**。`docs/api/food/接口清单.*` 钉在 2026-10-30 的基线、不在闸门里，本期不重生成。
 
-## 迁移（需 root 先执行）
+## 上线清单
 
-- 平台 `V665__postpay_receipt.sql`（三张新表）；餐饮 `V40__counter_settlement.sql`（`fnb_settlement.kind`）。166 应用账号无 DDL 权限。
-- 与 PR #14 冲突点：`FoodSchemaValidator` 的版本行（两边都改），合并时取较大版本并核对。
+> 依据：2026-11-13 本机测试环境（独立库 `ai_shop_cs`、端口 8091）从空店灌数据到 POS 真机结账、日结预览全程跑通时，逐个撞出来的前置条件。仓库里没有餐饮的部署配置（这些开关只出现在测试与校验脚本里），**上线前必须逐项对照目标环境核实**。
+
+### 1. 数据库迁移（root 先执行；166 应用账号无 DDL 权限）
+
+| 迁移 | 内容 |
+|---|---|
+| 平台 `V665__postpay_receipt.sql` | `ord_postpay_receipt` / `_root` / `_record` 三张新表；不改 `ord_order` |
+| 餐饮 `V40__counter_settlement.sql` | `fnb_settlement` 加 `kind`、`received_minor`、`change_minor` 三列（V40 未在任何正式环境执行过，故三列合在一版） |
+
+- 合并时与 PR #14 的冲突点：`FoodSchemaValidator` 的期望版本行（两边都改），取较大版本并核对。
+- 平台迁移编号避开了推送分支的 V661–V664，合并推送分支时再核对一次顺序。
+- 本机 MySQL 开着 binlog 时，V649 的触发器需要 SUPER（或 `log_bin_trust_function_creators`）；正式环境由 root 执行则无此问题。
+
+### 2. 应用配置（嵌入部署：餐饮跑在平台进程里）
+
+| 配置 | 值 | 不配的症状 |
+|---|---|---|
+| `shop.food.enabled` | true | 餐饮整体不装配 |
+| `shop.food.migration.mode` | validate（迁移已由 root 执行）/ migrate | — |
+| `shop.food.menu-publication-enabled` | true | 菜单 `:publish` 返回 10404，可售目录为空 |
+| `shop.food.station-publication-enabled` | true | 出品站发布 10404；员工下单因冻结出品路由失败 |
+| `shop.outbox.sources.platform.mode` | UNIFIED | 开台即 10500「Food requires a registered unified PLATFORM outbox source」 |
+| `shop.outbox.sources.inventory.mode` | UNIFIED（启用进销存时） | 同上类 |
+| 库存权威（二选一，见下） | — | 员工下单 40190 |
+
+**库存权威**：核心行业下单要求 `shop.inventory.stock-authority=INVENTORY`，或餐饮本地库存 `shop.food.local-stock.enabled=true`（餐饮单的库存归属为 FOOD_LOCAL）。前端注释称线上 stock-authority 目前为 **DUAL**：若属实，不开餐饮本地库存则所有员工下单都会 40190。
+- 选餐饮本地库存：每个 SKU 要在餐饮库存建档（`POST /biz/x/food/stores/{s}/stock-items`）并期初；**基本单位必须与菜品计量单位一致**（菜品 `EA` ↔ 库存 `EA`/`PIECE`，`COUNT` 不认）。
+- 选 INVENTORY：可售量与预留走进销存，需要进销存里有商品与库存。
+
+拆分部署（food-server）：`food-server/application.yml` 已是 standalone + PLATFORM unified；另需宿主与 food-server 共用 `shop.services.internal-token`，以及上面两个发布开关、库存权威。
+
+### 3. 运营侧前置（每个环境一次）
+
+- 餐饮行业定价模板已发布（`/ops/pricing-templates/seed-import` → preview → publish），门店再 `POST /biz/pricing-configs/initialize`；门店税设置 `PUT /biz/pricing-tax-settings`。缺任一项：报价 40190。
+- 商品审核：`goods.audit` 开着时，新菜品要经运营审核通过才可售（或按环境策略关闭该开关）。
+
+### 4. 每家门店的数据
+
+营业时间覆盖营业时段（`mch_store.open_hours`）；门店经营类目包含菜品所在类目（否则建商品 70068）；营业策略（`POST …/policies`，effectiveFrom ≤ 现在）；桌台区域与桌台；商品与 SKU（DINE_IN 履约）提交上架、SKU 定价策略；餐饮菜品档；菜单三段定义（COMPOSITION / CONTEXT 含 POS 与 WAITER 的 DINE_IN / SCHEDULE）并发布；出品站 + 每个 SKU 的出品路由并发布；（本地库存时）库存建档与期初；（可选）服务费规则与门店绑定。本机可复跑的样例：`~/.local/var/ai-shop-cs/seed.py`。
+
+### 5. 上线后验证
+
+按顺序跑一遍：开台 → 购物车写行 → 报价（`selection` 不传或传空选择，`pointsToUse` 为 null）→ `:confirm` → 员工下单（带 buyerNo 或 partyNo 之一）→ 柜台结算单 → 外部记账（bizNo = 结算单号）→ `:finalize` → 核心单 PAID、台账 CLOSED → 推进厨房任务后 `releaseService` 放台 → 开营业日 → 日结预览 issues 为空。本机脚本：`~/.local/var/ai-shop-cs/e2e.py`、`release.py`。
 
 ## §7 确认与完成
 

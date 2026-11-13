@@ -522,6 +522,8 @@ public final class FoodSchemaValidator {
             expected.get("fnb_order_batch").add("next_recovery_at");
             expected.get("fnb_settlement").add("next_recovery_at");
             expected.get("fnb_settlement").add("kind");
+            expected.get("fnb_settlement").add("received_minor");
+            expected.get("fnb_settlement").add("change_minor");
             expected.get("fnb_return").add("next_recovery_at");
             expected.get("fnb_core_line_allocation").add("source_component_ref");
             expected.get("fnb_return")

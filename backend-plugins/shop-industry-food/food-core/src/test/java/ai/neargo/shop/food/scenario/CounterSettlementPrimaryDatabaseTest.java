@@ -116,6 +116,11 @@ class CounterSettlementPrimaryDatabaseTest {
             assertThat(settled.receiptNo()).isEqualTo("PPR-" + frozen.settlementNo());
             assertThat(settled.checkStatus()).isEqualTo("CLOSED");
             assertThat(settled.tableReleased()).isTrue();
+            // 读结算单也要给出实收与找零（POS 重启后要能再显示找零）
+            var reread = f.service.get(E, S, frozen.settlementNo());
+            assertThat(reread.receivedMinor()).isEqualTo(5000);
+            assertThat(reread.changeMinor()).isZero();
+            assertThat(reread.receiptNo()).isEqualTo(settled.receiptNo());
             assertThat(confirmed).singleElement().satisfies(c -> {
                 assertThat(c.bizNo()).isEqualTo(frozen.settlementNo());
                 assertThat(c.roots()).extracting(PostpayReceiptPort.Root::orderNo).containsExactlyInAnyOrder("ORD1", "ORD2");
@@ -146,6 +151,7 @@ class CounterSettlementPrimaryDatabaseTest {
             code(() -> f.service.finalize(E, S, "cashier", frozen.settlementNo(), List.of("OFR1")),
                     ErrorCode.POSTPAY_RECEIPT_UNDERPAID);
             assertThat(f.service.get(E, S, frozen.settlementNo()).status()).isEqualTo("COLLECTING");
+            assertThat(f.service.get(E, S, frozen.settlementNo()).receivedMinor()).isNull();
             assertThat(f.text("SELECT status FROM fnb_check WHERE check_no='C1'")).isEqualTo("OPEN");
             assertThatThrownBy(() -> f.guard.assertMutable(E, S, CHECK)).isInstanceOf(BizException.class);
 

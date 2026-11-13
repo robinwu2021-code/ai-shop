@@ -211,9 +211,11 @@ public class CounterSettlementServiceImpl implements CounterSettlementService {
                 offlineRecordNos, actor, settlementNo));
         tx.executeWithoutResult(t -> {
             FnbSettlement s = require(e, store, settlementNo);
-            if (!"SETTLED".equals(s.getStatus())) {
+            if (!"SETTLED".equals(s.getStatus()) || s.getReceivedMinor() == null) {
                 s.setStatus("SETTLED");
                 s.setCoreCashierRef(receipt.receiptNo());
+                s.setReceivedMinor(receipt.receivedMinor());
+                s.setChangeMinor(receipt.changeMinor());
                 touch(s, actor);
                 if (settlements.updateById(s) != 1) {
                     throw BizException.of(ErrorCode.CONFLICT);
@@ -331,7 +333,8 @@ public class CounterSettlementServiceImpl implements CounterSettlementService {
         FnbCheck check = checkNo == null ? null : check(s.getEntityNo(), s.getStoreNo(), checkNo);
         boolean tableReleased = released || check != null && "RELEASED".equals(check.getServiceState());
         return new CounterSettlementVO(s.getSettlementNo(), checkNo, s.getStatus(), s.getCurrency(),
-                s.getDueMinor(), received, change, s.getCoreCashierRef(),
+                s.getDueMinor(), received != null ? received : s.getReceivedMinor(),
+                change != null ? change : s.getChangeMinor(), s.getCoreCashierRef(),
                 rows.stream().map(i -> new ItemVO(i.getPaymentRootNo(), i.getStoreOrderNo(), i.getDueMinor())).toList(),
                 check == null ? null : check.getStatus(), tableReleased);
     }

@@ -78,7 +78,7 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
             f.sql().execute("CREATE TABLE fnb_settlement (" + common + "settlement_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),currency VARCHAR(3),"
                     + "status VARCHAR(24),scope_hash VARCHAR(64),quote_ref VARCHAR(64),due_minor BIGINT,core_cashier_ref VARCHAR(64),"
                     + "expires_at DATETIME(3),request_key VARCHAR(64),request_hash VARCHAR(64),request_snapshot TEXT,buyer_no VARCHAR(32),party_no VARCHAR(32),next_recovery_at DATETIME(3),"
-                    + "kind VARCHAR(16),UNIQUE(entity_no,store_no,request_key))");
+                    + "kind VARCHAR(16),received_minor BIGINT,change_minor BIGINT,UNIQUE(entity_no,store_no,request_key))");
             f.sql().execute("CREATE TABLE fnb_settlement_item (" + common + "scope_no VARCHAR(32) UNIQUE,settlement_no VARCHAR(32),check_no VARCHAR(32),"
                     + "payment_root_no VARCHAR(32),store_order_no VARCHAR(32),allocation_ref VARCHAR(64),due_minor BIGINT,core_version VARCHAR(64),"
                     + "scope_key VARCHAR(128),UNIQUE(settlement_no,scope_key))");
