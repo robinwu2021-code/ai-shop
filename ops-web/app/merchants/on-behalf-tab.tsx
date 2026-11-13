@@ -100,8 +100,8 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
             <section className="space-y-3">
               <h3 className="txt-body font-semibold">{c.obOwnerSection}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                {!phoneOwner && <div className={cell}><Label required htmlFor="ob-owner-email">{c.obOwnerEmail}</Label><Input id="ob-owner-email" type="email" maxLength={254} value={ownerEmail} onChange={e=>setOwnerEmail(e.target.value)} /></div>}
-                <div className={cell}><Label htmlFor="ob-phone">{phoneOwner ? c.obPhone : c.obContactPhone}</Label><Input id="ob-phone" maxLength={32} value={phone} onChange={e=>setPhone(e.target.value)} />
+                {!phoneOwner && <div className={cell}><Label className="block" required htmlFor="ob-owner-email">{c.obOwnerEmail}</Label><Input id="ob-owner-email" type="email" maxLength={254} value={ownerEmail} onChange={e=>setOwnerEmail(e.target.value)} /></div>}
+                <div className={cell}><Label className="block" htmlFor="ob-phone">{phoneOwner ? c.obPhone : c.obContactPhone}</Label><Input id="ob-phone" maxLength={32} value={phone} onChange={e=>setPhone(e.target.value)} />
                   {policy?.recordOnly===false && phone.trim().length>=11 && !phoneOk && <Notice tone="danger">{c.soPhoneBad}</Notice>}
                 </div>
               </div>
@@ -110,29 +110,29 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
             <section className="space-y-3 border-t pt-4">
               <h3 className="txt-body font-semibold">{c.applySectionStore}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className={cell}><Label required htmlFor="ob-store-name">{c.obStoreName}</Label><Input id="ob-store-name" maxLength={64} value={storeName} onChange={e=>setStoreName(e.target.value)} /></div>
-                <div className={cell}><Label required htmlFor="ob-store-address">{c.obStoreAddress}</Label><Input id="ob-store-address" maxLength={255} value={storeAddress} onChange={e=>setStoreAddress(e.target.value)} /></div>
-                <div className={cell}><Label required htmlFor="ob-store-industry">{c.obStoreIndustry}</Label><Select id="ob-store-industry" required value={storeIndustry} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}><option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}</option>)}</Select></div>
-                <div className={cell}><Label required htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label><Select id="ob-store-sub-industry" required value={storeSubIndustry} disabled={!storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!}>{r.nameZh}</option>)}</Select></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-store-name">{c.obStoreName}</Label><Input id="ob-store-name" maxLength={64} value={storeName} onChange={e=>setStoreName(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-store-address">{c.obStoreAddress}</Label><Input id="ob-store-address" maxLength={255} value={storeAddress} onChange={e=>setStoreAddress(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-store-industry">{c.obStoreIndustry}</Label><Select className="w-full" id="ob-store-industry" required value={storeIndustry} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}><option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}</option>)}</Select></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label><Select className="w-full" id="ob-store-sub-industry" required value={storeSubIndustry} disabled={!storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!}>{r.nameZh}</option>)}</Select></div>
               </div>
             </section>
             <section className="space-y-3 border-t pt-4">
               <h3 className="txt-body font-semibold">{c.obEntitySection}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className={cell}><Label required htmlFor="ob-name">{c.obName}</Label><Input id="ob-name" required value={name} onChange={e=>setName(e.target.value)} /></div>
-                <div className={cell}><Label required htmlFor="ob-subject">{c.obSubject}</Label><Select id="ob-subject" required value={subject} onChange={e=>setSubject(e.target.value)}><option value="ENTERPRISE">{c.obSubjectEnterprise}</option><option value="INDIVIDUAL">{c.obSubjectIndividual}</option></Select></div>
-                <div className={cell}><Label htmlFor="ob-license-code">{c.obLicenseCode}</Label><Input id="ob-license-code" value={licenseCode} onChange={e=>setLicenseCode(e.target.value)} /></div>
-                <div className={cell}><Label required htmlFor="ob-license">{c.obLicense}</Label><Input id="ob-license" required value={licenseUrl} onChange={e=>setLicenseUrl(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-name">{c.obName}</Label><Input id="ob-name" required value={name} onChange={e=>setName(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-subject">{c.obSubject}</Label><Select className="w-full" id="ob-subject" required value={subject} onChange={e=>setSubject(e.target.value)}><option value="ENTERPRISE">{c.obSubjectEnterprise}</option><option value="INDIVIDUAL">{c.obSubjectIndividual}</option></Select></div>
+                <div className={cell}><Label className="block" htmlFor="ob-license-code">{c.obLicenseCode}</Label><Input id="ob-license-code" value={licenseCode} onChange={e=>setLicenseCode(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-license">{c.obLicense}</Label><Input id="ob-license" required value={licenseUrl} onChange={e=>setLicenseUrl(e.target.value)} /></div>
               </div>
             </section>
             <details className="border-t pt-4">
               <summary className="cursor-pointer txt-body font-medium">{c.obOptional}</summary>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className={cell}><Label htmlFor="ob-contact-name">{c.obContactName}</Label><Input id="ob-contact-name" value={contactName} onChange={e=>setContactName(e.target.value)} /></div>
-                <div className={cell}><Label htmlFor="ob-contact-phone">{c.obContactPhone}</Label><Input id="ob-contact-phone" value={contactPhone} onChange={e=>setContactPhone(e.target.value)} /></div>
-                <div className={cell}><Label htmlFor="ob-category">{c.obCategory}</Label><Input id="ob-category" value={category} onChange={e=>setCategory(e.target.value)} /></div>
-                <div className={cell}><Label htmlFor="ob-industry">{c.soIndustry}</Label><Select id="ob-industry" value={industry} onChange={e=>setIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{(industries.data??[]).filter(i=>i.enabled).map(i=><option key={i.industry} value={i.industry}>{i.name}</option>)}</Select></div>
-                <div className={`${cell} sm:col-span-2`}><Label htmlFor="ob-description">{c.soDescription}</Label><Textarea id="ob-description" value={description} onChange={setDescription} rows={2} /></div>
+                <div className={cell}><Label className="block" htmlFor="ob-contact-name">{c.obContactName}</Label><Input id="ob-contact-name" value={contactName} onChange={e=>setContactName(e.target.value)} /></div>
+                <div className={cell}><Label className="block" htmlFor="ob-contact-phone">{c.obContactPhone}</Label><Input id="ob-contact-phone" value={contactPhone} onChange={e=>setContactPhone(e.target.value)} /></div>
+                <div className={cell}><Label className="block" htmlFor="ob-category">{c.obCategory}</Label><Input id="ob-category" value={category} onChange={e=>setCategory(e.target.value)} /></div>
+                <div className={cell}><Label className="block" htmlFor="ob-industry">{c.soIndustry}</Label><Select className="w-full" id="ob-industry" value={industry} onChange={e=>setIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{(industries.data??[]).filter(i=>i.enabled).map(i=><option key={i.industry} value={i.industry}>{i.name}</option>)}</Select></div>
+                <div className={`${cell} sm:col-span-2`}><Label className="block" htmlFor="ob-description">{c.soDescription}</Label><Textarea id="ob-description" value={description} onChange={setDescription} rows={2} /></div>
               </div>
             </details>
           </fieldset>
