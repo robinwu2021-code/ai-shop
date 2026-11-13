@@ -1,57 +1,55 @@
 "use client";
 
-// 代商家进件（三期）—— BD 在店里把执照拍下来、当场替老板填完。
-//
-// ──────────────────────────────────────────────────────
-// 它与隔壁「建平台自营商家」不是同一件事
-// ──────────────────────────────────────────────────────
-// 两个入口长得几乎一模一样，而这正是要在这儿写清楚的原因。
-//
-// 自营能跳过进件，靠的是一条具体的论证：进件资料的全部意义是「核验那个第三方
-// 是谁、有没有资格经营」，而自营场景下不存在第三方主体 —— 这个问题**不成立**，
-// 不是被豁免了。**代填的时候第三方是存在的**，论证不成立，豁免也就不成立。
-//
-// 所以这一页：执照照要、订阅额度照吃、单子照进审核队列、审核通过才建主体。
-// 本期只改「谁来填这张表」。
-//
-// ──────────────────────────────────────────────────────
-// 提交之后不会有主体
-// ──────────────────────────────────────────────────────
-// 入口说明按需查看，提交后的回执明确申请仍待审核；审核按既有权限执行并留痕。
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import * as Dialog from "@radix-ui/react-dialog";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { ApplyOnBehalfResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { HelpNote } from "@/components/ui/help-note";
-import { FilterSelect } from "@/components/ui/filter-select";
 import { Textarea } from "@/components/ui/textarea";
+import { ApplyTab } from "./apply-tab";
 import type { MerchantsCopy } from "./copy";
 
-const PHONE = /^1[3-9]\d{9}$/;
-
 export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boolean }) {
-  const [selectedMarket, setMarket] = useState("");
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState<ApplyOnBehalfResult | null>(null);
+  const qc = useQueryClient();
+  if (!canSubmit) return <Notice tone="danger">{c.obNoPerm}</Notice>;
+  return <div className="space-y-4">
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <p className="txt-body text-muted-foreground">{c.obListDesc}</p>
+          <HelpNote>{c.obWarning}<p className="mt-2">{c.obDesc}</p></HelpNote>
+        </div>
+        <Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>
+      </div>
+      {open && <ApplicationDialog c={c} onDone={(result) => {
+        setDone(result); setOpen(false);
+        void qc.invalidateQueries({ queryKey: ["applies"] });
+      }} onCancel={() => setOpen(false)} />}
+    </Dialog.Root>
+    {done && <Notice tone="info">{c.obDone}：{done.applyNo}<p className="mt-1 txt-caption">{c.obDoneHint}</p></Notice>}
+    <ApplyTab c={c} canAudit={false} onBehalfOnly />
+  </div>;
+}
+
+function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
+  const context = useQuery({queryKey:["onbehalf-context"],queryFn:()=>api.onBehalfContext()});
+  const policy = context.data;
+  const market = policy?.market;
+  const phoneOwner = market === "CN" && policy?.recordOnly === false;
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [storeName,setStoreName]=useState("");
-  const [storeAddress,setStoreAddress]=useState("");
-  const [storeIndustry,setStoreIndustry]=useState("");
-  const [storeSubIndustry,setStoreSubIndustry]=useState("");
-  const storeChoices=useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries()});
-  const storeParents=(storeChoices.data??[]).filter(r=>r.enabled && !r.subIndustryCode);
-  const storeChildren=(storeChoices.data??[]).filter(r=>r.enabled && r.subIndustryCode && r.industryCode===storeIndustry);
-  const chosenStore=storeChildren.find(r=>r.subIndustryCode===storeSubIndustry);
-  const policies = useQuery({queryKey:["market-phone-policies"],queryFn:()=>api.marketPhonePolicies()});
-  const enabledMarkets=(policies.data??[]).filter((x)=>x.marketEnabled);
-  const market=enabledMarkets.find((x)=>x.market===selectedMarket)?.market ?? enabledMarkets.find((x)=>x.market==="TW")?.market ?? enabledMarkets[0]?.market ?? "";
-  const policy=policies.data?.find((x)=>x.market===market);
-  const phoneOwner=market==="CN" && policy?.recordOnly===false;
   const [phone, setPhone] = useState("");
+  const [storeName, setStoreName] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [storeIndustry, setStoreIndustry] = useState("");
+  const [storeSubIndustry, setStoreSubIndustry] = useState("");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("ENTERPRISE");
   const [licenseUrl, setLicenseUrl] = useState("");
@@ -61,204 +59,89 @@ export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boo
   const [category, setCategory] = useState("");
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
-  const [done, setDone] = useState<ApplyOnBehalfResult | null>(null);
-
-  const industries = useQuery({
-    queryKey: ["industries", "for-on-behalf"],
-    queryFn: () => api.listIndustries(),
-  });
-
+  const storeChoices = useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries()});
+  const industries = useQuery({queryKey:["industries","for-on-behalf"],queryFn:()=>api.listIndustries()});
+  const storeParents = (storeChoices.data ?? []).filter(r=>r.enabled && !r.subIndustryCode);
+  const storeChildren = (storeChoices.data ?? []).filter(r=>r.enabled && r.subIndustryCode && r.industryCode===storeIndustry);
+  const chosenStore = storeChildren.find(r=>r.subIndustryCode===storeSubIndustry);
+  const phoneOk = policy?.recordOnly === true || (market === "CN" ? /^1[3-9]\d{9}$/.test(phone.trim()) : /^\+?\d{3,20}$/.test(phone.trim()));
+  const ready = !!chosenStore && !!storeName.trim() && !!storeAddress.trim() && !!policy?.marketEnabled && !context.isError && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && !!name.trim() && !!licenseUrl.trim();
   const submit = useMutation({
     mutationFn: () => api.applyOnBehalf({
-      market, ownerEmail: phoneOwner?undefined:ownerEmail.trim(),
-      storeProfile:{name:storeName.trim(),address:storeAddress.trim(),industryCode:storeIndustry,
-        subIndustryCode:storeSubIndustry,businessTypeCode:chosenStore!.businessTypeCode},
+      ownerEmail: phoneOwner ? undefined : ownerEmail.trim(),
       phone: policy?.recordOnly ? phone : phone.trim(),
-      name: name.trim(),
-      subject,
-      contactName: contactName.trim() || undefined,
-      contactPhone: contactPhone.trim() || undefined,
-      category: category.trim() || undefined,
-      description: description.trim() || undefined,
-      industry: industry || undefined,
-      /*
-       * **结构化资质，不是那个纯 URL 数组。** 后端的执照闸
-       * （requireLicenseIfNeeded）只在 qualificationItems 非 null 时生效 ——
-       * 只传 qualifications 的话闸门整条不跑，这一页就成了「代填可以不交执照」。
-       */
-      qualificationItems: [{
-        type: "BUSINESS_LICENSE",
-        code: licenseCode.trim() || undefined,
-        imageUrl: licenseUrl.trim() || undefined,
-      }],
+      storeProfile: {name:storeName.trim(),address:storeAddress.trim(),industryCode:storeIndustry,subIndustryCode:storeSubIndustry,businessTypeCode:chosenStore!.businessTypeCode},
+      name:name.trim(), subject, contactName:contactName.trim() || undefined,
+      contactPhone:contactPhone.trim() || undefined, category:category.trim() || undefined,
+      industry:industry || undefined, description:description.trim() || undefined,
+      qualificationItems:[{type:"BUSINESS_LICENSE",code:licenseCode.trim() || undefined,imageUrl:licenseUrl.trim()}],
     }),
-    onSuccess: (r) => setDone(r),
-    onError: (e: Error) => notify.error(e.message),
+    onSuccess:onDone,
+    onError:(e:Error)=>notify.error(e.message),
   });
-
-  const phoneOk = policy?.recordOnly === true || (market === "CN" ? PHONE.test(phone.trim()) : /^\+?\d{3,20}$/.test(phone.trim()));
-  // 执照是这一页与自营那一页的分水岭，所以它进 ready 而不是靠后端回一个 400
-  const ready = !!chosenStore && !!storeName.trim() && !!storeAddress.trim() && !!policy?.marketEnabled && phoneOk && (phoneOwner || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && name.trim().length > 0 && licenseUrl.trim().length > 0;
-
-  return (
-    <div className="space-y-4">
-      {!canSubmit && <Notice tone="danger">{c.obNoPerm}</Notice>}
-
-      <ConfigCard title={c.obTitle}>
-        <HelpNote>{c.obWarning}<p className="mt-2">{c.obDesc}</p></HelpNote>
-        <div className="max-w-xl space-y-4">
-          <div>
-            <Label htmlFor="ob-market">{c.obMarket}</Label>
-            <Select id="ob-market" value={market} onChange={(e)=>setMarket(e.target.value)}>{enabledMarkets.map((x)=><option key={x.market} value={x.market}>{x.market}</option>)}</Select>
-            {!phoneOwner&&<><Label htmlFor="ob-owner-email">{c.obOwnerEmail}</Label><Input id="ob-owner-email" type="email" value={ownerEmail} disabled={!canSubmit} onChange={(e)=>setOwnerEmail(e.target.value)}/><Notice tone="muted">{c.obRecordPhoneHint}</Notice></>}
-          </div>
-          <div>
-            <Label htmlFor="ob-phone">{phoneOwner?c.obPhone:c.obContactPhone}</Label>
-            <Input
-              className="mt-1"
-              id="ob-phone" maxLength={32}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={phoneOwner?c.soPhonePlaceholder:undefined}
-              disabled={!canSubmit}
-            />
-            {/* 号码没填完就报错会一路红着，只在填够 11 位之后判 */}
-            {policy?.recordOnly===false && phone.trim().length >= 11 && !phoneOk && (
-              <Notice tone="danger" className="mt-2">{c.soPhoneBad}</Notice>
-            )}
-            <p className="mt-1 txt-caption text-muted-foreground">{phoneOwner?c.obPhoneHint:c.obRecordPhoneHint}</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="ob-store-name">{c.obStoreName}</Label><Input id="ob-store-name" maxLength={64} value={storeName} disabled={!canSubmit} onChange={e=>setStoreName(e.target.value)} />
-            <Label htmlFor="ob-store-address">{c.obStoreAddress}</Label><Input id="ob-store-address" maxLength={255} value={storeAddress} disabled={!canSubmit} onChange={e=>setStoreAddress(e.target.value)} />
-            <Label htmlFor="ob-store-industry">{c.obStoreIndustry}</Label>
-            <Select id="ob-store-industry" value={storeIndustry} disabled={!canSubmit} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}>
-              <option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}</option>)}
-            </Select>
-            <Label htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label>
-            <Select id="ob-store-sub-industry" value={storeSubIndustry} disabled={!canSubmit || !storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}>
-              <option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!}>{r.nameZh}</option>)}
-            </Select>
-            <p className="txt-caption text-muted-foreground">{c.obBusinessType}: {chosenStore?.businessTypeCode??"—"}</p>
-            {storeChoices.error&&<Notice tone="danger">{(storeChoices.error as Error).message}</Notice>}
-          </div>
-          <div>
-            <Label htmlFor="ob-name">{c.obName}</Label>
-            <Input
-              className="mt-1"
-              id="ob-name" value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={c.soNamePlaceholder}
-              disabled={!canSubmit}
-            />
-          </div>
-
-          <div>
-            <Label>{c.obSubject}</Label>
-            <FilterSelect
-              className="mt-1"
-              value={subject}
-              onChange={setSubject}
-              options={[
-                { value: "ENTERPRISE", label: c.obSubjectEnterprise },
-                { value: "INDIVIDUAL", label: c.obSubjectIndividual },
-              ]}
-            />
-            <p className="mt-1 txt-caption text-muted-foreground">{c.obSubjectHint}</p>
-          </div>
-
-          <div>
-            <Label htmlFor="ob-license">{c.obLicense}</Label>
-            <Input
-              className="mt-1"
-              id="ob-license" value={licenseUrl}
-              onChange={(e) => setLicenseUrl(e.target.value)}
-              disabled={!canSubmit}
-            />
-            <Label className="mt-2 block">{c.obLicenseCode}</Label>
-            <Input
-              className="mt-1"
-              value={licenseCode}
-              onChange={(e) => setLicenseCode(e.target.value)}
-              disabled={!canSubmit}
-            />
-            <p className="mt-1 txt-caption text-muted-foreground">{c.obLicenseHint}</p>
-          </div>
-
-          <div>
-            <Label>{c.obContactName}</Label>
-            <Input
-              className="mt-1"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              disabled={!canSubmit}
-            />
-          </div>
-
-          <div>
-            <Label>{c.obContactPhone}</Label>
-            <Input
-              className="mt-1"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              disabled={!canSubmit}
-            />
-          </div>
-
-          <div>
-            <Label>{c.obCategory}</Label>
-            <Input
-              className="mt-1"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              disabled={!canSubmit}
-            />
-          </div>
-
-          <div>
-            <Label>{c.soIndustry}</Label>
-            <FilterSelect
-              className="mt-1"
-              value={industry}
-              onChange={setIndustry}
-              options={(industries.data ?? [])
-                .filter((i) => i.enabled)
-                .map((i) => ({ value: i.industry, label: i.name }))}
-            />
-            <p className="mt-1 txt-caption text-muted-foreground">{c.soIndustryHint}</p>
-          </div>
-
-          <div>
-            <Label>{c.soDescription}</Label>
-            <Textarea
-              className="mt-1"
-              value={description}
-              onChange={setDescription}
-              rows={2}
-              disabled={!canSubmit}
-            />
-          </div>
-
-          <Button
-            onClick={() => submit.mutate()}
-            disabled={!canSubmit || !ready || submit.isPending}
-          >
-            {c.obSubmit}
-          </Button>
-
-          {done && (
-            /*
-             * 回执刻意说「进队列」而不是「建好了」。
-             * 代填最容易被读成「运营把这家店开出来了」—— 而它只是录了一张表。
-             */
-            <Notice tone="info">
-              {c.obDone}：{done.applyNo}
-              <p className="mt-1 txt-caption">{c.obDoneHint}</p>
-            </Notice>
-          )}
+  const cell = "space-y-1.5";
+  return <Dialog.Portal>
+    <Dialog.Overlay className="fixed inset-0 z-[var(--z-dialog)] bg-black/40" />
+    <Dialog.Content className="fixed left-1/2 top-1/2 z-[var(--z-dialog)] flex max-h-[90dvh] w-[min(94vw,880px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-sheet bg-card shadow-pop outline-none"
+      onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending)e.preventDefault();}}>
+      <div className="border-b p-5">
+        <Dialog.Title className="txt-heading">{c.obNew}</Dialog.Title>
+        <Dialog.Description className="sr-only">{c.obDesc}</Dialog.Description>
+        <p className="mt-1 txt-caption text-muted-foreground">{c.obSystemMarket}：{market ?? "—"} · {c.obSystemMarketHint}</p>
+      </div>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
+        <div className="min-h-0 space-y-5 overflow-y-auto p-5">
+          {context.isPending && <Notice tone="muted">{c.obLoadingContext}</Notice>}
+          {context.error && <Notice tone="danger">{context.error.message}</Notice>}
+          {storeChoices.error && <Notice tone="danger">{storeChoices.error.message}</Notice>}
+          {industries.error && <Notice tone="danger">{industries.error.message}</Notice>}
+          {submit.error && <Notice tone="danger">{submit.error.message}</Notice>}
+          <fieldset disabled={submit.isPending} className="space-y-5">
+            <section className="space-y-3">
+              <h3 className="txt-body font-semibold">{c.obOwnerSection}</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {!phoneOwner && <div className={cell}><Label required htmlFor="ob-owner-email">{c.obOwnerEmail}</Label><Input id="ob-owner-email" type="email" maxLength={254} value={ownerEmail} onChange={e=>setOwnerEmail(e.target.value)} /></div>}
+                <div className={cell}><Label htmlFor="ob-phone">{phoneOwner ? c.obPhone : c.obContactPhone}</Label><Input id="ob-phone" maxLength={32} value={phone} onChange={e=>setPhone(e.target.value)} />
+                  {policy?.recordOnly===false && phone.trim().length>=11 && !phoneOk && <Notice tone="danger">{c.soPhoneBad}</Notice>}
+                </div>
+              </div>
+              <p className="txt-caption text-muted-foreground">{phoneOwner ? c.obPhoneHint : c.obRecordPhoneHint}</p>
+            </section>
+            <section className="space-y-3 border-t pt-4">
+              <h3 className="txt-body font-semibold">{c.applySectionStore}</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className={cell}><Label required htmlFor="ob-store-name">{c.obStoreName}</Label><Input id="ob-store-name" maxLength={64} value={storeName} onChange={e=>setStoreName(e.target.value)} /></div>
+                <div className={cell}><Label required htmlFor="ob-store-address">{c.obStoreAddress}</Label><Input id="ob-store-address" maxLength={255} value={storeAddress} onChange={e=>setStoreAddress(e.target.value)} /></div>
+                <div className={cell}><Label required htmlFor="ob-store-industry">{c.obStoreIndustry}</Label><Select id="ob-store-industry" required value={storeIndustry} onChange={e=>{setStoreIndustry(e.target.value);setStoreSubIndustry("");}}><option value="">{c.obChooseIndustry}</option>{storeParents.map(r=><option key={r.industryCode} value={r.industryCode}>{r.nameZh}</option>)}</Select></div>
+                <div className={cell}><Label required htmlFor="ob-store-sub-industry">{c.obStoreSubIndustry}</Label><Select id="ob-store-sub-industry" required value={storeSubIndustry} disabled={!storeIndustry} onChange={e=>setStoreSubIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{storeChildren.map(r=><option key={r.subIndustryCode} value={r.subIndustryCode!}>{r.nameZh}</option>)}</Select></div>
+              </div>
+            </section>
+            <section className="space-y-3 border-t pt-4">
+              <h3 className="txt-body font-semibold">{c.obEntitySection}</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className={cell}><Label required htmlFor="ob-name">{c.obName}</Label><Input id="ob-name" required value={name} onChange={e=>setName(e.target.value)} /></div>
+                <div className={cell}><Label required htmlFor="ob-subject">{c.obSubject}</Label><Select id="ob-subject" required value={subject} onChange={e=>setSubject(e.target.value)}><option value="ENTERPRISE">{c.obSubjectEnterprise}</option><option value="INDIVIDUAL">{c.obSubjectIndividual}</option></Select></div>
+                <div className={cell}><Label htmlFor="ob-license-code">{c.obLicenseCode}</Label><Input id="ob-license-code" value={licenseCode} onChange={e=>setLicenseCode(e.target.value)} /></div>
+                <div className={cell}><Label required htmlFor="ob-license">{c.obLicense}</Label><Input id="ob-license" required value={licenseUrl} onChange={e=>setLicenseUrl(e.target.value)} /></div>
+              </div>
+            </section>
+            <details className="border-t pt-4">
+              <summary className="cursor-pointer txt-body font-medium">{c.obOptional}</summary>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className={cell}><Label htmlFor="ob-contact-name">{c.obContactName}</Label><Input id="ob-contact-name" value={contactName} onChange={e=>setContactName(e.target.value)} /></div>
+                <div className={cell}><Label htmlFor="ob-contact-phone">{c.obContactPhone}</Label><Input id="ob-contact-phone" value={contactPhone} onChange={e=>setContactPhone(e.target.value)} /></div>
+                <div className={cell}><Label htmlFor="ob-category">{c.obCategory}</Label><Input id="ob-category" value={category} onChange={e=>setCategory(e.target.value)} /></div>
+                <div className={cell}><Label htmlFor="ob-industry">{c.soIndustry}</Label><Select id="ob-industry" value={industry} onChange={e=>setIndustry(e.target.value)}><option value="">{c.obChooseIndustry}</option>{(industries.data??[]).filter(i=>i.enabled).map(i=><option key={i.industry} value={i.industry}>{i.name}</option>)}</Select></div>
+                <div className={`${cell} sm:col-span-2`}><Label htmlFor="ob-description">{c.soDescription}</Label><Textarea id="ob-description" value={description} onChange={setDescription} rows={2} /></div>
+              </div>
+            </details>
+          </fieldset>
         </div>
-      </ConfigCard>
-    </div>
-  );
+        <div className="flex shrink-0 justify-end gap-2 border-t bg-muted/40 px-5 py-4">
+          <Button type="button" variant="secondary" disabled={submit.isPending} onClick={onCancel}>{c.obCancel}</Button>
+          <Button type="submit" disabled={!ready || submit.isPending} loading={submit.isPending}>{c.obSubmit}</Button>
+        </div>
+      </form>
+    </Dialog.Content>
+  </Dialog.Portal>;
 }

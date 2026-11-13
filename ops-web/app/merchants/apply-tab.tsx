@@ -56,12 +56,12 @@ const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
   OTHER: c.qualOTHER,
 });
 
-export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean }) {
+export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=false }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean; onBehalfOnly?:boolean }) {
   const qc = useQueryClient();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
   const label = useCodeLabel();
   const [keyword, setKeyword] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(onBehalfOnly ? "PENDING,REVIEWING,APPROVED,REJECTED" : "");
   const { page, setPage, size, setSize } = usePaging();
 
   const [current, setCurrent] = useState<MerchantApply | null>(null);
@@ -73,16 +73,17 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
 
   const subscription=useQuery({queryKey:["mall-subscription",current?.storeNo],queryFn:()=>api.mallSubscription(current!.storeNo!),enabled:!!current?.storeNo && canReadSubscription});
   const q = { keyword, status, page, size };
-  const list = useQuery({ queryKey: ["applies", q], queryFn: () => api.listApplies(q) });
+  const list = useQuery({ queryKey: ["applies", onBehalfOnly ? "on-behalf" : "review", q], queryFn: () => onBehalfOnly ? api.listOnBehalfApplies(q) : api.listApplies(q) });
 
   // 社区目录：通过时要从这里挑。只取启用中的 —— 归档的小区不该还能被指派
   const communities = useQuery({
     queryKey: ["communities", "for-audit"],
     queryFn: () => api.listCommunities({ page: 1, size: 200 }),
+    enabled: canAudit,
   });
 
   // 授权码字典：通过时在同一屏里勾。只有启用的会下发
-  const authCodes = useQuery({ queryKey: ["auth-codes"], queryFn: () => api.listAuthCodes() });
+  const authCodes = useQuery({ queryKey: ["auth-codes"], queryFn: () => api.listAuthCodes(), enabled: canAudit });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["applies"] });
 
@@ -174,7 +175,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
 
   return (
     <>
-      <p className="mb-4 txt-body text-muted-foreground">{c.applySummary}</p>
+      {!onBehalfOnly && <p className="mb-4 txt-body text-muted-foreground">{c.applySummary}</p>}
       <Toolbar
         search={keyword}
         onSearch={(v) => { setKeyword(v); setPage(1); }}
@@ -185,6 +186,7 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false }: { c: Mercha
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
           options={[
+            ...(onBehalfOnly ? [{value:"PENDING,REVIEWING,APPROVED,REJECTED",label:c.obAllStatuses}] : []),
             { value: "", label: c.applyFilterTodo },
             { value: "PENDING", label: STATUS_MAP.PENDING.label },
             { value: "REVIEWING", label: STATUS_MAP.REVIEWING.label },

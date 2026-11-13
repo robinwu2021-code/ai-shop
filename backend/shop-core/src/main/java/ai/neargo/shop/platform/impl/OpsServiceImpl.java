@@ -355,12 +355,18 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size) {
+        return searchApplies(status,keyword,page,size,false);
+    }
+
+    @Override
+    public PageData<MerchantApplyVO> searchApplies(String status, String keyword, long page, long size, boolean onBehalfOnly) {
         List<String> statuses = status == null || status.isBlank()
                 // 不给状态时只看待办两档 —— 运营台默认打开就该是「要我做的事」
                 ? List.of(MchEntityApply.PENDING, MchEntityApply.REVIEWING)
                 : Arrays.stream(status.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
 
         var q = Wrappers.<MchEntityApply>lambdaQuery()
+                .isNotNull(onBehalfOnly, MchEntityApply::getSubmittedBy)
                 .in(MchEntityApply::getStatus, statuses)
                 /*
                  * 待办按提交顺序（先来先审），历史按最近优先。

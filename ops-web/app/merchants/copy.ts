@@ -131,6 +131,11 @@ const zh = {
   // 与上面那组刻意分开写：两个入口长得几乎一样，共用一套文案
   // 就会把「自营免证件」那句话带到这一页上来，而那正是本期最怕的误解。
   obReadOnlyWhat: "代办商家入驻",
+  obNew: "新增代办申请", obCancel: "取消", obAllStatuses: "全部状态",
+  obOwnerSection: "店主账号", obEntitySection: "经营主体与资质", obOptional: "补充资料（选填）",
+  obSystemMarket: "系统地区", obSystemMarketHint: "由当前登录环境统一配置",
+  obListDesc: "查看代办申请及审核结果，新增申请请点击右侧按钮。",
+  obLoadingContext: "正在读取系统地区配置…",
   obTitle: "代办商家入驻",
   obDesc: "补齐店主归属、经营主体、资质和开店资料后提交审核。",
   obWarning: "为第三方商户提交入驻申请。审核通过后创建独立经营主体和默认门店。",
@@ -839,6 +844,11 @@ const en: typeof zh = {
   qualStatusEXPIRED: "Expired",
   qualStatusREVOKED: "Revoked",
   obReadOnlyWhat: "assisted merchant admission",
+  obNew: "New assisted application", obCancel: "Cancel", obAllStatuses: "All statuses",
+  obOwnerSection: "Owner account", obEntitySection: "Operating entity and licence", obOptional: "Additional details (optional)",
+  obSystemMarket: "System region", obSystemMarketHint: "Configured by the current signed-in environment",
+  obListDesc: "View assisted applications and their review results. Use the button to add an application.",
+  obLoadingContext: "Loading system region…",
   obTitle: "Submit merchant admission on their behalf",
   obDesc: "Complete owner, operating entity, qualification and store details, then submit for review.",
   obWarning:
