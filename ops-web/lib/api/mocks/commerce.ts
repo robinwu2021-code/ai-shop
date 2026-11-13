@@ -62,6 +62,8 @@ async function blobUrl(file: Blob): Promise<string> {
 }
 
 export const commerceMock: CommerceApi = {
+  offlineReceiptDocumentation:async()=>({testAllowed:false,confirmations:[]}),
+  supplementOfflineReceipt:async()=>{throw new ApiError(501,"MOCK_RECEIPT_DOCUMENTATION_UNAVAILABLE");},
   mallCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
   mallCashRefunds: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
   requestMallCashRefund: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },
@@ -143,7 +145,7 @@ export const commerceMock: CommerceApi = {
   offlineEvidenceUrl: async (storeNo, no, key) => wait(m.evidenceUrl(storeNo, no, key)),
   declineOfflineClaim: async (storeNo, no, claimNo, reason) => wait(clone(m.declineClaim(storeNo, no, claimNo, reason)), 400),
   offlineAction: async (storeNo, no, actionNo) => wait(clone(m.actionOf(storeNo, no, actionNo))),
-  confirmOfflinePayment: async (storeNo, no, v) => wait(m.confirmPayment(storeNo, no, {...v,bankReference:v.bankReference ?? ""}), 400),
+  confirmOfflinePayment: async (storeNo, no, v) => wait(m.confirmPayment(storeNo, no, {...v,bankReference:v.bankReference ?? "",evidenceKey:v.evidenceKey ?? ""}), 400),
   voidOfflineOrder: async (storeNo, no, v) => wait(m.voidOrder(storeNo, no, v), 400),
   recoverOfflineOrder: async () => { throw new ApiError(10400,"Offline order recovery requires a real bank ledger"); },
   confirmOfflineRefundPayout: async (storeNo, no, r, v) => wait(m.payout(storeNo, no, r, v), 400),

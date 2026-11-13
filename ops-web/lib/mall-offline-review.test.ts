@@ -6,6 +6,18 @@ const request = (): MallOfflineConfirmRequest => ({ actionNo: "original", claimN
   actualAmount: { currency: "TWD", minor: "69900" }, actualPaidAt: "2026-11-01T00:00:00.000Z",
   actualReceiver: "frozen", bankReference: "bank", evidenceKey: "proof", historical: false, reason: "checked" });
 
+it("supplement recovery freezes evidence and never invokes payment confirmation",async()=>{
+  const payload={actionNo:"docs-1",confirmationActionNo:"confirm-1",note:"test docs",evidenceKeys:["private-1"]};
+  const attempt=new MallOfflineReviewAttempt({kind:"supplement",request:payload});
+  payload.evidenceKeys.push("late-edit");payload.note="changed";
+  const sent:unknown[]=[];const api={confirmOfflinePayment:async()=>{throw Error("must not confirm money");},voidOfflineOrder:async()=>{throw Error("must not void");},
+    supplementOfflineReceipt:async(_s:string,_o:string,v:unknown)=>{sent.push(v);if(sent.length===1)throw Error("lost response");return {actionNo:"docs-1",status:"APPLIED",paymentNo:"original-payment"} as MallOfflineActionView;}};
+  await expect(attempt.submit(api,"s","o")).rejects.toThrow("lost response");
+  await expect(attempt.submit(api,"s","o")).rejects.toThrow("LOOKUP_REQUIRED");
+  await attempt.resolve(async()=>null);await attempt.submit(api,"s","o");
+  expect(sent[1]).toBe(sent[0]);expect(sent[1]).toEqual({actionNo:"docs-1",confirmationActionNo:"confirm-1",note:"test docs",evidenceKeys:["private-1"]});
+});
+
 describe("mall offline review recovery", () => {
   it("requires a frozen order receiver and never substitutes a typed receiver", () => {
     expect(mallOfflineReceiver({})).toBeNull();

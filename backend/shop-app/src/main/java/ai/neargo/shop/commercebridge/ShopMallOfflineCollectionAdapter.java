@@ -133,7 +133,7 @@ public final class ShopMallOfflineCollectionAdapter implements OfflineCollection
                                 c.actualPaidAt().toEpochMilli(),
                                 c.bankReference(),
                                 c.evidenceReference(),
-                                c.historical() ? "HISTORICAL" : "NORMAL",
+                                c.testPayment() ? "TEST" : c.historical() ? "HISTORICAL" : "NORMAL",
                                 c.confirmedAt().toEpochMilli(),c.collectorNo(),c.collectionReference()));
         if (receipt == null || receipt.receipt() == null)
             throw new IllegalStateException("OFFLINE_MONEY_UNKNOWN");

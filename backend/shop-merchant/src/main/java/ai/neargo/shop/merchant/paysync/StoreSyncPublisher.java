@@ -1,6 +1,9 @@
 package ai.neargo.shop.merchant.paysync;
 
 import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.event.outbox.OutboxEnvelope;
+import tools.jackson.databind.ObjectMapper;
 import ai.neargo.shop.merchant.paysync.StoreSnapshotReader.Changed;
 import ai.neargo.shop.merchant.paysync.StoreSnapshotReader.Cursor;
 import ai.neargo.shop.spi.merchant.StoreChanged;
@@ -56,6 +59,10 @@ public class StoreSyncPublisher {
      */
     private final java.util.Map<String, Long> published = new java.util.concurrent.ConcurrentHashMap<>();
     private ScheduledExecutorService timer;
+    private UnifiedOutboxFacade unified;
+    @Autowired(required=false)
+    public void setUnified(UnifiedOutboxFacade facade) { this.unified=facade; }
+
 
     @Autowired
     public StoreSyncPublisher(StoreSnapshotReader reader, OutboxEventBus outbox, StoreSyncProperties props,
@@ -144,7 +151,13 @@ public class StoreSyncPublisher {
         for (var c : changed) {
             if (fullRequest == null && Long.valueOf(c.revision()).equals(published.get(c.storeNo()))) continue;
             String no = "NPS:" + c.storeNo() + ":" + c.revision() + (fullRequest == null ? "" : ":FULL:" + fullRequest);
-            outbox.publish(fit(no), new StoreChanged(c.storeNo(), c.entityNo(), c.revision()));
+            var event=new StoreChanged(c.storeNo(),c.entityNo(),c.revision());
+            if(unified!=null && unified.enabled("PLATFORM")) {
+                unified.accept("PLATFORM",new OutboxEnvelope(fit("U:"+no),
+                        "MERCHANT_STORE_SYNC",fit(no),event.aggregateType(),event.aggregateId(),event.eventType(),1,
+                        "MERCHANT_STORE:"+c.storeNo(),0,new ObjectMapper().writeValueAsString(event),
+                        Instant.ofEpochMilli(c.revision())));
+            } else outbox.publish(fit(no),event);
             if (fullRequest == null) published.put(c.storeNo(), c.revision());
             n++;
         }

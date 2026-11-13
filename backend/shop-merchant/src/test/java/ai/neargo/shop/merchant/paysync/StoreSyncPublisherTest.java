@@ -30,6 +30,23 @@ class StoreSyncPublisherTest {
     }
 
     @Test
+    void unifiedStoreSyncUsesStableIngressWithoutLegacyRows() {
+        var facade=mock(ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade.class);
+        when(facade.enabled("PLATFORM")).thenReturn(true);
+        var legacy=mock(OutboxEventBus.class);
+        var p=new StoreSyncPublisher(mock(StoreSnapshotReader.class),legacy,NearPayStoreSyncTest.PROPS,(LockingTaskExecutor)null);
+        p.setUnified(facade);var row=row(7,T);p.enqueue(List.of(row),null);
+        var fresh=new StoreSyncPublisher(mock(StoreSnapshotReader.class),legacy,NearPayStoreSyncTest.PROPS,(LockingTaskExecutor)null);
+        fresh.setUnified(facade);fresh.enqueue(List.of(row),null);
+        var events=ArgumentCaptor.forClass(ai.neargo.shop.event.outbox.OutboxEnvelope.class);
+        verify(facade,org.mockito.Mockito.times(2)).accept(org.mockito.ArgumentMatchers.eq("PLATFORM"),events.capture());
+        assertThat(events.getAllValues().get(0)).isEqualTo(events.getAllValues().get(1));
+        assertThat(events.getValue().sourceSystem()).isEqualTo("MERCHANT_STORE_SYNC");
+        assertThat(events.getValue().occurredAt()).isEqualTo(java.time.Instant.ofEpochMilli(row.revision()));
+        org.mockito.Mockito.verifyNoInteractions(legacy);
+    }
+
+    @Test
     @DisplayName("★★★ 同一秒内超过一批（主体改名波及 500+ 门店）：游标按 (变更时间, 门店 id) 前进，不会原地打转")
     void fullBatchAtSameInstantAdvancesByCompositeCursor() {
         var reader = mock(StoreSnapshotReader.class);

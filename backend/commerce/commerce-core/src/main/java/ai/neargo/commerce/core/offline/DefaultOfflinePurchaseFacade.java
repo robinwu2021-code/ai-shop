@@ -29,6 +29,43 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
     private final Clock clock;
     private final CommerceIdGenerator ids;
     private String profileNo;
+    private Set<String> testStores=Set.of();
+    public DefaultOfflinePurchaseFacade testStores(Set<String> stores) { this.testStores=Set.copyOf(stores);return this; }
+    private boolean testAllowed(OrderQuery q) { return testStores.contains(q.store().storeNo()); }
+    public DocumentationView documentation(ActorContext actor,OrderQuery q) {
+        operator(actor);
+        return locked(actor,q,"commerce:mall:order:read",o->{
+            var actions=offline.actions(actor.tenantNo(),q.orderNo());
+            var confirmations=actions.stream().filter(a->"CONFIRM".equals(a.kind())).map(a->{
+                var c=a.review();
+                var extra=actions.stream().filter(x->"SUPPLEMENT".equals(x.kind()) && x.supplement()!=null
+                        && x.supplement().confirmationActionNo().equals(a.actionNo()))
+                    .sorted(Comparator.comparingLong(OfflineRepository.Action::acceptedAt).thenComparing(OfflineRepository.Action::actionNo))
+                    .map(x->new SupplementView(x.actionNo(),x.operatorNo(),java.time.Instant.ofEpochMilli(x.acceptedAt()),x.supplement().note(),x.supplement().evidenceKeys())).toList();
+                boolean complete=c.evidenceKey()!=null || extra.stream().anyMatch(x->!x.evidenceKeys().isEmpty());
+                return new ReceiptDocumentation(a.actionNo(),a.paymentNo(),a.status(),c.testPayment(),a.operatorNo(),
+                        java.time.Instant.ofEpochMilli(a.acceptedAt()),c.actualAmount(),c.actualPaidAt(),c.collectorNo(),c.collectionReference(),c.evidenceKey(),complete,extra);
+            }).toList();
+            return new DocumentationView(testAllowed(q),confirmations);
+        });
+    }
+    public ActionView supplement(ActorContext actor,SupplementCommand c) {
+        operator(actor);if(c==null || c.order()==null)throw fail("INVALID_REQUEST");
+        text(c.actionNo(),64);text(c.confirmationActionNo(),64);
+        if(c.note()!=null && c.note().length()>1024 || (c.note()==null || c.note().isBlank()) && c.evidenceKeys().isEmpty())throw fail("INVALID_REQUEST");
+        if(!c.evidenceKeys().isEmpty())verifyEvidence(actor,c.order(),c.evidenceKeys(),"PLATFORM_RECEIPT","commerce:mall:offline:confirm");
+        return locked(actor,c.order(),"commerce:mall:offline:confirm",o->{
+            var prior=offline.action(actor.tenantNo(),o.orderNo(),c.actionNo());
+            if(prior.isPresent()) {
+                var p=prior.get();if(!c.equals(p.supplement()) || !actor.principalNo().equals(p.operatorNo()))throw fail("IDEMPOTENCY_CONFLICT");
+                return p.view();
+            }
+            var original=offline.action(actor.tenantNo(),o.orderNo(),c.confirmationActionNo()).orElseThrow(()->fail("NOT_FOUND"));
+            if(!"CONFIRM".equals(original.kind()) || !Set.of("APPLIED","UNMATCHED").contains(original.status()))throw fail("INVALID_STATE");
+            var a=new OfflineRepository.Action(c.actionNo(),"SUPPLEMENT",c.order(),actor.principalNo(),clock.millis(),null,null,null,"APPLIED",original.paymentNo(),null,c);
+            offline.saveAction(a);return a.view();
+        });
+    }
     private OfflineCashRefundPort cashRefunds;
     private ai.neargo.commerce.core.mall.RefundRepository normalRefunds;
     public DefaultOfflinePurchaseFacade normalRefunds(ai.neargo.commerce.core.mall.RefundRepository repository){this.normalRefunds=repository;return this;}
@@ -307,7 +344,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
 
     public RefundView confirmRefundPayout(ActorContext actor,RefundPayoutCommand c) {
         operator(actor);
-        if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0
+        if(c==null || c.order()==null || c.actualAmount()==null || c.actualAmount().minor()<=0
                 || c.paidOutAt()==null || c.paidOutAt().getNano()!=0 || c.paidOutAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
         text(c.refundNo(),64);text(c.payeeReference(),128);text(c.bankReference(),128);
         verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"REFUND_PROOF","commerce:mall:offline:refund:confirm");
@@ -333,11 +370,11 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
 
     public ActionView confirm(ActorContext actor,ReviewCommand c) {
         operator(actor);
-        if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null
+        if(c==null || c.order()==null || c.actualAmount()==null || c.actualAmount().minor()<=0 || c.actualPaidAt()==null
                 || c.actualPaidAt().getNano()!=0 || c.actualPaidAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
         text(c.actionNo(),64);text(c.actualReceiver(),64);text(c.reason(),1024);
         var eligible = c.collectorNo()==null ? List.<OfflineCollectionPort.Collector>of() : collectors(actor,c.order().store());
-        verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"PLATFORM_RECEIPT","commerce:mall:offline:confirm");
+        if(c.evidenceKey()!=null)verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"PLATFORM_RECEIPT","commerce:mall:offline:confirm");
         var action=locked(actor,c.order(),"commerce:mall:offline:confirm",o->{
             var previous=offline.action(actor.tenantNo(),o.orderNo(),c.actionNo());
             if(previous.isPresent()) {
@@ -346,6 +383,8 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
                 return p;
             }
             boolean sales="SALES_COLLECTION".equals(o.quote().purchase().offline().collectionMethod());
+            if(c.testPayment() && (!sales || !testAllowed(c.order()) || c.collectionReference()==null || !c.collectionReference().startsWith("TEST-")))throw fail("FORBIDDEN");
+            if(!sales && c.evidenceKey()==null)throw fail("INVALID_REQUEST");
             if(sales) {
                 text(c.collectorNo(),64);text(c.collectionReference(),128);
                 if(c.bankReference()!=null || c.claimNo()!=null)throw fail("OFFLINE_METHOD_MISMATCH");
@@ -389,7 +428,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
         if("CONFIRM".equals(a.kind())) {
             var c=a.review();
             var observed=collection.confirm(new OfflineCollectionPort.ManualPayment(a.payment(),a.operatorNo(),c.actualAmount(),
-                    c.actualPaidAt(),c.actualReceiver(),c.bankReference(),c.evidenceKey(),c.historical(),java.time.Instant.ofEpochMilli(a.acceptedAt()),c.collectorNo(),c.collectionReference()));
+                    c.actualPaidAt(),c.actualReceiver(),c.bankReference(),c.evidenceKey()==null?"DOCUMENTATION_PENDING:"+a.actionNo():c.evidenceKey(),c.historical(),java.time.Instant.ofEpochMilli(a.acceptedAt()),c.collectorNo(),c.collectionReference(),c.testPayment()));
             if(observed==null || !Set.of("MATCHED","LATE","UNMATCHED").contains(observed.disposition()) || observed.paymentNo()==null)
                 throw fail("OFFLINE_MONEY_UNKNOWN");
             moneyNo=observed.paymentNo();

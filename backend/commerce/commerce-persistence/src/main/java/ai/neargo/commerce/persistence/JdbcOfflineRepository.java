@@ -53,6 +53,11 @@ public final class JdbcOfflineRepository implements OfflineRepository {
         return jdbc.query("SELECT action_snapshot FROM mall_offline_action WHERE tenant_no=? AND order_no=? AND action_no=? FOR UPDATE",
                 (r,n)->json.readValue(r.getString(1),Action.class),t,order,no).stream().findFirst();
     }
+    public List<Action> actions(String t,String order) {
+        JdbcWriteGuard.require(ds,t);
+        return jdbc.query("SELECT action_snapshot FROM mall_offline_action WHERE tenant_no=? AND order_no=? ORDER BY action_no",
+                (r,n)->json.readValue(r.getString(1),Action.class),t,order);
+    }
     public List<Action> pending(String t,String order) {
         JdbcWriteGuard.require(ds,t);
         return jdbc.query("SELECT action_snapshot FROM mall_offline_action WHERE tenant_no=? AND order_no=? AND status='ACCEPTED' ORDER BY action_no FOR UPDATE",

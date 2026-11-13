@@ -9,10 +9,15 @@ import java.util.*;
 public interface OfflineCollectionPort {
     record ManualPayment(PaymentIntentCommand original,String operatorNo,Money actualAmount,Instant actualPaidAt,
             String actualReceiver,String bankReference,String evidenceReference,boolean historical,Instant confirmedAt,
-            String collectorNo, String collectionReference) {
+            String collectorNo, String collectionReference,boolean testPayment) {
+        public ManualPayment(PaymentIntentCommand original,String operatorNo,Money actualAmount,Instant actualPaidAt,
+                String actualReceiver,String bankReference,String evidenceReference,boolean historical,Instant confirmedAt,
+                String collectorNo,String collectionReference) {
+            this(original,operatorNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceReference,historical,confirmedAt,collectorNo,collectionReference,false);
+        }
         public ManualPayment(PaymentIntentCommand original,String operatorNo,Money actualAmount,Instant actualPaidAt,
                 String actualReceiver,String bankReference,String evidenceReference,boolean historical,Instant confirmedAt) {
-            this(original,operatorNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceReference,historical,confirmedAt,null,null);
+            this(original,operatorNo,actualAmount,actualPaidAt,actualReceiver,bankReference,evidenceReference,historical,confirmedAt,null,null,false);
         }
     }
     record Collector(String collectorNo, String displayName) {}

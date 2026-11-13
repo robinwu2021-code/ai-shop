@@ -1046,7 +1046,15 @@ export interface MallOfflineSignedRead {
 }
 
 /** 核款：录入实际到账 */
+export interface MallOfflineSupplementRequest {actionNo:string;confirmationActionNo:string;note:string;evidenceKeys:string[]}
+export interface MallReceiptDocumentation {
+  confirmationActionNo:string;paymentNo:string|null;status:string;testPayment:boolean;operatorNo:string;confirmedAt:string;
+  actualAmount:MallMoney;actualPaidAt:string;collectorNo:string|null;collectionReference:string|null;evidenceKey:string|null;complete:boolean;
+  supplements:{actionNo:string;operatorNo:string;createdAt:string;note:string|null;evidenceKeys:string[]}[];
+}
+export interface MallDocumentationView {testAllowed:boolean;confirmations:MallReceiptDocumentation[]}
 export interface MallOfflineConfirmRequest {
+  testPayment?: boolean;
   collectorNo?: string;
   collectionReference?: string;
   /** 幂等动作号 */
@@ -1062,7 +1070,7 @@ export interface MallOfflineConfirmRequest {
   /** 银行流水号（全局唯一） */
   bankReference?: string | null;
   /** 凭证资产键 */
-  evidenceKey: string;
+  evidenceKey: string | null;
   /** 补录早于下单的历史到账 */
   historical: boolean;
   /** 审计原因 */

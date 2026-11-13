@@ -27,7 +27,12 @@ public interface OfflineRepository {
     }
     record Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,
             ReviewCommand review,VoidCommand reconciliation,ai.neargo.commerce.api.port.PaymentIntentCommand payment,
-            String status,String paymentNo,String rejection) {
+            String status,String paymentNo,String rejection,SupplementCommand supplement) {
+        public Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,
+                ReviewCommand review,VoidCommand reconciliation,ai.neargo.commerce.api.port.PaymentIntentCommand payment,
+                String status,String paymentNo,String rejection) {
+            this(actionNo,kind,order,operatorNo,acceptedAt,review,reconciliation,payment,status,paymentNo,rejection,null);
+        }
         public Action(String actionNo,String kind,ai.neargo.commerce.api.mall.OrderQuery order,String operatorNo,long acceptedAt,
                 ReviewCommand review,VoidCommand reconciliation,ai.neargo.commerce.api.port.PaymentIntentCommand payment,
                 String status,String paymentNo) {
@@ -40,6 +45,7 @@ public interface OfflineRepository {
     }
     Optional<Action> action(String tenant,String orderNo,String actionNo);
     List<Action> pending(String tenant,String orderNo);
+    default List<Action> actions(String tenant,String orderNo) { throw new UnsupportedOperationException(); }
     /** Distinct order numbers with ACCEPTED actions after the cursor, ordered. */
     List<String> pendingOrders(String tenant,String afterOrderNo,int limit);
     void saveAction(Action action);
