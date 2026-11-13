@@ -2,7 +2,7 @@
 
 实现和目录：[文件与图片存储位置](../../docs/technical/reference/文件与图片存储位置.md)。
 
-`local.env.example`为本地模板，`cos.env.example`为原COS模板。复制到仓库外的私有配置目录并补齐密钥；样例不是直接可用于生产的凭据文件。本批未部署或切换166。
+`local.env.example`为本地模板，`cos.env.example`为原COS模板。复制到仓库外的私有配置目录并补齐密钥；样例不是直接可用于生产的凭据文件。后续已授权部署166的兼容能力；保留原媒体挂载并补打印持久卷，见[发布记录](../../docs/technical/部署-地区配置与本地存储-166-2026-11-13.md)。
 
 建议宿主机根`/data0/app/ai-shop/storage`，容器挂载`/data/storage`，设置`SHOP_STORAGE_ROOT=/data/storage`。媒体落`uploads/<原object-key>`，打印落`print-private/<原打印key>`。默认root仍为`./data`，旧目录及明确的单独覆盖继续生效。
 

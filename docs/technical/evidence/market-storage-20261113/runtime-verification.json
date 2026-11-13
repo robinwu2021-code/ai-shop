@@ -1,0 +1,16 @@
+{
+  "status": "VERIFIED",
+  "releaseId": "market-storage-20261113",
+  "artifactHashesMatched": true,
+  "servicesHealthy": true,
+  "canonicalDefaultMarkets": {
+    "nearpay-prod": "TW",
+    "ai-shop-api": "TW",
+    "ai-shop-ops": "CN"
+  },
+  "legacyDefaultAliasesAbsent": true,
+  "privatePrintVolumeReadWriteShared": true,
+  "probeRemoved": true,
+  "payMigrationResources": 93,
+  "shopMigrationResources": 637
+}

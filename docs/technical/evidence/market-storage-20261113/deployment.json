@@ -1,0 +1,23 @@
+{
+  "releaseId": "market-storage-20261113",
+  "status": "DEPLOYED",
+  "shopCommit": "58cea19257e5fc61c72ba34ab80ac4db06c1b94f",
+  "payCommit": "8cc36e88fe7ef30e8aeda08e462bc910ff094a14",
+  "shopSha256": "60a3a0d00a13377d776c6fa83606ffee2afab5c9c9b3b25feafc9ed7c4b655c3",
+  "paySha256": "50bdaf0e734eb405478330d841e31eace74f9bd90540a116fa9f831549387716",
+  "defaultMarkets": {
+    "nearpay-prod": "TW",
+    "ai-shop-api": "TW",
+    "ai-shop-ops": "CN"
+  },
+  "migrationResourcesUnchanged": true,
+  "storagePathsUnchanged": true,
+  "privatePrintPersistence": "/data0/app/ai-shop/storage/print-private",
+  "webAndH5Unchanged": true,
+  "backupDirectory": "/data0/app/ai-shop/releases/market-storage-20261113/before",
+  "healthyServices": [
+    "nearpay-prod",
+    "ai-shop-api",
+    "ai-shop-ops"
+  ]
+}
