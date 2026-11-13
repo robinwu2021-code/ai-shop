@@ -35,12 +35,15 @@ import java.util.HexFormat;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 行业后付单的人工实收确认（TDD-餐饮柜台后付结账 · ADR-059）。
@@ -62,32 +65,73 @@ public class PostpayReceiptServiceImpl implements PostpayReceiptService {
     private final OrderStatusLogMapper logs;
     private final OutboxEventBus events;
     private final Clock clock;
+    private final TransactionTemplate tx;
 
     @Autowired
     public PostpayReceiptServiceImpl(PostpayReceiptMapper receipts, IndustryOrderService industryOrders,
-            OrderStatusLogMapper logs, OutboxEventBus events) {
-        this(receipts, industryOrders, logs, events, Clock.systemUTC());
+            OrderStatusLogMapper logs, OutboxEventBus events, PlatformTransactionManager manager) {
+        this(receipts, industryOrders, logs, events, manager, Clock.systemUTC());
     }
 
     PostpayReceiptServiceImpl(PostpayReceiptMapper receipts, IndustryOrderService industryOrders,
-            OrderStatusLogMapper logs, OutboxEventBus events, Clock clock) {
+            OrderStatusLogMapper logs, OutboxEventBus events, PlatformTransactionManager manager, Clock clock) {
         this.receipts = receipts;
         this.industryOrders = industryOrders;
         this.logs = logs;
         this.events = events;
         this.clock = clock;
+        this.tx = new TransactionTemplate(manager);
     }
 
+    /**
+     * 读核心应收（{@link IndustryOrderService#getForStore}）规定不能在事务里调用，所以分两段：
+     * 事务外读应收与版本并记下订单行版本；事务内加锁后只比对订单行版本没变（账单此时已被结算单冻结，
+     * 推 PAID 的条件更新也带版本守卫）。
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public Receipt confirm(Confirm c) {
         validate(c);
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("postpay receipt confirmation must not run inside a caller transaction");
+        }
         // 门店归属在下面逐项显式核对；不让请求上下文里的数据权限再改写这些查询
-        return DataScopeContext.executeWithoutScope(() -> confirmUnscoped(c));
+        return DataScopeContext.executeWithoutScope(() -> {
+            String payload = payloadHash(c);
+            OrdPostpayReceipt existing = receipts.findByBiz(c.entityNo(), c.storeNo(), c.bizNo());
+            if (existing != null) {
+                return replay(existing, payload);
+            }
+            Map<String, Long> versions = readCurrent(c);
+            return tx.execute(status -> confirmLocked(c, payload, versions));
+        });
     }
 
-    private Receipt confirmUnscoped(Confirm c) {
-        String payload = payloadHash(c);
+    private Receipt replay(OrdPostpayReceipt existing, String payload) {
+        if (!existing.getPayloadHash().equals(payload)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return receipt(existing, receipts.rootOrders(existing.getReceiptNo()), true);
+    }
+
+    /** 事务外：每张核心单的当前应收与版本必须与命令一致；返回读到时的订单行版本。 */
+    private Map<String, Long> readCurrent(Confirm c) {
+        Scope scope = new Scope(c.tenantNo(), c.entityNo(), c.storeNo());
+        Map<String, Long> versions = new HashMap<>();
+        for (Root root : c.roots()) {
+            Result current = industryOrders.getForStore(scope, c.actorNo(), root.orderNo());
+            if (current == null || PostpayReceiptPort.dueMinor(current) != root.dueMinor()
+                    || !PostpayReceiptPort.coreVersion(current).equals(root.coreVersion())) {
+                throw BizException.of(ErrorCode.POSTPAY_RECEIPT_ORDER_CHANGED);
+            }
+        }
+        List<String> orderNos = c.roots().stream().map(Root::orderNo).sorted().toList();
+        for (OrdOrder o : receipts.lockOrders(orderNos)) {
+            versions.put(o.getOrderNo(), o.getVersion());
+        }
+        return versions;
+    }
+
+    private Receipt confirmLocked(Confirm c, String payload, Map<String, Long> versionsRead) {
         List<String> orderNos = c.roots().stream().map(Root::orderNo).sorted().toList();
 
         // 1. 先锁核心单
@@ -96,10 +140,7 @@ public class PostpayReceiptServiceImpl implements PostpayReceiptService {
         // 2. 再看这张结算单是否已经确认过（并发的第二个确认在这里看到第一个的结果）
         OrdPostpayReceipt existing = receipts.findByBiz(c.entityNo(), c.storeNo(), c.bizNo());
         if (existing != null) {
-            if (!existing.getPayloadHash().equals(payload)) {
-                throw BizException.of(ErrorCode.CONFLICT);
-            }
-            return receipt(existing, receipts.rootOrders(existing.getReceiptNo()), true);
+            return replay(existing, payload);
         }
 
         // 3. 核对每张核心单：门店、后付、待支付、币种、当前应收与版本
@@ -110,7 +151,6 @@ public class PostpayReceiptServiceImpl implements PostpayReceiptService {
         receipts.sources(orderNos).forEach(row -> sources.put(row.getOrderNo(), row));
         Map<String, OrdOrder> byNo = new HashMap<>();
         orders.forEach(o -> byNo.put(o.getOrderNo(), o));
-        Scope scope = new Scope(c.tenantNo(), c.entityNo(), c.storeNo());
         long due = 0;
         for (Root root : c.roots()) {
             OrdOrder order = byNo.get(root.orderNo());
@@ -122,9 +162,8 @@ public class PostpayReceiptServiceImpl implements PostpayReceiptService {
             if (!"WAIT_PAY".equals(order.getStatus()) || !c.currency().equals(order.getCurrency())) {
                 throw BizException.of(ErrorCode.POSTPAY_RECEIPT_ORDER_CHANGED);
             }
-            Result current = industryOrders.getForStore(scope, c.actorNo(), root.orderNo());
-            if (PostpayReceiptPort.dueMinor(current) != root.dueMinor()
-                    || !PostpayReceiptPort.coreVersion(current).equals(root.coreVersion())) {
+            // 应收与版本已在事务外按核心读口核过；这里只确认读完之后订单行没动过
+            if (!Objects.equals(versionsRead.get(root.orderNo()), order.getVersion())) {
                 throw BizException.of(ErrorCode.POSTPAY_RECEIPT_ORDER_CHANGED);
             }
             due = Math.addExact(due, root.dueMinor());

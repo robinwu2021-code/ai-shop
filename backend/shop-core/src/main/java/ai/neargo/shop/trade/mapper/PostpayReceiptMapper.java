@@ -44,6 +44,10 @@ public interface PostpayReceiptMapper extends BaseMapper<OrdPostpayReceipt> {
             + "<foreach collection='records' item='r' open='(' separator=',' close=')'>#{r}</foreach></script>")
     List<String> usedRecords(@Param("records") List<String> records);
 
+    /** 这张核心单是否已被后付人工实收覆盖（order_no 唯一，结果只会是 0 或 1）。 */
+    @Select("SELECT COUNT(*) FROM ord_postpay_receipt_root WHERE tenant_no=#{tenant} AND order_no=#{order}")
+    int countRoot(@Param("tenant") String tenantNo, @Param("order") String orderNo);
+
     @Insert("INSERT INTO ord_postpay_receipt_root(tenant_no,receipt_no,order_no,due_minor,core_version,created_at)"
             + " VALUES ('MAIN',#{receipt},#{order},#{due},#{version},CURRENT_TIMESTAMP(3))")
     int insertRoot(@Param("receipt") String receipt, @Param("order") String order, @Param("due") long due,

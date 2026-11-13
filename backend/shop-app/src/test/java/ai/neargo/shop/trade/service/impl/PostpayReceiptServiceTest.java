@@ -32,6 +32,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -53,7 +54,7 @@ class PostpayReceiptServiceTest {
 
     @BeforeEach
     void setup() {
-        service = new PostpayReceiptServiceImpl(receipts, industry, logs, events,
+        service = new PostpayReceiptServiceImpl(receipts, industry, logs, events, tx,
                 Clock.fixed(Instant.parse("2026-11-12T12:00:00Z"), ZoneOffset.UTC));
         run = UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
     }
@@ -77,7 +78,13 @@ class PostpayReceiptServiceTest {
         Result r = mock(Result.class);
         when(r.effectiveReceivableMinor()).thenReturn(due);
         when(r.amendmentSourceHash()).thenReturn("v1-" + order);
-        when(industry.getForStore(any(), eq("STAFF1"), eq(order))).thenReturn(r);
+        // 与真实实现同一约束：核心读口不能在事务里调用（IndustryOrderServiceImpl#outside）
+        when(industry.getForStore(any(), eq("STAFF1"), eq(order))).thenAnswer(call -> {
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+            }
+            return r;
+        });
         return order;
     }
 
@@ -104,7 +111,7 @@ class PostpayReceiptServiceTest {
     }
 
     Receipt confirm(Confirm c) {
-        return new TransactionTemplate(tx).execute(s -> service.confirm(c));
+        return service.confirm(c); // 生产调用方（餐饮确认、内部端点）都在事务外
     }
 
     String status(String order) {
