@@ -269,3 +269,5 @@ MySQL原生用例使用单独临时MySQL9.7.4，127.0.0.1:3319，每方法随机
  ...217\221\351\200\201\346\234\215\345\212\241.md" |  82 ++++++----
  46 files changed, 1272 insertions(+), 401 deletions(-)
 ```
+
+统一分支发布裁定：166在本轮期间先部署支付SSE5fba0e2cc，故保留该提交再合并OTP；首次正常push被既有SSE的Vue交付清单缺项拦截（GET /biz/payment/events）。只补该已部署接口的精确OpenAPI及Flutter/legacy-Vue交付清单，不扩大known-*欠账基线，不改支付行为；未包含原工作区未提交代码。
