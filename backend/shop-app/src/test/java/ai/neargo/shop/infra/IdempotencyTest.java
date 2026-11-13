@@ -3,7 +3,11 @@ package ai.neargo.shop.infra;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.spi.trade.OrderEvents;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.idem.SysIdempotent;
+import ai.neargo.shop.idem.SysIdempotentMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,9 @@ class IdempotencyTest {
     @Autowired
     private SysOutboxMapper outboxMapper;
 
+    @Autowired
+    private SysIdempotentMapper idempotentMapper;
+
     @Test
     @DisplayName("同一个 Idempotency-Key 只执行一次，第二次返回首次结果")
     void sameKeyExecutesOnce() {
@@ -52,6 +59,26 @@ class IdempotencyTest {
 
         assertThat(first).isEqualTo("SO-0001");
         assertThat(second).isEqualTo("SO-0001");
+        assertThat(executions.get()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("离线终端超过保留期标注后回放：仍返回首次结果，不再执行（POS B16）")
+    void replayAfterExpireAtStillReturnsFirstResult() {
+        AtomicInteger executions = new AtomicInteger();
+        String key = "idem-offline-" + System.nanoTime();
+        String first = idempotency.execute(key, "POST /biz/x/food/stores/{storeNo}/checks", "SF1", String.class,
+                () -> { executions.incrementAndGet(); return "CHK-1"; });
+        var row = idempotentMapper.selectOne(Wrappers.<SysIdempotent>lambdaQuery()
+                .eq(SysIdempotent::getIdemKey, key));
+        // 写入的保留期标注至少 7 天，覆盖 POS 的 72 小时离线窗口
+        assertThat(Duration.between(row.getCreatedAt(), row.getExpireAt()).toDays()).isGreaterThanOrEqualTo(7);
+        // 模拟已过标注时间（例如离线 10 天后才回放）
+        row.setExpireAt(LocalDateTime.now().minusDays(3));
+        idempotentMapper.updateById(row);
+        String replay = idempotency.execute(key, "POST /biz/x/food/stores/{storeNo}/checks", "SF1", String.class,
+                () -> { executions.incrementAndGet(); return "CHK-2"; });
+        assertThat(replay).isEqualTo("CHK-1");
         assertThat(executions.get()).isEqualTo(1);
     }
 
