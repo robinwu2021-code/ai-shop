@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 import type { MerchantsCopy } from "./copy";
 
-export function SelfOperatedTab({c,canCreate}:{c:MerchantsCopy;canCreate:boolean}) {
+export function SelfOperatedTab({c,canCreate,onCreated,onBusyChange}:{c:MerchantsCopy;canCreate:boolean;onCreated?:()=>void;onBusyChange?:(busy:boolean)=>void}) {
  const context=useQuery({queryKey:["self-operated-context"],queryFn:()=>api.selfOperatedContext(),enabled:canCreate});
  const phoneOwner=context.data?.market==="CN" && !context.data.recordOnly;
  const [ownerEmail,setOwnerEmail]=useState("");const [phone,setPhone]=useState("");
@@ -24,7 +24,7 @@ export function SelfOperatedTab({c,canCreate}:{c:MerchantsCopy;canCreate:boolean
  const [storeName,setStoreName]=useState("");const [storeAddress,setStoreAddress]=useState("");const [addedStores,setAddedStores]=useState<SelfOperatedStore[]>([]);
  const industries=useQuery({queryKey:["industries","for-self-operated"],queryFn:()=>api.listIndustries(),enabled:canCreate});
  const communities=useQuery({queryKey:["communities","for-self-operated"],queryFn:()=>api.listCommunities({page:1,size:200}),enabled:canCreate});
- const create=useMutation({mutationFn:()=>api.createSelfOperated({phone:phoneOwner?phone.trim():undefined,ownerEmail:phoneOwner?undefined:ownerEmail.trim(),name:name.trim(),serviceScope:scope,industry:industry||undefined,communityNos:scope==="COMMUNITY"?communityNos:[],description:description.trim()||undefined}),onSuccess:r=>{setDone(r);if(done?.merchantNo!==r.merchantNo)setAddedStores([]);notify.success(r.created?c.soToastCreated:c.soToastIdempotent);}});
+ const create=useMutation({mutationFn:()=>api.createSelfOperated({phone:phoneOwner?phone.trim():undefined,ownerEmail:phoneOwner?undefined:ownerEmail.trim(),name:name.trim(),serviceScope:scope,industry:industry||undefined,communityNos:scope==="COMMUNITY"?communityNos:[],description:description.trim()||undefined}),onMutate:()=>onBusyChange?.(true),onSettled:()=>onBusyChange?.(false),onSuccess:r=>{setDone(r);if(done?.merchantNo!==r.merchantNo)setAddedStores([]);notify.success(r.created?c.soToastCreated:c.soToastIdempotent);onCreated?.();}});
  const addStore=useMutation({mutationFn:()=>api.addSelfOperatedStore({merchantNo:done!.merchantNo,name:storeName.trim(),address:storeAddress.trim()||undefined}),onSuccess:st=>{setAddedStores(prev=>[...prev,st]);setStoreName("");setStoreAddress("");notify.success(c.soStoreAdded);}});
  const ready=!!context.data?.marketEnabled && !context.isError && !!name.trim() && (phoneOwner?/^1[3-9]\d{9}$/.test(phone.trim()):/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim())) && (scope!=="COMMUNITY" || communityNos.length>0);
  if(!canCreate)return <Notice tone="danger">{c.soNoPerm}</Notice>;

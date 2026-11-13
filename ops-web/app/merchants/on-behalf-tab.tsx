@@ -12,17 +12,18 @@ import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { Textarea } from "@/components/ui/textarea";
 import { ApplyTab } from "./apply-tab";
+import { SelfOperatedTab } from "./self-operated-tab";
 import type { MerchantsCopy } from "./copy";
 
-export function OnBehalfTab({ c, canSubmit, canAudit=false, canReadSubscription=false }: { c: MerchantsCopy; canSubmit: boolean; canAudit?:boolean; canReadSubscription?:boolean }) {
+export function OnBehalfTab({ c, canSubmit, canAudit=false, canSelfOp=false, initialType="", canReadSubscription=false }: { c: MerchantsCopy; canSubmit: boolean; canAudit?:boolean; canSelfOp?:boolean; initialType?:""|"SELF_OPERATED"; canReadSubscription?:boolean }) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState<ApplyOnBehalfResult | null>(null);
   const qc = useQueryClient();
-  if (!canSubmit && !canAudit) return <Notice tone="danger">{c.obNoPerm}</Notice>;
+  if (!canSubmit && !canAudit && !canSelfOp) return <Notice tone="danger">{c.obNoPerm}</Notice>;
   return <div className="space-y-4">
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <ApplyTab c={c} canAudit={canAudit} canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
-      {open && <ApplicationDialog c={c} onDone={(result) => {
+      <ApplyTab c={c} canAudit={canAudit} canSelfOp={canSelfOp} canViewApplications={canAudit||canSubmit} initialType={initialType} unified canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit||canSelfOp?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
+      {open && <ApplicationDialog c={c} canSubmit={canSubmit} canSelfOp={canSelfOp} onSelfDone={() => {setOpen(false);void qc.invalidateQueries({queryKey:["applies"]});}} onDone={(result) => {
         setDone(result); setOpen(false);
         void qc.invalidateQueries({ queryKey: ["applies"] });
       }} onCancel={() => setOpen(false)} />}
@@ -31,8 +32,11 @@ export function OnBehalfTab({ c, canSubmit, canAudit=false, canReadSubscription=
   </div>;
 }
 
-function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
-  const context = useQuery({queryKey:["onbehalf-context"],queryFn:()=>api.onBehalfContext()});
+function ApplicationDialog({ c, canSubmit, canSelfOp, onSelfDone, onDone, onCancel }: { c: MerchantsCopy; canSubmit:boolean; canSelfOp:boolean; onSelfDone:()=>void; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
+  const [type,setType]=useState(canSubmit?"ON_BEHALF":"SELF_OPERATED");
+  const assisted=type==="ON_BEHALF";
+  const [selfBusy,setSelfBusy]=useState(false);
+  const context = useQuery({queryKey:["onbehalf-context"],queryFn:()=>api.onBehalfContext(),enabled:assisted});
   const policy = context.data;
   const market = policy?.market;
   const phoneOwner = market === "CN" && policy?.recordOnly === false;
@@ -51,8 +55,8 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
   const [category, setCategory] = useState("");
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
-  const storeChoices = useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries()});
-  const industries = useQuery({queryKey:["industries","for-on-behalf"],queryFn:()=>api.listIndustries()});
+  const storeChoices = useQuery({queryKey:["onbehalf-store-industries"],queryFn:()=>api.onBehalfStoreIndustries(),enabled:assisted});
+  const industries = useQuery({queryKey:["industries","for-on-behalf"],queryFn:()=>api.listIndustries(),enabled:assisted});
   const storeParents = (storeChoices.data ?? []).filter(r=>r.enabled && !r.subIndustryCode);
   const storeChildren = (storeChoices.data ?? []).filter(r=>r.enabled && r.subIndustryCode && r.industryCode===storeIndustry);
   const chosenStore = storeChildren.find(r=>r.subIndustryCode===storeSubIndustry);
@@ -75,13 +79,17 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
   return <Dialog.Portal>
     <Dialog.Overlay className="fixed inset-0 z-[var(--z-dialog)] bg-black/40" />
     <Dialog.Content className="fixed left-1/2 top-1/2 z-[var(--z-dialog)] flex max-h-[90dvh] w-[min(94vw,880px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-sheet bg-card shadow-pop outline-none"
-      onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending)e.preventDefault();}}>
+      onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending||selfBusy)e.preventDefault();}}>
       <div className="border-b p-5">
         <Dialog.Title className="txt-heading">{c.obNew}</Dialog.Title>
         <Dialog.Description className="sr-only">{c.obDesc}</Dialog.Description>
-        <p className="mt-1 txt-caption text-muted-foreground">{c.obSystemMarket}：{market ?? "—"}</p>
+        <div className="mt-3 space-y-1.5"><Label htmlFor="admission-create-type">{c.admissionType}</Label><Select id="admission-create-type" value={type} onChange={e=>setType(e.target.value)} disabled={submit.isPending||selfBusy}>
+          {canSubmit&&<option value="ON_BEHALF">{c.admissionAssisted}</option>}
+          {canSelfOp&&<option value="SELF_OPERATED">{c.admissionSelf}</option>}
+        </Select></div>
+        {assisted&&<p className="mt-2 txt-caption text-muted-foreground">{c.obSystemMarket}：{market ?? "—"}</p>}
       </div>
-      <form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
+      {assisted?<form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
         <div className="min-h-0 space-y-5 overflow-y-auto p-5">
           {context.isPending && <Notice tone="muted">{c.obLoadingContext}</Notice>}
           {context.error && <Notice tone="danger">{context.error.message}</Notice>}
@@ -133,7 +141,7 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
           <Button type="button" variant="secondary" disabled={submit.isPending} onClick={onCancel}>{c.obCancel}</Button>
           <Button type="submit" disabled={!ready || submit.isPending} loading={submit.isPending}>{c.obSubmit}</Button>
         </div>
-      </form>
+      </form>:<div className="min-h-0 overflow-y-auto p-5"><SelfOperatedTab c={c} canCreate={canSelfOp} onCreated={onSelfDone} onBusyChange={setSelfBusy} /><div className="mt-4 flex justify-end"><Button variant="secondary" disabled={selfBusy} onClick={onCancel}>{c.obCancel}</Button></div></div>}
     </Dialog.Content>
   </Dialog.Portal>;
 }

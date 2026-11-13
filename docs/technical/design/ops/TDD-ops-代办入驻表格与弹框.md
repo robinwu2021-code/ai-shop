@@ -1,5 +1,30 @@
 # 运营代办入驻：表格与弹框
 
+## 2026-11-13 统一入驻管理（实施中）
+
+### §0 用户确认与验收
+
+统一“入驻管理”列表，区分代客入驻和平台自营。新增商家弹框按类型展示原表单；代客仍提交审核，自营仍直接建档，不混淆创建人和经营模式。地区取系统配置，台湾不显示大陆字段。保留支付开通入口。
+
+### §1 身份与权限
+
+不新增写入路径。申请继续以 applyNo 审核，自营以 merchantNo 新增门店，事务及幂等沿原服务。统一查询按现有审核/代办/自营权限裁剪：审核员可看申请，代办员仅看代办申请，仅自营权限只看自营。原菜单授权点保留，归并到同一地址，不改角色授权。跨域查询通过 MerchantQueryPort 读取自营投影，禁止直连对方表。
+
+### §2 实施计划
+
+1. 增加入驻统一查询服务及端点，地区、类型和状态在源查询中筛选，按创建时间和唯一键稳定归并分页，记录总数不受截断影响。申请保留单据，不额外拼接审核后普通商户，避免重复。
+2. ApplyTab 复用审核抽屉，统一表格展示商家、类型、店主、状态、时间、操作；平台自营行查看及新增门店。OnBehalfTab 统一新增弹框，按权限显示创建类型，自营成功返回列表并刷新。
+3. 菜单归并、旧代办/自营深链归一，三语文案、API 契约、生成物与菜单迁移同步。
+4. 验证混合分页/类型/地区/权限、审核原命令、新增类型及成功刷新、深链和文案；相关编译、测试、构建后推送主开发分支并部署 UME166，只读线上复验，不派发真实渠道。
+
+### §5 验证记录
+
+- 已实现：统一查询通过 SelfOperatedAdmissionPort 隔离表归属，两个源最多各取当前页窗口，数据库分别筛选与计数后稳定归并，不把源分页结果直接拼接。代客筛选只取代办来源；全部视图保留审核员原有的商户自主申请，并如实标为“商家申请”，不误标成代客。
+- AC 对应验证：AdmissionManagementServiceTest 的 mergesBeforePaginationWithAccurateCountsAndStableOrder、assistedOperatorCannotReadSelfOperatedOrUnassistedApplications、selfOperatedPermissionAloneNeverReadsApplications、requestedAssistedTypeRestrictsEvenAuditorToAssistedSources 覆盖归并分页、来源、权限；AssistedApplySearchTest 与 SelfOperatedAdmissionPortTest 验证地区及归档条件在分页前应用。
+- 前端 unified-admission-ui.test.ts 覆盖单列表、服务端类型筛选、两种表单切换、台湾固定地区、自营成功关闭刷新、创建权限及按实际商户键新增门店；原代办提交与审核命令回归保留。相关前端 159 项通过，服务端 22 项与 SchemaDriftTest 6 项通过，角色端点验证 40 项、复合权限解析 3 项通过。
+- lint、生产构建/TypeScript、按 UME166 的 /ops-shop 前缀适配执行原产物检查通过；OPS 契约既有 8 项欠账不变，OpenAPI、权限矩阵、UI 目录、功能清单及 H2 Schema 已重新生成。推送复用上述增量证据，不重复无关全量门禁。
+- 发布前已将当前线上包与原提交编译出的 11 个基线类进行反汇编比较，语义一致。本次候选仅更新或增加目标类与 V666 菜单迁移，不覆盖其他包条目、配置或角色授权。线上部署和复验待完成。
+
 ## §0 范围与结论
 
 2026-11-13，档位 1。地区沿用登录环境 `shop.merchant.default-market`，前端无地区切换，服务端拒绝跨地区覆盖。主页展示运营代办申请，新增在居中弹框中按店主、门店、经营主体分组填写。已提交申请只查看，审核仍在入驻审核入口。

@@ -5,7 +5,7 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {MerchantApply} from './types';
 const state=vi.hoisted(()=>({rows:[] as MerchantApply[],audit:vi.fn(),selfContext:vi.fn(),selfCreate:vi.fn()}));
-vi.mock('@/lib/api',()=>({api:{selfOperatedContext:state.selfContext,createSelfOperated:state.selfCreate,listApplies:async()=>({records:state.rows,total:state.rows.length}),listCommunities:async()=>({records:[],total:0}),listAuthCodes:async()=>[],auditApply:state.audit,acceptApply:vi.fn(),listIndustries:async()=>[],onBehalfStoreIndustries:async()=>[],marketPhonePolicies:async()=>[]}}));
+vi.mock('@/lib/api',()=>({api:{listAdmissions:async()=>({records:state.rows.map(a=>({...a,key:"APPLY:"+a.applyNo,type:"ON_BEHALF",application:a})),total:state.rows.length}),selfOperatedContext:state.selfContext,createSelfOperated:state.selfCreate,listApplies:async()=>({records:state.rows,total:state.rows.length}),listCommunities:async()=>({records:[],total:0}),listAuthCodes:async()=>[],auditApply:state.audit,acceptApply:vi.fn(),listIndustries:async()=>[],onBehalfStoreIndustries:async()=>[],marketPhonePolicies:async()=>[]}}));
 vi.mock('@/lib/api/master-data',()=>({useCodeLabel:()=>({industry:()=> '餐饮',subject:()=> '企业'})}));
 vi.mock('@/lib/i18n',()=>({useI18n:()=>({locale:'zh',t:(k:string)=>k}),useT:()=>((k:string)=>k)}));
 vi.mock('@/lib/notify',()=>({notify:{success:vi.fn()}}));

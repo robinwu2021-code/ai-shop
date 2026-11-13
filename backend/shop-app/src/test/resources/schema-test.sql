@@ -20384,6 +20384,8 @@ UPDATE sys_function_point SET name='自营建档',group_name='入驻',sort=20,up
 WHERE point_code='OPS_MERCHANT__TAB_SELF_OPERATED' AND point_type='MENU';
 UPDATE sys_function_point SET name='支付开通',group_name='入驻',sort=30,updated_at=NOW()
 WHERE point_code='OPS_MERCHANT__TAB_ONBOARDING' AND point_type='MENU';
+UPDATE sys_function_point SET name='入驻管理',href='/merchants',group_name='入驻',sort=10,updated_at=NOW()
+WHERE point_code IN ('OPS_MERCHANT','OPS_MERCHANT__TAB_ON_BEHALF','OPS_MERCHANT__TAB_SELF_OPERATED') AND point_type='MENU';
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

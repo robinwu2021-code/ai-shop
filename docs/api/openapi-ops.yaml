@@ -407,6 +407,63 @@ components:
         - "enabled"
       additionalProperties: false
       description: "可用于运营代客建店的已启用行业与已发布经营类型。"
+    AdmissionEntry:
+      type: "object"
+      properties:
+        key:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+            - "ON_BEHALF"
+            - "SELF_OPERATED"
+        name:
+          type: "string"
+        ownerUserNo:
+          type:
+            - "string"
+            - "null"
+        status:
+          type: "string"
+        createdAt:
+          type: "number"
+        application:
+          anyOf:
+            - "$ref": "#/components/schemas/MerchantApply"
+            - type: "null"
+        selfOperated:
+          anyOf:
+            - type: "object"
+              properties:
+                merchantNo:
+                  type: "string"
+                name:
+                  type: "string"
+                ownerUserNo:
+                  type: "string"
+                status:
+                  type: "string"
+                serviceScope:
+                  type: "string"
+                createdAt:
+                  type: "number"
+              required:
+                - "merchantNo"
+                - "name"
+                - "ownerUserNo"
+                - "status"
+                - "serviceScope"
+                - "createdAt"
+              additionalProperties: false
+            - type: "null"
+      required:
+        - "key"
+        - "type"
+        - "name"
+        - "status"
+        - "createdAt"
+      additionalProperties: false
+      description: "入驻申请单（后端 `mch_entity_apply`）。"
     MerchantApply:
       type: "object"
       properties:
@@ -519,7 +576,6 @@ components:
         - "status"
         - "createdAt"
       additionalProperties: false
-      description: "入驻申请单（后端 `mch_entity_apply`）。"
     StoreFulfillmentRow:
       type: "object"
       properties:
@@ -29636,6 +29692,32 @@ paths:
                       - "total"
                       - "page"
                       - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchants/admissions":
+    get:
+      operationId: "listAdmissions"
+      summary: "System-region admission list, trimmed by existing application/self-operation permissions. */"
+      tags:
+        - "merchant"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
                 required:
                   - "code"
                   - "msg"

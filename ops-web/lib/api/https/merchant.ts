@@ -60,6 +60,7 @@ export const merchantHttp: MerchantApi = {
    * 也把「申请单」与「主体」两个资源分开：混用是之前模型对不上的根源。
    */
   listApplies: (q) => client.get("/ops/merchant/apply/search", q),
+  listAdmissions: (q) => client.get("/ops/merchants/admissions", q),
   acceptApply: (applyNo) => client.post(`/ops/merchant/apply/${applyNo}/accept`),
   auditApply: (applyNo, approved, reason, serviceScope, communityNos, grantCodes) =>
     client.post(`/ops/merchant/apply/${applyNo}/audit`, {

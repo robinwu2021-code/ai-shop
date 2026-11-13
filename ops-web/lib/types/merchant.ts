@@ -300,6 +300,17 @@ export interface StoreIndustryChoice {
 }
 
 /** 入驻申请单（后端 `mch_entity_apply`）。 */
+export interface AdmissionEntry {
+  key: string;
+  type: "ON_BEHALF" | "SELF_OPERATED";
+  name: string;
+  ownerUserNo?: string | null;
+  status: string;
+  createdAt: number;
+  application?: MerchantApply | null;
+  selfOperated?: { merchantNo: string; name: string; ownerUserNo: string; status: string; serviceScope: string; createdAt: number } | null;
+}
+
 export interface MerchantApply {
   /** 实际店主账号 */
   ownerUserNo?: string | null;

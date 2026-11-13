@@ -4,7 +4,7 @@ import {createRoot,type Root} from 'react-dom/client';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 const state=vi.hoisted(()=>({context:vi.fn(),submit:vi.fn(),list:vi.fn()}));
-vi.mock('@/lib/api',()=>({api:{onBehalfContext:state.context,listOnBehalfApplies:state.list,applyOnBehalf:state.submit,listIndustries:async()=>[],onBehalfStoreIndustries:async()=>[
+vi.mock('@/lib/api',()=>({api:{onBehalfContext:state.context,listAdmissions:async(q:unknown)=>{const p=await state.list(q);return {...p,records:p.records.map((a:{applyNo:string})=>({...a,key:"APPLY:"+a.applyNo,type:"ON_BEHALF",application:a}))};},listOnBehalfApplies:state.list,applyOnBehalf:state.submit,listIndustries:async()=>[],onBehalfStoreIndustries:async()=>[
  {enabled:true,industryCode:'FOOD',nameZh:'餐饮'},
  {enabled:true,industryCode:'FOOD',subIndustryCode:'FOOD_BREAKFAST',businessTypeCode:'STORE_V1',nameZh:'早餐'}],listCommunities:vi.fn(),listAuthCodes:vi.fn()}}));
 vi.mock('@/lib/api/master-data',()=>({useCodeLabel:()=>({industry:(v:string)=>v,subject:(v:string)=>v})}));

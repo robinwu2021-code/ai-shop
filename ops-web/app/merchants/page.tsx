@@ -29,7 +29,6 @@ import { MerchantChainLine } from "./chain-line";
 import { PlansTab, PlanDefsTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
 import { OnboardingTab } from "./onboarding-tab";
-import { SelfOperatedTab } from "./self-operated-tab";
 import { OnBehalfTab } from "./on-behalf-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
@@ -56,7 +55,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -68,7 +67,7 @@ export default function MerchantsPage() {
 function MerchantsInner() {
   const c = useCopy(MERCHANTS_COPY);
   const router=useRouter();const search=useSearchParams();
-  useEffect(()=>{if(search.get("tab")==="on-behalf"){const next=new URLSearchParams(search.toString());next.delete("tab");router.replace("/merchants"+(next.size?"?"+next.toString():""));}},[router,search]);
+  useEffect(()=>{if(["on-behalf","self-operated"].includes(search.get("tab")??"")){const next=new URLSearchParams(search.toString());if(next.get("tab")==="self-operated")next.set("type","SELF_OPERATED");next.delete("tab");router.replace("/merchants"+(next.size?"?"+next.toString():""));}},[router,search]);
   const tabs = useNavTabs("/merchants", TAB_KEYS);
   const tierOptions = TIER_OPTIONS(c);
   const qc = useQueryClient();
@@ -233,7 +232,7 @@ function MerchantsInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === "audit" && <OnBehalfTab c={c} canSubmit={canOnBehalf} canAudit={canAudit} canReadSubscription={allow("commerce:subscription:read")} />}
+      {tab === "audit" && <OnBehalfTab c={c} canSubmit={canOnBehalf} canAudit={canAudit} canSelfOp={canSelfOp} initialType={search.get("type")==="SELF_OPERATED" || search.get("tab")==="self-operated"?"SELF_OPERATED":""} canReadSubscription={allow("commerce:subscription:read")} />}
 
       {tab === "categories" && (
         <>
@@ -264,7 +263,6 @@ function MerchantsInner() {
       {tab === "mode-risk" && <ModeRiskTab c={c} />}
       {tab === "onboarding" && <OnboardingTab c={c} />}
 
-      {tab === "self-operated" && <SelfOperatedTab c={c} canCreate={canSelfOp} />}
 
       {tab === "ban" && (
         <>

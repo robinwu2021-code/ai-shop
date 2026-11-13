@@ -137,8 +137,11 @@ export function scanEndpoints(root = ROOT) {
                 && !annotation.includes(" or @perm.can(")) {
               throw new Error(`Unsupported compound permission: ${mk.method} ${mk.path}`);
             }
-            if ( (annotation.match(/@perm\.can\(/g) ?? []).length !== 2
-                || constants.length !== 2 || annotation.includes("&& @perm")) {
+            const calls = (annotation.match(/@perm\.can\(/g) ?? []).length;
+            const conditional = annotation.includes("?") && annotation.includes(":");
+            const ors = (annotation.match(/ or @perm\.can\(/g) ?? []).length;
+            if (calls !== constants.length || calls < 2 || annotation.includes("&& @perm")
+                || (conditional ? calls !== 2 : ors !== calls - 1)) {
               throw new Error(`Unsupported compound permission: ${mk.method} ${mk.path}`);
             }
             perm = constants.join("|");

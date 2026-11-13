@@ -10,14 +10,15 @@
 // 这一页要解决的实际问题：**服务范围没人能填**。
 // 商家申请时允许留空（ADR-009），本该由运营在通过时补 —— 而运营侧此前没有这个入口。
 // 结果是商家通过审核、上完架，却对谁都不可见，且没有任何报错。
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCodeLabel } from "@/lib/api/master-data";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
 import { fill } from "@/lib/use-copy";
-import type { ApplyStatus, MerchantApply } from "@/lib/types";
+import type { AdmissionEntry, ApplyStatus, MerchantApply } from "@/lib/types";
+import { SelfOperatedDetails } from "./self-operated-details";
 import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
@@ -56,15 +57,18 @@ const qualTypeLabel = (c: MerchantsCopy): Record<string, string> => ({
   OTHER: c.qualOTHER,
 });
 
-export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=false, action }: { c: MerchantsCopy; canAudit: boolean; canReadSubscription?:boolean; onBehalfOnly?:boolean; action?:React.ReactNode }) {
+export function ApplyTab({ c, canAudit, canSelfOp=false, canViewApplications=true, unified=false, initialType="", canReadSubscription=false, onBehalfOnly=false, action }: { c: MerchantsCopy; canAudit: boolean; canSelfOp?:boolean; canViewApplications?:boolean; unified?:boolean; initialType?:""|"SELF_OPERATED"; canReadSubscription?:boolean; onBehalfOnly?:boolean; action?:React.ReactNode }) {
   const qc = useQueryClient();
   // 行业/主体的展示名来自后端主数据，不在这里再维护一份翻译
   const label = useCodeLabel();
   const [keyword, setKeyword] = useState("");
-  const [status, setStatus] = useState(onBehalfOnly ? "PENDING,REVIEWING,APPROVED,REJECTED" : "");
+  const [status, setStatus] = useState(!unified && onBehalfOnly ? "PENDING,REVIEWING,APPROVED,REJECTED" : "");
+  const [type,setType]=useState<""|"ON_BEHALF"|"SELF_OPERATED">(initialType);
+  const [selfCurrent,setSelfCurrent]=useState<AdmissionEntry["selfOperated"]>(null);
   const { page, setPage, size, setSize } = usePaging();
 
   const [current, setCurrent] = useState<MerchantApply | null>(null);
+  useEffect(()=>{setCurrent(null);setSelfCurrent(null);},[canAudit,canSelfOp,canViewApplications,onBehalfOnly]);
   const [reason, setReason] = useState("");
   const [scope, setScope] = useState("COMMUNITY");
   const [communityNos, setCommunityNos] = useState<string[]>([]);
@@ -73,7 +77,8 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
 
   const subscription=useQuery({queryKey:["mall-subscription",current?.storeNo],queryFn:()=>api.mallSubscription(current!.storeNo!),enabled:!!current?.storeNo && canReadSubscription});
   const q = { keyword, status, page, size };
-  const list = useQuery({ queryKey: ["applies", onBehalfOnly ? "on-behalf" : "review", q], queryFn: () => onBehalfOnly ? api.listOnBehalfApplies(q) : api.listApplies(q) });
+  const list = useQuery({ queryKey: ["applies", onBehalfOnly ? "on-behalf" : "review", q], queryFn: () => onBehalfOnly ? api.listOnBehalfApplies(q) : api.listApplies(q),enabled:!unified });
+  const management = useQuery({queryKey:["applies","management",canAudit,canSelfOp,canViewApplications,onBehalfOnly,{...q,type}],queryFn:()=>api.listAdmissions({...q,type:type||undefined,status:status||undefined}),enabled:unified});
 
   // 社区目录：通过时要从这里挑。只取启用中的 —— 归档的小区不该还能被指派
   const communities = useQuery({
@@ -146,6 +151,20 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
       ),
     },
   ];
+  const admissionStatuses: StatusMap<string> = {...STATUS_MAP,
+    ACTIVE:{label:c.admissionActive,tone:"success"}, SUSPENDED:{label:c.admissionBanned,tone:"danger"}, FROZEN:{label:c.admissionFrozen,tone:"danger"},
+    PENDING_LICENSE:{label:c.admissionPendingLicense,tone:"warning"}};
+  const managementColumns: Column<AdmissionEntry>[] = [
+    {header:c.admissionName,cell:r=><div className="max-w-56 truncate font-medium" title={r.name}>{r.name}</div>},
+    {header:c.admissionType,cell:r=>r.type==="SELF_OPERATED"?c.admissionSelf:r.application?.onBehalf?c.admissionAssisted:c.admissionMerchant},
+    {header:c.admissionOwner,cell:r=><span className="max-w-40 break-all">{r.ownerUserNo||"—"}</span>},
+    {header:c.admissionStatus,cell:r=><StatusBadge value={r.status} map={admissionStatuses} />},
+    {header:c.colCreatedAt,cell:r=>fmtTime(new Date(r.createdAt).toISOString())},
+    {header:c.colActions,stickyEnd:true,cell:r=><div className="flex gap-2">
+      {canAudit && r.application?.status==="PENDING" && <Button size="sm" variant="outline" onClick={()=>accept.mutate(r.application!.applyNo)}>{c.applyActionAccept}</Button>}
+      <Button size="sm" variant="outline" onClick={()=>{if(r.application)open(r.application);else setSelfCurrent(r.selfOperated);}}>{c.actionView}</Button>
+    </div>},
+  ];
 
   return (
     <>
@@ -154,23 +173,25 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
         onSearch={(v) => { setKeyword(v); setPage(1); }}
         searchPlaceholder={c.applySearchPh}
       >
+        {unified&&<FilterSelect aria-label={c.admissionType} value={type} onChange={v=>{setType(v as typeof type);setPage(1);}} allLabel={c.admissionAll} options={[...(canViewApplications?[{value:"ON_BEHALF",label:c.admissionAssisted}]:[]),...(canSelfOp?[{value:"SELF_OPERATED",label:c.admissionSelf}]:[])]} />}
         <FilterSelect
-          aria-label={c.applyColStatus}
+          aria-label={unified?c.admissionStatus:c.applyColStatus}
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
           options={[
-            ...(onBehalfOnly ? [{value:"PENDING,REVIEWING,APPROVED,REJECTED",label:c.obAllStatuses}] : []),
-            { value: "", label: c.applyFilterTodo },
+            ...(!unified && onBehalfOnly ? [{value:"PENDING,REVIEWING,APPROVED,REJECTED",label:c.obAllStatuses}] : []),
+            { value: "", label: unified?c.obAllStatuses:c.applyFilterTodo },
             { value: "PENDING", label: STATUS_MAP.PENDING.label },
             { value: "REVIEWING", label: STATUS_MAP.REVIEWING.label },
             { value: "APPROVED", label: STATUS_MAP.APPROVED.label },
             { value: "REJECTED", label: STATUS_MAP.REJECTED.label },
+            ...(unified&&canSelfOp?[{value:"ACTIVE",label:c.admissionActive}]:[]),
           ]}
         />
         {action && <div className="ms-auto">{action}</div>}
       </Toolbar>
 
-      <DataTable
+      {unified?<DataTable columns={managementColumns} rows={management.data?.records??[]} loading={management.isPending} rowKey={r=>r.key} error={management.error} onRetry={()=>management.refetch()} empty={c.applyEmpty} />:<DataTable
         columns={columns}
         rows={list.data?.records ?? []}
         loading={list.isPending}
@@ -178,14 +199,15 @@ export function ApplyTab({ c, canAudit, canReadSubscription=false, onBehalfOnly=
         empty={status || keyword.trim() ? c.applyEmpty : c.applyEmptyTodo}
         error={list.error}
         onRetry={() => list.refetch()}
-      />
+      />}
       <Pagination
         page={page}
         size={size}
-        total={list.data?.total ?? 0}
+        total={(unified?management.data?.total:list.data?.total) ?? 0}
         onPage={setPage}
         onSize={(v) => { setSize(v); setPage(1); }}
       />
+      <SelfOperatedDetails c={c} entry={selfCurrent} canAddStore={canSelfOp} onClose={()=>setSelfCurrent(null)} />
 
       <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""} desc={current?.applyNo}>
         {current && (
