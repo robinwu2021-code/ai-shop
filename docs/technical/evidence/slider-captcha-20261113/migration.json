@@ -1,0 +1,13 @@
+{
+  "version": "663",
+  "description": "biz auth captcha",
+  "success": true,
+  "tables": [
+    "sys_auth_captcha_rate",
+    "sys_auth_captcha_state"
+  ],
+  "initialFailure": "runtime database account lacked CREATE; no tables created",
+  "recovery": "temporarily grant CREATE for these two tables only; delete only failed V663 row with exact script/checksum; Flyway retry succeeded",
+  "temporaryPrivilegesRevoked": true,
+  "databaseCreatePrivilege": "N"
+}

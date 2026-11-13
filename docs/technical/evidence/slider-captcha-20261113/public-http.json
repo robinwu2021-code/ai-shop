@@ -1,0 +1,48 @@
+{
+  "domains": {
+    "https://nearshop.umeshop.ai/shop-api": [
+      {
+        "path": "/biz/auth/login",
+        "code": 10452
+      },
+      {
+        "path": "/biz/auth/identities",
+        "code": 10452
+      },
+      {
+        "path": "/biz/auth/email-otp/send",
+        "code": 10452
+      },
+      {
+        "path": "/biz/auth/otp/send",
+        "code": 10452
+      }
+    ],
+    "https://twpay.umeshop.ai/shop-api": [
+      {
+        "path": "/biz/auth/login",
+        "code": 10452
+      },
+      {
+        "path": "/biz/auth/identities",
+        "code": 10452
+      },
+      {
+        "path": "/biz/auth/email-otp/send",
+        "code": 10452
+      },
+      {
+        "path": "/biz/auth/otp/send",
+        "code": 10452
+      }
+    ]
+  },
+  "account": "fictional .invalid principal",
+  "realMessagesSent": false,
+  "validTrace": 0,
+  "fictionalPasswordFailure": 10456,
+  "proofReplay": 10452,
+  "challengeReplay": 10452,
+  "challengePng": true,
+  "answerSource": "read-only query of this test challenge only; production client receives no answer"
+}

@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.auth.captcha.BizCaptchaService;
+import jakarta.servlet.http.HttpServletRequest;
 import ai.neargo.shop.common.ApiResult;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Messages;
@@ -19,8 +21,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class BizIdentityController {
     private final LoginIdentityService identities;
+    private final BizCaptchaService captcha;
     private final BizMerchantController merchants;
-    public BizIdentityController(LoginIdentityService identities, BizMerchantController merchants) {
+    public BizIdentityController(LoginIdentityService identities, BizMerchantController merchants, BizCaptchaService captcha) {
+        this.captcha = captcha;
         this.identities = identities; this.merchants = merchants;
     }
 
@@ -32,7 +36,9 @@ public class BizIdentityController {
                            @NotBlank @Size(max=80) String identityNo) {}
 
     @PostMapping("/biz/auth/identities")
-    public LoginIdentityService.IdentityChoice list(@RequestBody @Valid VerifyReq req, Locale locale) {
+    public LoginIdentityService.IdentityChoice list(@RequestBody @Valid VerifyReq req, Locale locale, HttpServletRequest http) {
+        if ("PASSWORD".equals(req.grantType()))
+            captcha.require(BizCaptchaService.Action.LOGIN, req.principal(), http.getHeader("X-Captcha-Token"));
         return identities.verifyAndList(req.grantType(), req.principal(), req.credential(), req.agreed(), req.marketCode(), locale);
     }
 

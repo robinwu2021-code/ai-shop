@@ -193,6 +193,9 @@ shop:
     # （nginx 转发时把 Host 设回桶域名，签名才对得上）
     private-base-url: ${COS_PRIVATE_BASE_URL:}
   auth:
+    captcha:
+      # Coordinate native CAPTCHA-capable clients before enabling server enforcement.
+      enabled: ${SHOP_AUTH_CAPTCHA_ENABLED:false}
     # 密钥票据免登录（ADR-027）：自动化测试用。默认关，关着时 /common/auth/automation 返回 404。
     # 线上只放公钥；私钥在本机仓库外。开着而公钥或白名单为空则拒绝启动。
     # subjects 形如 B:<user_no>,OPS:<staff_no>，只有这些账号能用票据登录，权限与其正常登录相同。

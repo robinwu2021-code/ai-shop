@@ -1,6 +1,8 @@
 package ai.neargo.shop.common;
 
 import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
+import ai.neargo.shop.common.captcha.CaptchaRequiredException;
+import java.util.Map;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,12 @@ public class GlobalExceptionHandler {
             ErrorCode.TOKEN_EXPIRED.code(),       // 10402 登录过期
             ErrorCode.FORBIDDEN.code(),           // 10403 没权限 / 不在数据域里
             ErrorCode.BIZ_ROLE_FORBIDDEN.code()); // 70006 B 端角色不够
+
+    @ExceptionHandler(CaptchaRequiredException.class)
+    public ApiResult<Map<String, Object>> onCaptcha(CaptchaRequiredException e) {
+        return new ApiResult<>(e.errorCode().code(), Messages.get(e.errorCode().msgKey()),
+                Map.of("captchaRequired", true, "action", e.action()));
+    }
 
     @ExceptionHandler(BizException.class)
     public ApiResult<Void> onBiz(BizException e) {

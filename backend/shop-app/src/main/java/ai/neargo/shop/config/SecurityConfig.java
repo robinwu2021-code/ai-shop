@@ -188,7 +188,8 @@ public class SecurityConfig {
                          */
                         .requestMatchers("/biz/auth/login", "/biz/auth/staff-login",
                                 "/biz/auth/otp/send", "/biz/auth/email-otp/send",
-                                "/biz/auth/identities", "/biz/auth/identities/enter").permitAll()
+                                "/biz/auth/identities", "/biz/auth/identities/enter",
+                                "/biz/auth/captcha/challenge", "/biz/auth/captcha/verify").permitAll()
                         // 异步与错误分派放行 —— 理由见 operatorChain 同一行的注释
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .anyRequest().authenticated())

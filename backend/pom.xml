@@ -116,6 +116,11 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>cloud.tianai.captcha</groupId>
+                <artifactId>tianai-captcha</artifactId>
+                <version>1.5.6</version>
+            </dependency>
+            <dependency>
                 <groupId>ai.neargo.inventory</groupId>
                 <artifactId>inventory-api</artifactId>
                 <version>${inventory.version}</version>
