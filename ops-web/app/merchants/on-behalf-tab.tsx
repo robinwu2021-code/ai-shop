@@ -10,32 +10,24 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { HelpNote } from "@/components/ui/help-note";
 import { Textarea } from "@/components/ui/textarea";
 import { ApplyTab } from "./apply-tab";
 import type { MerchantsCopy } from "./copy";
 
-export function OnBehalfTab({ c, canSubmit }: { c: MerchantsCopy; canSubmit: boolean }) {
+export function OnBehalfTab({ c, canSubmit, canAudit=false, canReadSubscription=false }: { c: MerchantsCopy; canSubmit: boolean; canAudit?:boolean; canReadSubscription?:boolean }) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState<ApplyOnBehalfResult | null>(null);
   const qc = useQueryClient();
-  if (!canSubmit) return <Notice tone="danger">{c.obNoPerm}</Notice>;
+  if (!canSubmit && !canAudit) return <Notice tone="danger">{c.obNoPerm}</Notice>;
   return <div className="space-y-4">
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <p className="txt-body text-muted-foreground">{c.obListDesc}</p>
-          <HelpNote>{c.obWarning}<p className="mt-2">{c.obDesc}</p></HelpNote>
-        </div>
-        <Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>
-      </div>
+      <ApplyTab c={c} canAudit={canAudit} canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
       {open && <ApplicationDialog c={c} onDone={(result) => {
         setDone(result); setOpen(false);
         void qc.invalidateQueries({ queryKey: ["applies"] });
       }} onCancel={() => setOpen(false)} />}
     </Dialog.Root>
     {done && <Notice tone="info">{c.obDone}：{done.applyNo}<p className="mt-1 txt-caption">{c.obDoneHint}</p></Notice>}
-    <ApplyTab c={c} canAudit={false} onBehalfOnly />
   </div>;
 }
 
@@ -87,7 +79,7 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
       <div className="border-b p-5">
         <Dialog.Title className="txt-heading">{c.obNew}</Dialog.Title>
         <Dialog.Description className="sr-only">{c.obDesc}</Dialog.Description>
-        <p className="mt-1 txt-caption text-muted-foreground">{c.obSystemMarket}：{market ?? "—"} · {c.obSystemMarketHint}</p>
+        <p className="mt-1 txt-caption text-muted-foreground">{c.obSystemMarket}：{market ?? "—"}</p>
       </div>
       <form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
         <div className="min-h-0 space-y-5 overflow-y-auto p-5">
@@ -120,9 +112,9 @@ function ApplicationDialog({ c, onDone, onCancel }: { c: MerchantsCopy; onDone: 
               <h3 className="txt-body font-semibold">{c.obEntitySection}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className={cell}><Label className="block" required htmlFor="ob-name">{c.obName}</Label><Input id="ob-name" required value={name} onChange={e=>setName(e.target.value)} /></div>
-                <div className={cell}><Label className="block" required htmlFor="ob-subject">{c.obSubject}</Label><Select className="w-full" id="ob-subject" required value={subject} onChange={e=>setSubject(e.target.value)}><option value="ENTERPRISE">{c.obSubjectEnterprise}</option><option value="INDIVIDUAL">{c.obSubjectIndividual}</option></Select></div>
-                <div className={cell}><Label className="block" htmlFor="ob-license-code">{c.obLicenseCode}</Label><Input id="ob-license-code" value={licenseCode} onChange={e=>setLicenseCode(e.target.value)} /></div>
-                <div className={cell}><Label className="block" required htmlFor="ob-license">{c.obLicense}</Label><Input id="ob-license" required value={licenseUrl} onChange={e=>setLicenseUrl(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-subject">{c.obSubject}</Label><Select className="w-full" id="ob-subject" required value={subject} onChange={e=>setSubject(e.target.value)}><option value="ENTERPRISE">{(market==="TW"?c.obSubjectCompanyTw:c.obSubjectEnterprise)}</option><option value="INDIVIDUAL">{(market==="TW"?c.obSubjectIndividualTw:c.obSubjectIndividual)}</option></Select></div>
+                <div className={cell}><Label className="block" htmlFor="ob-license-code">{market==="TW"?c.obLicenseCodeTw:c.obLicenseCode}</Label><Input id="ob-license-code" value={licenseCode} onChange={e=>setLicenseCode(e.target.value)} /></div>
+                <div className={cell}><Label className="block" required htmlFor="ob-license">{market==="TW"?c.obLicenseTw:c.obLicense}</Label><Input id="ob-license" required value={licenseUrl} onChange={e=>setLicenseUrl(e.target.value)} /></div>
               </div>
             </section>
             <details className="border-t pt-4">

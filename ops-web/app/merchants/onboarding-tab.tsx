@@ -11,7 +11,7 @@ import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
-import { HelpNote } from "@/components/ui/help-note";
+import { Drawer,DrawerSection,Field,FieldGrid } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import type { MerchantsCopy } from "./copy";
 
@@ -54,6 +54,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
   const canRead = allow("merchant:admission:read");
   const auth = useAuth();
   const [keyword, setKeyword] = useState("");
+  const [selectedEntityNo,setSelectedEntityNo]=useState<string|null>(null);
   const { page, setPage, size, setSize } = usePaging(20);
   const q = { keyword, page, size };
   const list = useQuery({
@@ -61,21 +62,32 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
     queryFn: () => api.nearPayOnboardingBoard(q),
     enabled: canRead,
   });
+  const current=list.data?.records.find(row=>row.entityNo===selectedEntityNo);
+  const channelLabels={DRAFT:c.obStateDraft,SUBMITTED:c.obStateSubmitted,CHANNEL_REVIEW:c.obStateChannelReview,NEED_SIGN:c.obStateNeedSign,APPROVED:c.obStateApproved,REJECTED:c.obStateRejected,CANCELLED:c.obStateCancelled,SUPERSEDED:c.obStateSuperseded};
   const columns: Column<PayServiceOnboardingRow>[] = [
-    { header: c.obColMerchant, cell: (r) => <div><div>{r.entityName}</div><div className="txt-caption tabular-nums text-muted-foreground">{r.entityNo}</div></div> },
-    { header: c.obSourceStatus, cell: (r) => <dl className="space-y-1">
-      {[[c.obSourceStatus, statusLabel(r.status, sourceLabels(c))], [c.obMerchantRef, r.merchantRef], [c.obLinkStatus, statusLabel(r.linkStatus, { VERIFIED: c.obStateVerified, PENDING: c.obStateVerifyPending, VERIFY_PENDING: c.obStateVerifyPending, MISMATCH: c.obStateMismatch })], [c.obProfileStatus, statusLabel(r.profileStatus, sourceLabels(c))], [c.obProfileReason, r.reviewReason]].map(([label, value]) => <div key={label}><dt className="txt-caption text-muted-foreground">{label}</dt><dd>{value ?? "—"}</dd></div>)}
-    </dl> },
-    { header: c.obChannelFacts, cell: (r) => r.onboardings.length ? <div>{r.onboardings.map((row) => <ChannelFacts key={row.onboardingNo} row={row} c={c} />)}</div> : <span className="text-muted-foreground">{c.obNoApplication}</span> },
-    { header: c.obColActions, cell: (r) => r.onboardingOpsUrl ? <a className="text-primary-ink underline focus-ring" href={r.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.obOpenNearPay}</a> : null },
+    {header:c.obColMerchant,cell:r=><div className="max-w-56 truncate font-medium" title={r.entityName}>{r.entityName}</div>},
+    {header:c.obProfileStatus,cell:r=>statusLabel(r.profileStatus,sourceLabels(c))},
+    {header:c.obColStatus,cell:r=>r.onboardings.length?<div className="space-y-1">{r.onboardings.slice(0,2).map(ch=><div key={ch.onboardingNo} className="txt-caption">{ch.payChannel} · {statusLabel(ch.status,channelLabels)}</div>)}{r.onboardings.length>2&&<div className="txt-caption">+{r.onboardings.length-2}</div>}</div>:c.obNoApplication},
+    {header:c.obColBlocker,cell:r=>{const reason=r.reviewReason||r.onboardings.find(ch=>ch.reason)?.reason;return <div className="max-w-56 truncate txt-caption" title={reason??undefined}>{reason||"—"}</div>;}},
+    {header:c.obColActions,stickyEnd:true,cell:r=><Button size="sm" variant="outline" onClick={()=>setSelectedEntityNo(r.entityNo)}>{c.actionView}</Button>},
   ];
   if (!canRead) return null;
   return <>
-    <HelpNote className="mb-3">{c.obNotice}</HelpNote>
     <Toolbar search={keyword} onSearch={(value) => { setKeyword(value); setPage(1); }} searchPlaceholder={c.obSearchPh}>
       <Button variant="outline" disabled={list.isFetching} onClick={() => list.refetch()}>{c.obReload}</Button>
     </Toolbar>
     <DataTable columns={columns} rows={list.data?.records} loading={list.isPending} rowKey={(r) => r.entityNo} empty={c.obEmpty} error={list.error} onRetry={() => list.refetch()} />
+    <Drawer open={!!current} onOpenChange={open=>!open&&setSelectedEntityNo(null)} title={current?.entityName??c.obPaymentDetails} desc={c.obPaymentDetails}>
+      {current&&<>
+        <DrawerSection title={c.obSourceStatus}><FieldGrid>
+          <Field label={c.obColMerchant}>{current.entityNo}</Field><Field label={c.obSourceStatus}>{statusLabel(current.status,sourceLabels(c))}</Field>
+          <Field label={c.obMerchantRef}>{current.merchantRef??"—"}</Field><Field label={c.obLinkStatus}>{statusLabel(current.linkStatus,{VERIFIED:c.obStateVerified,PENDING:c.obStateVerifyPending,VERIFY_PENDING:c.obStateVerifyPending,MISMATCH:c.obStateMismatch})}</Field>
+          <Field label={c.obProfileStatus}>{statusLabel(current.profileStatus,sourceLabels(c))}</Field><Field label={c.obProfileReason}>{current.reviewReason||"—"}</Field>
+        </FieldGrid></DrawerSection>
+        <DrawerSection title={c.obChannelFacts}>{current.onboardings.length?current.onboardings.map(ch=><ChannelFacts key={ch.onboardingNo} row={ch} c={c}/>):c.obNoApplication}</DrawerSection>
+        {current.onboardingOpsUrl&&<a className="inline-flex rounded-control bg-primary px-4 py-2 txt-body text-primary-foreground focus-ring" href={current.onboardingOpsUrl} target="_blank" rel="noopener noreferrer">{c.obOpenNearPay}</a>}
+      </>}
+    </Drawer>
     <Pagination page={page} size={size} total={list.data?.total ?? 0} onPage={setPage} onSize={setSize} sizes={[10, 20]} />
   </>;
 }

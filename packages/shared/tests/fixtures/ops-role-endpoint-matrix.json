@@ -1043,6 +1043,7 @@
     "GET /ops/merchants/auth-codes",
     "GET /ops/merchants/mode-risk",
     "POST /ops/merchants/self-operated",
+    "GET /ops/merchants/self-operated/context",
     "GET /ops/merchants/store-industries",
     "GET /ops/merchants/violations",
     "GET /ops/message",

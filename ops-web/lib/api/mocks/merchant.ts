@@ -248,10 +248,9 @@ export const merchantMock: MerchantApi = {
     return wait({applyNo,ownerUserNo},500);
   },
 
-  createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
-    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
-      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
-    }
+  selfOperatedContext: async () => wait({...marketPhonePolicies.find(p=>p.market==="TW")!}),
+  createSelfOperated: async ({ ownerEmail, name, serviceScope, communityNos }) => {
+    if(ownerEmail!=="owner@example.test") fail("请选择已注册店主邮箱", "Use the registered owner email");
     if (!name?.trim()) {
       fail("主体名称不能为空", "Merchant name is required");
     }
@@ -261,12 +260,12 @@ export const merchantMock: MerchantApi = {
     if (scope === "COMMUNITY" && !communityNos?.length) {
       fail("必须至少选一个覆盖社区", "At least one covered community is required");
     }
-    const tail = phone.slice(-4);
-    const owned = selfOperatedByPhone.get(phone);
+    const ownerKey=ownerEmail!;
+    const owned = selfOperatedByPhone.get(ownerKey);
     if (owned) {
       return wait({
         merchantNo: owned, storeNo: `${owned}-S1`,
-        ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
+        ownerUserNo: `U-${ownerKey}`, fundsMode: "AGGREGATED" as const,
         businessMode: "SELF_OPERATED", serviceScope: scope, created: false,
         selfOperated: true,
         reachableCommunities: reachOf(scope, communityNos),
@@ -276,16 +275,16 @@ export const merchantMock: MerchantApi = {
     db.merchants.unshift({
       merchantNo, name: name.trim(), legalForm: "ENTERPRISE", tier: "MEDIUM", status: "ACTIVE",
       communityNos: [...communityNos],
-      contactName: "平台自营", contactPhone: `${phone.slice(0, 3)}****${tail}`,
+      contactName: "平台自营", contactPhone: "",
       categoryCodes: [], qualifications: [], verified: true, breachCount: 0,
       settleAccountReady: false, createdAt: new Date().toISOString(),
       fundsMode: "AGGREGATED",
       // 建出来的主体要带上这个标记，否则 mock 下「自营的类目授权不禁用」演不出来
       selfOperated: true,
     });
-    selfOperatedByPhone.set(phone, merchantNo);
+    selfOperatedByPhone.set(ownerKey, merchantNo);
     return wait({
-      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
+      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${ownerKey}`,
       fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",
       serviceScope: scope, created: true, selfOperated: true,
       reachableCommunities: reachOf(scope, communityNos),

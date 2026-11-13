@@ -2,8 +2,9 @@
 
 // 商家治理（矩阵 P-11.1）。**样板页 ①：列表 + 筛选 + 审核抽屉 + 权限降级 + 归档**。
 // 新页面照这个骨架写：useQuery 取数 → Toolbar 筛选 → DataTable → Drawer 详情 → useMutation 写回。
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
+import {useRouter,useSearchParams} from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
@@ -17,7 +18,6 @@ import type { Merchant, MerchantStatus } from "@/lib/types";
 import { MerchantStatusBadge, VerifiedBadge, useMerchantStatusMap, useMerchantTierLabel } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 授权/认证标与信用/处置各自成块 —— 与审核那两个 tab 只共用文案表
-import { ApplyTab } from "./apply-tab";
 import { CategoryTab, VerifyTab } from "./authorize-tab";
 import { BanTab, CreditTab } from "./credit-tab";
 // 准入与保证金单独成块：它是「让不让他卖」那组决定，与档案/处置不同
@@ -56,7 +56,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "on-behalf", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -67,6 +67,8 @@ export default function MerchantsPage() {
 
 function MerchantsInner() {
   const c = useCopy(MERCHANTS_COPY);
+  const router=useRouter();const search=useSearchParams();
+  useEffect(()=>{if(search.get("tab")==="on-behalf"){const next=new URLSearchParams(search.toString());next.delete("tab");router.replace("/merchants"+(next.size?"?"+next.toString():""));}},[router,search]);
   const tabs = useNavTabs("/merchants", TAB_KEYS);
   const tierOptions = TIER_OPTIONS(c);
   const qc = useQueryClient();
@@ -111,6 +113,7 @@ function MerchantsInner() {
   const list = useQuery({
     queryKey: ["merchants", q],
     queryFn: () => api.listMerchants(q),
+    enabled:tab==="list",
   });
 
   // 写操作统一走这里：失败的 toast 由 Providers 的 mutationCache 兜住，不用逐处 catch。
@@ -120,6 +123,7 @@ function MerchantsInner() {
   const communities = useQuery({
     queryKey: ["communities", "for-audit"],
     queryFn: () => api.listCommunities({ page: 1, size: 200 }),
+    enabled:tab==="list" && canAudit,
   });
 
   const setStatusMut = useMutation({
@@ -229,18 +233,7 @@ function MerchantsInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === "audit" && (
-        <>
-          {!canAudit && (
-            <ReadOnlyNotice what={c.readOnlyWhat} perm="merchant:apply:audit" note={c.readOnlyNote} className="mb-3" />
-          )}
-          {/*
-            审核走「申请单」模型（已接真后端）；下面的 list tab 仍是商家档案。
-            两者不是同一个资源：通过之前商家不存在，所以审核动作打在 applyNo 上。
-          */}
-          <ApplyTab c={c} canAudit={canAudit} canReadSubscription={allow("commerce:subscription:read")} />
-        </>
-      )}
+      {tab === "audit" && <OnBehalfTab c={c} canSubmit={canOnBehalf} canAudit={canAudit} canReadSubscription={allow("commerce:subscription:read")} />}
 
       {tab === "categories" && (
         <>
@@ -271,19 +264,7 @@ function MerchantsInner() {
       {tab === "mode-risk" && <ModeRiskTab c={c} />}
       {tab === "onboarding" && <OnboardingTab c={c} />}
 
-      {tab === "self-operated" && (
-        <>
-          {!canSelfOp && <ReadOnlyNotice what={c.soReadOnlyWhat} perm="merchant:selfop:create" className="mb-3" />}
-          <SelfOperatedTab c={c} canCreate={canSelfOp} />
-        </>
-      )}
-
-      {tab === "on-behalf" && (
-        <>
-          {!canOnBehalf && <ReadOnlyNotice what={c.obReadOnlyWhat} perm="merchant:apply:onbehalf" className="mb-3" />}
-          <OnBehalfTab c={c} canSubmit={canOnBehalf} />
-        </>
-      )}
+      {tab === "self-operated" && <SelfOperatedTab c={c} canCreate={canSelfOp} />}
 
       {tab === "ban" && (
         <>
