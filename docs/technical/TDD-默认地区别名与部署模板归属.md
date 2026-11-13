@@ -40,3 +40,7 @@ ai-shop模板搬至所属仓库deploy/env-templates；已确认独立ai-hxkey仓
 near-pay：config-env.py、tests/test_config_env.py、apply-baseline/phase2/check-config/deploy-safe、默认地区模板及配套文档；旧ai-shop模板目录删除可编辑副本、仅留导航。ai-shop：deploy/env-templates四份模板及说明、TDD和处置表/明细同步。ai-hxkey：仅新增deploy/env-templates/hxkey.env.example。
 
 原计划未确定hxkey实际源码路径，核对后找到干净的独立项目，模板直接归回该项目。其旧模板WX_TPL_ELEC_QUOTED并非本项目消费者读取名，已按application.yml修正为ELEC_WX_TPL_QUOTED；ai-shop对应旧变量未改。无数据库/运行代码变更，无原未提交代码覆盖。
+
+## 发布前门禁修复（2026-11-13）
+
+ai-shop全量门禁首次139个商城实库配置错误（未注入COMMERCE_MYSQL_*），另1个打印根路径用例失败。定位为PrintDatabaseAcceptanceTest设置四个System属性后只关闭上下文，未恢复原值，污染后续PrivateArtifactRootTest。已修复原夹具AfterAll恢复原属性；两类打印用例增量验证BUILD SUCCESS（7.841s）。商城重跑通过本机私有client.cnf注入127.0.0.1:3308测试配置，不改生产配置、不扩大失败基线。

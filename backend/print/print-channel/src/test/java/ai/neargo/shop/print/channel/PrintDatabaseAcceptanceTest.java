@@ -51,6 +51,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 class PrintDatabaseAcceptanceTest {
     static AnnotationConfigApplicationContext context;
+    private static final Map<String, String> previousProperties = new HashMap<>();
 
     @Configuration
     @EnableTransactionManagement
@@ -133,6 +134,10 @@ class PrintDatabaseAcceptanceTest {
 
     @BeforeAll
     static void start() throws Exception {
+        for (String key : List.of("shop.print.credentials.key", "shop.print.artifacts.root",
+                "shop.print.artifacts.signing-key", "shop.print.agent.lease-key")) {
+            previousProperties.put(key, System.getProperty(key));
+        }
         System.setProperty(
                 "shop.print.credentials.key", Base64.getEncoder().encodeToString(new byte[32]));
         System.setProperty(
@@ -148,7 +153,15 @@ class PrintDatabaseAcceptanceTest {
 
     @AfterAll
     static void stop() {
-        if (context != null) context.close();
+        try {
+            if (context != null) context.close();
+        } finally {
+            previousProperties.forEach((key, value) -> {
+                if (value == null) System.clearProperty(key);
+                else System.setProperty(key, value);
+            });
+            previousProperties.clear();
+        }
     }
 
     PrintActor actor(String key) {
