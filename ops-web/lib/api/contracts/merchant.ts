@@ -77,21 +77,12 @@ export interface MerchantApi extends Pick<CashRefundApi,"entityCashReceipts"|"en
    */
   setFundsMode(v: { merchantNo: string; fundsMode: FundsMode }): Promise<Merchant>;
 
-  /**
-   * 建**平台自营商家**（跳过进件与审核）。只有超管调得动
-   * （`merchant:selfop:create` 不在任何角色的码表里）。
-   *
-   * 拒的情形：手机号格式不对、名称为空、范围不在启用白名单里、
-   * scope=COMMUNITY 却没勾社区（400）—— 最后一条不是挑剔：
-   * 没有覆盖社区的商家上着架却对谁都不可见，而这个故障不报错。
-   *
-   * ⚠️ 别的档不要求勾社区，**但也不等于就可见了**。返回的
-   * `reachableCommunities` 才是真判据。
-   *
-   * **幂等按人**：同一个手机号连调两次返回同一个主体，`created=false`。
-   */
+  /** 当前系统地区的自营建档账号策略。 */
+  selfOperatedContext(): Promise<Pick<import("@/lib/types").MarketPhonePolicy,"market"|"recordOnly"|"marketEnabled">>;
+  /** 自营建档：台湾使用已注册邮箱，大陆保留手机号身份；沿原权限、服务范围规则和 owner 幂等执行。 */
   createSelfOperated(v: {
-    phone: string;
+    phone?: string;
+    ownerEmail?: string;
     name: string;
     /** COMMUNITY / CITY / PLATFORM；空按 COMMUNITY。先过一期启用白名单 */
     serviceScope?: string;

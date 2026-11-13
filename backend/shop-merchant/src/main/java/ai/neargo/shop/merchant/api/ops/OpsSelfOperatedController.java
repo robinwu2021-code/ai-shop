@@ -2,12 +2,14 @@ package ai.neargo.shop.merchant.api.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.common.Phones;
 import ai.neargo.shop.merchant.service.SelfOperatedService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Email;
+import ai.neargo.shop.spi.platform.MarketContactPolicyPort;
+import org.springframework.web.bind.annotation.GetMapping;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,12 +37,18 @@ public class OpsSelfOperatedController {
 
     private final SelfOperatedService selfOperatedService;
     private final AuditLogPort auditLogPort;
+    private final MarketContactPolicyPort contacts;
 
     public OpsSelfOperatedController(SelfOperatedService selfOperatedService,
-                                     AuditLogPort auditLogPort) {
+                                     AuditLogPort auditLogPort, MarketContactPolicyPort contacts) {
+        this.contacts=contacts;
         this.selfOperatedService = selfOperatedService;
         this.auditLogPort = auditLogPort;
     }
+
+    @GetMapping("/ops/merchants/self-operated/context")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_SELFOP_CREATE + "')")
+    public MarketContactPolicyPort.Policy context() { return contacts.instancePolicy(); }
 
     @PostMapping("/ops/merchants/self-operated")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_SELFOP_CREATE + "')")
@@ -48,7 +56,7 @@ public class OpsSelfOperatedController {
         String operator = SecurityUtils.currentUserNo();
         var vo = selfOperatedService.create(new SelfOperatedService.CreateCommand(
                 req.phone(), req.name(), req.serviceScope(), req.communityNos(),
-                req.industry(), req.description()),
+                req.industry(), req.description(),req.ownerEmail()),
                 operator);
         /*
          * 幂等命中也记一条，且**把是不是新建写进摘要**。
@@ -109,11 +117,12 @@ public class OpsSelfOperatedController {
      *                     才是那个真判据
      */
     public record CreateReq(
-            @NotBlank @Pattern(regexp = Phones.CN_MOBILE, message = Phones.MESSAGE) String phone,
+            @Size(max=32) String phone,
             @NotBlank String name,
             String serviceScope,
             List<String> communityNos,
             String industry,
-            String description) {
+            String description,
+            @Email @Size(max=254) String ownerEmail) {
     }
 }

@@ -33,6 +33,7 @@ export const merchantHttp: MerchantApi = {
   modeRisk: () => client.get("/ops/merchants/mode-risk"),
   setFundsMode: ({ merchantNo, ...body }) =>
     client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),
+  selfOperatedContext: () => client.get("/ops/merchants/self-operated/context"),
   createSelfOperated: (v) => client.post("/ops/merchants/self-operated", v),
   onBehalfContext: () => client.get("/ops/merchants/apply-on-behalf/context"),
   listOnBehalfApplies: (q) => client.get("/ops/merchants/apply-on-behalf/search", q),
