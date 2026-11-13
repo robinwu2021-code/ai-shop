@@ -50,7 +50,7 @@
 - Backend: 14 regional policy/application tests, 6 self-operation contact/controller tests, 12 existing self-operation scenario tests and 6 schema projection tests passed (38 total).
 - Frontend: 158 related navigation/application/payment/copy tests passed; the updated application display file has 10 tests (2 added), and payment board has 13 tests (1 added): 161 distinct tests passed. Permission matrix: 37 passed.
 - Lint, production build/TypeScript, production artifact guard, API contract (existing 8 debts unchanged), generated UI catalog and schema projection passed.
-- Compiled 13 baseline classes and compared their disassembled behavior with the fresh live package c477fa54: no differences. Candidate replaces 13 class entries across shop-base/core/merchant and adds V664 only; all other archive entries are byte-identical.
+- Compiled 13 baseline classes and compared their disassembled behavior with the fresh live package c477fa54: no differences. Candidate replaces 13 class entries across shop-base/core/merchant and adds V665 only; all other archive entries are byte-identical.
 - Deployment and read-only UI verification pending. Incremental results are reused under Java section 8.4; push uses SKIP_COMPILE_GATE=1 and does not claim unrelated full-project gates passed.
 
 

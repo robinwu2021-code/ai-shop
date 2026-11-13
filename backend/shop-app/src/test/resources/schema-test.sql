@@ -467,6 +467,10 @@ CREATE TABLE IF NOT EXISTS notify_message
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     template_no VARCHAR(64) DEFAULT NULL,
     receiver_type VARCHAR(16) NOT NULL DEFAULT 'USER',
+    biz_type VARCHAR(32) NULL,
+    biz_no VARCHAR(64) NULL,
+    store_no VARCHAR(64) NULL,
+    entity_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_message_no UNIQUE (message_no),
     CONSTRAINT uk_msg_dedup UNIQUE (dedup_key)
@@ -13011,6 +13015,58 @@ CREATE TABLE IF NOT EXISTS sys_auth_captcha_rate
     rate_key VARCHAR(64) NOT NULL PRIMARY KEY,
     hits INT NOT NULL,
     expires_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_source
+(
+    environment VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    pay_app_id BIGINT NOT NULL,
+    source_type VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    source_id BIGINT NOT NULL,
+    payment_store_id BIGINT NOT NULL,
+    store_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY(environment,pay_app_id,source_type,source_id,payment_store_id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_receipt
+(
+    environment VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    event_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    pay_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_sha256 CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    receipt_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload LONGTEXT NOT NULL,
+    store_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    entity_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    created_at BIGINT NOT NULL,
+    projected_at BIGINT NULL,
+    PRIMARY KEY(environment,event_id),
+    CONSTRAINT uk_collection_order UNIQUE (environment,pay_order_no),
+    CONSTRAINT uk_collection_receipt UNIQUE (receipt_no)
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_scope
+(
+    scope_key VARCHAR(512) COLLATE utf8mb4_bin NOT NULL,
+    seq BIGINT NOT NULL DEFAULT 0,
+    floor_seq BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY(scope_key)
+);
+
+CREATE TABLE IF NOT EXISTS payment_collection_stream
+(
+    scope_key VARCHAR(512) COLLATE utf8mb4_bin NOT NULL,
+    seq BIGINT NOT NULL,
+    event_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    message_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    pay_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    paid_at BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY(scope_key,seq),
+    CONSTRAINT uk_collection_stream_event UNIQUE (scope_key,event_id)
 );
 
 CREATE TABLE IF NOT EXISTS pay_channel_product
