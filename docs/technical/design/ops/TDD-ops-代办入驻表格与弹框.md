@@ -1,6 +1,6 @@
 # 运营代办入驻：表格与弹框
 
-## 2026-11-13 统一入驻管理（实施中）
+## 2026-11-13 统一入驻管理（已部署，管理员复验待登录）
 
 ### §0 用户确认与验收
 
@@ -23,11 +23,15 @@
 - AC 对应验证：AdmissionManagementServiceTest 的 mergesBeforePaginationWithAccurateCountsAndStableOrder、assistedOperatorCannotReadSelfOperatedOrUnassistedApplications、selfOperatedPermissionAloneNeverReadsApplications、requestedAssistedTypeRestrictsEvenAuditorToAssistedSources 覆盖归并分页、来源、权限；AssistedApplySearchTest 与 SelfOperatedAdmissionPortTest 验证地区及归档条件在分页前应用。
 - 前端 unified-admission-ui.test.ts 覆盖单列表、服务端类型筛选、两种表单切换、台湾固定地区、自营成功关闭刷新、创建权限及按实际商户键新增门店；原代办提交与审核命令回归保留。相关前端 159 项通过，服务端 22 项与 SchemaDriftTest 6 项通过，角色端点验证 40 项、复合权限解析 3 项通过。
 - lint、生产构建/TypeScript、按 UME166 的 /ops-shop 前缀适配执行原产物检查通过；OPS 契约既有 8 项欠账不变，OpenAPI、权限矩阵、UI 目录、功能清单及 H2 Schema 已重新生成。推送复用上述增量证据，不重复无关全量门禁。
-- 发布前已将当前线上包与原提交编译出的 11 个基线类进行反汇编比较，语义一致。本次候选仅更新或增加目标类与 V667 菜单迁移，不覆盖其他包条目、配置或角色授权。线上部署和复验待完成。
+- 发布前已将当前线上包与原提交编译出的 11 个基线类进行反汇编比较，语义一致。本次候选仅更新或增加目标类与 V667 菜单迁移，不覆盖其他包条目、配置或角色授权。
 - 并行发布占用部署锁，本次在切换前退出，未修改线上。随后线上收款发布使用 V666__platform_sales_collection.sql；本次未执行的菜单迁移顺延 V667，导航迁移 6 项和 SchemaDriftTest 6 项重新验证通过。针对新运行包 51860fb0 的 11 个目标基线类再次比对，仍无语义差异，候选基于该包重建以保留收款发布。
 - 同步合入已部署的 d3e6ada5a 收款发布源码，避免静态站点覆盖其商城页面。合并无冲突；重新生成 API/权限/Schema，入驻 UI 与商城收款 API 共 17 项、SchemaDriftTest 6 项及生产构建通过。包含前述验证，共覆盖 169 个不同前端用例；未扩大到无关全量回归。
 - 合并后的角色端点检查复现 collectors 查询漏登记；按其原 context.operator 的 commerce:mall:offline:confirm 补入 perm-endpoint-map，不修改运行权限。
 - 统一新增自营后，原“可达服务区域为零”提示会随弹框关闭消失；unified-admission-ui.test.ts 新增用例有效复现，改为保留全局错误提示，同时清除上一笔代客申请的结果提示。受影响前端 89 项、lint、生产构建及产物检查通过；累计不同前端用例 170 项。统一列表的细化登记明确三种原权限的 OR 关系，登记守卫 37 项通过。
+- UME166 服务端发布 ops-unified-admission-20261113-b2a510207：API/OPS 均 UP，V667 成功，原角色授权、权限码及全部历史迁移 checksum 不变；NearPay、库存与配置未改。最终前端发布 ops-unified-admission-ui-20261113-e02631cd0，公开 2 个 HTML 与 34 个 JS/CSS 摘要匹配，保留已部署收款页面。
+- Chrome 现有 robin@neargo.ai（STORE_APPLY_REVIEW）只读复验通过：一个入驻管理入口、一张六列表格、6 条实际申请，无新增商家按钮，未放宽原权限。已恢复 Chrome 原标签页；未提交真实入驻、门店或支付请求。
+- 内置浏览器管理员会话已过期，停在登录页，已请用户重新登录。管理员新增代客/自营弹框及旧自营深链的线上复验尚未完成，不能将此项标为线上通过；相应交互及权限分支的自动化验证已通过。服务区域原配置未改变。
+- [发布及复验证据](../../evidence/ops-unified-admission-20261113/verification.json)，同目录含审核账号列表截图。实现主提交 5671e1e31、迁移顺延 f0802662a、保留协同发布 d15186fad、必要提示修正 e02631cd0。
 
 ## §0 范围与结论
 
