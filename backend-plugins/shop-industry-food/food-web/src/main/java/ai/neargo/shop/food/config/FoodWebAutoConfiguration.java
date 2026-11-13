@@ -40,6 +40,11 @@ import ai.neargo.shop.food.api.biz.BizSalesRestrictionController;
 import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
 import ai.neargo.shop.food.api.biz.BizCounterSettlementController;
 import ai.neargo.shop.food.api.biz.BizSettlementController;
+import java.time.Clock;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.food.api.biz.BizStoreProfileController;
+import ai.neargo.shop.food.api.StoreProfileAssembler;
 import ai.neargo.shop.food.api.biz.BizStationController;
 import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
 import ai.neargo.shop.food.api.biz.BizTableAreaController;
@@ -381,6 +386,26 @@ public class FoodWebAutoConfiguration {
             StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizSettlementController(service, stores, scope);
+    }
+
+    /** 门店基本信息组装（POS B6）：平台的商家、市场端口可缺省（缺省时币种为空）。 */
+    @Bean
+    @ConditionalOnMissingBean(StoreProfileAssembler.class)
+    @ConditionalOnBean({StoreOperationService.class, StoreDirectoryPort.class})
+    StoreProfileAssembler storeProfileAssembler(StoreDirectoryPort stores, StoreOperationService policies,
+            ObjectProvider<MerchantQueryPort> merchants, ObjectProvider<MarketPort> markets) {
+        return new StoreProfileAssembler(stores, policies, merchants::getIfAvailable, markets::getIfAvailable,
+                Clock.systemUTC());
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean(StoreProfileAssembler.class)
+    @ConditionalOnMissingBean(BizStoreProfileController.class)
+    BizStoreProfileController bizStoreProfileController(StoreProfileAssembler profiles, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizStoreProfileController(profiles, stores, scope);
     }
 
     /** 柜台后付整桌结账（TDD-餐饮柜台后付结账）；拆分部署时 service 是 RemoteCounterSettlementService。 */
