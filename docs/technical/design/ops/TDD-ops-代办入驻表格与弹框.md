@@ -48,10 +48,15 @@
 ### §5 验证与交付
 
 - Backend: 14 regional policy/application tests, 6 self-operation contact/controller tests, 12 existing self-operation scenario tests and 6 schema projection tests passed (38 total).
-- Frontend: 158 related navigation/application/payment/copy tests passed; the updated application display file has 10 tests (2 added), and payment board has 13 tests (1 added): 161 distinct tests passed. Permission matrix: 37 passed.
+- Frontend: 158 related navigation/application/payment/copy tests passed; application display has 11 tests (3 added), and payment board has 13 tests (1 added): 162 distinct tests passed. Permission matrix: 37 passed.
 - Lint, production build/TypeScript, production artifact guard, API contract (existing 8 debts unchanged), generated UI catalog and schema projection passed.
 - Compiled 13 baseline classes and compared their disassembled behavior with the fresh live package c477fa54: no differences. Candidate replaces 13 class entries across shop-base/core/merchant and adds V665 only; all other archive entries are byte-identical.
-- Deployment and read-only UI verification pending. Incremental results are reused under Java section 8.4; push uses SKIP_COMPILE_GATE=1 and does not claim unrelated full-project gates passed.
+- 最终增量：服务端 38 项、前端 162 项、权限矩阵 37 项通过；补充自营幂等结果不伪造门店名称及支付详情随权限范围刷新的回归验证。实现提交 4a9baa006、集成修正 12308bf7a、页面修正 6c2590277 已进入主开发分支。按 Java §8.4 复用增量结果，推送使用 SKIP_COMPILE_GATE=1，不宣称无关全量门禁通过。
+- UME166 已通过协同发布部署本次服务端，13 个目标类与已验证候选逐字节匹配；复用运行包，未再次覆盖或重启。API/OPS 健康检查 UP，V665 成功应用，原权限码、角色授权及历史迁移校验和不变，系统地区 TW。
+- 前端最终发布 ops-admission-consolidated-ui-20261113-6c2590277-r2，2 个公开 HTML 与 34 个 JS/CSS 摘要匹配。复验期间另一发布 ops-login-error-20261113-r1 遗漏商城 API 前缀导致根路径 /ops 返回 404；保留该产物并恢复本次已验证构建，恢复后 /ops-shop/ops 下身份、菜单、自营地区、行业、服务区域接口均返回 200。
+- 线上只读复验通过：入驻三入口、旧代办链接归一、申请五列表格与台湾新增弹框、自营使用已注册邮箱及系统 TW、375px 窄屏无横向溢出、支付五列表格及测试记录详情。未创建真实申请、未提交或派发真实支付渠道。
+- 当前环境没有可选服务区域，自营默认指定区域模式保留“暂无可选服务区域，请先配置。”这一必要阻断，未更改原业务规则或填造生产配置。
+- [验收证据与发布记录](../../evidence/ops-admission-consolidation-20261113/verification.json)，同目录包含六张页面截图。
 
 
 2026-11-13统一分支集成补充：166先应用了支付SSE的V664（256749001）；运营菜单迁移未应用，合并公共OTP时顺延为V665__ops_admission_entry_consolidation.sql，SQL内容不改。历史候选记录中的“adds V664”是当时制品描述，当前以V665为准。
