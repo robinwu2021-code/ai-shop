@@ -22,14 +22,14 @@ import java.util.Collection;
 import java.util.HexFormat;
 
 /**
- * 本地磁盘实现 —— <b>一期形态，生产最终要换成 COS</b>（见
+ * 本地磁盘实现 —— <b>一期形态，可按部署需求选择，与 COS 保持相同对象 key</b>（见
  * <a href="../../../../../../../../../../docs/technical/design/资源需求评估-JDK21与native.md">资源需求评估</a> §L3-8：
  * 决定性的理由是带宽，云主机按固定带宽计费，十来个人同时刷首页就打满了）。
  *
  * <p>之所以先做这一版：接 COS 需要一套凭据与回源域名，而在它们到位之前
  * 整条链路完全跑不通 —— B 端连一张商品图都传不了。
  *
- * <p>换 COS 时<b>只删这个类、加一个 {@code CosMediaStore}</b>。
+ * <p>切换 COS 时设置 {@code shop.media.provider=cos}，保留本地实现供其他部署选择。
  * key 的形状（{@code E0001/S0003/goods/202608/9f2c….jpg}）逐字就是 COS 的 object key，
  * 不需要任何映射层。
  */
@@ -47,7 +47,7 @@ public class LocalDiskMediaStore implements MediaStore {
     private final String privatePrefix;
     private final byte[] signKey;
 
-    public LocalDiskMediaStore(@Value("${shop.upload.dir:./data/uploads}") String dir,
+    public LocalDiskMediaStore(@Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir,
                                @Value("${shop.upload.public-prefix:/uploads}") String publicPrefix,
                                @Value("${shop.upload.private-prefix:/media}") String privatePrefix,
                                @Value("${shop.media.sign-secret:}") String signSecret) {

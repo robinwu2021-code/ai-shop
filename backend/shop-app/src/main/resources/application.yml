@@ -152,7 +152,14 @@ shop:
       # 判据照跑、命中打 WARN（「[类目闸] 放行未授权上架」），那是开闸前估影响面的依据。
       # 打开时**必须同时**把 b-app 的 ENFORCE_CATEGORY_GATE 打开，见 b-app/src/shared/flags.ts。
       enforce: ${SHOP_CATEGORY_GATE_ENFORCE:false}
-  # 图片/媒体存储：local = 本地磁盘（默认，兜底）；cos = 腾讯云对象存储（生产）。
+  # 本地持久根。缺省 ./data 保留旧 uploads/ 和 print-private/ 路径。
+  # 容器建议 /data/storage，宿主机挂载 /data0/app/ai-shop/storage；物理根不进入 object key。
+  storage:
+    root: ${SHOP_STORAGE_ROOT:./data}
+  # 显式旧路径继续优先，避免升级时悄悄移动存量文件。
+  upload:
+    dir: ${SHOP_UPLOAD_DIR:${shop.storage.root}/uploads}
+  # 图片/文件存储：local 与 cos 显式选择；云故障不自动切回本地。GCS 尚未实现。
   media:
     provider: ${SHOP_MEDIA_PROVIDER:local}
     # 公开图出口（ADR-026）。库里只存规范地址（= shop.cos.domain，生产 https://img.hxmall.top）。

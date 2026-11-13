@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -32,16 +33,17 @@ import java.util.Locale;
  * <p>所以现在多了一道 {@link GoodsOnlyInterceptor}：只有 {@code goods} 那一层放行，
  * {@code qual} / {@code aftersale} 走 {@code /media/**} 的签名 URL。
  *
- * <p><b>换对象存储时这个类整个删掉</b>：那时 URL 指向 COS，不再经过本服务，
+ * <p><b>切换对象存储时本配置不装配</b>：那时 URL 指向 COS，不再经过本服务，
  * 公开与私有的分界改由 bucket 的前缀策略表达 —— 同一套模型，换个地方实现。
  */
 @Configuration
+@ConditionalOnProperty(name = "shop.media.provider", havingValue = "local", matchIfMissing = true)
 public class UploadResourceConfig implements WebMvcConfigurer {
 
     private final String dir;
     private final String publicPrefix;
 
-    public UploadResourceConfig(@Value("${shop.upload.dir:./data/uploads}") String dir,
+    public UploadResourceConfig(@Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir,
                                 @Value("${shop.upload.public-prefix:/uploads}") String publicPrefix) {
         this.dir = dir;
         this.publicPrefix = publicPrefix;

@@ -9,6 +9,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -45,7 +46,7 @@ public class MediaReadController {
     private final String privatePrefix;
 
     public MediaReadController(LocalDiskMediaStore store,
-                               @Value("${shop.upload.dir:./data/uploads}") String dir,
+                               @Value("${shop.upload.dir:${shop.storage.root:./data}/uploads}") String dir,
                                @Value("${shop.upload.private-prefix:/media}") String privatePrefix) {
         this.store = store;
         this.root = Path.of(dir).toAbsolutePath().normalize();
@@ -98,16 +99,7 @@ public class MediaReadController {
     }
 
     private static MediaType contentTypeOf(Path file) {
-        String name = file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
-        if (name.endsWith(".png")) {
-            return MediaType.IMAGE_PNG;
-        }
-        if (name.endsWith(".gif")) {
-            return MediaType.IMAGE_GIF;
-        }
-        if (name.endsWith(".webp")) {
-            return MediaType.parseMediaType("image/webp");
-        }
-        return MediaType.IMAGE_JPEG;
+        return MediaTypeFactory.getMediaType(file.getFileName().toString())
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
     }
 }

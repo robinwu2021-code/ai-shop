@@ -29,7 +29,7 @@ public final class PrivateLocalArtifactStore
     private final String baseUrl;
 
     public PrivateLocalArtifactStore(
-            @Value("${shop.print.artifacts.root:./data/print-private}") String root,
+            @Value("${shop.print.artifacts.root:${shop.storage.root:./data}/print-private}") String root,
             @Value("${shop.print.artifacts.signing-key:}") String key,
             @Value("${shop.print.artifacts.download-base:/private/print-artifacts}") String base) {
         this.root = Path.of(root).toAbsolutePath().normalize();
