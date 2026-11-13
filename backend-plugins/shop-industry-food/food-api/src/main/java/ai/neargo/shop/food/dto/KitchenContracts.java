@@ -78,7 +78,21 @@ public final class KitchenContracts {
     public record TaskVO(String taskNo, String ticketNo, String batchNo, String foodLineNo, String componentNo,
             String stationNo, String taskRole, long routeVersion, BigDecimal qty, BigDecimal makingQty,
             BigDecimal readyQty, BigDecimal servedQty, BigDecimal voidQty, String status,
-            String seatNo, String courseNo, long version, String ticketKind, String originalTicketNo) { }
+            String seatNo, String courseNo, long version, String ticketKind, String originalTicketNo,
+            String sourceLineRef) {
+        /**
+         * @param sourceLineRef 这道菜在下单购物车里的行号（{@code fnb_order_line.source_line_ref}），
+         *                      POS 用它把厨房任务对回自己的点单行（催菜 / 上菜上报，POS 需求 B17）
+         */
+        public TaskVO(String taskNo, String ticketNo, String batchNo, String foodLineNo, String componentNo,
+                String stationNo, String taskRole, long routeVersion, BigDecimal qty, BigDecimal makingQty,
+                BigDecimal readyQty, BigDecimal servedQty, BigDecimal voidQty, String status,
+                String seatNo, String courseNo, long version, String ticketKind, String originalTicketNo) {
+            this(taskNo, ticketNo, batchNo, foodLineNo, componentNo, stationNo, taskRole, routeVersion, qty,
+                    makingQty, readyQty, servedQty, voidQty, status, seatNo, courseNo, version, ticketKind,
+                    originalTicketNo, null);
+        }
+    }
     public record EventVO(String eventNo, String taskNo, String action, BigDecimal qty, String reason,
             String inventoryDocNo) { }
     public record TicketVO(String ticketNo, String batchNo, String kind, String originalTicketNo,
