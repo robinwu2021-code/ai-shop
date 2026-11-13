@@ -167,6 +167,8 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                                             .eq(FnbSettlement::getTenantNo, "MAIN")
                                             .isNotNull(FnbSettlement::getRequestSnapshot)
                                             .in(FnbSettlement::getStatus, CHECKOUT_PENDING)
+                                            // 柜台结算单不走顾客 H5 的恢复（TDD-餐饮柜台后付结账）
+                                            .and(k -> k.isNull(FnbSettlement::getKind).or().ne(FnbSettlement::getKind, "COUNTER"))
                                             .and(
                                                     q ->
                                                             q.isNull(
@@ -280,6 +282,8 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                                                     FnbSettlement::getNextRecoveryAt,
                                                     row.due())
                                             .in(FnbSettlement::getStatus, CHECKOUT_PENDING)
+                                            // 柜台结算单不走顾客 H5 的恢复（TDD-餐饮柜台后付结账）
+                                            .and(k -> k.isNull(FnbSettlement::getKind).or().ne(FnbSettlement::getKind, "COUNTER"))
                                             .and(
                                                     q ->
                                                             q.isNull(

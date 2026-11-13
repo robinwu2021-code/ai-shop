@@ -5,6 +5,7 @@ import ai.neargo.shop.food.channel.port.CoreIndustryCheckoutPortImpl;
 import ai.neargo.shop.food.channel.port.CoreIndustryFulfillmentPortImpl;
 import ai.neargo.shop.food.channel.port.CoreIndustryOrderAmendmentPortImpl;
 import ai.neargo.shop.food.channel.port.CoreIndustryOrderPortImpl;
+import ai.neargo.shop.food.channel.port.CorePostpayReceiptPortImpl;
 import ai.neargo.shop.food.channel.port.CorePricingCheckoutPortImpl;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderInternalApi;
 import ai.neargo.shop.spi.trade.IndustryChannelOrderPort;
@@ -16,6 +17,8 @@ import ai.neargo.shop.spi.trade.IndustryOrderAmendmentInternalApi;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort;
 import ai.neargo.shop.spi.trade.IndustryOrderInternalApi;
 import ai.neargo.shop.spi.trade.IndustryOrderPort;
+import ai.neargo.shop.spi.trade.PostpayReceiptInternalApi;
+import ai.neargo.shop.spi.trade.PostpayReceiptPort;
 import ai.neargo.shop.spi.trade.PricingCheckoutInternalApi;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort;
 import ai.neargo.shop.svc.InternalHttp;
@@ -114,5 +117,18 @@ public class FoodPricingClientConfiguration {
     @ConditionalOnMissingBean(PricingCheckoutPort.class)
     PricingCheckoutPort corePricingCheckoutPort(ObjectProvider<PricingCheckoutInternalApi> api) {
         return new CorePricingCheckoutPortImpl(api::getObject);
+    }
+
+    @Bean
+    @Lazy
+    PostpayReceiptInternalApi postpayReceiptInternalApi(InternalHttp http) {
+        return http.client(
+                ServiceName.PLATFORM, PostpayReceiptInternalApi.class, Duration.ofSeconds(5));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(PostpayReceiptPort.class)
+    PostpayReceiptPort corePostpayReceiptPort(ObjectProvider<PostpayReceiptInternalApi> api) {
+        return new CorePostpayReceiptPortImpl(api::getObject);
     }
 }

@@ -378,6 +378,14 @@ public enum ErrorCode {
     CHECKOUT_PAYMENT_CONFLICT(20021, "err.trade.checkout_payment_conflict"),
     CHECKOUT_RECEIPT_EVIDENCE_INVALID(20022, "err.trade.checkout_receipt_evidence_invalid"),
     CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
+    // 柜台后付结账（TDD-餐饮柜台后付结账 · ADR-059）
+    POSTPAY_RECEIPT_UNDERPAID(20024, "err.trade.postpay_receipt_underpaid"),
+    POSTPAY_RECEIPT_OVERPAID_NON_CASH(20025, "err.trade.postpay_receipt_overpaid_non_cash"),
+    POSTPAY_RECEIPT_RECORD_INVALID(20026, "err.trade.postpay_receipt_record_invalid"),
+    POSTPAY_RECEIPT_ORDER_CHANGED(20027, "err.trade.postpay_receipt_order_changed"),
+    COUNTER_SETTLEMENT_NOT_READY(20028, "err.trade.counter_settlement_not_ready"),
+    COUNTER_SETTLEMENT_SPLIT_LINES(20029, "err.trade.counter_settlement_split_lines"),
+    COUNTER_SETTLEMENT_CONFIRMED(20030, "err.trade.counter_settlement_confirmed"),
     MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
     // ---- 3xxxx 履约 ----

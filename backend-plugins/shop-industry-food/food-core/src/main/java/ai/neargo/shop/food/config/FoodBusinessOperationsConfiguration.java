@@ -1,6 +1,11 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
+import ai.neargo.shop.food.mapper.FoodMappers;
+import ai.neargo.shop.food.service.CounterSettlementService;
+import ai.neargo.shop.food.service.impl.CounterSettlementServiceImpl;
+import ai.neargo.shop.spi.trade.IndustryOrderPort;
+import ai.neargo.shop.spi.trade.PostpayReceiptPort;
 import ai.neargo.shop.food.mapper.ServiceFormMapper;
 import ai.neargo.shop.food.service.BusinessOperationsService;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
@@ -174,5 +179,17 @@ public class FoodBusinessOperationsConfiguration {
                 numbers -> stores.getObject().cards(numbers),
                 json,
                 Clock.systemUTC());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CounterSettlementService.class)
+    CounterSettlementService counterSettlementService(FoodMappers.SettlementMapper settlements,
+            FoodMappers.SettlementItemMapper items, FoodMappers.CheckMapper checks,
+            FoodBusinessOperationsMapper operations, CheckBusinessGuardService guard,
+            CheckCollaborationService collaboration, ObjectProvider<IndustryOrderPort> orders,
+            ObjectProvider<PostpayReceiptPort> receipts,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new CounterSettlementServiceImpl(settlements, items, checks, operations, guard, collaboration,
+                orders::getIfUnique, receipts::getIfUnique, Clock.systemUTC(), manager);
     }
 }

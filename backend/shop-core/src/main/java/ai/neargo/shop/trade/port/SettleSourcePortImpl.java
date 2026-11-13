@@ -40,6 +40,10 @@ public class SettleSourcePortImpl implements SettleSourcePort {
      */
     private final ExpressPickupMapper expressPickupMapper;
 
+    /** 没有被后付人工实收覆盖（{@code ord_postpay_receipt_root.order_no} 唯一）。 */
+    static final String NOT_POSTPAY_RECEIPTED =
+            "NOT EXISTS (SELECT 1 FROM ord_postpay_receipt_root ppr WHERE ppr.order_no = ord_order.order_no)";
+
     public SettleSourcePortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                 PaymentMapper orderMapper, OrderStatusLogMapper statusLogMapper,
                                 AfterSaleMapper afterSaleMapper,
@@ -132,6 +136,8 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                                 orderMapper.selectList(
                                         Wrappers.<OrdOrder>lambdaQuery()
                                                 .eq(OrdOrder::getAdmissionKind, "LEGACY_FUNDED")
+                                                // 餐饮后付人工实收（ADR-059）：钱没经过平台，不出结算单
+                                                .apply(NOT_POSTPAY_RECEIPTED)
                                                 .ge(OrdOrder::getPaidAt, since)
                                                 .isNotNull(OrdOrder::getPaidAt)
                                                 .orderByAsc(OrdOrder::getPaidAt)
@@ -282,6 +288,12 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                 orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                         .eq(OrdOrder::getOrderNo, orderNo).last("LIMIT 1")));
         if (order != null && "MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            return List.of();
+        }
+        // 餐饮后付人工实收（ADR-059）：现金 / 外部刷卡机收的钱不进平台结算与分账，与美业人工实收同理
+        if (order != null && DataScopeContext.executeWithoutScope(() -> orderMapper.selectCount(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, orderNo)
+                        .apply("NOT (" + NOT_POSTPAY_RECEIPTED + ")"))) > 0) {
             return List.of();
         }
         String payChannel = order == null ? null : order.getPayChannel();
