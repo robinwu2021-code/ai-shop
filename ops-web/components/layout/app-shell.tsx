@@ -2,10 +2,17 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { parseLocale, useLocaleStore } from "@/lib/stores/locale";
+import { receiveSharedSession } from "@/lib/auth/shared-session";
+import { useServerMenu } from "@/lib/stores/server-menu";
+import { loginReturnHref } from "@/lib/auth/ops-bridge";
 import { useAuth } from "@/lib/auth";
 import { Rail } from "./rail";
 import { SecondaryNav } from "./secondary-nav";
 import { Header } from "./header";
+import { useI18n } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
 import { PhaseGuard } from "./phase-guard";
 
 // 登录守卫 + 三级导航布局：Rail(L1) + SecondaryNav(L2/L3，单模块域自隐) + Header/main。
@@ -13,22 +20,49 @@ import { PhaseGuard } from "./phase-guard";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const loggedIn = useAuth((s) => s.loggedIn());
   const [ready, setReady] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const { t } = useI18n();
 
   // trailingSlash:true → pathname 可能带尾斜杠，归一化后再比较。
   const norm = pathname.replace(/\/+$/, "") || "/";
   const isLogin = norm === "/login";
 
   useEffect(() => {
-    setReady(true);
-  }, []);
+    let active = true;
+    const locale = parseLocale(new URLSearchParams(window.location.search).get("locale"));
+    if (locale) useLocaleStore.getState().setLocale(locale);
+    setReady(false); setSessionError(false);
+    void receiveSharedSession(() => queryClient.clear()).then(() => {
+      if (active) setReady(true);
+    }).catch(() => {
+      if (active) setSessionError(true);
+    });
+    const clear = () => { queryClient.clear(); useServerMenu.getState().clear(); };
+    window.addEventListener("shop-ops-session-cleared", clear);
+    return () => { active = false; window.removeEventListener("shop-ops-session-cleared", clear); };
+  }, [queryClient, attempt]);
 
   useEffect(() => {
-    if (ready && !loggedIn && !isLogin) router.replace("/login");
+    if (ready && !loggedIn && !isLogin) router.replace(loginReturnHref(window.location));
   }, [ready, loggedIn, isLogin, router]);
 
-  if (isLogin) return <>{children}</>;
+  if (sessionError) return <div className="flex min-h-screen items-center justify-center bg-muted/30">
+    <div role="alert" className="max-w-md space-y-4 p-6">
+      <p>{t("login.sessionRetry")}</p>
+      <div className="flex gap-2">
+        <Button onClick={() => setAttempt((value) => value + 1)}>{t("login.retrySession")}</Button>
+        <Button variant="ghost" onClick={() => {
+          useAuth.getState().logout(); setSessionError(false); setReady(true);
+          router.replace(isLogin ? "/login/" : loginReturnHref(window.location));
+        }}>{t("login.otherAccount")}</Button>
+      </div>
+    </div>
+  </div>;
+  if (isLogin) return ready ? <>{children}</> : null;
   if (!ready || !loggedIn) return null;
 
   return (

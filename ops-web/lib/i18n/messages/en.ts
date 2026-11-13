@@ -63,7 +63,15 @@ export const en: Messages = {
     lockedDesc: "“{feature}” ships in {phase}; the system is currently on {current}.",
     backHome: "Back to dashboard",
   },
-  login: { password: "Password",
+  login: {
+    emailCode: "Email verification code",
+    codeSent: "Enter the 6-digit code sent to {email}.",
+    verifyCode: "Verify and sign in",
+    restart: "Back to password sign-in",
+    sessionRetry: "Unable to verify your shared session right now. Your session has been preserved. Check your connection and retry.",
+    retrySession: "Retry verification",
+    otherAccount: "Sign in with another account",
+ paymentSource: "Sign in to return to payment operations.", password: "Password",
     subtitle: "Community commerce · operations console",
     username: "Username",
     submit: "Sign in",
@@ -79,7 +87,6 @@ export const en: Messages = {
     resetSubmit: "Set new password",
     resetDone: "Password reset — every other session has been signed out",
     codeTitle: "Email code",
-    codeSent: "We sent a code to {to}. It expires in 5 minutes.",
     codeSubmit: "Verify and sign in",
     codeBack: "Use another account",
   },
@@ -124,6 +131,7 @@ export const en: Messages = {
     unconfirmDesc: "Restoring puts it back in the default list, editable and usable as before.",
   },
   nav: {
+    paymentOps: "Payment operations",
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "Planned",
     notImplementedHint: "Not built yet — cannot be opened",

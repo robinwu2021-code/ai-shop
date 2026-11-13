@@ -1,31 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth, type Role } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { verifyLoginChallenge } from "@/lib/api/https/dashboard";
+import { acceptLoginResult } from "@/lib/auth/login-result";
+import { useQueryClient } from "@tanstack/react-query";
+import { safeReturnTo, paymentBasePath, returnAfterLogin } from "@/lib/auth/ops-bridge";
+import { useServerMenu } from "@/lib/stores/server-menu";
+import { parseLocale, useLocaleStore } from "@/lib/stores/locale";
+import { LangSwitcher } from "@/components/layout/lang-switcher";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-
-// 顺序 = 需求矩阵 §2.3 的角色表顺序，便于逐行对照。
-const ROLES: Role[] = [
-  "SUPER_ADMIN", "PRODUCT_OPS", "CAMPAIGN_OPS", "COMMUNITY_OPS", "MERCHANT_BD",
-  "AUDITOR", "CS", "FINANCE", "RISK", "ANALYST", "TECH_OPS",
-];
-
-/**
- * 受限数据域的演示账号（矩阵 §2.3 权限模型：RBAC + 数据域）。
- * 选这些角色时自动带上归属键，用来验证「列表被裁到只剩自己范围」这条规则 ——
- * 不带 scope 的话，数据域在前端开发期是完全看不见的一维。
- */
-const DEMO_SCOPE: Partial<Record<Role, { merchantNo?: string; communityNo?: string }>> = {
-  COMMUNITY_OPS: { communityNo: "C001" },
-};
 
 /*
  * 登录：用户名 + 密码，**角色由后端返回**。
@@ -42,72 +34,64 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
+  const token = useAuth((s) => s.token);
+  const queryClient = useQueryClient();
   const { t } = useI18n();
   const params = useSearchParams();
-  const [username, setUsername] = useState(params.get("u") ?? "admin");
-  const [password, setPassword] = useState(params.get("p") ?? "");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [challenge, setChallenge] = useState("");
+  const [challengeTo, setChallengeTo] = useState("");
+  const [code, setCode] = useState("");
   const [forgot, setForgot] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  // 第二因子（安全规范 §2.7）：密码对了只拿到挑战号，还要邮箱里的 6 位码
-  const [challenge, setChallenge] = useState<{ id: string; to?: string } | null>(null);
-  const [code, setCode] = useState("");
-  const didAutoLogin = useRef(false);
+  const [paymentSource, setPaymentSource] = useState(false);
 
-  // ?u=admin&p=xxx → 自动提交一次（测试用）
+  function finishLogin() {
+    returnAfterLogin(params.get("returnTo"), window.location, () => router.replace("/"), useLocaleStore.getState().locale);
+  }
+
   useEffect(() => {
-    const u = params.get("u");
-    const p = params.get("p");
-    if (u && p && !didAutoLogin.current) {
-      didAutoLogin.current = true;
-      doLogin(u, p);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const locale = parseLocale(params.get("locale"));
+    if (locale) useLocaleStore.getState().setLocale(locale);
+    const target = safeReturnTo(params.get("returnTo"), window.location.origin);
+    const base = paymentBasePath(window.location.origin);
+    setPaymentSource(!!target && (target === base || target.startsWith(`${base}/`)));
+  }, [params]);
+
+  useEffect(() => {
+    if (token) finishLogin();
+    // The token was verified by the shared-session gate or returned by login.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function doLogin(u: string, p: string) {
     setBusy(true);
     setErr("");
     try {
-      const r = await api.login(u, p);
-      if (r.challenge) {
-        // 还没登录：不写登录态、不跳转，换到输码那一步
-        setChallenge({ id: r.challenge, to: r.challengeTo });
-        setCode("");
-        return;
-      }
-      enter(r);
+      const result = challenge ? await verifyLoginChallenge(challenge, code) : await api.login(u, p);
+      acceptLoginResult(result, (nextChallenge, sentTo) => {
+        setChallenge(nextChallenge); setChallengeTo(sentTo); setCode(""); setPassword("");
+      }, (r) => {
+        queryClient.clear();
+        useServerMenu.getState().clear();
+        login({
+          username: r.username,
+          role: r.role,
+          token: r.token,
+          perms: r.perms,
+          merchantNo: r.merchantNo,
+          communityNo: r.communityNo,
+          pickupNo: r.pickupNo,
+      });
+      finishLogin();
+      });
     } catch (e) {
       setErr((e as Error).message || t("common.failed"));
     } finally {
       setBusy(false);
     }
-  }
-
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!challenge) return;
-    setBusy(true);
-    setErr("");
-    try {
-      enter(await api.verifyLogin(challenge.id, code.trim()));
-    } catch (e) {
-      setErr((e as Error).message || t("common.failed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function enter(r: Awaited<ReturnType<typeof api.login>>) {
-    login({
-      username: r.username,
-      role: r.role,
-      token: r.token,
-      perms: r.perms,
-      merchantNo: r.merchantNo,
-      communityNo: r.communityNo,
-    });
-    router.replace("/");
   }
 
   async function submit(e: React.FormEvent) {
@@ -121,32 +105,17 @@ function LoginForm() {
     <div className="flex h-screen items-center justify-center bg-muted/30">
       <Card className="w-[360px]">
         <CardHeader>
+          <div className="flex justify-end"><LangSwitcher /></div>
           <div className="mb-1 flex size-9 items-center justify-center rounded-field bg-primary txt-strong text-primary-foreground">
             邻
           </div>
           <CardTitle>{t("common.appTitle")}</CardTitle>
           <p className="txt-body text-muted-foreground">{t("login.subtitle")}</p>
+          {paymentSource && <p className="txt-body text-muted-foreground">{process.env.NEXT_PUBLIC_NEARPAY_LOGIN_HINT || t("login.paymentSource")}</p>}
         </CardHeader>
         <CardContent>
-          {challenge ? (
-            <form className="space-y-3" onSubmit={verify}>
-              <Notice tone="info">{t("login.codeSent", { to: challenge.to ?? username })}</Notice>
-              <div className="space-y-1">
-                <label className="txt-body text-muted-foreground">{t("login.codeTitle")}</label>
-                <Input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric"
-                       autoComplete="one-time-code" maxLength={6} placeholder="000000" />
-              </div>
-              {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 txt-body text-destructive">{err}</div>}
-              <Button className="w-full" type="submit" disabled={busy || code.trim().length !== 6}>
-                {busy ? t("common.loading") : t("login.codeSubmit")}
-              </Button>
-              <button type="button" onClick={() => { setChallenge(null); setCode(""); setErr(""); }}
-                      className="focus-ring w-full txt-caption text-muted-foreground hover:text-foreground">
-                {t("login.codeBack")}
-              </button>
-            </form>
-          ) : (
           <form className="space-y-3" onSubmit={submit}>
+            {!challenge ? <>
             <div className="space-y-1">
               <label className="txt-body text-muted-foreground">{t("login.username")}</label>
               <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("login.username")} />
@@ -160,12 +129,21 @@ function LoginForm() {
                 placeholder={t("login.password")}
               />
             </div>
+            </> : <div className="space-y-2">
+              <p className="txt-body text-muted-foreground">{t("login.codeSent", { email: challengeTo })}</p>
+              <label htmlFor="login-code" className="txt-body">{t("login.emailCode")}</label>
+              <Input id="login-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                     inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required autoFocus />
+            </div>}
             {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 txt-body text-destructive">{err}</div>}
-            <Button className="w-full" type="submit" disabled={busy}>
-              {busy ? t("common.loading") : t("login.submit")}
+            <Button className="w-full" type="submit" disabled={busy || (!!challenge && !/^\d{6}$/.test(code))}>
+              {busy ? t("common.loading") : t(challenge ? "login.verifyCode" : "login.submit")}
             </Button>
+            {challenge && <Button type="button" variant="ghost" className="w-full" disabled={busy}
+              onClick={() => { setChallenge(""); setChallengeTo(""); setCode(""); setPassword(""); setErr(""); }}>
+              {t("login.restart")}
+            </Button>}
           </form>
-          )}
 
           {/*
             忘记密码。这条路径此前完全不存在 —— 后端只有登录与改自己的密码，
