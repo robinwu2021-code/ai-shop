@@ -444,7 +444,8 @@ export const FIELDS = [
   {
     concept: "商家经营状态",
     field: "mch_entity.status",
-    backend: { ddl: ["mch_entity", "status"] },
+    // Frozen DDL documents ACTIVE/SUSPENDED/FROZEN; MchEntity.PENDING_LICENSE adds the live pre-license state.
+    backend: { literal: ["PENDING_LICENSE", "ACTIVE", "SUSPENDED", "FROZEN"] },
     clients: [{ file: "ops-web/lib/types/merchant.ts", type: "MerchantStatus" }],
     // shared 的 MerchantStatus 是 B 端的**合并视图**（经营 × 审核 两张表合成一个
     // 「我现在能不能做生意」），不是这个字段的镜像 —— 见 skip 注释
