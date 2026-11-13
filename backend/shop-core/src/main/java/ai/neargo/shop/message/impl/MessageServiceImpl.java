@@ -20,6 +20,7 @@ import ai.neargo.shop.message.dto.MessageVOs.DiagnosticVO;
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
 import ai.neargo.shop.message.dto.MessageVOs.FeedbackVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
+import ai.neargo.shop.message.dto.MessageVOs.PaymentUnread;
 import ai.neargo.shop.message.dto.MessageVOs.NotifyQuotaVO;
 import ai.neargo.shop.message.dto.MessageVOs.TemplateVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
@@ -284,6 +285,11 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public long unreadCount(String receiverType) {
         return unreadCountOf(receiverType, SecurityUtils.currentUserNo());
+    }
+
+    @Override
+    public List<PaymentUnread> paymentUnreadScopes() {
+        return messageMapper.paymentUnreadScopes(SecurityUtils.currentUserNo());
     }
 
     @Override
@@ -556,7 +562,8 @@ public class MessageServiceImpl implements MessageService {
 
     private MessageVO toVO(MsgMessage m) {
         return new MessageVO(m.getMessageNo(), m.getMsgType(), m.getTitle(), m.getBody(),
-                m.getLink(), Boolean.TRUE.equals(m.getIsRead()), m.getAt() == null ? 0L : m.getAt());
+                m.getLink(), Boolean.TRUE.equals(m.getIsRead()), m.getAt() == null ? 0L : m.getAt(),
+                m.getBizType(), m.getBizNo(), m.getStoreNo(), m.getEntityNo());
     }
 
     // ---------------------------------------------------------------- 运营侧 FAQ（P-14.2.4）
