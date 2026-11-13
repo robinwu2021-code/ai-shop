@@ -1,0 +1,22 @@
+{
+  "status": "PASSED",
+  "tests": 1,
+  "failures": 0,
+  "runnerExitCode": 0,
+  "platform": "Android 14 API 34 arm64 emulator",
+  "isolatedAvd": true,
+  "systemGalleryUsed": true,
+  "productionGalleryAdapterUsed": true,
+  "selectedFixtureBytes": 69,
+  "fixtureDimensions": "1x1",
+  "localGoodsPreviewRendered": true,
+  "nearshopRemoteGoodsPreviewRendered": true,
+  "twpayRemoteGoodsPreviewRendered": true,
+  "appBusinessFieldsChanged": false,
+  "existingEmulatorAppReplaced": false,
+  "backendDeployedAgain": false,
+  "notes": "Native gallery and rendering test; real authenticated App multipart upload is independently covered by flutter-upload-result.json. This is not a whole goods editing/saving page journey.",
+  "temporaryAppEntriesRemoved": true,
+  "isolatedEmulatorStopped": true,
+  "temporaryAvdRemoved": true
+}
