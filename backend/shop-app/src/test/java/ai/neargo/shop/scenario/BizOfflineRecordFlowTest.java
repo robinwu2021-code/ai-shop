@@ -494,6 +494,25 @@ class BizOfflineRecordFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 已被柜台后付实收引用的记账：作废、更正都 10409，金额不变（ADR-059）")
+    void record_used_by_postpay_receipt_cannot_be_voided_or_corrected() throws Exception {
+        Shop s = shop();
+        String no = data(record(s.owner(), s, key(), body(48000, "TWD", "CASH", null, null, null)))
+                .get("recordNo").asString();
+        jdbc.update("INSERT INTO ord_postpay_receipt_record(tenant_no,receipt_no,record_no,method,amount_minor,created_at)"
+                + " VALUES ('MAIN','PPR-TEST',?,'CASH',48000,CURRENT_TIMESTAMP)", no);
+        assertThat(code(record(s.owner(), s, null, no, "void", "{\"reason\":\"已结账\",\"expectedVersion\":1}")))
+                .isEqualTo(10409);
+        assertThat(code(record(s.owner(), s, null, no, "correct",
+                "{\"amountMinor\":45000,\"currency\":\"TWD\",\"method\":\"CASH\",\"reason\":\"改\",\"expectedVersion\":1}")))
+                .isEqualTo(10409);
+        assertThat(jdbc.queryForObject("SELECT amount_minor FROM ord_offline_record WHERE record_no=?", Long.class, no))
+                .isEqualTo(48000);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_offline_record WHERE record_no=?", String.class, no))
+                .isEqualTo("RECORDED");
+    }
+
+    @Test
     @DisplayName("★★★ AC7 expectedVersion 与当前不符 → 10409，后到的不会盖掉先到的")
     void stale_expected_version_conflicts() throws Exception {
         Shop s = shop();

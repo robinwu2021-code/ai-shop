@@ -13,6 +13,7 @@ import ai.neargo.shop.spi.pay.MarketPort.MarketBrief;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.spi.user.UserQueryPort.UserBrief;
+import ai.neargo.shop.trade.mapper.PostpayReceiptMapper;
 import ai.neargo.shop.trade.entity.OrdOfflineRecord;
 import ai.neargo.shop.trade.entity.OrdOfflineRecordEvent;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -63,6 +64,14 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
     @Autowired
     public void setOwnershipWrites(StoreOwnershipWritePort ownershipWrites) {
         this.ownershipWrites = ownershipWrites;
+    }
+
+    private PostpayReceiptMapper postpayReceipts;
+
+    /** 柜台后付实收（ADR-059）引用过的记账不能再改：实收的实收额、找零与订单已付都以当时的记账为准。 */
+    @Autowired(required = false)
+    public void setPostpayReceipts(PostpayReceiptMapper postpayReceipts) {
+        this.postpayReceipts = postpayReceipts;
     }
 
     /** 补记与更正 / 作废的窗口（已拍板 D4、D7）：门店市场时区「今天 − 31 天」00:00 起。 */
@@ -311,6 +320,10 @@ public class OfflineRecordServiceImpl implements OfflineRecordService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         if (OrdOfflineRecord.VOIDED.equals(row.getStatus()) || row.getVersion() != expectedVersion) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        // 已被柜台后付实收引用：行锁与实收确认锁的是同一行，这里查到的就是最终事实
+        if (postpayReceipts != null && !postpayReceipts.usedRecords(List.of(recordNo)).isEmpty()) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         Instant recordedAt = row.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant();
