@@ -79,7 +79,18 @@
     "realMutations": false,
     "verifiedAgainstFrontendSource": "b2a510207162f4fa66e88c4709f92b9ff0885c79"
   },
-  "adminUiVerification": "awaiting operator re-login",
+  "adminUiVerification": {
+    "status": "PASSED",
+    "account": "neara@neargo.ai",
+    "allRecords": 6,
+    "selfOperatedFilterRecords": 0,
+    "assistedFilterRecords": 6,
+    "legacySelfOperatedLinkRedirected": true,
+    "bothCreateTypesVerified": true,
+    "mobileWidth375NoHorizontalOverflow": true,
+    "noBusinessMutation": true,
+    "latestFormEvidence": "../ops-merchant-form-20261113/verification.json"
+  },
   "realApplicationsCreated": false,
   "realStoresCreated": false,
   "realChannelRequestsSubmitted": false

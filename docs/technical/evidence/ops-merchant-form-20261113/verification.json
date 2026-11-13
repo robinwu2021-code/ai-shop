@@ -1,0 +1,235 @@
+{
+  "sourceCommit": "df0f6bf3eb56f921a2eb5a7ae652c6996b062567",
+  "scope": "merchant creation presentation and pending service industry choices",
+  "tests": {
+    "aiShopFrontendPassed": 96,
+    "aiShopBackendPassed": 8,
+    "nativeMySqlScenarioSkipped": 1,
+    "nearPayHeaderAndNavigationPassed": 5
+  },
+  "backend": {
+    "releaseId": "ops-merchant-form-20261113-df0f6bf3e-r2",
+    "sourceCommit": "df0f6bf3eb56f921a2eb5a7ae652c6996b062567",
+    "classes": 3,
+    "databaseChanged": false,
+    "runtimeConfigChanged": false,
+    "allOtherArchiveEntriesUnchanged": true,
+    "status": "DEPLOYED",
+    "sha256": "7095f47e08f5ef6abdab161252fc79b0548548c23d06038ce2a5225c865f4500",
+    "apiHealth": "UP",
+    "opsHealth": "UP",
+    "unrelatedServicesUnchanged": true,
+    "frontendChanged": false,
+    "lockReleased": true
+  },
+  "frontend": {
+    "releaseId": "ops-merchant-form-ui-20261113-df0f6bf3e",
+    "build": {
+      "fixCommit": "df0f6bf3eb56f921a2eb5a7ae652c6996b062567",
+      "frontendTestsPassed": 96,
+      "backendTestsPassed": 8,
+      "nativeScenarioSkipped": 1,
+      "frontendBuild": true,
+      "productionArtifactGuard": true,
+      "apiBase": "/ops-shop",
+      "basePath": "/ops-shop"
+    },
+    "previousWeb": "/data/www/ai-shop-ops/releases/ops-unified-admission-ui-20261113-e02631cd0",
+    "backendChanged": false,
+    "databaseChanged": false,
+    "configChanged": false,
+    "status": "DEPLOYED",
+    "web": "/data/www/ai-shop-ops/releases/ops-merchant-form-ui-20261113-df0f6bf3e",
+    "pagesVerified": 2,
+    "assetsVerified": 34,
+    "runtimesUnchanged": true,
+    "payWebUnchanged": true,
+    "backendSha256Unchanged": true,
+    "lockReleased": true
+  },
+  "paymentHeader": {
+    "releaseId": "ops-header-region-20261113-e23e2472",
+    "sourceCommit": "e23e247252a63738fc748d75b6ff83210216c5e5",
+    "previous": "/data/www/nearpay-oms-releases/tw-sandbox-management-20261113-r2",
+    "publication": "CSS increment over exact deployed tree; all existing JavaScript preserved",
+    "status": "DEPLOYED",
+    "javascriptFilesPreserved": 32,
+    "changedDocuments": 57,
+    "cssAssets": 1,
+    "pagesVerified": 3,
+    "runtimesUnchanged": true,
+    "shopUnchanged": true,
+    "web": "/data/www/nearpay-oms-releases/ops-header-region-20261113-e23e2472"
+  },
+  "ui": {
+    "channelHeaderRegionHidden": true,
+    "paymentProductNavigationPreserved": true,
+    "service": {
+      "children": [
+        {
+          "disabled": false,
+          "label": "请选择"
+        },
+        {
+          "disabled": true,
+          "label": "美发 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "美甲美睫 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "美容护肤 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "按摩 SPA · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "健身瑜伽 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "宠物美容 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "洗衣 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "维修 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "教育培训 · 待配置"
+        },
+        {
+          "disabled": true,
+          "label": "摄影 · 待配置"
+        }
+      ],
+      "dialog": {
+        "borderColor": "rgb(222, 224, 230)",
+        "borderRadius": "10px",
+        "outlineStyle": "none",
+        "width": 800
+      },
+      "industry": [
+        {
+          "label": "请选择",
+          "value": ""
+        },
+        {
+          "label": "餐饮",
+          "value": "FOOD"
+        },
+        {
+          "label": "零售",
+          "value": "RETAIL"
+        },
+        {
+          "label": "服务业 · 待配置",
+          "value": "SERVICE"
+        }
+      ]
+    },
+    "selfOperated": {
+      "industry": [
+        "请选择",
+        "餐飲（166測試）",
+        "线下零售",
+        "居民生活服务"
+      ],
+      "mainlandText": false,
+      "nestedBorderCards": 0,
+      "regionReadOnlyTWObserved": true
+    },
+    "foodChildren": [
+      {
+        "disabled": false,
+        "label": "请选择"
+      },
+      {
+        "disabled": false,
+        "label": "早餐店"
+      },
+      {
+        "disabled": false,
+        "label": "中式餐馆"
+      },
+      {
+        "disabled": false,
+        "label": "快餐便当"
+      },
+      {
+        "disabled": false,
+        "label": "小吃"
+      },
+      {
+        "disabled": false,
+        "label": "手摇饮料"
+      },
+      {
+        "disabled": false,
+        "label": "咖啡厅"
+      },
+      {
+        "disabled": false,
+        "label": "烘焙甜点"
+      },
+      {
+        "disabled": false,
+        "label": "火锅"
+      },
+      {
+        "disabled": false,
+        "label": "烧烤"
+      },
+      {
+        "disabled": false,
+        "label": "日韩料理"
+      },
+      {
+        "disabled": false,
+        "label": "西餐"
+      },
+      {
+        "disabled": false,
+        "label": "酒吧"
+      }
+    ],
+    "layout": {
+      "initialFocusObservedOnTitle": true,
+      "regionReadOnly": true,
+      "selectorBelowTitle": true,
+      "selectorWidth": 371,
+      "taiwanSubjectChoices": [
+        "公司",
+        "独资／行号"
+      ],
+      "title": "新增商户"
+    },
+    "cancelClosesDialog": true,
+    "noBusinessMutation": true
+  },
+  "initialFailedDeployment": {
+    "releaseId": "ops-merchant-form-20261113-df0f6bf3e",
+    "sourceCommit": "df0f6bf3eb56f921a2eb5a7ae652c6996b062567",
+    "classes": 3,
+    "databaseChanged": false,
+    "runtimeConfigChanged": false,
+    "allOtherArchiveEntriesUnchanged": true,
+    "status": "FAILED",
+    "error": "Readiness timeout 18082",
+    "errorType": "RuntimeError",
+    "rollbackErrorType": "RuntimeError",
+    "lockReleased": true
+  },
+  "recovery": {
+    "performedByThisTask": false,
+    "observation": "Existing maintenance ADOPT operation completed before retry; original JAR and both services healthy before retry. No outbox write or runtime-config change by this task."
+  }
+}
