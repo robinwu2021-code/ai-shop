@@ -30,6 +30,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { MerchantsCopy } from "./copy";
@@ -101,10 +102,8 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
 
   return (
     <div className="space-y-4">
-      {/* 不可关闭：这段说明是这个入口的适用边界，每次打开都要在 */}
-      <Notice tone="warning">{c.soWarning}</Notice>
-
-      <ConfigCard title={c.soTitle} notice={c.soDesc}>
+      <ConfigCard title={c.soTitle}>
+        <HelpNote>{c.soWarning}<p className="mt-2">{c.soDesc}</p></HelpNote>
         <div className="max-w-xl space-y-4">
           <div>
             <Label>{c.soPhone}</Label>

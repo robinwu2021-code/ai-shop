@@ -1,0 +1,15 @@
+00:00 +0: loading /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart
+00:00 +0: live dev authentication permits the deployed slider captcha routes
+00:00 +0 -1: live dev authentication permits the deployed slider captcha routes [E]
+  Expected: true
+    Actual: <false>
+  /biz/auth/captcha/challenge
+
+  package:matcher                                                            expect
+  package:flutter_test/src/widget_tester.dart 473:18                         expect
+  apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart 58:7  main.<fn>
+
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  /Users/robin/work/ai/ai-shop-bapp/apps/merchant_app/test/dev/standard_onboarding_live_policy_test.dart: live dev authentication permits the deployed slider captcha routes

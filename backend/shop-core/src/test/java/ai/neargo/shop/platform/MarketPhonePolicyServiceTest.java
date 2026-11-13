@@ -22,7 +22,10 @@ class MarketPhonePolicyServiceTest {
         var values=new HashMap<String,String>();var settings=mock(SettingService.class);
         when(settings.get(anyString(),anyString())).thenAnswer(x->values.getOrDefault(x.getArgument(0),x.getArgument(1)));
         doAnswer(x->{values.put(x.getArgument(0),x.getArgument(1));return null;}).when(settings).put(anyString(),anyString(),anyString());
-        return new MarketPhonePolicyServiceImpl(markets,settings,JsonMapper.builder().build(),ready,"CN=+86,TW=+886");
+        return new MarketPhonePolicyServiceImpl(markets,settings,JsonMapper.builder().build(),ready,"CN=+86,TW=+886","TW");
+    }
+    @Test void instanceUsesTheConfiguredRegionInsteadOfTheFirstEnabledMarket() {
+        assertEquals("TW",service("CN").instancePolicy().market());
     }
     @Test void taiwanRecordsRawOrMissingContactWithoutSmsAdmission() {
         var s=service("CN");assertTrue(s.policy("TW").recordOnly());assertFalse(s.policy("TW").smsVerificationEnabled());

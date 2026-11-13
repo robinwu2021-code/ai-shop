@@ -19,6 +19,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -56,6 +60,18 @@ public class OpsMerchantApplyController {
         this.auditLog = auditLog;
     }
 
+    @GetMapping("/ops/merchants/apply-on-behalf/context")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "')")
+    public MarketPhonePolicyService.Policy context() { return phones.instancePolicy(); }
+
+    @GetMapping("/ops/merchants/apply-on-behalf/search")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "')")
+    public PageData<MerchantApplyVO> search(@RequestParam(required=false) String status,
+            @RequestParam(required=false) String keyword, @RequestParam(defaultValue="1") long page,
+            @RequestParam(defaultValue="20") long size) {
+        return opsService.searchApplies(status,keyword,page,size,true);
+    }
+
     /**
      * 代商户提交进件申请。仅记录地区使用已注册邮箱定位店主，手机号只保存到联系方式。
      * 下述按手机号自动建号只适用于保持历史手机号策略的大陆请求。
@@ -72,7 +88,8 @@ public class OpsMerchantApplyController {
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "')")
     public ApplyOnBehalfVO applyOnBehalf(@Valid @RequestBody OnBehalfReq req) {
         String operator = SecurityUtils.currentUserNo();
-        String market=req.market()==null?"CN":req.market();
+        String market=phones.instancePolicy().market();
+        if (req.market()!=null && !market.equals(req.market())) throw BizException.of(ErrorCode.BAD_REQUEST);
         var policy=phones.validateContact(market,req.phone());
         boolean phoneOwner="CN".equals(market) && !policy.recordOnly();
         String ownerUserNo=phoneOwner?userProvision.ensureUserByPhone(req.phone()):userProvision.registeredUserByEmail(req.ownerEmail())

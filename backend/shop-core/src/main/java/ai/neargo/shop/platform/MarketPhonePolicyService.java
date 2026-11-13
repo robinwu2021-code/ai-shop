@@ -6,6 +6,7 @@ import java.util.List;
 public interface MarketPhonePolicyService {
     record Policy(String market, String callingPrefix, boolean recordOnly,
                   boolean smsVerificationEnabled, boolean smsChannelReady, boolean marketEnabled) {}
+    Policy instancePolicy();
     List<Policy> list();
     Policy policy(String market);
     Policy save(String market, boolean recordOnly, boolean smsEnabled, String operator);

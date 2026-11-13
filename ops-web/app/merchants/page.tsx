@@ -34,7 +34,7 @@ import { OnBehalfTab } from "./on-behalf-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
 import { FulfillmentBlock } from "./fulfillment-block";
-import { PayServiceBlock } from "./pay-service-block";
+import { PayServiceBlock, PAY_APPLY_PERM } from "./pay-service-block";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Textarea } from "@/components/ui/textarea";
 import { TabHeader } from "@/components/ui/tab-header";
+import { Tabs } from "@/components/ui/tabs";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { PagedTable } from "@/components/ui/paged-table";
@@ -82,6 +83,7 @@ function MerchantsInner() {
   const [showArchived, setShowArchived] = useState(false);
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
+  const [detailTab, setDetailTab] = useState("overview");
   const [remark, setRemark] = useState("");
   /** 通过审核时要指定的覆盖社区（ADR-009）。不给的话商家对买家不可见 */
   const [communityNos, setCommunityNos] = useState<string[]>([]);
@@ -98,6 +100,8 @@ function MerchantsInner() {
   const canSelfOp = allow("merchant:selfop:create");
   // 与 canSelfOp 分开：那个只给超管，这个要给 BD。合成一个就是放宽
   const canOnBehalf = allow("merchant:apply:onbehalf");
+  const canPay = allow(PAY_APPLY_PERM);
+  const detailView = detailTab === "payment" && !canPay ? "overview" : detailTab;
 
   // 审核视图：没选具体状态时只带出待审的两档（选了就按选的来，筛选优先于视图默认）
   const q = {
@@ -212,7 +216,7 @@ function MerchantsInner() {
             await confirm(unarchiveConfirm(c.entity, m.name, () => archiveMut.mutateAsync({ merchantNo: m.merchantNo, restore: true })));
           }}
           actions={
-            <Button size="sm" variant="outline" onClick={() => { setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNos ?? []); }}>
+            <Button size="sm" variant="outline" onClick={() => { setDetailTab("overview"); setCurrent(m); setRemark(m.auditRemark ?? ""); setCommunityNos(m.communityNos ?? []); }}>
               {c.actionView}
             </Button>
           }
@@ -345,6 +349,13 @@ function MerchantsInner() {
       >
         {current && (
           <div>
+            <Tabs value={detailView} onChange={setDetailTab} tabs={[
+              { key: "overview", label: tabs.find((view) => view.key === "list")?.label ?? c.entity },
+              { key: "fulfillment", label: c.fieldFulfillment },
+              { key: "staff", label: c.fieldStaff },
+              ...(canPay ? [{ key: "payment", label: c.payServiceField }] : []),
+            ]} />
+            {detailView === "overview" && <div className="space-y-4">
             <FieldGrid>
               <Field className="mb-3" label={c.colStatus}><MerchantStatusBadge value={current.status} /></Field>
               <Field className="mb-3" label={c.fieldTier}>{tierLabel(current.tier)}</Field>
@@ -378,12 +389,6 @@ function MerchantsInner() {
             */}
             <MerchantChainLine merchantNo={current.merchantNo} c={c} />
 
-            {/* 履约配置：只读。为什么不给按钮见 fulfillment-block.tsx 顶部 */}
-            <FulfillmentBlock merchantNo={current.merchantNo} />
-            {/* 人员与授权：只读。为什么不给按钮见 staff-block.tsx 顶部 */}
-            <StaffBlock merchantNo={current.merchantNo} />
-            {/* 支付服务：为主体申请 near-pay 平台商户（开通收款第一步）。只有持 merchant:merchant:pay-apply 的运营看得到 */}
-            <PayServiceBlock merchantNo={current.merchantNo} merchantName={current.name} c={c} />
             {/*
               门店入口（P-11.2.1a）。需求要两个入口：这里 + 独立检索页，
               **此前只有后者** —— 运营在商家详情里看不到这家有几个店，
@@ -402,6 +407,10 @@ function MerchantsInner() {
                 </Link>
               </Button>
             </Field>
+            </div>}
+            {detailView === "fulfillment" && <FulfillmentBlock merchantNo={current.merchantNo} />}
+            {detailView === "staff" && <StaffBlock merchantNo={current.merchantNo} />}
+            {detailView === "payment" && <PayServiceBlock merchantNo={current.merchantNo} merchantName={current.name} c={c} />}
           </div>
         )}
       </Drawer>

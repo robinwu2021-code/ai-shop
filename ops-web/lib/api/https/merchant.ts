@@ -34,6 +34,8 @@ export const merchantHttp: MerchantApi = {
   setFundsMode: ({ merchantNo, ...body }) =>
     client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),
   createSelfOperated: (v) => client.post("/ops/merchants/self-operated", v),
+  onBehalfContext: () => client.get("/ops/merchants/apply-on-behalf/context"),
+  listOnBehalfApplies: (q) => client.get("/ops/merchants/apply-on-behalf/search", q),
   applyOnBehalf: (v) => client.post("/ops/merchants/apply-on-behalf", v),
   addSelfOperatedStore: ({ merchantNo, ...body }) =>
     client.post(`/ops/merchants/${merchantNo}/stores`, body),

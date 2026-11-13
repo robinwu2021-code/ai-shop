@@ -893,8 +893,11 @@ export function overlayNav(nav: NavSection[], overlay: NavOverlay | undefined): 
  */
 export function navTabs(
   path: string, keys: readonly string[], nav: NavSection[] = NAV,
-): { key: string; label: string | undefined }[] {
-  return keys.map((key, i) => ({ key, label: leafForTab(nav, path, key, i)?.label }));
+): { key: string; label: string | undefined; group?: string; href?: string }[] {
+  return keys.map((key, i) => {
+    const leaf = leafForTab(nav, path, key, i);
+    return { key, label: leaf?.label, group: leaf?.group, href: leaf?.href };
+  });
 }
 
 /**
