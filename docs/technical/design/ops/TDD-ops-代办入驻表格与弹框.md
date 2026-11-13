@@ -8,7 +8,7 @@
 
 ### §1 身份与权限
 
-不新增写入路径。申请继续以 applyNo 审核，自营以 merchantNo 新增门店，事务及幂等沿原服务。统一查询按现有审核/代办/自营权限裁剪：审核员可看申请，代办员仅看代办申请，仅自营权限只看自营。原菜单授权点保留，归并到同一地址，不改角色授权。跨域查询通过 MerchantQueryPort 读取自营投影，禁止直连对方表。
+不新增写入路径。申请继续以 applyNo 审核，自营以 merchantNo 新增门店，事务及幂等沿原服务。统一查询按现有审核/代办/自营权限裁剪：审核员可看申请，代办员仅看代办申请，仅自营权限只看自营。原菜单授权点保留，归并到同一地址，不改角色授权。跨域查询通过 SelfOperatedAdmissionPort 读取自营投影，禁止直连对方表。
 
 ### §2 实施计划
 
@@ -23,7 +23,8 @@
 - AC 对应验证：AdmissionManagementServiceTest 的 mergesBeforePaginationWithAccurateCountsAndStableOrder、assistedOperatorCannotReadSelfOperatedOrUnassistedApplications、selfOperatedPermissionAloneNeverReadsApplications、requestedAssistedTypeRestrictsEvenAuditorToAssistedSources 覆盖归并分页、来源、权限；AssistedApplySearchTest 与 SelfOperatedAdmissionPortTest 验证地区及归档条件在分页前应用。
 - 前端 unified-admission-ui.test.ts 覆盖单列表、服务端类型筛选、两种表单切换、台湾固定地区、自营成功关闭刷新、创建权限及按实际商户键新增门店；原代办提交与审核命令回归保留。相关前端 159 项通过，服务端 22 项与 SchemaDriftTest 6 项通过，角色端点验证 40 项、复合权限解析 3 项通过。
 - lint、生产构建/TypeScript、按 UME166 的 /ops-shop 前缀适配执行原产物检查通过；OPS 契约既有 8 项欠账不变，OpenAPI、权限矩阵、UI 目录、功能清单及 H2 Schema 已重新生成。推送复用上述增量证据，不重复无关全量门禁。
-- 发布前已将当前线上包与原提交编译出的 11 个基线类进行反汇编比较，语义一致。本次候选仅更新或增加目标类与 V666 菜单迁移，不覆盖其他包条目、配置或角色授权。线上部署和复验待完成。
+- 发布前已将当前线上包与原提交编译出的 11 个基线类进行反汇编比较，语义一致。本次候选仅更新或增加目标类与 V667 菜单迁移，不覆盖其他包条目、配置或角色授权。线上部署和复验待完成。
+- 并行发布占用部署锁，本次在切换前退出，未修改线上。随后线上收款发布使用 V666__platform_sales_collection.sql；本次未执行的菜单迁移顺延 V667，导航迁移 6 项和 SchemaDriftTest 6 项重新验证通过。针对新运行包 51860fb0 的 11 个目标基线类再次比对，仍无语义差异，候选基于该包重建以保留收款发布。
 
 ## §0 范围与结论
 

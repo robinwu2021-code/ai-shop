@@ -41,7 +41,7 @@ it('V658 leaves every role grant, permission and gate in place except merging th
 
 it('the database menu after V657 + V658 matches nav.ts point by point', () => {
   const moves = menuMoves(v657, v658);
-  for (const name of ['V665__ops_admission_entry_consolidation.sql','V666__ops_unified_admission_management.sql']) {
+  for (const name of ['V665__ops_admission_entry_consolidation.sql','V667__ops_unified_admission_management.sql']) {
     const sql=read(name);
     for (const statement of sql.split(';')) {
       const label=statement.match(/SET name='([^']+)'/);
