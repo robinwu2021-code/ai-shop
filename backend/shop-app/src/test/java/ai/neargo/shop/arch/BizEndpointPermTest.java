@@ -50,6 +50,9 @@ class BizEndpointPermTest {
                     "/biz/geo/estates",
                     "/biz/geo/estates/counts",
                     "/biz/auth/login",
+                    // 登录前滑块校验，与 SecurityConfig 的匿名登录入口保持一致。
+                    "/biz/auth/captcha/challenge",
+                    "/biz/auth/captcha/verify",
                     "/biz/auth/identities",
                     "/biz/auth/identities/enter",
                     "/biz/auth/identities/mine",
