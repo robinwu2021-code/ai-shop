@@ -7,8 +7,16 @@ public final class MessageVOs {
     }
 
     public record MessageVO(String messageNo, String type, String title, String body,
-                            String link, boolean read, long at) {
+                            String link, boolean read, long at,
+                            String bizType, String bizNo, String storeNo, String entityNo) {
+        public MessageVO(String messageNo, String type, String title, String body,
+                         String link, boolean read, long at) {
+            this(messageNo,type,title,body,link,read,at,null,null,null,null);
+        }
     }
+
+    /** Counts only: badge authorization never loads historical payment bodies. */
+    public record PaymentUnread(String entityNo, String storeNo, long unreadCount, long globalUnreadCount) { }
 
     /**
      * 站内信的**平台侧**记录（发送记录页的第二个 tab）。
