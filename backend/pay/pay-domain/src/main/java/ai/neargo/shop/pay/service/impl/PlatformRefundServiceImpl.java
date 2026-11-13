@@ -136,13 +136,15 @@ public class PlatformRefundServiceImpl implements PlatformRefundService {
         var originals =
                 jdbc.queryForList(
                         "SELECT"
-                            + " amount_minor,currency,status,pay_scene,entity_no,order_no,refund_capacity_state"
+                            + " amount_minor,currency,status,pay_scene,entity_no,order_no,refund_capacity_state,platform_manual_proof"
                             + " FROM stl_payment WHERE tenant_no=? AND payment_no=? AND"
                             + " direction='PAY' FOR UPDATE",
                         r.key().tenantNo(),
                         r.originalPaymentNo());
         require(originals.size() == 1, "REFUND_ORIGINAL_REQUIRED");
         var original = originals.getFirst();
+        String proof=(String)original.get("platform_manual_proof");
+        require(proof==null || !"TEST".equals(json.readTree(proof).path("mode").asString()),"REFUND_ORIGINAL_UNPROVEN");
         require(
                 "SUCCESS".equals(original.get("status"))
                         && ("PLATFORM_MALL".equals(original.get("pay_scene"))

@@ -31,6 +31,7 @@ class SalesSupplementWorkflowMysqlTest {
                     assertNull(c.bankReference());assertEquals("TEST-receipt",c.collectionReference());assertTrue(c.testPayment());assertTrue(c.evidenceReference().startsWith("DOCUMENTATION_PENDING:"));
                     f.bridge().payment=new PaymentOutcome(q.orderNo(),Optional.of("pay"),"platform",f.order().payable(),
                             AsyncStatus.SUCCEEDED,Optional.of(Instant.ofEpochMilli(3000)),Optional.empty());
+                    if(calls.get()==1)throw new IllegalStateException("test lost response after money accepted");
                     return new ManualResult("MATCHED","pay");
                 }
             };
@@ -43,12 +44,17 @@ class SalesSupplementWorkflowMysqlTest {
             assertEquals("SALES_COLLECTION",api.instructions(f.mall().c.ops,q).collectionMethod());
             assertFalse(api.instructions(f.mall().c.ops,q).instructions().containsKey("transferRemark"));
             assertEquals("PAYING",MallOfflineWorkflowMysqlTest.queries(db,f).order(MallOrderConcurrencyMysqlTest.BUYER,q).summary().paymentStatus());
+            assertThrows(IllegalStateException.class,()->api.confirm(f.mall().c.ops,command));
+            assertEquals("ACCEPTED",api.action(f.mall().c.ops,q,command.actionNo()).orElseThrow().status());
+            api.recover(new FulfillmentQuery("tenant-a",q.orderNo()));
             assertEquals("APPLIED",api.confirm(f.mall().c.ops,command).status());
             var periods=db.jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class);
             assertTrue(periods>0);
             assertEquals("APPLIED",api.confirm(f.mall().c.ops,command).status());
-            assertEquals(1,calls.get());
+            assertEquals(2,calls.get());
             assertEquals(periods,db.jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class));
+            assertEquals("INVALID_REQUEST",assertThrows(MallException.class,()->api.confirmRefundPayout(f.mall().c.ops,
+                    new OfflinePurchaseFacade.RefundPayoutCommand(q,"unused",command.actualAmount(),command.actualPaidAt(),"payee","bank",null))).code());
             var documentation=api.documentation(f.mall().c.ops,q);
             assertTrue(documentation.testAllowed());assertTrue(documentation.confirmations().getFirst().testPayment());
             assertFalse(documentation.confirmations().getFirst().complete());
@@ -66,7 +72,7 @@ class SalesSupplementWorkflowMysqlTest {
             assertEquals("FORBIDDEN",assertThrows(MallException.class,()->api.documentation(MallOrderConcurrencyMysqlTest.BUYER,q)).code());
             assertEquals("EVIDENCE_FORBIDDEN",assertThrows(MallException.class,()->api.supplement(f.mall().c.ops,
                     new OfflinePurchaseFacade.SupplementCommand(q,"bad-proof","sales-review","Foreign",List.of("unknown.png")))).code());
-            assertEquals(1,calls.get());assertEquals(periods,db.jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class));
+            assertEquals(2,calls.get());assertEquals(periods,db.jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period",Integer.class));
             var merchant=MallOfflineWorkflowMysqlTest.queries(db,f).order(MallOrderConcurrencyMysqlTest.BUYER,q);
             assertEquals("PAID",merchant.summary().paymentStatus());
             assertEquals("SALES_COLLECTION",merchant.quote().collectionMethod());

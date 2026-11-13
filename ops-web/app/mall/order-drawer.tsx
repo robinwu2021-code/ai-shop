@@ -10,7 +10,7 @@
 import * as React from "react";
 import {CashRefundsSection} from "@/components/offline/cash-refunds";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MallOfflineReviewAttempt, mallOfflineReceiver } from "@/lib/mall-offline-review";
+import { MallOfflineReviewAttempt, mallOfflineReceiver, receiptTimeForMode } from "@/lib/mall-offline-review";
 import { api } from "@/lib/api";
 import { isApiError } from "@/lib/api/error";
 import { describeError } from "@/lib/commerce-reason";
@@ -199,6 +199,8 @@ function RefundsSection({ c, storeNo, d, src }: { c: MallCopy; storeNo: string; 
       .then(() => { refresh(); notify.success(c.toastRefundRejected); }),
   });
 
+  const receiptDocs=useQuery({queryKey:["mall-offline",storeNo,orderNo,"documentation"],queryFn:()=>api.offlineReceiptDocumentation(storeNo,orderNo),enabled:offline,retry:false});
+  if(receiptDocs.data?.confirmations.some(x=>x.testPayment))return <Notice tone="warning">{c.testNoCashRefund}</Notice>;
   if (!d.refunds?.length) return null;
   const canReview = allow("commerce:refund:review");
   const columns: Column<MallRefundView>[] = [
@@ -569,7 +571,7 @@ function ConfirmForm({
   const sales = instructions.collectionMethod === "SALES_COLLECTION";
   const collectors = useQuery({ queryKey: ["mall-sales-collectors", storeNo], queryFn: () => api.offlineCollectors(storeNo), enabled: sales });
   const review = useOfflineReview(c, storeNo, orderNo, onDone);
-  const [f, setF] = React.useState({ collectorNo: "", currency: payable.currency, amount: toMajorInput(payable), at: new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,19), bankRef: "", evidenceKey: "", historical: false, reason: "",testPayment:false });
+  const [f, setF] = React.useState({ collectorNo: "", currency: payable.currency, amount: toMajorInput(payable), at: "", bankRef: "", evidenceKey: "", historical: false, reason: "",testPayment:false });
   const minor = parseMajor(f.amount, f.currency);
   const submit = () => review.start({ kind: "confirm", request: { actionNo, claimNo: sales ? null : claimNo,
     actualAmount: { currency: f.currency, minor: minor! }, actualPaidAt: new Date(f.at).toISOString(),
@@ -585,7 +587,7 @@ function ConfirmForm({
       {claim && <p className="txt-caption text-muted-foreground">{fill(c.claimDeclaredEcho, { amount: toMajorInput(claim.declaredAmount), at: fmtAt(claim.declaredPaidAt), ref: claim.bankReference || "—" })}</p>}
       {!receiver?.trim() && <Notice tone="warning">{c.receiverMissing}</Notice>}
       <fieldset disabled={review.attempt !== null} className="space-y-3">
-        {sales && docs.data?.testAllowed && <CheckboxField label={c.testReceipt} checked={f.testPayment} onChange={v=>setF(x=>({...x,testPayment:v===true,bankRef:v===true?`TEST-${actionNo}`:"",reason:v===true?c.testReceipt:""}))}/>}
+        {sales && docs.data?.testAllowed && <CheckboxField label={c.testReceipt} checked={f.testPayment} onChange={v=>setF(x=>({...x,testPayment:v===true,at:receiptTimeForMode(v===true),bankRef:v===true?`TEST-${actionNo}`:"",reason:v===true?c.testReceipt:""}))}/>}
         {sales && <p className="txt-caption text-muted-foreground">{c.docsLater}</p>}
         {sales && <div className="space-y-1">
           <Label htmlFor="cf-collector" required>{c.fieldCollector}</Label>
@@ -663,7 +665,7 @@ function SupplementForm({c,storeNo,orderNo,confirmationActionNo,onClose}:{c:Mall
   const review=useOfflineReview(c,storeNo,orderNo,onClose);
   return <div className="space-y-3 border-t pt-3"><p className="txt-caption text-muted-foreground">{c.supplementHint}</p>
     <fieldset disabled={review.attempt!==null} className="space-y-3">
-      <Label htmlFor="supplement-note">{c.supplementNote}</Label><Textarea id="supplement-note" value={note} onChange={setNote}/>
+      <Label htmlFor="supplement-note">{c.supplementNote}</Label><Textarea id="supplement-note" maxLength={1024} value={note} onChange={setNote}/>
       <EvidenceBox c={c} storeNo={storeNo} orderNo={orderNo} purposes={["PLATFORM_RECEIPT"]} selected={key} onSelect={setKey}/>
       <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>{c.btnCancel}</Button>
         <Button disabled={!note.trim()&&!key} loading={review.save.isPending} onClick={()=>review.start({kind:"supplement",request:{actionNo,confirmationActionNo,note:note.trim(),evidenceKeys:key?[key]:[]}})}>{c.btnSave}</Button></div>

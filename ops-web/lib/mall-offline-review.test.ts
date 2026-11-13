@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MallOfflineReviewAttempt, mallOfflineReceiver } from "./mall-offline-review";
+import { MallOfflineReviewAttempt, mallOfflineReceiver, receiptTimeForMode } from "./mall-offline-review";
 import type { MallOfflineConfirmRequest, MallOfflineActionView } from "./types";
 
 const request = (): MallOfflineConfirmRequest => ({ actionNo: "original", claimNo: null,
@@ -19,6 +19,11 @@ it("supplement recovery freezes evidence and never invokes payment confirmation"
 });
 
 describe("mall offline review recovery", () => {
+  it("requires actual receipt time in real mode and pre-fills only explicit TEST mode",()=>{
+    const now=new Date("2026-11-13T14:23:45.000Z");
+    expect(receiptTimeForMode(false,now)).toBe("");
+    expect(new Date(receiptTimeForMode(true,now)).getTime()).toBe(now.getTime());
+  });
   it("requires a frozen order receiver and never substitutes a typed receiver", () => {
     expect(mallOfflineReceiver({})).toBeNull();
     expect(mallOfflineReceiver({ platformMerchantNo: " " })).toBeNull();

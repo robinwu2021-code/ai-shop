@@ -2,6 +2,7 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  testNoCashRefund:"测试核款不产生真实退款，无需录入出款凭证。",
   testReceipt:"测试核款（不代表真实到账）",testReceiptHint:"仅限指定测试门店。确认后将交付测试权益，记录保留测试标记。",
   documentation:"收款资料",docsPending:"资料待补",docsComplete:"资料已完整",supplement:"补充收款资料",
   supplementNote:"补充说明",supplementHint:"追加附件或说明；原收款信息保留，不会再次核款或交付权益。",
@@ -479,6 +480,7 @@ const zh = {
 };
 
 const en: typeof zh = {
+  testNoCashRefund:"Test confirmations have no real cash refund or payout evidence.",
   testReceipt:"Test confirmation (no actual funds)",testReceiptHint:"Allowed test stores only. Confirmation delivers test entitlements and preserves the test marker.",
   documentation:"Receipt documentation",docsPending:"Documentation pending",docsComplete:"Documentation complete",supplement:"Add receipt documentation",
   supplementNote:"Additional notes",supplementHint:"Append attachments or notes. Original payment facts remain unchanged; no repeat confirmation or delivery.",

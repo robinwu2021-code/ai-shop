@@ -344,7 +344,7 @@ public final class DefaultOfflinePurchaseFacade implements OfflinePurchaseFacade
 
     public RefundView confirmRefundPayout(ActorContext actor,RefundPayoutCommand c) {
         operator(actor);
-        if(c==null || c.order()==null || c.actualAmount()==null || c.actualAmount().minor()<=0
+        if(c==null || c.order()==null || c.evidenceKey()==null || c.actualAmount()==null || c.actualAmount().minor()<=0
                 || c.paidOutAt()==null || c.paidOutAt().getNano()!=0 || c.paidOutAt().isAfter(clock.instant()))throw fail("INVALID_REQUEST");
         text(c.refundNo(),64);text(c.payeeReference(),128);text(c.bankReference(),128);
         verifyEvidence(actor,c.order(),List.of(c.evidenceKey()),"REFUND_PROOF","commerce:mall:offline:refund:confirm");

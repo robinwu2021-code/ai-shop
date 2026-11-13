@@ -1,6 +1,11 @@
 import type { MallOfflineActionView, MallOfflineConfirmRequest, MallOfflineVoidRequest, MallOfflineSupplementRequest } from "./types";
 import type { CommerceApi } from "./api/contracts/commerce";
 
+/** Only explicit TEST mode may use the operator's current time. Real receipts require actual facts. */
+export function receiptTimeForMode(testPayment:boolean,now=new Date()):string {
+  return testPayment?new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19):"";
+}
+
 /** Missing frozen order data must block confirmation, including an older backend response. */
 export function mallOfflineReceiver(instructions: { platformMerchantNo?: string | null }): string | null {
   const receiver = instructions.platformMerchantNo;
