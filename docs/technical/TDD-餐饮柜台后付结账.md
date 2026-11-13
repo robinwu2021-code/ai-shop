@@ -280,6 +280,7 @@ BizCounterSettlementPermTest / RemoteCounterSettlementServiceTest  各 1，全�
 | `shop.outbox.sources.platform.mode` | UNIFIED | 开台即 10500「Food requires a registered unified PLATFORM outbox source」 |
 | `shop.outbox.sources.inventory.mode` | UNIFIED（启用进销存时） | 同上类 |
 | 库存权威（二选一，见下） | — | 员工下单 40190 |
+| JVM 默认时区 | UTC（`-Duser.timezone=UTC` 或 `TZ=UTC`） | 审计字段 `created_at` / `updated_at`（`LocalDateTime.now()`）与业务时刻（UTC）差几个小时；见 [TDD-餐饮门店基本信息与时间约定](./TDD-餐饮门店基本信息与时间约定.md) |
 
 **库存权威**：核心行业下单要求 `shop.inventory.stock-authority=INVENTORY`，或餐饮本地库存 `shop.food.local-stock.enabled=true`（餐饮单的库存归属为 FOOD_LOCAL）。前端注释称线上 stock-authority 目前为 **DUAL**：若属实，不开餐饮本地库存则所有员工下单都会 40190。
 - 选餐饮本地库存：每个 SKU 要在餐饮库存建档（`POST /biz/x/food/stores/{s}/stock-items`）并期初；**基本单位必须与菜品计量单位一致**（菜品 `EA` ↔ 库存 `EA`/`PIECE`，`COUNT` 不认）。
