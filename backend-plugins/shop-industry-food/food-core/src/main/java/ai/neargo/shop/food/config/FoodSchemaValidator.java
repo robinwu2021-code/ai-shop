@@ -77,8 +77,8 @@ public final class FoodSchemaValidator {
         }
         var current = flyway.info().current();
         require(
-                current != null && "37".equals(current.getVersion().getVersion()),
-                "food migration version must be 37");
+                current != null && "40".equals(current.getVersion().getVersion()),
+                "food migration version must be 40");
         try (var connection = source.getConnection();
                 var column =
                         connection
@@ -521,6 +521,7 @@ public final class FoodSchemaValidator {
             expected.put("fnb_menu_channel_binding", channel);
             expected.get("fnb_order_batch").add("next_recovery_at");
             expected.get("fnb_settlement").add("next_recovery_at");
+            expected.get("fnb_settlement").add("kind");
             expected.get("fnb_return").add("next_recovery_at");
             expected.get("fnb_core_line_allocation").add("source_component_ref");
             expected.get("fnb_return")

@@ -50,6 +50,21 @@ public class CheckBusinessGuardServiceImpl implements CheckBusinessGuardService 
     }
 
     @Override
+    public void assertReleasable(String e, String store, String check) {
+        var rows = mapper.checkBusinessGuardSelectCheck(e, store, check);
+        if (rows.size() != 1) throw BizException.of(ErrorCode.NOT_FOUND);
+        String status = rows.getFirst().text("status");
+        if ("OPEN".equals(status)) {
+            assertPartyMutable(e, store, check);
+            return;
+        }
+        // 柜台结账收齐后已关单（CLOSED）：菜上齐后仍可释放服务；结算已结束，不再有冻结中的结算
+        if (!"CLOSED".equals(status) || !"OPEN".equals(rows.getFirst().get("service_state"))) conflict();
+        if (mapper.checkBusinessGuardCountCheckFreeze(e, store, check) > 0) conflict();
+        if (mapper.activeServiceForms(e, store, check) > 0) conflict();
+    }
+
+    @Override
     public void assertMutable(String entity, String store, String check) {
         if (check == null) return;
         var rows = mapper.checkBusinessGuardSelectCheck(entity, store, check);

@@ -791,6 +791,11 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                                 .orElse(null));
     }
 
+    /** 柜台后付结算单已结清 = 核心已出实收（ADR-059）；其他结算单的资金完整性仍为未知。 */
+    private static boolean counterReceipted(FnbSettlement row) {
+        return "COUNTER".equals(row.getKind()) && "SETTLED".equals(row.getStatus());
+    }
+
     private List<OrderReceivable> stableCoreSources(
             String entity, String store, String actor, PreviewReq req) {
         if (coreOrders == null)
@@ -957,6 +962,7 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                                     .eq(FnbCoreOrderBinding::getBatchNo, batch.getBatchNo())
                                     .orderByAsc(FnbCoreOrderBinding::getBindingNo));
             bindingRows.addAll(batchBindings);
+            boolean counterSettled = false;
             for (var binding : batchBindings) {
                 var items =
                         settlementItems.selectList(
@@ -977,7 +983,10 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                                             .eq(
                                                     FnbSettlement::getSettlementNo,
                                                     item.getSettlementNo()));
-                    for (var row : found) settlementRows.put(row.getSettlementNo(), row);
+                    for (var row : found) {
+                        settlementRows.put(row.getSettlementNo(), row);
+                        if (counterReceipted(row)) counterSettled = true;
+                    }
                 }
             }
             if (Set.of("BOUND", "ACCEPTED").contains(batch.getStatus())) {
@@ -995,14 +1004,15 @@ public class BusinessCloseServiceImpl implements BusinessCloseService {
                         && batchBindings.stream()
                                 .anyMatch(binding -> "BOUND".equals(binding.getStatus())))
                     conflict();
-                if (actual == null || actual.effectiveMinor() > 0)
+                // 柜台后付结清（核心已核验外部记账并推到 PAID）的批次不再是应收
+                if ((actual == null || actual.effectiveMinor() > 0) && !counterSettled)
                     issues.add(new Issue("AR", batch.getBatchNo()));
             }
         }
         long requested = 0;
         for (var row : settlementRows.values()) {
             if (row.getDueMinor() != null) requested = Math.addExact(requested, row.getDueMinor());
-            if (!"CANCELLED".equals(row.getStatus()))
+            if (!"CANCELLED".equals(row.getStatus()) && !counterReceipted(row))
                 issues.add(new Issue("PAY_UNKNOWN", row.getSettlementNo()));
         }
         for (var row : returnRows) issues.add(new Issue("REFUND", row.getReturnNo()));

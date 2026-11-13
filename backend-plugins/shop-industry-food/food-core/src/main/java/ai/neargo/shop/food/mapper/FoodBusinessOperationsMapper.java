@@ -306,14 +306,34 @@ public class FoodBusinessOperationsMapper {
                 check);
     }
 
+    /**
+     * 释放服务后同步桌台：这张桌上没有别的在用占桌就回到空闲（TDD-餐饮柜台后付结账 AC8；此前只加版本号，桌台一直显示使用中）。
+     * 调用前本台账的占桌已结束，所以子查询只看得到别的台账（拼桌）的占桌。
+     */
     public int checkCollaborationUpdateTable(String actor, String e, String store, String tableNo) {
         return db.update(
-                "UPDATE fnb_table SET version=version+1,updated_by=?,updated_at=UTC_TIMESTAMP(3)"
-                        + " WHERE entity_no=? AND store_no=? AND table_no=?",
+                "UPDATE fnb_table SET turnover_state=CASE WHEN EXISTS (SELECT 1 FROM fnb_table_occupancy o"
+                        + " WHERE o.entity_no=? AND o.table_no=? AND o.ended_at IS NULL AND o.deleted=0)"
+                        + " THEN 'IN_USE' ELSE 'IDLE' END,version=version+1,updated_by=?,"
+                        + "updated_at=UTC_TIMESTAMP(3) WHERE entity_no=? AND store_no=? AND table_no=?",
+                e,
+                tableNo,
                 actor,
                 e,
                 store,
                 tableNo);
+    }
+
+    /** 柜台结账收齐后关单（TDD-餐饮柜台后付结账 AC2）。只关仍是 OPEN 的台账。 */
+    public int counterSettlementCloseCheck(String actor, String e, String store, String check) {
+        return db.update(
+                "UPDATE fnb_check SET status='CLOSED',closed_at=UTC_TIMESTAMP(3),version=version+1,updated_by=?,"
+                        + "updated_at=UTC_TIMESTAMP(3) WHERE entity_no=? AND store_no=? AND check_no=?"
+                        + " AND status='OPEN' AND deleted=0",
+                actor,
+                e,
+                store,
+                check);
     }
 
     public int checkCollaborationUpdateGuestSession(
