@@ -1,10 +1,15 @@
+"use client";
+
 // 「枚举 → 徽标」的统一渲染件（组合层）。
 //
 // 各页都有形如 `const XX_STATUS: Record<Status, { label, tone }>` 的映射表，
 // 原先每处都要自己写一遍 tone 的字面量联合，且渲染时手抄
 // `<Badge tone={M[v].tone}>{M[v].label}</Badge>`。这里只收敛**类型与渲染**：
 // 映射表本身是业务语义（哪个状态该是什么色、叫什么名），留在各自页面。
+// 映射表文案是简体源串；繁体界面在渲染时转换（TDD-运营端页面文案繁体）。
 import { Badge, type BadgeTone } from "./badge";
+import { useI18n } from "@/lib/i18n";
+import { toTraditional } from "@/lib/i18n/zh-tw";
 
 /**
  * 枚举状态的展示映射：值 → 文案 + 色调。
@@ -26,9 +31,10 @@ export type StatusMap<K extends string> = Record<K, { label: string; tone: Badge
 export function StatusBadge<K extends string>({
   map, value, className,
 }: { map: StatusMap<K>; value: K; className?: string }) {
+  const { locale } = useI18n();
   const s = map[value];
   if (!s) return <Badge tone="muted" className={className}>{String(value)}</Badge>;
-  return <Badge tone={s.tone} className={className}>{s.label}</Badge>;
+  return <Badge tone={s.tone} className={className}>{locale === "zh-TW" ? toTraditional(s.label) : s.label}</Badge>;
 }
 
 /**

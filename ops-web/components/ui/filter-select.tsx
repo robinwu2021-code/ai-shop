@@ -9,6 +9,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Input, Select, useDebouncedPush } from "./input";
 import { statusOptions, type StatusMap } from "./status-badge";
+import { useI18n } from "@/lib/i18n";
+import { toTraditional } from "@/lib/i18n/zh-tw";
 import type { FilterChip } from "./filter-chip";
 
 export type FilterOption = { value: string; label: string };
@@ -31,10 +33,12 @@ export function FilterSelect<K extends string>({
   className?: string;
   "aria-label"?: string;
 }) {
-  const list = React.useMemo(
-    () => (Array.isArray(options) ? (options as readonly FilterOption[]) : statusOptions(options as StatusMap<K>)),
-    [options],
-  );
+  const { locale } = useI18n();
+  const list = React.useMemo(() => {
+    const raw = Array.isArray(options) ? (options as readonly FilterOption[]) : statusOptions(options as StatusMap<K>);
+    // 选项文案多为页面里的简体常量（状态映射表等）；繁体界面统一在这里转换
+    return locale === "zh-TW" ? raw.map((o) => ({ ...o, label: toTraditional(o.label) })) : raw;
+  }, [options, locale]);
   // 与搜索框、表单 Select 同为控件档 6px —— 工具栏一行里形状必须一致。
   return (
     <Select className={cn(className)} aria-label={ariaLabel} disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>

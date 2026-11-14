@@ -12,6 +12,7 @@ import { zh, type Messages } from "./messages/zh";
 import { en } from "./messages/en";
 import { zhTW } from "./messages/zh-TW";
 import { tNav } from "./nav-labels";
+import { toTraditional, twTerms } from "./zh-tw";
 import { useLocaleStore, type Locale } from "@/lib/stores/locale";
 
 export type { Locale } from "@/lib/stores/locale";
@@ -32,9 +33,11 @@ function interpolate(raw: string, params?: Record<string, string | number>): str
   return raw.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`));
 }
 
-/** 纯函数版翻译（供非 React 处/测试用）。缺失回退 zh，再回退 key 本身。 */
+/** 纯函数版翻译（供非 React 处/测试用）。缺失回退 zh（繁体转换后回退），再回退 key 本身。 */
 export function translate(locale: Locale, key: string, params?: Record<string, string | number>): string {
-  const raw = lookup(CATALOG[locale], key) ?? lookup(CATALOG.zh, key) ?? key;
+  const own = lookup(CATALOG[locale], key);
+  const fallback = lookup(CATALOG.zh, key) ?? key;
+  const raw = locale !== "zh-TW" ? own ?? fallback : own !== undefined ? twTerms(own) : toTraditional(fallback);
   return interpolate(raw, params);
 }
 
