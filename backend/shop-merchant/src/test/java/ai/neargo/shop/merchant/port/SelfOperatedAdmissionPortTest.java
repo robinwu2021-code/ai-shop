@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.common.data.scope.DataScopeSpec;
+import java.util.Set;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -34,5 +37,20 @@ class SelfOperatedAdmissionPortTest {
         assertTrue(sql.contains("self_operated ="));assertTrue(sql.contains("market ="));
         assertTrue(sql.contains("archived_at IS NULL"));assertTrue(sql.contains("status ="));
         assertTrue(sql.contains("created_at DESC,entity_no DESC"));
+    }
+    @Test void keepsCallerDataScopeEnabledAtTheMapperBoundary() {
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(),""),MchEntity.class);
+        var mapper=mock(MchEntityMapper.class);
+        var scope=DataScopeSpec.of("MERCHANT",Set.of("VISIBLE_ENTITY"));
+        DataScopeContext.set(scope);
+        try {
+            when(mapper.selectPage(any(Page.class),any())).thenAnswer(i->{
+                assertFalse(DataScopeContext.isSkipped(),"Operator search must preserve row-level filtering");
+                assertSame(scope,DataScopeContext.current());
+                return i.getArgument(0);
+            });
+            var result=new SelfOperatedAdmissionPortImpl(mapper).search("TW",null,null,20);
+            assertTrue(result.records().isEmpty());
+        } finally {DataScopeContext.clear();}
     }
 }

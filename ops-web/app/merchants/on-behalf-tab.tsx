@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
+import { Drawer } from "@/components/ui/drawer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -17,22 +17,21 @@ import type { MerchantsCopy } from "./copy";
 
 export function OnBehalfTab({ c, canSubmit, canAudit=false, canSelfOp=false, initialType="", canReadSubscription=false }: { c: MerchantsCopy; canSubmit: boolean; canAudit?:boolean; canSelfOp?:boolean; initialType?:""|"SELF_OPERATED"; canReadSubscription?:boolean }) {
   const [open, setOpen] = useState(false);
+  const triggerRef=useRef<HTMLButtonElement>(null);
   const [done, setDone] = useState<ApplyOnBehalfResult | null>(null);
   const qc = useQueryClient();
   if (!canSubmit && !canAudit && !canSelfOp) return <Notice tone="danger">{c.obNoPerm}</Notice>;
   return <div className="space-y-4">
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <ApplyTab c={c} canAudit={canAudit} canSelfOp={canSelfOp} canViewApplications={canAudit||canSubmit} initialType={initialType} unified canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit||canSelfOp?<Dialog.Trigger asChild><Button>{c.obNew}</Button></Dialog.Trigger>:undefined} />
-      {open && <ApplicationDialog c={c} canSubmit={canSubmit} canSelfOp={canSelfOp} onSelfDone={() => {setDone(null);setOpen(false);void qc.invalidateQueries({queryKey:["applies"]});}} onDone={(result) => {
+      <ApplyTab c={c} canAudit={canAudit} canSelfOp={canSelfOp} canViewApplications={canAudit||canSubmit} initialType={initialType} unified canReadSubscription={canReadSubscription} onBehalfOnly={!canAudit} action={canSubmit||canSelfOp?<Button ref={triggerRef} onClick={()=>setOpen(true)}>{c.obNew}</Button>:undefined} />
+      {open && <ApplicationDialog returnFocus={()=>triggerRef.current?.focus()} c={c} canSubmit={canSubmit} canSelfOp={canSelfOp} onSelfDone={() => {setDone(null);setOpen(false);void qc.invalidateQueries({queryKey:["applies"]});}} onDone={(result) => {
         setDone(result); setOpen(false);
         void qc.invalidateQueries({ queryKey: ["applies"] });
       }} onCancel={() => setOpen(false)} />}
-    </Dialog.Root>
     {done && <Notice tone="info">{c.obDone}：{done.applyNo}<p className="mt-1 txt-caption">{c.obDoneHint}</p></Notice>}
   </div>;
 }
 
-function ApplicationDialog({ c, canSubmit, canSelfOp, onSelfDone, onDone, onCancel }: { c: MerchantsCopy; canSubmit:boolean; canSelfOp:boolean; onSelfDone:()=>void; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
+function ApplicationDialog({ returnFocus, c, canSubmit, canSelfOp, onSelfDone, onDone, onCancel }: { returnFocus:()=>void; c: MerchantsCopy; canSubmit:boolean; canSelfOp:boolean; onSelfDone:()=>void; onDone: (r: ApplyOnBehalfResult) => void; onCancel: () => void }) {
   const [type,setType]=useState(canSubmit?"ON_BEHALF":"SELF_OPERATED");
   const assisted=type==="ON_BEHALF";
   const [selfBusy,setSelfBusy]=useState(false);
@@ -81,15 +80,11 @@ function ApplicationDialog({ c, canSubmit, canSelfOp, onSelfDone, onDone, onCanc
     {canSubmit&&<option value="ON_BEHALF">{c.admissionAssisted}</option>}
     {canSelfOp&&<option value="SELF_OPERATED">{c.admissionSelf}</option>}
   </Select></div>;
-  return <Dialog.Portal>
-    <Dialog.Overlay className="fixed inset-0 z-[var(--z-dialog)] bg-black/40" />
-    <Dialog.Content className="fixed left-1/2 top-1/2 z-[var(--z-dialog)] flex max-h-[88dvh] w-[min(94vw,800px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-pop outline-none focus-visible:outline-none"
-      onOpenAutoFocus={e=>{e.preventDefault();titleRef.current?.focus();}}
-      onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending||selfBusy)e.preventDefault();}}>
-      <div className="border-b p-5">
-        <Dialog.Title ref={titleRef} tabIndex={-1} className="txt-heading outline-none">{c.obNew}</Dialog.Title>
-        <Dialog.Description className="sr-only">{c.obDesc}</Dialog.Description>
-      </div>
+  return <Drawer open onOpenChange={next=>{if(!next && !submit.isPending && !selfBusy)onCancel();}} title={c.obNew} desc={c.obDesc}
+    titleRef={titleRef} width="w-[800px]" bodyClassName="flex min-h-0 flex-col p-0"
+    onOpenAutoFocus={e=>{e.preventDefault();titleRef.current?.focus();}}
+    onCloseAutoFocus={e=>{e.preventDefault();returnFocus();}}
+    onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{if(submit.isPending||selfBusy)e.preventDefault();}}>
       {assisted?<form className="flex min-h-0 flex-1 flex-col" onSubmit={e=>{e.preventDefault();if(ready && !submit.isPending)submit.mutate();}}>
         <div className="min-h-0 space-y-5 overflow-y-auto p-5">
           <div className="grid gap-4 sm:grid-cols-2">{typeField}<div className={cell}><span className="block txt-caption">{c.obSystemMarket}</span><p className="flex h-[var(--ctl-h)] items-center txt-body">{market??"—"}</p></div></div>
@@ -145,6 +140,5 @@ function ApplicationDialog({ c, canSubmit, canSelfOp, onSelfDone, onDone, onCanc
           <Button type="submit" disabled={!ready || submit.isPending} loading={submit.isPending}>{c.obSubmit}</Button>
         </div>
       </form>:<div className="min-h-0 overflow-y-auto p-5"><SelfOperatedTab c={c} canCreate={canSelfOp} embedded admissionTypeField={typeField} onCreated={onSelfDone} onBusyChange={setSelfBusy} /><div className="mt-4 flex justify-end"><Button variant="secondary" disabled={selfBusy} onClick={onCancel}>{c.obCancel}</Button></div></div>}
-    </Dialog.Content>
-  </Dialog.Portal>;
+  </Drawer>;
 }

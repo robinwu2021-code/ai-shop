@@ -1,6 +1,5 @@
 package ai.neargo.shop.merchant.port;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
@@ -26,7 +25,7 @@ public class SelfOperatedAdmissionPortImpl implements SelfOperatedAdmissionPort 
             query.and(q -> q.like(MchEntity::getName, keyword.trim())
                     .or().like(MchEntity::getOwnerUserNo, keyword.trim()));
         }
-        var page = DataScopeContext.executeWithoutScope(() -> entities.selectPage(new Page<>(1, limit), query));
+        var page = entities.selectPage(new Page<>(1, limit), query);
         return PageData.of(page.getRecords().stream().map(e -> new Entry(e.getEntityNo(), e.getName(),
                 e.getOwnerUserNo(), e.getStatus(), e.getServiceScope(),
                 e.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())).toList(),

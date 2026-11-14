@@ -105,6 +105,6 @@ public class PlatformMallReporting {
   private static Cursor decodeOrder(String raw){if(raw==null)return null;try{var p=decode(raw).split("\n",-1);if(p.length!=3 || p[2].isBlank() || p[2].length()>64)throw bad();long t=Long.parseLong(p[0]);if(t<0)throw bad();return new Cursor(t,Model.valueOf(p[1]),p[2]);}catch(IllegalArgumentException e){throw bad();}}
   private static String encodeCash(CashRow r){return encode(r.occurredAt()+"\n"+r.paymentNo());}
   private static CashRow decodeCash(String raw){if(raw==null)return null;try{var p=decode(raw).split("\n",-1);if(p.length!=2 || p[1].isBlank() || p[1].length()>64)throw bad();long t=Long.parseLong(p[0]);if(t<0)throw bad();return new CashRow(p[1],null,null,null,null,null,t,null,null,null,null);}catch(IllegalArgumentException e){throw bad();}}
-  private static BizException bad(){return new BizException(ErrorCode.BAD_REQUEST,"Invalid platform mall reporting query");}
-  private static BizException inconsistent(){return new BizException(ErrorCode.CONFLICT,"Platform cash facts require reconciliation");}
+  private static BizException bad(){return BizException.of(ErrorCode.BAD_REQUEST);}
+  private static BizException inconsistent(){return BizException.of(ErrorCode.CONFLICT);}
 }

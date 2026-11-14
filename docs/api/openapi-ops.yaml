@@ -410,30 +410,40 @@ components:
         - "enabled"
       additionalProperties: false
       description: "可用于运营代客建店的已启用行业与已发布经营类型。"
+    AdmissionEntryType:
+      type: "string"
+      enum:
+        - "ON_BEHALF"
+        - "SELF_OPERATED"
+      description: "统一准入列表来源。代申请与平台自营使用不同审核流程。"
     AdmissionEntry:
       type: "object"
       properties:
         key:
           type: "string"
+          description: "带来源前缀的列表唯一键"
         type:
-          type: "string"
-          enum:
-            - "ON_BEHALF"
-            - "SELF_OPERATED"
+          "$ref": "#/components/schemas/AdmissionEntryType"
+          description: "准入来源：代申请或平台自营"
         name:
           type: "string"
+          description: "申请名称或已建自营主体名称"
         ownerUserNo:
           type:
             - "string"
             - "null"
+          description: "实际店主账号；未关联时为空"
         status:
           type: "string"
+          description: "来源对应的申请或主体状态"
         createdAt:
           type: "number"
+          description: "创建时间，Unix 毫秒"
         application:
           anyOf:
             - "$ref": "#/components/schemas/MerchantApply"
             - type: "null"
+          description: "代申请记录；自营来源为空"
         selfOperated:
           anyOf:
             - type: "object"
@@ -459,6 +469,7 @@ components:
                 - "createdAt"
               additionalProperties: false
             - type: "null"
+          description: "平台自营主体快照；代申请来源为空"
       required:
         - "key"
         - "type"
@@ -466,7 +477,6 @@ components:
         - "status"
         - "createdAt"
       additionalProperties: false
-      description: "入驻申请单（后端 `mch_entity_apply`）。"
     MerchantApply:
       type: "object"
       properties:
@@ -3991,43 +4001,54 @@ components:
         - "toAfterSale"
       additionalProperties: false
       description: "门店经营状况（`GET /ops/stores/{storeNo}/stats`）。\n\n后端复用商家自己在 B 端看的那套统计，不另存计数器 —— 另存的迟早出现「总览说 3 单、点进去只有 2 单」。\n\n待办只有**门店维度**三项：核销与分拣是自提点维度且不限商家， 摆进门店页会被读成「这家店的活」。"
+    StoreOperationalReviewStatus:
+      type: "string"
+      enum:
+        - "PENDING"
+        - "APPROVED"
+        - "REJECTED"
+      description: "开业审核结论；未送审或历史记录可为空。"
+    StoreOperationalReviewSource:
+      type: "string"
+      enum:
+        - "MANUAL"
+        - "STORE"
+        - "ENTITY"
+      description: "开业审核来源：人工、门店商城订单或主体商城订单。"
     StoreOperationalReview:
       type: "object"
       properties:
         storeNo:
           type: "string"
+          description: "门店业务号"
         status:
           "$ref": "#/components/schemas/StoreGovernStatus"
+          description: "当前门店经营状态，与审核结论独立"
         review:
-          type:
-            - "string"
-            - "null"
-          enum:
-            - "PENDING"
-            - "APPROVED"
-            - "REJECTED"
-            - null
+          anyOf:
+            - "$ref": "#/components/schemas/StoreOperationalReviewStatus"
+            - type: "null"
+          description: "开业审核结论"
         source:
-          type:
-            - "string"
-            - "null"
-          enum:
-            - "MANUAL"
-            - "STORE"
-            - "ENTITY"
-            - null
+          anyOf:
+            - "$ref": "#/components/schemas/StoreOperationalReviewSource"
+            - type: "null"
+          description: "审核发起来源"
         orderNo:
           type:
             - "string"
             - "null"
+          description: "关联商城订单号；人工审核为空"
         decidedAt:
           type:
             - "number"
             - "null"
+          description: "最近审核决定时间，Unix 毫秒；未决定为空"
         submittedAt:
           type:
             - "number"
             - "null"
+          description: "最近送审时间，Unix 毫秒；未送审为空"
       required:
         - "storeNo"
         - "status"
@@ -4037,7 +4058,6 @@ components:
         - "decidedAt"
         - "submittedAt"
       additionalProperties: false
-      description: "Store operating admission, independent of entity/legal and payment review."
     CouponType:
       type: "string"
       enum:
@@ -14433,8 +14453,10 @@ components:
       properties:
         collectorNo:
           type: "string"
+          description: "可代收款的业务员账号业务号"
         displayName:
           type: "string"
+          description: "业务员展示名称"
       required:
         - "collectorNo"
         - "displayName"
@@ -14444,6 +14466,7 @@ components:
       properties:
         collectionMethod:
           "$ref": "#/components/schemas/MallCollectionMethod"
+          description: "收款方式；省略时按当前银行转账兼容规则处理"
         quoteNo:
           type: "string"
           description: "报价号"
@@ -14498,6 +14521,7 @@ components:
       properties:
         collectionMethod:
           "$ref": "#/components/schemas/MallCollectionMethod"
+          description: "收款方式；省略时按当前银行转账兼容规则处理"
         lines:
           type: "array"
           items:
@@ -15096,8 +15120,10 @@ components:
       properties:
         collectionMethod:
           "$ref": "#/components/schemas/MallCollectionMethod"
+          description: "收款方式；省略时按当前银行转账兼容规则处理"
         contactInstructions:
           type: "string"
+          description: "业务员代收时展示给付款方的联系指引"
         profileNo:
           type: "string"
           description: "档案号"
@@ -15219,6 +15245,7 @@ components:
       properties:
         collectionMethod:
           "$ref": "#/components/schemas/MallCollectionMethod"
+          description: "收款方式；省略时按当前银行转账兼容规则处理"
         platformMerchantNo:
           type: "string"
           description: "Immutable receiver frozen with this order."
@@ -15296,14 +15323,18 @@ components:
       properties:
         actionNo:
           type: "string"
+          description: "本次补充动作的幂等业务号"
         confirmationActionNo:
           type: "string"
+          description: "被补充的原核款动作号"
         note:
           type: "string"
+          description: "补充说明；不改写原核款事实"
         evidenceKeys:
           type: "array"
           items:
             type: "string"
+          description: "关联的私有证据资产键"
       required:
         - "actionNo"
         - "confirmationActionNo"
@@ -15316,36 +15347,48 @@ components:
       properties:
         confirmationActionNo:
           type: "string"
+          description: "原核款动作业务号"
         paymentNo:
           type:
             - "string"
             - "null"
+          description: "对应支付流水号；未生成时为空"
         status:
           type: "string"
+          description: "原核款动作处理状态"
         testPayment:
           type: "boolean"
+          description: "是否为测试核款事实"
         operatorNo:
           type: "string"
+          description: "原核款操作员账号"
         confirmedAt:
           type: "string"
+          description: "核款登记时间，ISO 8601"
         actualAmount:
           "$ref": "#/components/schemas/MallMoney"
+          description: "实际到账金额及币种"
         actualPaidAt:
           type: "string"
+          description: "实际到账时间，ISO 8601"
         collectorNo:
           type:
             - "string"
             - "null"
+          description: "代收业务员账号；银行转账时为空"
         collectionReference:
           type:
             - "string"
             - "null"
+          description: "代收或银行对账参考号"
         evidenceKey:
           type:
             - "string"
             - "null"
+          description: "原核款关联的私有证据资产键"
         complete:
           type: "boolean"
+          description: "原事实及追加材料是否已满足凭证完整性规则"
         supplements:
           type: "array"
           items:
@@ -15372,6 +15415,7 @@ components:
               - "note"
               - "evidenceKeys"
             additionalProperties: false
+          description: "只追加的补充材料，包含动作号、操作员、时间、说明及证据键"
       required:
         - "confirmationActionNo"
         - "paymentNo"
@@ -15387,28 +15431,35 @@ components:
         - "complete"
         - "supplements"
       additionalProperties: false
+      description: "原核款事实与追加材料的审计视图。"
     MallDocumentationView:
       type: "object"
       properties:
         testAllowed:
           type: "boolean"
+          description: "当前环境及权限是否允许测试核款"
         confirmations:
           type: "array"
           items:
             "$ref": "#/components/schemas/MallReceiptDocumentation"
+          description: "本订单的全部核款事实及补充材料"
       required:
         - "testAllowed"
         - "confirmations"
       additionalProperties: false
+      description: "订单核款材料汇总。"
     MallOfflineConfirmRequest:
       type: "object"
       properties:
         testPayment:
           type: "boolean"
+          description: "测试核款标志；仅服务端允许的测试环境可用"
         collectorNo:
           type: "string"
+          description: "代收业务员账号；业务员代收方式时填写"
         collectionReference:
           type: "string"
+          description: "收款对账参考号"
         actionNo:
           type: "string"
           description: "幂等动作号"

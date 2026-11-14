@@ -72,6 +72,12 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "ops-web:AdmissionEntryType", dom: "merchant", shape: "CLASS", verdict: "OK", note: "统一准入列表来源，区分代申请与平台自营主体。" },
+  { decl: "ops-web:StoreOperationalReviewStatus", dom: "store", shape: "STATUS", verdict: "OK", note: "门店开业审核结论，与经营状态独立。" },
+  { decl: "ops-web:StoreOperationalReviewSource", dom: "store", shape: "CLASS", verdict: "OK", note: "开业审核的人工或商城订单来源。" },
+  { decl: "ops-web:PurchaseModel", dom: "commerce", shape: "CLASS", verdict: "OK", note: "平台销售报表的订单来源模型：主体套餐 ENTITY 或门店商城 STORE；两种模型独立保留。" },
+  { decl: "ops-web:MallCollectionMethod", dom: "commerce", shape: "CLASS", verdict: "OK", note: "商城线下收款方式：银行转账或业务员代收；不表示资金到账状态。" },
+
   { decl: "b-app:OfflineRecordMethod", dom: "trade", shape: "CLASS", verdict: "OK",
     note: "商家自报的 App 外收款方式，与 BizOfflineRecordController.METHODS 的请求校验一致；不代表平台支付通道。" },
   { decl: "b-app:OfflineRecordStatus", dom: "trade", shape: "STATUS", verdict: "OK", words: ["RECORDED", "VOIDED"],
@@ -553,11 +559,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:StoreAuditStatus", dom: "store", shape: "STATUS", verdict: "PLANNED",
     note: "门店装修审核状态，后端有表待接" },
   { decl: "ops-web:StoreGovernStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
-    note: "门店经营状态，与库 mch_store.status 逐字一致（ACTIVE/READONLY/SUSPENDED）。⚠️ 与 ops-web:StoreAuditStatus 不同域：那个审的是门面内容，这个是「这家店还开不开门」。READONLY 与 SUSPENDED 必须分开——前者商家自己关的、自己开得回来，后者只有平台解得开（restoreStore）；压成一个 enabled 布尔的话运营看不出该找谁",
+    note: "门店经营状态，与库 mch_store.status 逐字一致（PENDING_OPEN/ACTIVE/READONLY/SUSPENDED）。⚠️ 与 ops-web:StoreAuditStatus 不同域：那个审的是门面内容，这个是「这家店还开不开门」。READONLY 与 SUSPENDED 必须分开——前者商家自己关的、自己开得回来，后者只有平台解得开（restoreStore）；压成一个 enabled 布尔的话运营看不出该找谁",
     // READONLY 不用 L1 的 DISABLED/CLOSED：那两个词说的是「关了」，
     // 而这家店**还在，只是不接单** —— 商品页照常可看、历史单照常售后，
     // 只有下单入口关着。用 CLOSED 的话运营会以为它已经不存在了
-    words: ["READONLY"] },
+    // PENDING_OPEN 表示主体已建、门店尚未获准开业；PENDING 无法区分其他审核流程。
+    words: ["READONLY", "PENDING_OPEN"] },
   { decl: "ops-web:SectionKey", dom: "store", shape: "CLASS", verdict: "PLANNED",
     note: "门店装修版块键，后端 featured 只存商品列表，没有版块概念" },
   { decl: "c-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK",

@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', sans-serif" font-size="13">
+  <title>B 端邮箱验证码注册与登录主链路</title>
+  <desc>按客户端、认证接口、验证码服务和账号数据分泳道展示发送验证码、校验、注册或登录及失败分支；灰框表示复用组件。</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
     <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>

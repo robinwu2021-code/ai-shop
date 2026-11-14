@@ -177,7 +177,7 @@ const zh = {
   storeFilterClear: "看全部门店",
   filterFulfill: "按履约方式筛选",
   filterFulfillAll: "全部履约方式",
-  empty: "没有符合条件的订单。",
+  empty: "当前筛选条件下没有订单，请调整订单状态或搜索关键词后重试。",
 
   colSubOrderNo: "子订单号",
   colMerchant: "商家",
@@ -393,7 +393,7 @@ const en: typeof zh = {
   storeFilterClear: "All stores",
   filterFulfill: "Filter by fulfillment",
   filterFulfillAll: "All fulfillment types",
-  empty: "No orders match these filters.",
+  empty: "No orders match these filters. Adjust the order status or search keyword and try again.",
 
   colSubOrderNo: "Sub-order no.",
   colMerchant: "Merchant",

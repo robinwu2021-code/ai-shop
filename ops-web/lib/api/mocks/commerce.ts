@@ -1,3 +1,4 @@
+import { fail } from "@/lib/biz-error";
 import { ApiError } from "../error";
 // 覆盖范围：套餐商城（commerce）。规则全部在 lib/mock/db/commerce.ts 强制，这里只做形状转换与延迟。
 import * as m from "@/lib/mock/db/commerce";
@@ -62,9 +63,9 @@ async function blobUrl(file: Blob): Promise<string> {
 }
 
 export const commerceMock: CommerceApi = {
-  platformMallOrders: async () => { throw new Error("Platform order reporting requires the real backend"); },
-  platformMallClaims: async () => { throw new Error("Platform verification reporting requires the real backend"); },
-  platformMallCash: async () => { throw new Error("Platform cash reporting requires the real backend"); },
+  platformMallOrders: async () => { fail("平台订单报表需要连接真实后端，请切换 HTTP 模式后重试。", "Platform order reporting requires the real backend. Switch to HTTP mode and try again."); },
+  platformMallClaims: async () => { fail("平台核销报表需要连接真实后端，请切换 HTTP 模式后重试。", "Platform verification reporting requires the real backend. Switch to HTTP mode and try again."); },
+  platformMallCash: async () => { fail("平台现金报表需要连接真实后端，请切换 HTTP 模式后重试。", "Platform cash reporting requires the real backend. Switch to HTTP mode and try again."); },
   offlineReceiptDocumentation:async()=>({testAllowed:false,confirmations:[]}),
   supplementOfflineReceipt:async()=>{throw new ApiError(501,"MOCK_RECEIPT_DOCUMENTATION_UNAVAILABLE");},
   mallCashReceipts: async () => { throw new ApiError(10400,"Offline cash refunds require a real bank ledger"); },

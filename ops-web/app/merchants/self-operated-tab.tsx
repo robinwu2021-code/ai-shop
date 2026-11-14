@@ -48,7 +48,7 @@ export function SelfOperatedTab({c,canCreate,onCreated,onBusyChange,embedded=fal
   {done&&<ConfigCard title={c.soResultTitle}>
    <dl className="mb-4 grid gap-3 sm:grid-cols-3">{[[c.soResultMerchant,done.merchantNo],[c.soResultStore,done.storeNo],[c.soResultOwner,done.ownerUserNo]].map(([label,value])=><div key={label}><dt className="txt-caption text-muted-foreground">{label}</dt><dd className="txt-body tabular-nums">{value}</dd></div>)}</dl>
    {done.reachableCommunities===0&&<Notice tone="danger" className="mb-3">{c.soResultReachZero}</Notice>}
-   {addedStores.length>0&&<DataTable columns={[{header:c.soStoreName,cell:(st:SelfOperatedStore)=>st.name},{header:c.soResultStore,cell:(st:SelfOperatedStore)=>st.storeNo}]} rows={addedStores} rowKey={st=>st.storeNo} />}
+   {addedStores.length>0&&<DataTable columns={[{header:c.soStoreName,cell:(st:SelfOperatedStore)=>st.name},{header:c.soResultStore,cell:(st:SelfOperatedStore)=>st.storeNo}]} rows={addedStores} rowKey={st=>st.storeNo} error={addStore.error} onRetry={()=>addStore.mutate()} empty={c.empty} />}
    <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={e=>{e.preventDefault();if(storeName.trim()&&!addStore.isPending)addStore.mutate();}}>
     <div className="min-w-0 flex-1 space-y-1"><Label required htmlFor="so-store-name">{c.soStoreName}</Label><Input id="so-store-name" value={storeName} disabled={addStore.isPending} onChange={e=>setStoreName(e.target.value)} /></div>
     <div className="min-w-0 flex-1 space-y-1"><Label htmlFor="so-store-address">{c.soStoreAddress}</Label><Input id="so-store-address" value={storeAddress} disabled={addStore.isPending} onChange={e=>setStoreAddress(e.target.value)} /></div>

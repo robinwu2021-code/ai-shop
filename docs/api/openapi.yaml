@@ -3995,6 +3995,11 @@ components:
     MerchantCustomer:
       type: "object"
       properties:
+        userNo:
+          type:
+            - "string"
+            - "null"
+          description: "客户注册账号业务号；匿名客户为空"
         nickname:
           type: "string"
           description: "客户昵称"
@@ -6951,6 +6956,11 @@ components:
             - "string"
             - "null"
           description: "关联业务单号，缺失时无业务定位"
+        entityNo:
+          type:
+            - "string"
+            - "null"
+          description: "业务所属主体，跳转前校验主体权限"
         storeNo:
           type:
             - "string"

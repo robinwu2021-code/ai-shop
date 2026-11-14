@@ -48031,6 +48031,15 @@
         "zh": "活动的触发。"
       },
       {
+        "name": "AdmissionEntryType",
+        "client": "ops-web",
+        "values": [
+          "ON_BEHALF",
+          "SELF_OPERATED"
+        ],
+        "zh": "统一准入列表来源。"
+      },
+      {
         "name": "AfterSaleReason",
         "client": "shared",
         "values": [
@@ -51014,6 +51023,26 @@
           "PENDING_OPEN"
         ],
         "zh": "门店经营状态。"
+      },
+      {
+        "name": "StoreOperationalReviewSource",
+        "client": "ops-web",
+        "values": [
+          "MANUAL",
+          "STORE",
+          "ENTITY"
+        ],
+        "zh": "开业审核来源：人工、门店商城订单或主体商城订单。"
+      },
+      {
+        "name": "StoreOperationalReviewStatus",
+        "client": "ops-web",
+        "values": [
+          "PENDING",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "zh": "开业审核结论。"
       },
       {
         "name": "StorePointAgreementSettleMode",

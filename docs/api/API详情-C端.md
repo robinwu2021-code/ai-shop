@@ -4733,6 +4733,7 @@ BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。
 | `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
 | `bizType` | `string,null` | 否 | B inbox projection; business action state is independent of read/unread. |
 | `bizNo` | `string,null` | 否 | 关联业务单号，缺失时无业务定位 |
+| `entityNo` | `string,null` | 否 | 业务所属主体，跳转前校验主体权限 |
 | `storeNo` | `string,null` | 否 | 业务所属门店，跳转前校验门店权限 |
 | `actionPending` | `boolean` | 否 | 是否仍需处理业务动作，与已读状态独立 |
 | `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |

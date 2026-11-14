@@ -650,7 +650,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | 收款方式；省略时按当前银行转账兼容规则处理 |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -678,7 +678,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | 收款方式；省略时按当前银行转账兼容规则处理 |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -808,7 +808,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | 收款方式；省略时按当前银行转账兼容规则处理 |
 | `quoteNo` | `string` | 否 | 报价号 |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
@@ -12989,13 +12989,13 @@ Read explicit store operating admission; historic unsubmitted review stays null.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
-| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
-| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
-| `orderNo` | `string,null` | 是 | — |
-| `decidedAt` | `number,null` | 是 | — |
-| `submittedAt` | `number,null` | 是 | — |
+| `storeNo` | `string` | 是 | 门店业务号 |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | 当前门店经营状态，与审核结论独立 |
+| `review` | [`StoreOperationalReviewStatus`](#storeoperationalreviewstatus) \| `null` | 是 | 开业审核结论 |
+| `source` | [`StoreOperationalReviewSource`](#storeoperationalreviewsource) \| `null` | 是 | 审核发起来源 |
+| `orderNo` | `string,null` | 是 | 关联商城订单号；人工审核为空 |
+| `decidedAt` | `number,null` | 是 | 最近审核决定时间，Unix 毫秒；未决定为空 |
+| `submittedAt` | `number,null` | 是 | 最近送审时间，Unix 毫秒；未送审为空 |
 
 
 #### POST `/ops/stores/{storeNo}/operational-review/decide`
@@ -13016,13 +13016,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
-| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
-| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
-| `orderNo` | `string,null` | 是 | — |
-| `decidedAt` | `number,null` | 是 | — |
-| `submittedAt` | `number,null` | 是 | — |
+| `storeNo` | `string` | 是 | 门店业务号 |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | 当前门店经营状态，与审核结论独立 |
+| `review` | [`StoreOperationalReviewStatus`](#storeoperationalreviewstatus) \| `null` | 是 | 开业审核结论 |
+| `source` | [`StoreOperationalReviewSource`](#storeoperationalreviewsource) \| `null` | 是 | 审核发起来源 |
+| `orderNo` | `string,null` | 是 | 关联商城订单号；人工审核为空 |
+| `decidedAt` | `number,null` | 是 | 最近审核决定时间，Unix 毫秒；未决定为空 |
+| `submittedAt` | `number,null` | 是 | 最近送审时间，Unix 毫秒；未送审为空 |
 
 
 #### POST `/ops/stores/{storeNo}/operational-review/submit`
@@ -13043,13 +13043,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
-| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
-| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
-| `orderNo` | `string,null` | 是 | — |
-| `decidedAt` | `number,null` | 是 | — |
-| `submittedAt` | `number,null` | 是 | — |
+| `storeNo` | `string` | 是 | 门店业务号 |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | 当前门店经营状态，与审核结论独立 |
+| `review` | [`StoreOperationalReviewStatus`](#storeoperationalreviewstatus) \| `null` | 是 | 开业审核结论 |
+| `source` | [`StoreOperationalReviewSource`](#storeoperationalreviewsource) \| `null` | 是 | 审核发起来源 |
+| `orderNo` | `string,null` | 是 | 关联商城订单号；人工审核为空 |
+| `decidedAt` | `number,null` | 是 | 最近审核决定时间，Unix 毫秒；未决定为空 |
+| `submittedAt` | `number,null` | 是 | 最近送审时间，Unix 毫秒；未送审为空 |
 
 
 #### POST `/ops/stores/{storeNo}/restore`
@@ -16408,7 +16408,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | 收款方式；省略时按当前银行转账兼容规则处理 |
 | `platformMerchantNo` | `string` | 是 | Immutable receiver frozen with this order. |
 | `orderNo` | `string` | 是 | 订单号 |
 | `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
@@ -16636,7 +16636,7 @@ Plan 版本行；status=PUBLISHED 之后只读
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | — |
+| `collectionMethod` | [`MallCollectionMethod`](#mallcollectionmethod) | 否 | 收款方式；省略时按当前银行转账兼容规则处理 |
 | `quoteNo` | `string` | 否 | 报价号 |
 | `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
 | `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
@@ -19940,17 +19940,35 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 ### StoreOperationalReview
 
-Store operating admission, independent of entity/legal and payment review.
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | — |
-| `review` | `PENDING` \| `APPROVED` \| `REJECTED` \| `null` | 是 | — |
-| `source` | `MANUAL` \| `STORE` \| `ENTITY` \| `null` | 是 | — |
-| `orderNo` | `string,null` | 是 | — |
-| `decidedAt` | `number,null` | 是 | — |
-| `submittedAt` | `number,null` | 是 | — |
+| `storeNo` | `string` | 是 | 门店业务号 |
+| `status` | [`StoreGovernStatus`](#storegovernstatus) | 是 | 当前门店经营状态，与审核结论独立 |
+| `review` | [`StoreOperationalReviewStatus`](#storeoperationalreviewstatus) \| `null` | 是 | 开业审核结论 |
+| `source` | [`StoreOperationalReviewSource`](#storeoperationalreviewsource) \| `null` | 是 | 审核发起来源 |
+| `orderNo` | `string,null` | 是 | 关联商城订单号；人工审核为空 |
+| `decidedAt` | `number,null` | 是 | 最近审核决定时间，Unix 毫秒；未决定为空 |
+| `submittedAt` | `number,null` | 是 | 最近送审时间，Unix 毫秒；未送审为空 |
+
+### StoreOperationalReviewSource
+
+开业审核来源：人工、门店商城订单或主体商城订单。
+
+枚举取值：
+
+- `MANUAL`
+- `STORE`
+- `ENTITY`
+
+### StoreOperationalReviewStatus
+
+开业审核结论；未送审或历史记录可为空。
+
+枚举取值：
+
+- `PENDING`
+- `APPROVED`
+- `REJECTED`
 
 ### StorePageAudit
 

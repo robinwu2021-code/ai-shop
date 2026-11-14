@@ -16,9 +16,9 @@ export function StoreWorkspace(){
   return <div className="space-y-3"><HelpNote>{c.reviewHint}</HelpNote>
     <div className="flex flex-wrap gap-2"><Button variant={review?"outline":"default"} onClick={()=>setReview(false)}>{c.stores}</Button>{can("merchant:apply:audit")&&<Button variant={review?"default":"outline"} onClick={()=>setReview(true)}>{c.review}</Button>}</div>
     {review?<ApplyTab c={merchant} canAudit={can("merchant:apply:audit")} canReadSubscription={can("commerce:subscription:read")}/>:<StoresTab c={merchant} detailActions={store=><div className="flex flex-wrap gap-2">
-      {can("merchant:merchant:ban")&&can("commerce:mall:assisted:purchase")&&<Button size="sm" variant="outline" asChild><Link href={`/mall?tab=orders&kind=ENTITY&entity=${encodeURIComponent(store.merchantNo)}`}>{c.assistEntity}</Link></Button>}
-      {can("commerce:mall:assisted:purchase")&&<Button size="sm" variant="outline" asChild><Link href={`/mall?tab=assisted&store=${encodeURIComponent(store.storeNo)}`}>{c.assistStore}</Link></Button>}
-      {can("member:member:read")&&<Button size="sm" variant="outline" asChild><Link href={`/customers?tab=members&storeNo=${encodeURIComponent(store.storeNo)}`}>{c.members}</Link></Button>}
+      {can("merchant:merchant:ban")&&can("commerce:mall:assisted:purchase")&&<Button size="sm" variant="outline" asChild><Link className="focus-ring" href={`/mall?tab=orders&kind=ENTITY&entity=${encodeURIComponent(store.merchantNo)}`}>{c.assistEntity}</Link></Button>}
+      {can("commerce:mall:assisted:purchase")&&<Button size="sm" variant="outline" asChild><Link className="focus-ring" href={`/mall?tab=assisted&store=${encodeURIComponent(store.storeNo)}`}>{c.assistStore}</Link></Button>}
+      {can("member:member:read")&&<Button size="sm" variant="outline" asChild><Link className="focus-ring" href={`/customers?tab=members&storeNo=${encodeURIComponent(store.storeNo)}`}>{c.members}</Link></Button>}
     </div>}/>}
   </div>;
 }

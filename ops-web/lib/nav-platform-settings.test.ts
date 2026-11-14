@@ -13,6 +13,8 @@ const MOVED = [
   "/inventory?tab=link-health",
 ];
 const REPORTING_HREFS = new Set(["/mall?tab=global-orders", "/mall?tab=global-claims", "/mall?tab=cash-summary", "/mall?tab=cash-details"]);
+const LEGACY_ADMISSION_HREFS = new Set(["/merchants?tab=on-behalf", "/merchants?tab=self-operated"]);
+const canonicalHrefs = (values: string[]) => [...new Set(values.map(href => LEGACY_ADMISSION_HREFS.has(href) ? "/merchants" : href))].sort();
 const settings = () => NAV.find(s => s.key === "iam")!;
 const hrefs = (nav: NavSection[], perms: string[], server?: Set<string>) =>
   visibleSections(perms, server, nav).flatMap(s => visibleLeaves(s, perms, server).map(l => l.href)).sort();
@@ -26,19 +28,22 @@ describe("platform settings incremental migration", () => {
     expect(settings().children?.some(l => l.href.startsWith("/pay-ops"))).toBe(false);
   });
 
-  it("preserves every original leaf identity, permissions and runtime gates", () => {
+  it("preserves leaf identities and gates while consolidating legacy admission destinations", () => {
     const identities = (nav: NavSection[]) => nav.flatMap(s => s.children ?? []).map(l => ({
       href: l.href, perm: l.perm, ready: l.ready, phase: l.phase, soon: l.soon, gated: l.gated, matrix: l.matrix,
     })).sort((a, b) => a.href.localeCompare(b.href));
     expect(identities(before as NavSection[])).toHaveLength(151);
-    expect(identities(NAV)).toHaveLength(155);
-    expect(identities(NAV).filter(l => !REPORTING_HREFS.has(l.href))).toEqual(identities(before as NavSection[]));
+    expect(identities(NAV)).toHaveLength(153);
+    const admission = NAV.flatMap(s => s.children ?? []).find(l => l.href === "/merchants")!;
+    expect(admission.legacyHrefs).toEqual([...LEGACY_ADMISSION_HREFS]);
+    expect(admission.anyPerms).toEqual(["merchant:apply:audit", "merchant:apply:onbehalf", "merchant:selfop:create"]);
+    expect(identities(NAV).filter(l => !REPORTING_HREFS.has(l.href))).toEqual(identities(before as NavSection[]).filter(l => !LEGACY_ADMISSION_HREFS.has(l.href)));
     expect(identities(NAV).filter(l => REPORTING_HREFS.has(l.href)).map(l => l.href).sort()).toEqual([...REPORTING_HREFS].sort());
     for (const [role, perms] of Object.entries(BACKEND_ROLE_PERMS)) {
       expect(hrefs(NAV, perms).filter(href => REPORTING_HREFS.has(href))).toEqual(role === "SUPER_ADMIN" ? [...REPORTING_HREFS].sort() : []);
-      expect(hrefs(NAV, perms).filter(href => !REPORTING_HREFS.has(href))).toEqual(hrefs(before as NavSection[], perms));
+      expect(hrefs(NAV, perms).filter(href => !REPORTING_HREFS.has(href))).toEqual(canonicalHrefs(hrefs(before as NavSection[], perms)));
     }
-    expect(hrefs(NAV, [])).toEqual(hrefs(before as NavSection[], []));
+    expect(hrefs(NAV, [])).toEqual(canonicalHrefs(hrefs(before as NavSection[], [])));
   });
 
   it("keeps server-menu filtering exact for moved mixed-permission leaves", () => {
@@ -79,7 +84,7 @@ it("keeps generated ACTION ownership independent of settings display order", () 
     const values = [...line.matchAll(/'([^']*)'/g)].map(m => m[1]);
     owners[values[0]] = values[1];
   }
-  expect(owners).toEqual(actionOwnersBefore);
+  expect(owners).toEqual({ ...actionOwnersBefore, ACT__MERCHANT_SELFOP_CREATE: "OPS_MERCHANT", ACT__MERCHANT_APPLY_ONBEHALF: "OPS_MERCHANT" });
 });
 
 it.each(["product:sku:read", "message:ticket:read", "inventory:credential:read"])(

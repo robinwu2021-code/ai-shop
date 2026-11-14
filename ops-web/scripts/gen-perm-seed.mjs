@@ -487,6 +487,7 @@ if (args.includes('--emit-point-codes')) {
   lines.push('// 删除叶子：**先确认库里没有指向它的授权**，再从表里删。');
   lines.push('export const POINT_CODES: Record<string, string> = {');
   const seen = {};
+  const emitted = new Set();
   for (const s2 of secs) for (const l of s2.leaves.filter(l => !aliasByHref.has(l.href))) seen[l.href] = (seen[l.href] || 0) + 1;
   for (const s2 of secs) {
     const fc = `OPS_${s2.key.toUpperCase()}`;
@@ -494,12 +495,18 @@ if (args.includes('--emit-point-codes')) {
       // href 唯一 → 只按 href 做键，这样 section 合并/改名都不影响它
       const key = seen[l.href] > 1 ? `${fc}\t${l.href}` : l.href;
       lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(pointCodeOf(fc, l.href))},`);
+      emitted.add(key);
     }
+  }
+  // Navigation consolidation does not revoke legacy routes or their existing role grants.
+  for (const [key, code] of Object.entries(FROZEN)) if (!emitted.has(key)) {
+    lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(code)},`);
+    emitted.add(key);
   }
   lines.push('};');
   lines.push('');
   writeFileSync(AT('../lib/point-codes.ts'), lines.join('\n'));
-  console.error(`已写出 ${Object.values(secs).reduce((n, s2) => n + s2.leaves.filter(l => !aliasByHref.has(l.href)).length, 0)} 条 point_code`);
+  console.error(`已写出 ${emitted.size} 条 point_code`);
 } else if (args.includes('--matrix')) {
   writeBack('../../docs/technical/design/运营端-动态菜单×角色矩阵.md', renderMatrix());
 } else if (args.includes('--markdown') || args.includes('--doc')) {

@@ -588,9 +588,15 @@ export interface MallQuoteCreditView {
 
 /** 报价（服务器冻结） */
 export type MallCollectionMethod = "BANK_TRANSFER" | "SALES_COLLECTION";
-export interface MallSalesCollector { collectorNo: string; displayName: string }
+export interface MallSalesCollector {
+  /** 可代收款的业务员账号业务号 */
+  collectorNo: string;
+  /** 业务员展示名称 */
+  displayName: string;
+}
 
 export interface MallQuoteView {
+  /** 收款方式；省略时按当前银行转账兼容规则处理 */
   collectionMethod?: MallCollectionMethod;
   /** 报价号 */
   quoteNo?: string;
@@ -624,6 +630,7 @@ export interface MallQuoteLine {
 
 /** 报价请求 */
 export interface MallQuoteRequest {
+  /** 收款方式；省略时按当前银行转账兼容规则处理 */
   collectionMethod?: MallCollectionMethod;
   /** 行 */
   lines: MallQuoteLine[];
@@ -946,7 +953,9 @@ export interface MallOfflineCollectionTerms {
 
 /** 配置收款档案 */
 export interface MallOfflineProfileCommand {
+  /** 收款方式；省略时按当前银行转账兼容规则处理 */
   collectionMethod?: MallCollectionMethod;
+  /** 业务员代收时展示给付款方的联系指引 */
   contactInstructions?: string;
   /** 档案号 */
   profileNo: string;
@@ -1005,6 +1014,7 @@ export interface MallOfflinePendingClaim {
 
 /** 已发出的付款指引（冻结档案版本） */
 export interface MallOfflineInstructionsView {
+  /** 收款方式；省略时按当前银行转账兼容规则处理 */
   collectionMethod?: MallCollectionMethod;
   /** Immutable receiver frozen with this order. */
   platformMerchantNo: string;
@@ -1046,16 +1056,58 @@ export interface MallOfflineSignedRead {
 }
 
 /** 核款：录入实际到账 */
-export interface MallOfflineSupplementRequest {actionNo:string;confirmationActionNo:string;note:string;evidenceKeys:string[]}
-export interface MallReceiptDocumentation {
-  confirmationActionNo:string;paymentNo:string|null;status:string;testPayment:boolean;operatorNo:string;confirmedAt:string;
-  actualAmount:MallMoney;actualPaidAt:string;collectorNo:string|null;collectionReference:string|null;evidenceKey:string|null;complete:boolean;
-  supplements:{actionNo:string;operatorNo:string;createdAt:string;note:string|null;evidenceKeys:string[]}[];
+export interface MallOfflineSupplementRequest {
+  /** 本次补充动作的幂等业务号 */
+  actionNo: string;
+  /** 被补充的原核款动作号 */
+  confirmationActionNo: string;
+  /** 补充说明；不改写原核款事实 */
+  note: string;
+  /** 关联的私有证据资产键 */
+  evidenceKeys: string[];
 }
-export interface MallDocumentationView {testAllowed:boolean;confirmations:MallReceiptDocumentation[]}
+/** 原核款事实与追加材料的审计视图。 */
+export interface MallReceiptDocumentation {
+  /** 原核款动作业务号 */
+  confirmationActionNo: string;
+  /** 对应支付流水号；未生成时为空 */
+  paymentNo: string | null;
+  /** 原核款动作处理状态 */
+  status: string;
+  /** 是否为测试核款事实 */
+  testPayment: boolean;
+  /** 原核款操作员账号 */
+  operatorNo: string;
+  /** 核款登记时间，ISO 8601 */
+  confirmedAt: string;
+  /** 实际到账金额及币种 */
+  actualAmount: MallMoney;
+  /** 实际到账时间，ISO 8601 */
+  actualPaidAt: string;
+  /** 代收业务员账号；银行转账时为空 */
+  collectorNo: string | null;
+  /** 代收或银行对账参考号 */
+  collectionReference: string | null;
+  /** 原核款关联的私有证据资产键 */
+  evidenceKey: string | null;
+  /** 原事实及追加材料是否已满足凭证完整性规则 */
+  complete: boolean;
+  /** 只追加的补充材料，包含动作号、操作员、时间、说明及证据键 */
+  supplements: {actionNo:string;operatorNo:string;createdAt:string;note:string|null;evidenceKeys:string[]}[];
+}
+/** 订单核款材料汇总。 */
+export interface MallDocumentationView {
+  /** 当前环境及权限是否允许测试核款 */
+  testAllowed: boolean;
+  /** 本订单的全部核款事实及补充材料 */
+  confirmations: MallReceiptDocumentation[];
+}
 export interface MallOfflineConfirmRequest {
+  /** 测试核款标志；仅服务端允许的测试环境可用 */
   testPayment?: boolean;
+  /** 代收业务员账号；业务员代收方式时填写 */
   collectorNo?: string;
+  /** 收款对账参考号 */
   collectionReference?: string;
   /** 幂等动作号 */
   actionNo: string;

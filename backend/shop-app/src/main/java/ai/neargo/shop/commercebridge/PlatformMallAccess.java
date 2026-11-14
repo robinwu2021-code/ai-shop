@@ -33,12 +33,12 @@ public class PlatformMallAccess {
     if(permissions.can("commerce:mall:order:read") && (!pending || permissions.can("commerce:mall:offline:review"))) models.add(Model.STORE);
     if(requestedModel!=null && !requestedModel.isBlank()) {
       Model model;
-      try { model=Model.valueOf(requestedModel); } catch(IllegalArgumentException e) { throw new BizException(ErrorCode.BAD_REQUEST,"Invalid model"); }
+      try { model=Model.valueOf(requestedModel); } catch(IllegalArgumentException e) { throw BizException.of(ErrorCode.BAD_REQUEST); }
       if(!models.contains(model)) throw denied();
       models.retainAll(Set.of(model));
     }
     if(models.isEmpty()) throw denied();
     return new Context(access,user.userNo(),models);
   }
-  private static BizException denied() { return new BizException(ErrorCode.FORBIDDEN,"Platform mall reporting denied"); }
+  private static BizException denied() { return BizException.of(ErrorCode.FORBIDDEN); }
 }

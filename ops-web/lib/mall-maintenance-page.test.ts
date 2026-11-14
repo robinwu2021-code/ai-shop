@@ -56,9 +56,9 @@ it("a publication conflict reloads the server version without retrying", async (
   expect(host.querySelector('[data-testid="catalog-version"]')?.textContent).toBe("9"); expect(s.publish).toHaveBeenCalledTimes(1);
 });
 it("a disabled collection profile retains its version and can be re-enabled", async () => {
-  await mount(h(CollectionTab, { c, canWrite: true })); expect(host.textContent).toContain(c.profileDisabled); expect((host.querySelector("#pf-no") as HTMLInputElement).disabled).toBe(true);
+  await mount(h(CollectionTab, { c, canWrite: true })); await select("#pf-method", "BANK_TRANSFER"); await settle(); expect(host.textContent).toContain(c.profileDisabled); expect((host.querySelector("#pf-no") as HTMLInputElement).disabled).toBe(true);
   const checkbox = host.querySelector('[role="checkbox"]') as HTMLButtonElement; expect(checkbox.getAttribute("aria-checked")).toBe("false"); await act(async () => checkbox.click()); await input("#pf-reason", "resume"); await click(c.btnSaveNewVersion);
-  expect(s.configure).toHaveBeenCalledWith(expect.objectContaining({ profileNo: "p", expectedVersion: 4, enabled: true, reason: "resume" }));
+  expect(s.configure).toHaveBeenCalledWith(expect.objectContaining({ profileNo: "p", expectedVersion: 4, collectionMethod: "BANK_TRANSFER", enabled: true, reason: "resume" }));
 });
 async function targetStore(canReadSubscription = true) { await mount(h(AssistedTab, { c, canReadSubscription })); await input("#assist-store", "S1"); await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))); await settle(); }
 it("assisted purchase shows current plan and filters other business types", async () => {

@@ -302,14 +302,25 @@ export interface StoreIndustryChoice {
 }
 
 /** 入驻申请单（后端 `mch_entity_apply`）。 */
+/** 统一准入列表来源。代申请与平台自营使用不同审核流程。 */
+export type AdmissionEntryType = "ON_BEHALF" | "SELF_OPERATED";
+
 export interface AdmissionEntry {
+  /** 带来源前缀的列表唯一键 */
   key: string;
-  type: "ON_BEHALF" | "SELF_OPERATED";
+  /** 准入来源：代申请或平台自营 */
+  type: AdmissionEntryType;
+  /** 申请名称或已建自营主体名称 */
   name: string;
+  /** 实际店主账号；未关联时为空 */
   ownerUserNo?: string | null;
+  /** 来源对应的申请或主体状态 */
   status: string;
+  /** 创建时间，Unix 毫秒 */
   createdAt: number;
+  /** 代申请记录；自营来源为空 */
   application?: MerchantApply | null;
+  /** 平台自营主体快照；代申请来源为空 */
   selfOperated?: { merchantNo: string; name: string; ownerUserNo: string; status: string; serviceScope: string; createdAt: number } | null;
 }
 

@@ -23,6 +23,12 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/customers\/users(?:\/\{userNo\}\/stores)?$/, "customer:user:read"],
+  ["GET", /^\/ops\/customers\/(?:chains|operating-entities\/\{id\})$/, "merchant:merchant:read"],
+  ["GET", /^\/ops\/customers\/members(?:\/\{personNo\})?$/, "member:member:read"],
+  ["GET", /^\/ops\/platform-mall\/orders$/, "commerce:platform:orders:read"],
+  ["GET", /^\/ops\/platform-mall\/claims$/, "commerce:platform:claims:read"],
+  ["GET", /^\/ops\/platform-mall\/cash$/, "commerce:platform:cash:read"],
   ["GET", /^\/ops\/stores\/\{storeNo\}\/operational-review$/, "merchant:merchant:read"],
   ["POST", /^\/ops\/stores\/\{storeNo\}\/operational-review\/(?:submit|decide)$/, "merchant:apply:audit"],
   ["GET", /^\/ops\/biz-mall\/offline\/orders\/\{orderNo\}\/receipt-documentation$/, "commerce:mall:order:read"],

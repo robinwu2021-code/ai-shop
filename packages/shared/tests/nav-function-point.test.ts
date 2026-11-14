@@ -87,9 +87,11 @@ function seededPoints() {
   for (const f of readdirSync(MIGRATION_DIR).sort()) {
     if (!f.endsWith(".sql")) continue;
     const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
-    for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+([^;]+?)\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
+    // V665/V667 preserve grants while moving several point identities to one destination.
+    for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+([^;]+?)\s+WHERE\s+point_code\s*(?:=\s*'([^']+)'|IN\s*\(([^)]*)\))/g)) {
       const href = /\bhref\s*=\s*'([^']+)'/.exec(m[1]!);
-      if (href) for (const p of out) if (p.pointCode === m[2]) p.href = href[1]!;
+      const codes = m[2] ? [m[2]] : [...m[3]!.matchAll(/'([^']+)'/g)].map(c => c[1]!);
+      if (href) for (const p of out) if (codes.includes(p.pointCode)) p.href = href[1]!;
     }
   }
   const removed = new Set<string>();
@@ -128,7 +130,9 @@ function seededPoints() {
 /** nav.ts 里的叶子（有 href + label 的那些） */
 function navLeaves() {
   const src = readFileSync(join(ROOT, "ops-web/lib/nav.ts"), "utf8");
-  return [...src.matchAll(/\{\s*href:\s*"([^"]+)",\s*label:/g)].map((m) => m[1]);
+  // platformCatalog includes canonical aliases as well as the retained business NAV.
+  const aliases = JSON.parse(readFileSync(join(ROOT, "ops-web/lib/platform-menu-aliases.json"), "utf8")) as { href: string }[];
+  return [...src.matchAll(/\{\s*href:\s*"([^"]+)",\s*label:/g)].map((m) => m[1]).concat(aliases.map(a => a.href));
 }
 
 describe("菜单 ↔ 功能点", () => {
