@@ -129,19 +129,6 @@ class PlatformCashReportingTest {
         assertThat(facts).hasSize(502).allMatch(f->f.verified() && f.amountMinor()==1);
         assertThat(db.queryForObject("SELECT amount_minor FROM stl_payment WHERE payment_no=?",Long.class,last)).isEqualTo(2);
     }
-    @Test void lockedWorkflowRetainsItsRefundCapacityAndPendingSemantics() {
-        var original=receipt("legacy","TWD",100,1000,"PLATFORM_MALL",false);
-        String refunded=refund(original,"legacy-return",20,2000);
-        var transaction=new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(db.getDataSource()));
-        var ledger=new PlatformOfflineLedger(db,transaction,json,null);
-        sql.clear();
-        var receipts=transaction.execute(tx->ledger.receipts("MAIN",original.key().orderNo()));
-        assertThat(receipts).singleElement().satisfies(r->{assertThat(r.refundedMinor()).isEqualTo(20);assertThat(r.pendingRefund()).isFalse();});
-        assertThat(sql).anyMatch(statement->statement.contains("FOR UPDATE"));
-        db.update("UPDATE stl_payment SET refund_verified_minor=1 WHERE payment_no=?",refunded);
-        var invalid=transaction.execute(tx->ledger.receipts("MAIN",original.key().orderNo()));
-        assertThat(invalid).singleElement().satisfies(r->{assertThat(r.refundedMinor()).isZero();assertThat(r.pendingRefund()).isTrue();});
-    }
     @Test void callbackFailureAndInvalidQueriesPropagate() {
         receipt("one","TWD",100,1000,"PLATFORM_MALL",false);
         assertThatThrownBy(()->service.scan(new PlatformCashReporting.Query("MAIN",0,2000,null),batch->{throw new IllegalStateException("CALLBACK_FAILED");})).hasMessage("CALLBACK_FAILED");

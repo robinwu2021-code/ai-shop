@@ -92,4 +92,32 @@ class PlatformCashReportingMysqlTest {
         }
     }
 
+    @Test void lockedWorkflowRetainsItsRefundCapacityAndPendingSemantics() throws Exception {
+        try(var f=new PlatformOfflineCollectionMysqlTest.Fixture()) {
+            var original=f.request("locked-reporting",f.profile(1,"TWD"));
+            f.base.service.create(original);
+            var paid=f.base.service.confirmOffline(f.proof(original,"locked-receipt",10000,"TWD","NORMAL",5000));
+            var key=new PlatformRefundService.Key("MAIN","locked-reporting","partial-return");
+            f.refunds().refund(new PlatformRefundService.Request(key,"S1",original.key().attemptNo(),paid.receipt().paymentNo(),"platform-mch",10000,2000,"TWD","return"));
+            var refunded=f.refunds().confirmOfflinePayout(new PlatformRefundService.OfflinePayout(key,"ops",2000,"TWD",6000,"private-payee","locked-refund-reference","private-proof",7000));
+            var sql=new ArrayList<String>();
+            var observed=new org.springframework.jdbc.datasource.DelegatingDataSource(f.base.ds) {
+                @Override public java.sql.Connection getConnection() throws java.sql.SQLException {
+                    var connection=super.getConnection();
+                    return (java.sql.Connection)java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),new Class<?>[]{java.sql.Connection.class},(proxy,method,args)->{
+                        if(method.getName().equals("prepareStatement"))sql.add((String)args[0]);
+                        try{return method.invoke(connection,args);}catch(java.lang.reflect.InvocationTargetException e){throw e.getCause();}
+                    });
+                }
+            };
+            var transaction=new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(observed));
+            var ledger=new PlatformOfflineLedger(new org.springframework.jdbc.core.JdbcTemplate(observed),transaction,tools.jackson.databind.json.JsonMapper.builder().build(),null);
+            var receipts=transaction.execute(tx->ledger.receipts("MAIN",original.key().orderNo()));
+            assertEquals(1,receipts.size());assertEquals(2000,receipts.getFirst().refundedMinor());assertFalse(receipts.getFirst().pendingRefund());
+            assertTrue(sql.stream().anyMatch(statement->statement.contains("FOR UPDATE")));
+            f.base.jdbc.update("UPDATE stl_payment SET refund_verified_minor=1 WHERE payment_no=?",refunded.paymentNo());
+            var invalid=transaction.execute(tx->ledger.receipts("MAIN",original.key().orderNo()));
+            assertEquals(1,invalid.size());assertEquals(0,invalid.getFirst().refundedMinor());assertTrue(invalid.getFirst().pendingRefund());
+        }
+    }
 }
